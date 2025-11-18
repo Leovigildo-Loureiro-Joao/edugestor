@@ -6,13 +6,15 @@ import {
   FiDollarSign, 
   FiCalendar, 
   FiBook,
-  FiSettings 
+  FiSettings, 
+  FiBookOpen
 } from 'react-icons/fi';
 
 const Sidebar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: FiHome },
     { name: 'Alunos', href: '/alunos', icon: FiUsers },
+    { name: 'Aulas', href: '/aulas', icon: FiBookOpen },
     { name: 'Financeiro', href: '/financeiro', icon: FiDollarSign },
     { name: 'Frequência', href: '/frequencia', icon: FiCalendar },
     { name: 'Notas', href: '/notas', icon: FiBook },

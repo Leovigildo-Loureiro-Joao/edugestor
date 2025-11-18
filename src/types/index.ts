@@ -1,22 +1,8 @@
 // Tipos principais do sistema
+import { Frequencia } from "./frequencia";
+import { Student,StudentFormData,StudentFormProps } from "./aluno";
 
-export interface Student {
-  id: string;
-  nome_completo: string;
-  data_nascimento: string;
-  numero_bi: string;
-  nome_pai: string;
-  nome_mae: string;
-  contacto_telefone: string;
-  email?: string;
-  endereco: string;
-  turma_id: string;
-  data_matricula: string;
-  estado: 'ativo' | 'transferido' | 'desistente';
-  created_at: string;
-  updated_at: string;
-}
-
+export { Frequencia, Student,StudentFormData,StudentFormProps };
 export interface Turma {
   id: string;
   nome_turma: string;
@@ -41,17 +27,6 @@ export interface Propina {
   recibo_numero?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface Frequencia {
-  id: string;
-  aluno_id: string;
-  data_aula: string;
-  presente: boolean;
-  justificativa?: string;
-  aula_id: string;
-  hora_registro: string;
-  created_at: string;
 }
 
 export interface Avaliacao {
@@ -90,3 +65,4 @@ export interface DashboardStats {
   propinasPendentes: number;
   frequenciaMedia: number;
 }
+

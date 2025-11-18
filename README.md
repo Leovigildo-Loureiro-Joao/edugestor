@@ -29,8 +29,11 @@ src/
 ├── hooks/ # Custom hooks
 ├── services/ # Serviços externos
 │ ├── firebase/ # Configuração Firebase
+│ ├── supabase/ # Configuração Supabase
 │ ├── database/ # Operações de BD
+| ├── dashboard/# Operações do Dasboadr
 │ └── auth/ # Autenticação
+
 ├── types/ # Tipos TypeScript
 └── utils/ # Utilitários
 ```

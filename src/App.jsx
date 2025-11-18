@@ -6,6 +6,11 @@ import Layout from './components/layout/Layout';
 import Login from './components/auth/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Students from './pages/Students/Students';
+import { StudentNew } from './pages/Students/StudentsNew';
+import { StudentEdit } from './pages/Students/StudentsEdit';
+import { RegistroFrequencia } from './pages/Attendance/RegisterFrequencia';
+import { FrequenciaPage } from './pages/Attendance/Frequencia';
+import { AulasPage } from './pages/Grades/AulaPage';
 // ... outros imports
 
 // Componente para rotas protegidas
@@ -35,9 +40,10 @@ function App() {
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/alunos" element={<Students />} />
-                    <Route path="/alunos/novo" element={<StudentForm />} />
-                    <Route path="/alunos/editar/:id" element={<StudentForm />} />
-                    <Route path="/alunos/:id" element={<StudentDetails />} />
+                    <Route path="/alunos/novo" element={<StudentNew />} />
+                    <Route path="/alunos/editar/:id" element={<StudentEdit />} />
+                    <Route path="/frequencia" element={<FrequenciaPage/>} />
+                    <Route path="/aulas" element={<AulasPage/>} />
                 
                   {/* ... outras rotas */}
                 </Routes>

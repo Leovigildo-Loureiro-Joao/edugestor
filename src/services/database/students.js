@@ -1,102 +1,76 @@
-// src/services/database/students.js
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  getDoc,
-  query,
-  where,
-  orderBy 
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
+// src/services/database/students-supabase.js
+import { supabase } from '../supabase/config'
 
-// Referência da coleção
-const studentsRef = collection(db, 'alunos');
-
-// CRUD Operations
 export const studentsService = {
   // Criar aluno
   async createStudent(studentData) {
-    try {
-      const docRef = await addDoc(studentsRef, {
+    const { data, error } = await supabase
+      .from('alunos')
+      .insert([{
         ...studentData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      });
-      return docRef.id;
-    } catch (error) {
-      throw new Error(`Erro ao criar aluno: ${error.message}`);
-    }
+      }])
+      .select()
+    
+    if (error) throw new Error(`Erro ao criar aluno: ${error.message}`)
+    return data[0].id
+  },
+
+  async getAlunosPorTurma(turmaId) {
+    const { data, error } = await supabase
+      .from('alunos')
+      .select('id, nome_completo, turma_id, estado')
+      .eq('turma_id', turmaId)
+      .order('nome_completo');
+
+    if (error) throw error;
+    return data;
   },
 
   // Buscar todos os alunos
   async getStudents() {
-    try {
-      const querySnapshot = await getDocs(
-        query(studentsRef, orderBy('created_at', 'desc'))
-      );
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      throw new Error(`Erro ao buscar alunos: ${error.message}`);
-    }
+    const { data, error } = await supabase
+      .from('alunos')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw new Error(`Erro ao buscar alunos: ${error.message}`)
+    return data
   },
 
   // Buscar aluno por ID
   async getStudentById(id) {
-    try {
-      const docRef = doc(db, 'alunos', id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
-      } else {
-        throw new Error('Aluno não encontrado');
-      }
-    } catch (error) {
-      throw new Error(`Erro ao buscar aluno: ${error.message}`);
-    }
+    const { data, error } = await supabase
+      .from('alunos')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw new Error(`Erro ao buscar aluno: ${error.message}`)
+    return data
   },
 
   // Atualizar aluno
   async updateStudent(id, studentData) {
-    try {
-      const docRef = doc(db, 'alunos', id);
-      await updateDoc(docRef, {
+    const { error } = await supabase
+      .from('alunos')
+      .update({
         ...studentData,
         updated_at: new Date().toISOString()
-      });
-    } catch (error) {
-      throw new Error(`Erro ao atualizar aluno: ${error.message}`);
-    }
+      })
+      .eq('id', id)
+    
+    if (error) throw new Error(`Erro ao atualizar aluno: ${error.message}`)
   },
 
   // Deletar aluno
   async deleteStudent(id) {
-    try {
-      const docRef = doc(db, 'alunos', id);
-      await deleteDoc(docRef);
-    } catch (error) {
-      throw new Error(`Erro ao deletar aluno: ${error.message}`);
-    }
-  },
-
-  // Buscar alunos por turma
-  async getStudentsByClass(turmaId) {
-    try {
-      const q = query(studentsRef, where('turma_id', '==', turmaId));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      throw new Error(`Erro ao buscar alunos por turma: ${error.message}`);
-    }
+    const { error } = await supabase
+      .from('alunos')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw new Error(`Erro ao deletar aluno: ${error.message}`)
   }
-};
+}

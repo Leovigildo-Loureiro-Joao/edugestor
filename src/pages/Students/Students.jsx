@@ -57,7 +57,7 @@ const Students = () => {
       </div>
 
       {/* Barra de Busca */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className=" p-4 ">
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
