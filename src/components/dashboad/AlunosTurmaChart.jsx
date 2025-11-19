@@ -1,77 +1,21 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { supabase } from '../../services/supabase/config';
+import { PieChartTurmaAlunosState } from '../../services/dashboard/chartsService';
 
 export const AlunosTurmaChart = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    carregarDadosAlunos();
-  }, []);
-
-  const carregarDadosAlunos = async () => {
-    try {
-      const { data: alunos, error } = await supabase
-        .from('alunos')
-        .select('turma_id, estado');
-
-      if (error) throw error;
-
-      // Agrupar alunos por turma
-      const alunosPorTurma = alunos.reduce((acc, aluno) => {
-        const turma = aluno.turma_id || 'Sem Turma';
-        if (!acc[turma]) {
-          acc[turma] = { total: 0, ativos: 0 };
-        }
-        acc[turma].total++;
-        if (aluno.estado === 'ativo') {
-          acc[turma].ativos++;
-        }
-        return acc;
-      }, {});
-
-      // Preparar dados para o gráfico
-      const dadosGrafico = Object.entries(alunosPorTurma).map(([turma, dados], index) => ({
-        name: `Turma ${turma}`,
-        value: dados.total,
-        ativos: dados.ativos,
-        inativos: dados.total - dados.ativos,
-        fill: gerarCor(turma, index) // Passa o índice como fallback
-      }));
-
-      setData(dadosGrafico);
-
-    } catch (error) {
-      console.error('Erro ao carregar dados de alunos:', error);
-    } finally {
+    const carregarDados = async () => {
+      setLoading(true);
+      const { data: dados } = await PieChartTurmaAlunosState();
+      setData(dados);
       setLoading(false);
-    }
-  };
+    };
 
-  // Gerar cores únicas para cada turma
-  const gerarCor = (turma, index) => {
-    const cores = [
-      '#0088FE', '#00C49F', '#FFBB28', '#FF8042', 
-      '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1',
-      '#D084D0', '#FF6B6B', '#4ECDC4', '#45B7D1',
-      '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
-      '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471'
-    ];
-    
-    // Usa o hash da turma ou o índice como fallback
-    let hash = 0;
-    if (turma !== 'Sem Turma') {
-      for (let i = 0; i < turma.length; i++) {
-        hash = turma.charCodeAt(i) + ((hash << 5) - hash);
-      }
-    } else {
-      hash = index; // Para "Sem Turma", usa o índice
-    }
-    
-    const corIndex = Math.abs(hash) % cores.length;
-    return cores[corIndex];
-  };
+    carregarDados();
+  }, []);
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {

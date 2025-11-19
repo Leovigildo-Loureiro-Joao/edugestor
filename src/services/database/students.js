@@ -32,7 +32,32 @@ export const studentsService = {
   async getStudents() {
     const { data, error } = await supabase
       .from('alunos')
-      .select('*')
+      .select(`
+  id, 
+  nome_completo, 
+  data_nascimento, 
+  nome_pai, 
+  nome_mae, 
+  contacto_principal, 
+  email, 
+  endereco, 
+  data_matricula, 
+  estado, 
+  created_at, 
+  updated_at, 
+  numero_estudante, 
+  sexo, 
+  curso, 
+  classe_escolar, 
+  periodo, 
+  horario, 
+  contacto_secundario, 
+  professor, 
+  cartao_pago,
+  turmas (
+    nome_turma
+  )
+`)
       .order('created_at', { ascending: false })
     
     if (error) throw new Error(`Erro ao buscar alunos: ${error.message}`)
