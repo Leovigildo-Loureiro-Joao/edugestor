@@ -14,6 +14,7 @@ const Sidebar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: FiHome },
     { name: 'Alunos', href: '/alunos', icon: FiUsers },
+    { name: 'Turmas', href: '/turmas', icon: FiUsers },
     { name: 'Aulas', href: '/aulas', icon: FiBookOpen },
     { name: 'Financeiro', href: '/financeiro', icon: FiDollarSign },
     { name: 'Frequência', href: '/frequencia', icon: FiCalendar },
@@ -22,7 +23,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 bg-white shadow-lg">
+    <div className="w-44 bg-gray-50">
       <div className="p-6">
         <h1 className="text-2xl font-bold text-primary-600">EduGestor</h1>
         <p className="text-sm text-gray-600">Gestão Académica</p>
@@ -37,7 +38,7 @@ const Sidebar = () => {
               `flex items-center px-6 py-3 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary-50 text-primary-600 border-r-2 border-primary-600'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  : 'text-[#0f1e42a9] hover:bg-primary-50 hover:text-primary-900'
               }`
             }
           >

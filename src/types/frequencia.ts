@@ -8,7 +8,12 @@ export interface Frequencia {
   created_at: string;
   aluno_nome?: string;
 }
-
+export interface FrequenciaData {
+  id: string;
+  data_aula: string;
+  presente: boolean;
+  justificativa?: string;
+}
 export interface RegistroFrequenciaLote {
   aula_id: string;
   registros: {

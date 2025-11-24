@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { StudentForm } from "../../components/students/StudentForm";
-import { studentsService } from "../../services/database/students";
+import { studentsService } from "../../services/database/students.ts";
 import { Student } from "../../types";
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -11,10 +11,9 @@ export const StudentEdit = ()=>{
     const navigate=useNavigate();
     const [loading, setLoading]=useState(true);
     const [alunoExistente, setAlunoExistente]=useState<Student|null>(null);
-    studentsService.getStudentById(id).then((student)=> {
+    studentsService.getStudentById(id||"").then((student)=> {
         loading&&setLoading(false);
         setAlunoExistente(student);
-
     })
     if(!loading&& !alunoExistente){
         return <div>Aluno não encontrado</div>

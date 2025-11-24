@@ -10,8 +10,8 @@ export const dashboardService = {
       const [
         { count: totalAlunos, error: alunosError },
         { count: alunosAtivos, error: ativosError },
-        { count: propinasPagas, error: pagasError },
-        { count: propinasPendentes, error: pendentesError },
+        { count: propinaPagas, error: pagasError },
+        { count: propinaPendentes, error: pendentesError },
         { data: frequencias, error: frequenciasError }
       ] = await Promise.all([
         // Total de alunos - ✅ COUNT, não DATA
@@ -25,15 +25,15 @@ export const dashboardService = {
           .select('id', { count: 'exact', head: true })
           .eq('estado', 'ativo'),
         
-        // Propinas pagas - ✅ COUNT, não DATA
+        // propina pagas - ✅ COUNT, não DATA
         supabase
-          .from('propinas')
+          .from('propina')
           .select('id', { count: 'exact', head: true })
           .eq('estado', 'pago'),
         
-        // Propinas pendentes - ✅ COUNT, não DATA
+        // propina pendentes - ✅ COUNT, não DATA
         supabase
-          .from('propinas')
+          .from('propina')
           .select('id', { count: 'exact', head: true })
           .eq('estado', 'pendente'),
         
@@ -47,8 +47,8 @@ export const dashboardService = {
       console.log('🔍 Debug dos counts:', {
         totalAlunos,
         alunosAtivos,
-        propinasPagas, 
-        propinasPendentes,
+        propinaPagas, 
+        propinaPendentes,
         frequencias: frequencias?.length
       });
 
@@ -62,11 +62,11 @@ export const dashboardService = {
         throw ativosError;
       }
       if (pagasError) {
-        console.error('❌ Erro propinas pagas:', pagasError);
+        console.error('❌ Erro propina pagas:', pagasError);
         throw pagasError;
       }
       if (pendentesError) {
-        console.error('❌ Erro propinas pendentes:', pendentesError);
+        console.error('❌ Erro propina pendentes:', pendentesError);
         throw pendentesError;
       }
       if (frequenciasError) {
@@ -85,8 +85,8 @@ export const dashboardService = {
       const stats = {
         totalAlunos: totalAlunos || 0,                     // ✅ Agora count
         alunosAtivos: alunosAtivos || 0,                   // ✅ Agora count  
-        propinasPagas: propinasPagas || 0,                 // ✅ Agora count
-        propinasPendentes: propinasPendentes || 0,         // ✅ Agora count
+        propinaPagas: propinaPagas || 0,                 // ✅ Agora count
+        propinaPendentes: propinaPendentes || 0,         // ✅ Agora count
         frequenciaMedia: parseFloat(frequenciaMedia.toFixed(1))
       };
 

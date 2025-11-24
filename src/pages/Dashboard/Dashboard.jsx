@@ -75,7 +75,7 @@ const Dashboard = () => {
     },
     {
       title: "Propinas Pagas",
-      value: stats.propinasPagas,
+      value: stats.propinaPagas,
       change: "+8%",
       color: "emerald", 
       icon: FiDollarSign,
@@ -84,7 +84,7 @@ const Dashboard = () => {
     },
     {
       title: "Propinas Pendentes",
-      value: stats.propinasPendentes,
+      value: stats.propinaPendentes,
       change: "-3%",
       color: "orange",
       icon: FiClock,

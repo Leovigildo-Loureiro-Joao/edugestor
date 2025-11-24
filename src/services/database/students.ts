@@ -1,9 +1,10 @@
 // src/services/database/students-supabase.js
+import { Student, StudentFormData } from '../../types'
 import { supabase } from '../supabase/config'
 
 export const studentsService = {
   // Criar aluno
-  async createStudent(studentData) {
+  async createStudent(studentData:StudentFormData) {
     const { data, error } = await supabase
       .from('alunos')
       .insert([{
@@ -17,7 +18,7 @@ export const studentsService = {
     return data[0].id
   },
 
-  async getAlunosPorTurma(turmaId) {
+  async getAlunosPorTurma(turmaId:string) {
     const { data, error } = await supabase
       .from('alunos')
       .select('id, nome_completo, turma_id, estado')
@@ -42,6 +43,7 @@ export const studentsService = {
   email, 
   endereco, 
   data_matricula, 
+  pagamento_em_dia,
   estado, 
   created_at, 
   updated_at, 
@@ -49,23 +51,25 @@ export const studentsService = {
   sexo, 
   curso, 
   classe_escolar, 
+  turma_id,
   periodo, 
+  propina,
   horario, 
   contacto_secundario, 
-  professor, 
   cartao_pago,
   turmas (
-    nome_turma
+    nome_turma,
+    professor
   )
 `)
-      .order('created_at', { ascending: false })
+      .order('nome_completo', { ascending: true })
     
     if (error) throw new Error(`Erro ao buscar alunos: ${error.message}`)
     return data
   },
 
   // Buscar aluno por ID
-  async getStudentById(id) {
+  async getStudentById(id:string) {
     const { data, error } = await supabase
       .from('alunos')
       .select('*')
@@ -77,7 +81,7 @@ export const studentsService = {
   },
 
   // Atualizar aluno
-  async updateStudent(id, studentData) {
+  async updateStudent(id:string, studentData:StudentFormData) {
     const { error } = await supabase
       .from('alunos')
       .update({
@@ -90,7 +94,7 @@ export const studentsService = {
   },
 
   // Deletar aluno
-  async deleteStudent(id) {
+  async deleteStudent(id:string) {
     const { error } = await supabase
       .from('alunos')
       .delete()

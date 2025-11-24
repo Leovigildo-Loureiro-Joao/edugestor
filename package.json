@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "@dataconnect/generated": "file:src/dataconnect-generated",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.2.2",
+    "@mui/icons-material": "^7.3.5",
+    "@mui/material": "^7.3.5",
     "@supabase/supabase-js": "^2.81.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.6.0",

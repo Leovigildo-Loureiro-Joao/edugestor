@@ -1,7 +1,7 @@
 
 import { StudentForm } from "../../components/students/StudentForm";
 import { useNavigate } from 'react-router-dom';
-import { studentsService } from "../../services/database/students";
+import { studentsService } from "../../services/database/students.ts";
 
 export const StudentNew = ()=>{
         const navigate=useNavigate();

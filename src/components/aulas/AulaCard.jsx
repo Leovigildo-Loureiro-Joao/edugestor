@@ -27,7 +27,7 @@ export const AulaCard = ({ aula, onEditar, onDeletar, index }) => {
             <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
               <div className="flex items-center gap-1">
                 <FiUsers className="h-4 w-4" />
-                <span>Turma {aula.turma_id}</span>
+                <span>Turma {aula.turmas.nome_turma}</span>
               </div>
               <div className="flex items-center gap-1">
                 <FiCalendar className="h-4 w-4" />

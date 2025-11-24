@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiBook, FiCalendar, FiClock, FiUsers, FiX } from 'react-icons/fi';
+import { Select } from '../ui/Select';
+import { turmaService } from '../../services/database/turmas';
 
-export const AulaForm = ({ aula, onSubmit, onCancel, loading = false }) => {
+export const AulaForm = ({ aula, turmas, disciplinas, onSubmit, onCancel, loading = false }) => {
   const [formData, setFormData] = useState({
     turma_id: '',
     disciplina: '',
@@ -13,7 +15,6 @@ export const AulaForm = ({ aula, onSubmit, onCancel, loading = false }) => {
     tema_aula: ''
   });
 
-  // Preencher form se estiver editando
   useEffect(() => {
     if (aula) {
       setFormData({
@@ -33,203 +34,180 @@ export const AulaForm = ({ aula, onSubmit, onCancel, loading = false }) => {
     onSubmit(formData);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = async (field, value) => {
+  if (field == "turma_id") {
+    try {
+      const turmaId = await turmaService.getId(value);
+      setFormData(prev => ({
+        ...prev,
+        [field]: turmaId[0].id
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar ID da turma:', error);
+    }
+  } else {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [field]: value
     }));
-  };
+  }
+};
 
   const isEditing = !!aula;
   const title = isEditing ? 'Editar Aula' : 'Nova Aula';
 
   return (
-    <motion.form
+    <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      onSubmit={handleSubmit}
-      className="flex flex-col h-full"
+      className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex justify-between items-center p-6 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <FiX className="h-5 w-5" />
-        </button>
-      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
 
-      {/* Conteúdo */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Coluna Esquerda */}
-          <div className="space-y-4">
-            {/* Turma */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Turma *
-              </label>
-              <div className="relative">
-                <FiUsers className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <select
-                  name="turma_id"
-                  value={formData.turma_id}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
-                >
-                  <option value="">Selecione a turma</option>
-                  <option value="10A">10ª Classe - Turma A</option>
-                  <option value="10B">10ª Classe - Turma B</option>
-                  <option value="11A">11ª Classe - Turma A</option>
-                  <option value="11B">11ª Classe - Turma B</option>
-                  <option value="12A">12ª Classe - Turma A</option>
-                  <option value="12B">12ª Classe - Turma B</option>
-                </select>
+        {/* Conteúdo */}
+        <div className="flex-1 overflow-y-auto max-h-[55vh] p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Coluna Esquerda */}
+            <div className="space-y-4">
+              {/* Turma */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Turma *
+                </label>
+                <Select
+                  vect={turmas}
+                  icon={FiUsers}
+                  onChange={(value) => handleChange('turma_id', value)}
+                />
+              </div>
+
+              {/* Disciplina */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Disciplina *
+                </label>
+                <Select
+                  vect={disciplinas}
+                  icon={FiBook}
+                  onChange={(value) => handleChange('disciplina', value)}
+                />
+              </div>
+
+              {/* Data da Aula */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Data da Aula *
+                </label>
+                <div className="relative">
+                  <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="date"
+                    value={formData.data_aula}
+                    onChange={(e) => handleChange('data_aula', e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Disciplina */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Disciplina *
-              </label>
-              <div className="relative">
-                <FiBook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <select
-                  name="disciplina"
-                  value={formData.disciplina}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
-                >
-                  <option value="">Selecione a disciplina</option>
-                  <option value="Matemática">Matemática</option>
-                  <option value="Português">Português</option>
-                  <option value="Física">Física</option>
-                  <option value="Química">Química</option>
-                  <option value="Biologia">Biologia</option>
-                  <option value="História">História</option>
-                  <option value="Geografia">Geografia</option>
-                  <option value="Inglês">Inglês</option>
-                  <option value="Educação Física">Educação Física</option>
-                </select>
+            {/* Coluna Direita */}
+            <div className="space-y-4">
+              {/* Hora Início */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Hora de Início *
+                </label>
+                <div className="relative">
+                  <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="time"
+                    value={formData.hora_inicio}
+                    onChange={(e) => handleChange('hora_inicio', e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Data da Aula */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data da Aula *
-              </label>
-              <div className="relative">
-                <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+              {/* Hora Fim */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Hora de Término *
+                </label>
+                <div className="relative">
+                  <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="time"
+                    value={formData.hora_fim}
+                    onChange={(e) => handleChange('hora_fim', e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              {/* Tema da Aula */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Tema da Aula
+                </label>
                 <input
-                  type="date"
-                  name="data_aula"
-                  value={formData.data_aula}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  type="text"
+                  value={formData.tema_aula}
+                  onChange={(e) => handleChange('tema_aula', e.target.value)}
+                  placeholder="Ex: Equações do 2º grau"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                 />
               </div>
             </div>
           </div>
 
-          {/* Coluna Direita */}
-          <div className="space-y-4">
-            {/* Hora Início */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de Início *
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input
-                  type="time"
-                  name="hora_inicio"
-                  value={formData.hora_inicio}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Hora Fim */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de Término *
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input
-                  type="time"
-                  name="hora_fim"
-                  value={formData.hora_fim}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Tema da Aula */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tema da Aula
-              </label>
-              <input
-                type="text"
-                name="tema_aula"
-                value={formData.tema_aula}
-                onChange={handleChange}
-                placeholder="Ex: Equações do 2º grau"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
+          {/* Conteúdo Ministrado */}
+          <div className="mt-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Conteúdo Ministrado
+            </label>
+            <textarea
+              value={formData.conteudo_ministrado}
+              onChange={(e) => handleChange('conteudo_ministrado', e.target.value)}
+              rows={4}
+              placeholder="Descreva o conteúdo que foi ministrado nesta aula..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none transition-all duration-200"
+            />
           </div>
         </div>
 
-        {/* Conteúdo Ministrado */}
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Conteúdo Ministrado
-          </label>
-          <textarea
-            name="conteudo_ministrado"
-            value={formData.conteudo_ministrado}
-            onChange={handleChange}
-            rows={4}
-            placeholder="Descreva o conteúdo que foi ministrado nesta aula..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-          />
+        {/* Footer */}
+        <div className="flex justify-end gap-4 p-6 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-white transition-all duration-200 font-medium disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Salvando...' : (isEditing ? 'Atualizar Aula' : 'Criar Aula')}
+          </button>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex justify-end gap-4 p-6 border-t border-gray-200">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Salvando...' : (isEditing ? 'Atualizar Aula' : 'Criar Aula')}
-        </button>
-      </div>
-    </motion.form>
+      </form>
+    </motion.div>
   );
 };

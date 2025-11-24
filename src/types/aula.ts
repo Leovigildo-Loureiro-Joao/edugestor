@@ -12,6 +12,7 @@ export interface Aula {
 
 export interface AulaFormData {
   turma_id: string;
+  turmas:{ nome_turma: string} | null;
   disciplina: string;
   data_aula: string;
   hora_inicio: string;

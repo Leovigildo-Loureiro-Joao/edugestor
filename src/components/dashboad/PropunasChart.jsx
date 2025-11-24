@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { supabase } from '../../services/supabase/config';
+import { propinaService } from '../../services/database/propinas.ts';
+import { supabase } from '../../services/supabase/config.js';
 
 export const PropinasChart = () => {
   const [data, setData] = useState([]);
@@ -12,47 +13,58 @@ export const PropinasChart = () => {
 
   const carregarDadosPropinas = async () => {
     try {
-      // Buscar propinas dos últimos 6 meses
-      const seisMesesAtras = new Date();
-      seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6);
-
-      const { data: propinas, error } = await supabase
-        .from('propinas')
-        .select('mes_referencia, estado, valor_previsto, valor_pago')
-        .gte('mes_referencia', seisMesesAtras.toISOString().slice(0, 7))
+      setLoading(true);
+      
+      const propinas = await supabase
+        .from('propina')
+        .select('mes_referencia, estado, valor_pago, valor_falta')
+        .in('mes_referencia', ['Set', 'Out', 'Nov', 'Dez', 'Jan', 'Fev']) // Últimos 6 meses
         .order('mes_referencia');
 
-      if (error) throw error;
+      if (propinas.error) throw propinas.error;
 
-      // Processar dados para o gráfico
-      const dadosAgrupados = propinas.reduce((acc, propina) => {
-        const mes = propina.mes_referencia;
-        const existing = acc.find(item => item.mes === mes);
-        
-        if (existing) {
-          existing.previsto += parseFloat(propina.valor_previsto) || 0;
-          existing.pago += parseFloat(propina.valor_pago) || 0;
-          if (propina.estado === 'pago') existing.quitado += parseFloat(propina.valor_pago) || 0;
-          if (propina.estado === 'pendente') existing.pendente += parseFloat(propina.valor_previsto) || 0;
-        } else {
-          acc.push({
-            mes: mes,
-            previsto: parseFloat(propina.valor_previsto) || 0,
-            pago: parseFloat(propina.valor_pago) || 0,
-            quitado: propina.estado === 'pago' ? parseFloat(propina.valor_pago) || 0 : 0,
-            pendente: propina.estado === 'pendente' ? parseFloat(propina.valor_previsto) || 0 : 0
-          });
+      // Ordem correta dos meses
+      const ordemMeses = ['Set', 'Out', 'Nov', 'Dez', 'Jan', 'Fev'];
+      const dadosAgrupados = {};
+
+      // Inicializar estrutura
+      ordemMeses.forEach(mes => {
+        dadosAgrupados[mes] = {
+          mesReferencia: mes,
+          quitado: 0,
+          pendente: 0,
+          atrasado: 0,
+          total: 0
+        };
+      });
+
+      // Preencher com dados
+      propinas.data?.forEach(propina => {
+        const mesData = dadosAgrupados[propina.mes_referencia];
+        if (mesData) {
+          if (propina.estado === 'pago') {
+            mesData.quitado += Number(propina.valor_pago) || 0;
+          } else if (propina.estado === 'pendente') {
+            mesData.pendente += Number(propina.valor_falta) || 0;
+          } else if (propina.estado === 'atrasado') {
+            mesData.atrasado += Number(propina.valor_falta) || 0;
+          }
+          
+          mesData.total += Number(propina.valor_pago) + Number(propina.valor_falta || 0);
         }
-        return acc;
-      }, []);
+      });
 
-      // Formatar meses para exibição
-      const dadosFormatados = dadosAgrupados.map(item => ({
+      // Converter para array
+      const dadosArray = ordemMeses.map(mes => dadosAgrupados[mes]);
+      
+      // Formatar para exibição
+      const dadosFormatados = dadosArray.map(item => ({
         ...item,
-        mesFormatado: formatarMes(item.mes),
-        taxaPagamento: item.previsto > 0 ? (item.pago / item.previsto) * 100 : 0
+        mesFormatado: `${item.mesReferencia}/24`, // Ajustar conforme o ano
+        taxaPagamento: item.total > 0 ? (item.quitado / item.total) * 100 : 0
       }));
 
+      console.log('Dados finais:', dadosFormatados);
       setData(dadosFormatados);
 
     } catch (error) {
@@ -60,13 +72,13 @@ export const PropinasChart = () => {
     } finally {
       setLoading(false);
     }
-  };
+};
 
-  const formatarMes = (mesString) => {
-    const [ano, mes] = mesString.split('-');
+const formatarMes = (mesISO) => {
+    const [ano, mes] = mesISO.split('-');
     const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return `${meses[parseInt(mes) - 1]}/${ano.slice(2)}`;
-  };
+};
 
   if (loading) {
     return (
@@ -102,23 +114,23 @@ export const PropinasChart = () => {
         <Tooltip 
           formatter={(value, name) => [
             `$${parseFloat(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            name === 'previsto' ? 'Previsto' : 
-            name === 'pago' ? 'Pago' :
-            name === 'quitado' ? 'Quitado' : 'Pendente'
+            name === 'quitado' ? 'Quitado' :
+            name === 'pendente' ? 'Pendente' :
+            name === 'atrasado' ? 'Atrasado' : name
           ]}
           labelFormatter={(label) => `Mês: ${label}`}
         />
         <Legend />
         <Bar 
-          dataKey="previsto" 
-          name="Previsto" 
+          dataKey="atrasado" 
+          name="Atrasado" 
           fill="#8884d8" 
           radius={[2, 2, 0, 0]}
         />
         <Bar 
-          dataKey="pago" 
-          name="Pago" 
-          fill="#82ca9d" 
+          dataKey="pendente" 
+          name="Pendente" 
+          fill="#f17c2d" 
           radius={[2, 2, 0, 0]}
         />
         <Bar 

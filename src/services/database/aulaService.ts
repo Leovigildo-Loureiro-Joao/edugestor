@@ -1,8 +1,9 @@
 // services/database/aulaService.js
+import { AulaFormData } from '../../types/aula';
 import { supabase } from '../supabase/config';
 
 export const aulaService = {
-  async criarAula(aulaData) {
+  async criarAula(aulaData:AulaFormData) {
     const { data, error } = await supabase
       .from('aulas')
       .insert([{
@@ -19,7 +20,7 @@ export const aulaService = {
   async getAulasRecentes(limite = 50) {
     const { data, error } = await supabase
       .from('aulas')
-      .select('*')
+      .select("*, turmas(nome_turma)")
       .order('data_aula', { ascending: false })
       .limit(limite);
 
@@ -27,7 +28,7 @@ export const aulaService = {
     return data;
   },
 
-  async atualizarAula(id, updates) {
+  async atualizarAula(id:string, updates:AulaFormData) {
     const { data, error } = await supabase
       .from('aulas')
       .update(updates)
@@ -39,7 +40,7 @@ export const aulaService = {
     return data;
   },
 
-  async deletarAula(id) {
+  async deletarAula(id:string) {
     const { error } = await supabase
       .from('aulas')
       .delete()
@@ -48,7 +49,7 @@ export const aulaService = {
     if (error) throw error;
   },
 
-  async getAulasPorTurma(turmaId) {
+  async getAulasPorTurma(turmaId:string) {
     const { data, error } = await supabase
       .from('aulas')
       .select('*')

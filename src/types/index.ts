@@ -1,21 +1,9 @@
 // Tipos principais do sistema
 import { Frequencia } from "./frequencia";
 import { Student,StudentFormData,StudentFormProps } from "./aluno";
-
 export { Frequencia, Student,StudentFormData,StudentFormProps };
 
-export interface Avaliacao {
-  id: string;
-  aluno_id: string;
-  disciplina_id: string;
-  tipo_avaliacao: 'teste' | 'exame' | 'trabalho';
-  nota: number;
-  peso_avaliacao: number;
-  data_avaliacao: string;
-  observacoes?: string;
-  periodo: '1º trimestre' | '2º trimestre' | '3º trimestre';
-  created_at: string;
-}
+
 
 export interface Disciplina {
   id: string;
@@ -33,16 +21,18 @@ export interface Curso {
   regime: 'diurno' | 'nocturno';
 }
 
-export interface Transacao {
-  id: string;
-  data: string;
-  tipo: 'entrada' | 'saida';
-  valor: number;
-  descricao: string;
-  categoria: 'mensalidade' | 'matricula' | 'salario' | 'material' | 'alimentacao' | 'transporte' | 'utilidades' | 'investimento';
-  aluno_id?: string; // Opcional - para vincular a aluno específico
-  created_at: string;
+export interface PieChartData {
+  name: string;
+  value: number;
+  porcentagem: number;
 }
+
+export interface CustomPieChartProps {
+  dados: PieChartData[];
+  tipo?: 'pagamentos' | 'despesas';
+  title?: string;
+}
+
 
 export interface DashboardStats {
   totalAlunos: number;
@@ -63,5 +53,13 @@ export interface ResumoMensal {
   alunos_pendentes: number;
 }
 
-// NOVA INTERFACE (baseada na planilha Finanças)
+export interface Instituicao {
+  nome_escola:string,
+  endereco:string,
+  email:string,
+  numero_telefone:string,
+  whatssap:string,
+  ano_lectivo:string,
+  
+}
 

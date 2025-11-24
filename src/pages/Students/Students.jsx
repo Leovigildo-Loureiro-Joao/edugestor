@@ -1,13 +1,14 @@
 // src/pages/Students/Students.jsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, use } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiPlus, FiEdit, FiTrash2, FiUser, FiSearch } from 'react-icons/fi';
-import { studentsService } from '../../services/database/students';
+import { studentsService } from '../../services/database/students.ts';
 import { Select } from '../../components/ui/Select';
-import { FaChurch } from 'react-icons/fa';
 import { FaBookAtlas, FaGraduationCap, FaPeopleGroup } from 'react-icons/fa6';
 import { RxPerson } from 'react-icons/rx';
+import { StatCard } from '../../components/students/StatCard';
+import AlunoModal from './StudentPage.tsx';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
@@ -15,37 +16,17 @@ const Students = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroProfessor, setFiltroProfessor] = useState('Todos Professores');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
+  const nav=useNavigate()
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
-  const colorClasses = {
-    blue: { bg: 'bg-blue-50', iconBg: 'bg-blue-100', text: 'text-blue-600', value: 'text-gray-900' },
-    green: { bg: 'bg-green-50', iconBg: 'bg-green-100', text: 'text-green-600', value: 'text-green-600' },
-    red: { bg: 'bg-red-50', iconBg: 'bg-red-100', text: 'text-red-600', value: 'text-red-600' },
-    purple: { bg: 'bg-purple-50', iconBg: 'bg-purple-100', text: 'text-purple-600', value: 'text-purple-600' }
+  const abrirAluno = (alunoId) => {
+    console.log('Abrir aluno com ID:', alunoId);
+    nav(`/alunos/${alunoId}`);
   };
 
-  const colors = colorClasses[color] || colorClasses.blue;
-
-  return (
-    <div className={`${colors.bg} rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow`}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className={`text-2xl font-bold ${colors.value} mt-1`}>{value}</p>
-          <div className="text-xs text-gray-500 mt-1">
-            {subtitle}
-          </div>
-        </div>
-        <div className={`${colors.iconBg} p-3 rounded-xl`}>
-          <Icon className={`${colors.text} text-lg`} />
-        </div>
-      </div>
-    </div>
-  );
-};
+ 
 
   const { professores, turmas } = useMemo(() => {
-    const profs = [...new Set(students.map(s => s.professor).filter(Boolean))];
+    const profs = [...new Set(students.map(s => s.turmas?.professor).filter(Boolean))];
     const turms = [...new Set(students.map(s => s.turmas?.nome_turma).filter(Boolean))];
     
     return {
@@ -54,7 +35,8 @@ const Students = () => {
     };
   }, [students]);
 
-  useEffect(() => {
+
+    useEffect(() => {
     loadStudents();
   }, []);
 
@@ -62,7 +44,6 @@ const Students = () => {
     try {
       setLoading(true);
       const studentsData = await studentsService.getStudents();
-      console.log(studentsData);
       setStudents(studentsData);
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
@@ -71,13 +52,15 @@ const Students = () => {
     }
   };
 
+ 
+
 const estatisticas = useMemo(() => {
   const alunosFiltrados = students.filter(student => {
     const matchesSearch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.numero_estudante?.includes(searchTerm);
     
     const matchesProfessor = filtroProfessor === 'Todos Professores' || 
-                           student.professor === filtroProfessor;
+                           student.turmas?.professor === filtroProfessor;
     
     const matchesTurma = filtroTurma === 'Todas Turmas' || 
                         student.turmas?.nome_turma === filtroTurma;
@@ -109,7 +92,7 @@ const filteredStudents = students.filter(student => {
                        student.numero_estudante?.includes(searchTerm);
   
   const matchesProfessor = filtroProfessor === 'Todos Professores' || 
-                         student.professor === filtroProfessor;
+                         student.turmas?.professor === filtroProfessor;
   
   const matchesTurma = filtroTurma === 'Todas Turmas' || 
                       student.turmas?.nome_turma === filtroTurma;
@@ -129,6 +112,7 @@ const filteredStudents = students.filter(student => {
     
     <div className="flex flex-col sm:flex-row gap-3">
       {/* Busca */}
+  
       <div className="relative flex-1 min-w-[300px]">
         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
         <input
@@ -143,7 +127,7 @@ const filteredStudents = students.filter(student => {
       {/* Botão Novo Aluno */}
       <Link
         to="/alunos/novo"
-        className="bg-primary-600 text-white px-4 py-2.5 rounded-lg hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
+        className="bg-primary-600 text-white px-4 py-2.5 transition-colors rounded-md hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
       >
         <FiPlus size={18} />
         <span>Novo Aluno</span>
@@ -152,7 +136,7 @@ const filteredStudents = students.filter(student => {
   </div>
 
   {/* Filtros Rápidos */}
-  <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+  <div className="flex flex-col sm:flex-row gap-4 p-4 bg-white rounded-lg">
     <div className="flex-1 flex flex-col sm:flex-row gap-3">
       <div className="flex-1">
         <label className="block text-sm font-medium text-gray-700 mb-1">Professor</label>
@@ -229,7 +213,7 @@ const filteredStudents = students.filter(student => {
           )}
           {filtroProfessor !== 'Todos Professores' && (
             <span className="inline-flex items-center bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              👨‍🏫 {filtroProfessor}
+               {filtroProfessor}
               <button 
                 onClick={() => setFiltroProfessor('Todos Professores')}
                 className="ml-2 text-blue-500 hover:text-blue-700"
@@ -240,7 +224,7 @@ const filteredStudents = students.filter(student => {
           )}
           {filtroTurma !== 'Todas Turmas' && (
             <span className="inline-flex items-center bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              📚 {filtroTurma}
+              {filtroTurma}
               <button 
                 onClick={() => setFiltroTurma('Todas Turmas')}
                 className="ml-2 text-blue-500 hover:text-blue-700"
@@ -267,24 +251,24 @@ const filteredStudents = students.filter(student => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-primary-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Aluno
                 </th>
-                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Professor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Número de Estudante
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Turma
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Ações
                 </th>
               </tr>
@@ -296,12 +280,12 @@ const filteredStudents = students.filter(student => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="hover:bg-gray-50"
+                  className="hover:bg-white"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <FiUser className="text-primary-600" />
+                      <div onClick={()=>abrirAluno(student.id)} className="flex-shrink-0 cursor-pointer text-primary-600 hover:text-white hover:bg-primary-700  transition-colors h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
+                        <FiUser className=""  />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -314,7 +298,7 @@ const filteredStudents = students.filter(student => {
                     </div>
                   </td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {student.professor}
+                    {student.turmas?.professor}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {student.numero_estudante}

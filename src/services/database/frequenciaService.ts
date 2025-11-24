@@ -1,8 +1,9 @@
+import { Frequencia } from '../../types';
 import { supabase } from '../supabase/config';
 
 export const frequenciaService = {
   // ✅ Registrar frequência em lote (para turma inteira)
-  async registrarFrequenciaLote(aulaId, registros) {
+  async registrarFrequenciaLote(aulaId:string, registros:Frequencia[]) {
     const frequencias = registros.map(reg => ({
       aula_id: aulaId,
       aluno_id: reg.aluno_id,
@@ -21,21 +22,36 @@ export const frequenciaService = {
   },
 
   // ✅ Buscar frequência da aula
-  async getFrequenciaPorAula(aulaId) {
+  async getFrequenciaPorAula(aulaId:string) {
     const { data, error } = await supabase
       .from('frequencias')
       .select(`
         *,
-        alunos:nome_completo
+        alunos(nome_completo)
       `)
       .eq('aula_id', aulaId);
 
     if (error) throw error;
     return data;
   },
+  async getByAluno(alunoId:string, dias:number) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - dias);
+    const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
+    const { data, error } = await supabase
+      .from('frequencias')
+      .select('*')
+      .eq('aluno_id', alunoId)
+      .gte('data_aula', dataLimiteStr)
+      .order('data_aula', { ascending: false }
+
+      );
+    if (error) throw error;
+    return data as Frequencia[];
+  },
   // ✅ Estatísticas simples de frequência
-  async getEstatisticasFrequencia(turmaId, mes) {
+  async getEstatisticasFrequencia(turmaId:string, mes:string) {
     const { data, error } = await supabase
       .from('frequencias')
       .select('presente')
@@ -47,6 +63,7 @@ export const frequenciaService = {
 
     const stats = {
       total: data.length,
+      taxa_presenca:0,
       presentes: data.filter(f => f.presente).length,
       ausentes: data.filter(f => !f.presente).length
     };

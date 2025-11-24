@@ -8,9 +8,17 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Students from './pages/Students/Students';
 import { StudentNew } from './pages/Students/StudentsNew';
 import { StudentEdit } from './pages/Students/StudentsEdit';
-import { RegistroFrequencia } from './pages/Attendance/RegisterFrequencia';
 import { FrequenciaPage } from './pages/Attendance/Frequencia';
-import { AulasPage } from './pages/Grades/AulaPage';
+import { AulasPage } from './pages/Grades/AulaPage.tsx';
+import Turmas from './pages/Turmas/Turmas';
+import { TurmaEdit } from './pages/Turmas/TurmasEdit';
+import { TurmaNew } from './pages/Turmas/TurmasNew';
+import StudentPage from './pages/Students/StudentPage';
+import PagamentosPage from './pages/Finance/Pagamento.tsx';
+import {FinanceiroPage} from './pages/Finance/Financeiro.jsx';
+import RegistroPagamentoPage from './pages/Finance/RegistroPagamentoPage.tsx';
+import { ConfiguracoesPage } from './pages/Settings/ConfigPage.jsx';
+import { NotasPage } from './pages/Grades/NotasPage.tsx';
 // ... outros imports
 
 // Componente para rotas protegidas
@@ -40,11 +48,21 @@ function App() {
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/alunos" element={<Students />} />
+                    <Route path="/alunos/:id" element={<StudentPage />} />
                     <Route path="/alunos/novo" element={<StudentNew />} />
                     <Route path="/alunos/editar/:id" element={<StudentEdit />} />
                     <Route path="/frequencia" element={<FrequenciaPage/>} />
+                    <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
+                    <Route path="/financeiro" element={<FinanceiroPage/>} />
+                    <Route path="/financeiro/pagamentos" element={<PagamentosPage/>} />
+                    <Route path="/financeiro/Pagamento/:alunoId" element={<RegistroPagamentoPage/>} />
+
                     <Route path="/aulas" element={<AulasPage/>} />
-                
+                    <Route path="/notas" element={<NotasPage/>} />
+                    <Route path="/turmas" element={<Turmas />} />
+                    <Route path="/turmas/nova" element={<TurmaNew />} />
+                    <Route path="/turmas/editar/:id" element={<TurmaEdit />} />
+                                    
                   {/* ... outras rotas */}
                 </Routes>
               </Layout>
