@@ -11,7 +11,7 @@ export const turmaService = {
   },
   async getTurmas() {
     const {data}= await supabase.from("turmas")
-    .select("*");
+    .select("*,cursos(nome)");
     return data
   },
   async getTurma() {

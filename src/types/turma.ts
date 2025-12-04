@@ -6,7 +6,9 @@ export interface Turma {
   professor: string;
   capacidade_maxima: number;
   turno: 'manhã' | 'tarde' | 'noite';
-  curso: 'Alfabetização' | 'Reforço' | 'Iniciação'; // ← ADICIONAR
+  cursos:{
+    nome:string
+  }
   created_at: string;
 }
 
@@ -20,3 +22,22 @@ export interface Turma {
     turno: string
   };
 
+export interface AlunoDesempenho {
+  id: number;
+  nome: string;
+  numero_estudante: string;
+  media: number;
+  presenca: number;
+  ultimaAvaliacao: number;
+  foto?: string;
+}
+
+export interface HorarioAula {
+  id: number;
+  dia: string;
+  horaInicio: string;
+  horaFim: string;
+  disciplina: string;
+  sala: string;
+  professor: string;
+}

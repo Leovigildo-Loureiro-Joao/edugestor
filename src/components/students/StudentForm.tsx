@@ -1,29 +1,31 @@
-import { FaPeopleCarry } from "react-icons/fa";
+import { FaMoneyBill, FaPeopleCarry } from "react-icons/fa";
 import { FaPeopleLine } from "react-icons/fa6";
 import { FiActivity, FiCalendar, FiHome, FiMail, FiPhone, FiUsers, FiFileText, FiSave, FiUser, FiBook } from "react-icons/fi";
 import { RxPerson } from "react-icons/rx";
 import { Student, StudentFormData, StudentFormProps } from "../../types";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import { turmaService } from "../../services/database/turmas.ts";
+import { cursosService } from "../../services/database/curso.ts";
 import { Turma } from "../../types/turma";
+import { Course } from "../../types/curso";
 import { Select } from "../ui/Select.jsx";
-import { AlunoData } from "../../types/aluno.ts";
 
 // ✅ Chave para localStorage
 const getStorageKey = (studentId?: string) => 
   studentId ? `edugestor_draft_${studentId}` : 'edugestor_new_student_draft';
 
-const SelectTyped = Select as unknown as React.ComponentType<any>;
-
+export const SelectTyped = Select as unknown as React.ComponentType<any>;
 
 export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: StudentFormProps) => {
   const isEditing = !!student;
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [cursos, setCursos] = useState<Course[]>([]);
+  const [turmasFiltradas, setTurmasFiltradas] = useState<Turma[]>([]);
   const storageKey = getStorageKey(student?.id);
   
-  // Estado interno do formulário
-  const initialData: StudentFormData = student ? {
+  // Estado interno do formulário - REMOVIDO campo 'horario'
+  const initialData: Student = student ? {
     nome_completo: student.nome_completo || '',
     data_nascimento: student.data_nascimento || '',
     nome_pai: student.nome_pai || '',
@@ -33,15 +35,15 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     email: student.email || '',
     endereco: student.endereco || '',
     turma_id: student.turma_id || '',
-    numero_estudante: student.numero_estudante || '',
+    numero_estudante: student.numero_estudante || 0,
     data_matricula: student.data_matricula || '',
+    propina: student.propina || 0,
     estado: student.estado || 'ativo',
     sexo: student.sexo || 'M',
-    curso: student.curso || 'REGULAR',
+    curso: student.curso || '',
     classe_escolar: student.classe_escolar || '',
-    periodo: student.periodo || 'Manhã',
-    horario: student.horario || '',
-    cartao_pago: student.cartao_pago || false
+    cartao_pago: student.cartao_pago || false,
+    turmas: student.turmas || undefined,
   } : {
     nome_completo: '',
     data_nascimento: '',
@@ -49,18 +51,18 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     nome_mae: '',
     contacto_principal: '',
     contacto_secundario: '',
-    numero_estudante: '',
+    numero_estudante: 0,
     email: '',
     endereco: '',
     turma_id: '',
+    propina: 0,
     data_matricula: '',
     estado: 'ativo',
     sexo: 'M',
-    curso: 'REGULAR',
+    curso: '',
     classe_escolar: '',
-    periodo: 'Manhã',
-    horario: '',
-    cartao_pago: false
+    cartao_pago: false,
+    turmas: undefined,
   };
 
   const { 
@@ -71,6 +73,51 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     clearDraft,
     hasUnsavedChanges 
   } = useAutoSave(storageKey, initialData, 2000);
+
+  // ✅ Carregar cursos e turmas
+  useEffect(() => {
+    loadCursos();
+    loadTurmas();
+  }, []);
+
+  // ✅ Filtrar turmas quando o curso mudar
+  useEffect(() => {
+    if (formData.curso && turmas.length > 0) {
+      const turmasDoCurso = turmas.filter(turma => 
+        turma.cursos.nome === formData.curso
+      );
+      setTurmasFiltradas(turmasDoCurso);
+      
+      // ✅ Se a turma atual não pertence ao curso selecionado, limpar turma
+      if (formData.turma_id) {
+        const turmaAtual = turmas.find(t => t.id === formData.turma_id);
+        if (turmaAtual && turmaAtual.cursos.nome !== formData.curso) {
+          setFormData(prev => ({ ...prev, turma_id: '' }));
+        }
+      }
+    } else {
+      setTurmasFiltradas([]);
+      setFormData(prev => ({ ...prev, turma_id: '' }));
+    }
+  }, [formData.curso, turmas]);
+
+  const loadCursos = async () => {
+    try {
+      const res = await cursosService.getCourse();
+      setCursos(res ?? []);
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error);
+    }
+  };
+
+  const loadTurmas = async () => {
+    try {
+      const res = await turmaService.getTurmas();
+      setTurmas(res ?? []);
+    } catch (error) {
+      console.error('Erro ao carregar turmas:', error);
+    }
+  };
 
   // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
@@ -83,31 +130,21 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     onSubmit(formData);
   };
 
-    useEffect(() => {
-      loadTurmas();
-    }, []);
-  
-    const loadTurmas = async () => {
-      try {
-        const res = await turmaService.getTurmas();
-        setTurmas(res ?? []);
-      } catch (error) {
-        console.error('Erro ao carregar alunos:', error);
-      }
-    };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
     setFormData((prev: any) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+              type === 'number' ? Number(value) : value
     }));
   };
 
-
-  const handleChangeSel = (field: any, value: any) => {
-    setFormData((prev: StudentFormData) => ({ ...prev, [field]: value }));
+  const handleChangeSel = (field: string, value: any) => {
+    setFormData((prev: StudentFormData) => ({ 
+      ...prev, 
+      [field]: value 
+    }));
   };
 
   const handleManualSave = () => {
@@ -164,7 +201,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               <div className="relative">
                 <RxPerson className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                   type="text" 
                   placeholder="Informe o nome completo" 
                   name="nome_completo" 
@@ -184,7 +221,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                   type="date" 
                   name="data_nascimento"
                   id="data_nascimento"
@@ -196,31 +233,27 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </div>
             </div>
 
-            {/* Sexo */}
+            {/* ✅ SEXO - Agora usando componente Select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="sexo" className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Sexo *
               </label>
-              <div className="relative">
-                <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <select 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none" 
-                  name="sexo"
-                  id="sexo"
-                  value={formData.sexo}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="M">Masculino</option>
-                  <option value="F">Feminino</option>
-                </select>
-              </div>
+              <SelectTyped 
+                vect={[
+                  { value: 'M', label: 'Masculino' },
+                  { value: 'F', label: 'Feminino' }
+                ]} 
+                icon={FiUser}
+                onChange={(value: string) => handleChangeSel('sexo', value)}
+                value={formData.sexo}
+                placeholder="Selecione o sexo"
+              />
             </div>
             
             {/* Nome do Pai */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_pai" className="text-sm font-medium text-gray-700">
-                Nome do Pai *
+                Nome do Pai
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
@@ -232,7 +265,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   name="nome_pai" 
                   id="nome_pai"
                   onChange={handleChange}
-                  required
                 />
               </div>
             </div>
@@ -240,7 +272,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             {/* Nome da Mãe */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_mae" className="text-sm font-medium text-gray-700">
-                Nome da Mãe *
+                Nome da Mãe
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
@@ -252,34 +284,33 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   value={formData.nome_mae}
                   onChange={handleChange}
                   id="nome_mae"
-                  required
                 />
               </div>
             </div>
 
-            {/* Curso */}
+            {/* ✅ CURSO - Agora usando componente Select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="curso" className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Curso *
               </label>
-              <div className="relative">
-                <FiFileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <select 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none" 
-                  name="curso"
-                  id="curso"
-                  value={formData.curso}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="REGULAR">Regular</option>
-                  <option value="Alfabetização">Alfabetização</option>
-                  <option value="Reforço">Reforço</option>
-                </select>
-              </div>
+              <SelectTyped 
+                vect={cursos.map(curso => (
+                 curso.nome
+               ))} 
+                icon={FiFileText}
+                onChange={(value: string) => handleChangeSel('curso', value)}
+                value={formData.curso}
+                placeholder="Selecione o curso"
+                disabled={cursos.length === 0}
+              />
+              {cursos.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Carregando cursos...
+                </p>
+              )}
             </div>
 
-             {/* Data de Matrícula */}
+            {/* Data de Matrícula */}
             <div className="flex flex-col gap-2">
               <label htmlFor="data_matricula" className="text-sm font-medium text-gray-700">
                 Data de Matrícula *
@@ -293,17 +324,16 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   id="data_matricula"
                   value={formData.data_matricula}
                   onChange={handleChange}
-                   max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split('T')[0]}
                   required
                 />
               </div>
             </div>
 
-          
             {/* Endereço */}
             <div className="flex flex-col gap-2">
               <label htmlFor="endereco" className="text-sm font-medium text-gray-700">
-                Endereço *
+                Endereço
               </label>
               <div className="relative">
                 <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
@@ -315,7 +345,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   value={formData.endereco}
                   onChange={handleChange}
                   rows={3}
-                  required
                 />
               </div>
             </div>
@@ -325,8 +354,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           <div className="flex flex-col gap-6">
             {/* Contacto Telefónico Principal */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="contacto_telefone" className="text-sm font-medium text-gray-700">
-                Contacto Telefónico Principal *
+              <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700">
+                Contacto Telefónico Principal
               </label>
               <div className="relative">
                 <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
@@ -334,11 +363,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                   type="text" 
                   placeholder="+244 XXX XXX XXX" 
-                  name="contacto_telefone" 
-                  value={formData.contacto_telefone}
+                  name="contacto_principal" 
+                  value={formData.contacto_principal}
                   onChange={handleChange}
-                  id="contacto_telefone"
-                  required
+                  id="contacto_principal"
+                  
                 />
               </div>
             </div>
@@ -380,88 +409,90 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 />
               </div>
             </div>
-              {/* Horário */}
+
+            {/* Propina */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="horario" className="text-sm font-medium text-gray-700">
-                Horário *
+              <label htmlFor="propina" className="text-sm font-medium text-gray-700">
+                Propina *
               </label>
               <div className="relative">
-                <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                <FaMoneyBill className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
                   className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
-                  type="text" 
-                  placeholder="Ex: 08:00 - 12:00" 
-                  name="horario" 
-                  id="horario"
-                  value={formData.horario}
+                  type="number" 
+                  placeholder="Quanto pagará por propina" 
+                  name="propina" 
+                  id="propina"
+                  value={formData.propina}
                   onChange={handleChange}
+                  min="0"
+                  step="0.01"
                   required
                 />
               </div>
             </div>
-            {/* Classe Escolar */}
+
+            {/* ✅ CLASSE ESCOLAR - Usando componente Select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="classe_escolar" className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Classe Escolar *
               </label>
               <SelectTyped 
                 vect={['Pré', '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª']} 
                 icon={FiBook}
-                onChange={(value:string) => handleChangeSel('classe', value)}
+                onChange={(value: string) => handleChangeSel('classe_escolar', value)}
+                value={formData.classe_escolar}
+                placeholder="Selecione a classe"
               />
             </div>
             
-            {/* Turma */}
+            {/* ✅ TURMA - Agora usando componente Select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="turma_id" className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Turma *
               </label>
-              <div className="relative">
-                <FiUsers className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <select 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none" 
-                  name="turma_id"
-                  id="turma_id"
-                  value={formData.turma_id}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Selecione a turma</option>
-                  {
-                    turmas.map((turma)=>(
-                      <option key={turma.id} value={turma.id}>{turma.nome_turma}</option>
-                    ))
-                  }
-                </select>
-              </div>
+              <SelectTyped 
+                vect={turmasFiltradas.map(turma => ({
+                  value: turma.id,
+                  label: turma.nome_turma
+                }))} 
+                icon={FiUsers}
+                onChange={(value: string) => handleChangeSel('turma_id', value)}
+                value={{
+                  value: formData.turma_id,
+                  label: formData.turmas?.nome_turma
+                }}
+                placeholder={formData.curso ? 'Selecione a turma' : 'Selecione primeiro o curso'}
+                disabled={!formData.curso || turmasFiltradas.length === 0}
+              />
+              {!formData.curso && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecione um curso para ver as turmas disponíveis
+                </p>
+              )}
+              {formData.curso && turmasFiltradas.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Nenhuma turma disponível para este curso
+                </p>
+              )}
             </div>
 
-            {/* Período */}
+            {/* ✅ ESTADO - Usando componente Select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="periodo" className="text-sm font-medium text-gray-700">
-                Período *
-              </label>
-              <SelectTyped 
-                vect={['Manha', 'Tarde', 'Noite']} 
-                icon={FiBook}
-                onChange={(value:string) => handleChangeSel('periodo', value)}
-              />
-            </div>
-            
-           
-            
-            
-            {/* Estado */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="estado" className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Estado *
               </label>
               <SelectTyped 
-                vect={['ativo', 'transferido', 'desistente']} 
+                vect={[
+                  { value: 'ativo', label: 'Ativo' },
+                  { value: 'transferido', label: 'Transferido' },
+                  { value: 'desistente', label: 'Desistente' }
+                ]} 
                 icon={FiActivity}
-                onChange={(value:string) => handleChangeSel('estado', value)}
+                onChange={(value: string) => handleChangeSel('estado', value)}
+                value={formData.estado}
+                placeholder="Selecione o estado"
               />
-
             </div>
 
             {/* Cartão Pago */}

@@ -1,16 +1,12 @@
-import React, { useState } from 'react';
- import  { useEffect } from 'react';
-
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import { 
   FiUsers, 
   FiDollarSign, 
-  FiCheckCircle, 
-  FiTrendingUp, 
   FiUserCheck,
   FiActivity,
   FiClock,
-  FiBookOpen
+  FiBookOpen,
+
 } from 'react-icons/fi';
 import { AnimatedStat } from '../../components/dashboad/AnimateStates';
 import { statsService } from '../../services/dashboard/statsService';
@@ -18,11 +14,15 @@ import { dashboardService } from '../../services/dashboard/dashboardService';
 import { PropinasChart } from '../../components/dashboad/PropunasChart';
 import { AlunosTurmaChart } from '../../components/dashboad/AlunosTurmaChart';
 import { FrequenciaChart } from '../../components/dashboad/FrequenciaChart';
+import { CalendarWithEvents } from '../../components/dashboad/Calendary';
 
+
+// Dashboard Principal atualizado
 const Dashboard = () => {
-    const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
- useEffect(() => {
+
+  useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true);
@@ -37,7 +37,8 @@ const Dashboard = () => {
 
     loadDashboardData();
   }, []);
-   if (loading) {
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -53,7 +54,6 @@ const Dashboard = () => {
     );
   }
 
-  // ✅ Dados formatados para o AnimatedStat
   const statCards = [
     {
       title: "Total de Alunos",
@@ -101,32 +101,21 @@ const Dashboard = () => {
       fix: false
     },
     {
-    title: "Aulas Ministradas",
-    value: 45, // Buscar do service de aulas
-    change: "+8%", 
-    color: "indigo",
-    icon: FiBookOpen,
-    aux: "",
-    fix: false,
-  },
-  {
-    title: "Média de Frequência",
-    value: 87.5, // Calcular das frequências
-    change: "+2.3%",
-    color: "purple", 
-    icon: FiUsers,
-    aux: "%",
-    fix: false,
-  }
+      title: "Aulas Ministradas",
+      value: 45,
+      change: "+8%", 
+      color: "indigo",
+      icon: FiBookOpen,
+      aux: "",
+      fix: false,
+    }
   ];
-
-  
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-esme-500">
+        <div className="text-sm text-gray-500 dark:text-white">
           Última atualização: {new Date().toLocaleString('pt-AO')}
         </div>
       </div>
@@ -134,39 +123,18 @@ const Dashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-            <AnimatedStat a key={stat.title} stat={stat} index={index} />
+          <AnimatedStat key={stat.title} stat={stat} index={index} />
         ))}
       </div>
 
-      {/* Gráficos e mais conteúdo virá aqui */}
+      {/* Gráficos e Calendário */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Propinas - Últimos 6 Meses
-          </h3>
-          <div className="h-64">
-            <PropinasChart />
-          </div>
+        <div className="bg-white dark:bg-gray-800 dark:border-gray-700 p-6 h-[100vh] rounded-lg shadow-sm border border-gray-200 ">
+            <AlunosTurmaChart />
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Alunos por Turma
-          </h3>
-          <div className="h-64">
-            <AlunosTurmaChart />
-          </div>
-        </div>
-
-        {/* Gráfico bônus de frequência */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Frequência - Últimos 30 Dias
-          </h3>
-          <div className="h-64">
-            <FrequenciaChart />
-          </div>
-        </div>
+        {/* Calendário ao lado */}
+        <CalendarWithEvents />
       </div>
     </div>
   );

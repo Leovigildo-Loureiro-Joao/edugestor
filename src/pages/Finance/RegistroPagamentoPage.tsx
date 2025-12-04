@@ -6,6 +6,7 @@ import { studentsService } from '../../services/database/students.ts';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { propinaService } from '../../services/database/propinas.ts';
 import { mesesUtils } from '../../utils/meses.ts';
+import { DadosPagamentoCash } from '../../types/transacao.ts';
 
 
 export const RegistroPagamentoPage: React.FC = () => {
@@ -126,7 +127,7 @@ useEffect(() => {
       setPagamentoLoading(true);
       
       // Processar pagamento em cash
-      const resultado = await transacaoService.processarPagamentoCash(
+      const resultado = await transacaoService.processarMensalidade(
         aluno.id, 
         dadosPagamento
       );

@@ -1,0 +1,191 @@
+[
+ {
+   "id": "00a54c58-e7c9-4a04-b5eb-a3bb41699367",
+   "aluno_id": "030eb1fd-e0e7-46bf-ae40-621e38e3df27",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "0152ef68-8601-41c2-8f2b-4f3d364c3e87",
+   "aluno_id": "6b4e467a-06ff-47eb-9d15-edd8e7fe0dc7",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "0c6c3a68-0963-4783-93e8-cb9e9f88de57",
+   "aluno_id": "a4f85f06-83ca-4d58-96b9-3010f0ce0ca6",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "3c4c5e0b-1b0a-4cd7-8d9e-e901b47368bf",
+   "aluno_id": "cfe64278-dbdf-4913-9d49-d6dde43b6ba7",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "3f6b0145-97a9-4c52-b651-b8ef22c3aee6",
+   "aluno_id": "df72675d-0ac6-47c9-8cf1-742bb5b256cb",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "49a6f7b4-c8ff-439e-a512-a910279cbd28",
+   "aluno_id": "d65fcb1a-7f95-4969-9733-fb01bb104812",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "550492bb-ecf7-490b-82c8-9b0202386fd0",
+   "aluno_id": "2cdf0cca-260f-4cea-9bf3-b4d311792097",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "5e918457-5b25-4b11-a380-ae2b87e65cdb",
+   "aluno_id": "38172606-9222-464d-a7e9-d149b763b3cd",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "6b1cbe63-c14b-4b87-9fae-6c4c316218e7",
+   "aluno_id": "9c42c895-8939-49cf-b6c9-5a86c245fa49",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "758b7105-b098-4a15-9d96-a4d11b6743e8",
+   "aluno_id": "c0d12908-de65-4e9d-8b94-12487b23c268",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "7980c189-f5f7-4f1e-ad79-2694c4a5746a",
+   "aluno_id": "b1073f94-322d-4090-86bb-b6216d742b4d",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "80dfc85b-6ee1-4043-bb25-8063336968bf",
+   "aluno_id": "73524f8a-41c6-413f-ba63-08e28a751541",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "82bd769e-6013-4791-91a8-f45dde00e8bd",
+   "aluno_id": "09b4df89-ce24-41e1-9d7c-512abcdf9e2d",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "92345892-d28e-4208-bb84-28333039862d",
+   "aluno_id": "b05c8132-98d3-47fc-b85e-a7fa83978f97",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "99b92176-ca96-4aaa-8466-e7e4a105a888",
+   "aluno_id": "1a4c7b35-8c11-4647-8ab8-d8a2e2950353",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "9f6fe665-9cf0-4a39-b94d-a726f1670522",
+   "aluno_id": "6b1b32c7-db62-4290-9b6a-d6c3ebbd6a02",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "a8ebe848-9631-4696-bb2c-fde4b4365b20",
+   "aluno_id": "0b4106dd-e198-4230-82de-c5a3f4c848c2",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "a92669f3-5d47-412d-82c0-dd48716a9617",
+   "aluno_id": "1300058c-316d-4abd-b938-428add7bcb65",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "aa954353-b892-4b19-b863-683f7223589f",
+   "created_at": "2025-11-22 11:53:06.149954+00"
+ },
+ {
+   "id": "c4233693-8abb-47e1-9c44-68afa5934771",
+   "aluno_id": "065b13e8-6639-41ed-9f78-ae5181180935",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ },
+ {
+   "id": "dcda5975-607a-427a-9b5c-44112f939706",
+   "aluno_id": "1300058c-316d-4abd-b938-428add7bcb65",
+   "data_aula": "2025-11-22",
+   "presente": false,
+   "justificativa": "",
+   "aula_id": "aa954353-b892-4b19-b863-683f7223589f",
+   "created_at": "2025-11-22 11:51:57.394562+00"
+ },
+ {
+   "id": "fec3c3b0-453e-4062-9047-6b13bdf94253",
+   "aluno_id": "a210d87a-03fa-46c0-b9eb-5e266d949d7a",
+   "data_aula": "2025-11-22",
+   "presente": true,
+   "justificativa": "",
+   "aula_id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "created_at": "2025-11-22 12:15:47.804587+00"
+ }
+]

@@ -2,14 +2,35 @@ import { useEffect, useRef, useState } from "react"
 import { FaChevronDown } from "react-icons/fa6"
 import { RxPerson } from "react-icons/rx"
 
-export const Select = ({ vect = [], icon: Icon = RxPerson, onChange }) => {
-    return <SelectChevron vect={vect} icon={Icon} onChange={onChange} />
+export const Select = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
+    return <SelectChevron vect={vect} icon={Icon} onChange={onChange} value={value}/>
 }
 
-const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange }) => {
+const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
     const dropdownRef = useRef(null)
-    const [selected, setSelected] = useState(vect[0])
+    
+    // 🔄 Converte strings para objetos se necessário
+    const normalizedVect = vect.map(item => 
+        typeof item === 'string' ? { value: item, label: item } : item
+    )
+    
+    // 🔄 Encontra o item selecionado baseado no value
+    const findSelectedItem = (val) => {
+        return normalizedVect.find(item => item.value === val) || normalizedVect[0]
+    }
+    
+    const [selected, setSelected] = useState(findSelectedItem(value))
     const [open, setOpen] = useState(false)
+
+    // 🔄 Sincroniza o estado interno quando a prop value muda
+    useEffect(() => {
+        if (value !== undefined) {
+            const newSelected = findSelectedItem(value)
+            if (newSelected&&newSelected.value !== selected?.value) {
+                setSelected(newSelected)
+            }
+        }
+    }, [value, normalizedVect])
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -32,15 +53,13 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange }) => {
         }
     }
 
-    const handleSelect = (value) => {
-        console.log("🔄 Select valor:", value)
-        setSelected(value)
+    const handleSelect = (item) => {
+        console.log("🔄 Select selecionado:", item)
+        setSelected(item)
         setOpen(false)
         
-        // ⏳ Delay para evitar conflitos com HMR
-        setTimeout(() => {
-            onChange?.(value)
-        }, 50)
+        // Chama onChange com o VALUE do objeto
+        onChange?.(item.value)
     }
 
     const handleToggle = (e) => {
@@ -60,13 +79,13 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange }) => {
                 type="button"
                 onClick={handleToggle}
                 onMouseDown={blockEvent}
-                className="flex items-center justify-between p-3 rounded-lg w-full bg-white border border-gray-200 hover:border-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                className="flex items-center justify-between p-3 rounded-lg w-full bg-white border border-gray-200 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:border-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 dark:focus:ring-blue-500"
                 aria-haspopup="listbox"
                 aria-expanded={open}
             >
-                <span className="flex items-center gap-2 text-sm text-gray-700">
-                    {Icon && <Icon className="text-gray-500" />}
-                    {selected}
+                <span className="flex items-center gap-2 text-sm dark:text-gray-100 text-gray-700">
+                    {Icon && <Icon className="text-gray-500 dark:text-gray-200" />}
+                    {selected?.label || "Selecione..."}
                 </span>
                 <FaChevronDown className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
             </button>
@@ -78,27 +97,27 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange }) => {
                     onMouseDown={blockEvent}
                 >
                     <ul 
-                        className="bg-white border border-gray-200 rounded-lg shadow-sm max-h-60 overflow-y-auto backdrop-blur-sm"
+                        className="bg-white dark:bg-gray-800 dark:border-gray-700 border border-gray-200 rounded-lg shadow-sm max-h-60 overflow-y-auto backdrop-blur-sm"
                         role="listbox"
                     >
-                        {vect.map((value, i) => (
+                        {normalizedVect.map((item, i) => (
                             <li key={i} onClick={blockEvent}>
                                 <button 
                                     type="button"
                                     className={`block w-full text-start px-3 py-2 text-sm transition-colors duration-150 ${
-                                        selected === value 
-                                            ? 'bg-blue-50 text-blue-600' 
-                                            : 'text-gray-700 hover:bg-gray-50'
+                                        selected?.value === item.value 
+                                            ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' 
+                                            : 'text-gray-700 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-700'
                                     }`}
                                     onClick={(e) => {
                                         blockEvent(e)
-                                        handleSelect(value)
+                                        handleSelect(item)
                                     }}
                                     onMouseDown={blockEvent}
                                     role="option"
-                                    aria-selected={selected === value}
+                                    aria-selected={selected?.value === item.value}
                                 >
-                                    {value}
+                                    {item.label}
                                 </button>
                             </li>
                         ))}

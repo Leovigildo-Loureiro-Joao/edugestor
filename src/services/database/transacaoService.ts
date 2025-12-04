@@ -1,24 +1,48 @@
 // services/database/transacaoService.ts
 import { supabase } from '../supabase/config';
-import { DadosPagamentoCash } from '../../types/transacao';
+import { DadosPagamentoCash, TransacaoFormData } from '../../types/transacao';
 import { propinaService } from './propinas';
 
 
 
 export const transacaoService = {
-   async processarPagamentoCash(alunoId: string, dados: DadosPagamentoCash): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
+
+    async processarPagamento( dados: TransacaoFormData): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
+    try {
+      // Registrar transação
+      const { data: transacao, error } = await supabase
+        .from('transacoes')
+        .insert(dados)
+        .select();
+
+      if (error) throw error;
+  
+      return {
+        sucesso: true,
+        mensagem: `Pagamento do cartão registrado com sucesso!`,
+        dados: transacao[0]
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro ao processar pagamento cash:', error);
+      return {
+        sucesso: false,
+        mensagem: error.message
+      };
+    }
+  },
+
+   async processarMensalidade(alunoId: string, dados: DadosPagamentoCash): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
     try {
       const valorTotal = parseFloat(dados.valor) * dados.meses;
-      
+        if(dados.mesReferencia!=undefined){
       // Registrar transação
       const { data: transacao, error } = await supabase
         .from('transacoes')
         .insert({
-          aluno_id: alunoId,
           valor: valorTotal,
           tipo: 'entrada',
           categoria: 'mensalidade',
-          metodo: 'cash',
           data: new Date().toISOString(),
           descricao: `Pagamento de ${dados.meses} mes(es) de propina - ${dados.mesReferencia.join(', ')}`
         })
@@ -27,27 +51,35 @@ export const transacaoService = {
       if (error) throw error;
 
       // Registrar propinas para cada mês
-      for (let i = 0; i < dados.meses; i++) {
-        // normalizar a abreviação do mês para o tipo esperado ('Jan' | 'Fev' | ... | 'Dez')
-        const mesRef = (dados.mesReferencia[i].substring(0, 3) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez');
+     
+          for (let i = 0; i < dados.meses; i++) {
+          // normalizar a abreviação do mês para o tipo esperado ('Jan' | 'Fev' | ... | 'Dez')
+       
+          const mesRef = (dados.mesReferencia[i].substring(0, 3) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez');
 
-        await propinaService.registerPropina({
-          aluno_id: alunoId,
-          data_vencimento: new Date(new Date().getFullYear(), new Date().getMonth() + i + 1, 0).toISOString(), // Último dia do mês
-          data_pagamento: new Date().toISOString(),
-          valor_pago: parseFloat(dados.valor),
-          valor_falta: 0,
-          mes_referencia: mesRef, // 'Jan', 'Fev', etc
-          transacao_id: transacao[0].id,
-          estado: 'pago',
-        });
+            await propinaService.registerPropina({
+              aluno_id: alunoId,
+              data_vencimento: new Date(new Date().getFullYear(), new Date().getMonth() + i + 1, 0).toISOString(), // Último dia do mês
+              data_pagamento: new Date().toISOString(),
+              valor_pago: parseFloat(dados.valor),
+              valor_falta: 0,
+              mes_referencia: mesRef, // 'Jan', 'Fev', etc
+              transacao_id: transacao[0].id,
+              estado: 'pago',
+            });
+          }
+
+           return {
+            sucesso: true,
+            mensagem: `Pagamento de ${dados.meses} mes(es) registrado com sucesso!`,
+            dados: transacao[0]
+          };
       }
-
-      return {
-        sucesso: true,
-        mensagem: `Pagamento de ${dados.meses} mes(es) registrado com sucesso!`,
-        dados: transacao[0]
+    return {
+        sucesso: false,
+        mensagem: `Erro nada registrado`,
       };
+     
 
     } catch (error: any) {
       console.error('❌ Erro ao processar pagamento cash:', error);

@@ -1,0 +1,56 @@
+[
+ {
+   "id": "2f7a93d5-277b-4f7f-8f07-468fbda99e5d",
+   "fase_dia": "antes_abertura",
+   "atividade": "CHECAR LIMPEZA E ORGANIZAÇÃO DAS SALAS",
+   "ordem": 2,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ },
+ {
+   "id": "4bb5d646-2e5f-4de1-a5b5-2759aabdfd7b",
+   "fase_dia": "antes_abertura",
+   "atividade": "REUNIÃO DE EQUIPE",
+   "ordem": 6,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ },
+ {
+   "id": "4e81fe69-6279-4f43-b801-bbfd32255a0a",
+   "fase_dia": "antes_abertura",
+   "atividade": "VERIFICAR PRESENÇA DA EQUIPE",
+   "ordem": 3,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ },
+ {
+   "id": "59a3f71d-3303-44d8-9b20-7b7142bb747e",
+   "fase_dia": "antes_abertura",
+   "atividade": "ORAÇÃO DE ABERTURA",
+   "ordem": 1,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ },
+ {
+   "id": "a07191fc-f42d-4e16-a600-40b0dbcbb272",
+   "fase_dia": "antes_abertura",
+   "atividade": "COMFIRMAR MATERIAIS DIDATICOS DISPONIVEIS",
+   "ordem": 4,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ },
+ {
+   "id": "acaf5692-0ee6-4044-9647-d19795078706",
+   "fase_dia": "antes_abertura",
+   "atividade": "LIGAR EQUIPAMENTOS (LUZ, VENTILAÇÃO, etc.)",
+   "ordem": 5,
+   "obrigatoria": true,
+   "created_at": "2025-11-19 01:07:34.483176+00",
+   "updated_at": "2025-11-19 01:07:34.483176+00"
+ }
+]

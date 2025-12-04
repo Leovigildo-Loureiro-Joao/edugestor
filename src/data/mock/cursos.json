@@ -1,0 +1,38 @@
+[
+ {
+   "nome": "Regular",
+   "preco": 2500,
+   "duracao": "9 meses",
+   "disciplinas": "[\"Português\",\"Desenho\",\"Matemática\"]",
+   "vagas": 5,
+   "descricao": "Ensinamento antigo",
+   "created_at": "2025-11-26 01:33:56+00",
+   "updated_at": "2025-11-26 03:43:56.091926+00",
+   "ativo": true,
+   "id": "3941d793-e7e1-a74b-d288-fd7230232fbb"
+ },
+ {
+   "nome": "Reforço",
+   "preco": 2000,
+   "duracao": "5 meses",
+   "disciplinas": "[\"Algebra\",\"Trigonometria\"]",
+   "vagas": 20,
+   "descricao": "Matemática básica",
+   "created_at": "2025-11-26 01:31:57+00",
+   "updated_at": "2025-11-26 03:43:56.091926+00",
+   "ativo": true,
+   "id": "52514e2a-3ec1-bf72-362b-7a8799ce6a0d"
+ },
+ {
+   "nome": "Alfabetização",
+   "preco": 2500,
+   "duracao": "9 meses",
+   "disciplinas": "[\"Português\",\"Caligrafia\"]",
+   "vagas": 45,
+   "descricao": "Curso de ensinamento a adultos",
+   "created_at": "2025-11-26 01:26:25+00",
+   "updated_at": "2025-11-26 03:43:56.091926+00",
+   "ativo": true,
+   "id": "d3a68ace-9732-b3b9-1304-b446ac5710fb"
+ }
+]

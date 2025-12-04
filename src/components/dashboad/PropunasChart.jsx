@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { propinaService } from '../../services/database/propinas.ts';
 import { supabase } from '../../services/supabase/config.js';
 
 export const PropinasChart = () => {
@@ -74,11 +73,7 @@ export const PropinasChart = () => {
     }
 };
 
-const formatarMes = (mesISO) => {
-    const [ano, mes] = mesISO.split('-');
-    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return `${meses[parseInt(mes) - 1]}/${ano.slice(2)}`;
-};
+
 
   if (loading) {
     return (

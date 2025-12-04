@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { propinaService } from '../../services/database/propinas';
 import { studentsService } from '../../services/database/students';
-import { AlunoData } from '../../types/aluno';
+import {  Student } from '../../types/aluno';
 import { frequenciaService } from '../../services/database/frequenciaService';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { FrequenciaData } from '../../types/frequencia';
@@ -14,7 +14,7 @@ const StudentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
-  const [aluno, setAluno] = useState<AlunoData | null>(null);
+  const [aluno, setAluno] = useState<Student | null>(null);
   const [propinas, setPropinas] = useState<Propina[]>([]);
   const [frequencias, setFrequencias] = useState<FrequenciaData[]>([]);
   const [notas, setNotas] = useState<NotaData[]>([]);
@@ -124,6 +124,7 @@ const StudentPage: React.FC = () => {
       </div>
     );
   }
+  console.log(aluno)
 
   return (
     <div className="min-h-screen bg-white">
@@ -432,8 +433,8 @@ const StudentPage: React.FC = () => {
                       <span className="text-gray-600">{aluno.curso}</span>
                     </div>
                     <div>
-                      <strong className="text-gray-700">Período:</strong>{' '}
-                      <span className="text-gray-600">{aluno.periodo}</span>
+                      <strong className="text-gray-700">Propina:</strong>{' '}
+                      <span className="text-gray-600">{aluno.propina}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Turma:</strong>{' '}

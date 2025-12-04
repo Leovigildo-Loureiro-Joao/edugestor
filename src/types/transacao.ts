@@ -13,9 +13,7 @@ export interface TransacaoFormData {
   tipo: 'entrada' | 'saida';
   valor: number;
   descricao: string;
-  aluno_id?: string; // Opcional - para vincular a aluno específico
   categoria: 'mensalidade' | 'matricula' | 'salario'| 'cartão'  | 'material' | 'alimentacao' | 'transporte' | 'utilidades' | 'investimento';
-  created_at: string;
 }
 
 export interface ProcessarPagamentoResponse {
@@ -27,7 +25,9 @@ export interface ProcessarPagamentoResponse {
 export interface DadosPagamentoCash {
   valor: string;
   meses: number;
-  valorTotal: number;
+  valorTotal?: number;
   metodo: 'cash';
-  mesReferencia: string[];
+  tipo?: 'mensalidade';
+  descricao?:string;
+  mesReferencia?: string[];
 }

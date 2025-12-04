@@ -1,0 +1,57 @@
+[
+ {
+   "id": "3ca99932-d234-4639-8092-5e7ea6c82082",
+   "tipo": "financeira",
+   "descricao": "AUMENTAR O NÚMERO DE ALUNOS EM 30% NOS PROXIMOS 3 MESES",
+   "prazo": "2025-12-31",
+   "responsavel": "",
+   "status": "pendente",
+   "indicadores_sucesso": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "74aae55f-a649-4c17-992e-20ce140886b9",
+   "tipo": "financeira",
+   "descricao": "REDUZIR A INADIMPLÊNCIA PARA BAIXO DE 10%",
+   "prazo": "2025-12-31",
+   "responsavel": "",
+   "status": "pendente",
+   "indicadores_sucesso": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "98ffa338-cc74-4939-a26a-effc12bb13a1",
+   "tipo": "academica",
+   "descricao": "GARANTIR QUE 80% DOS ALUNOS TENHAM MEDIA IGUAL OU SUPERIOR 7 VALORES NO FINAL DO TRIMESTE",
+   "prazo": "2025-12-31",
+   "responsavel": "",
+   "status": "pendente",
+   "indicadores_sucesso": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "b99906a6-7232-4240-b8ae-a9f6aeae0c59",
+   "tipo": "marketing",
+   "descricao": "DISTRIBUIR 500 PANFLETOS NA COMUNIDADE NOS PROXIMOS 30 DIAS",
+   "prazo": "2025-11-30",
+   "responsavel": "",
+   "status": "pendente",
+   "indicadores_sucesso": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "d7fd100e-d299-44f6-a80b-adcf2eb1e84e",
+   "tipo": "operacional",
+   "descricao": "MANTER PREENCHIDO O PLANEAMENTO SEMANAL DE AULAS 100% DO TEMPO",
+   "prazo": "2025-12-31",
+   "responsavel": "",
+   "status": "pendente",
+   "indicadores_sucesso": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ }
+]

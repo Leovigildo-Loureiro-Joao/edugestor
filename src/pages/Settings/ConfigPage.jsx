@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiSettings, FiSave, FiRefreshCw, FiDatabase, FiUser, FiDollarSign, FiBell, FiShield } from 'react-icons/fi';
+import { FiSettings, FiSave, FiRefreshCw, FiDatabase, FiUser, FiDollarSign, FiBell, FiShield, FiHome } from 'react-icons/fi';
 import { ConfiguracoesGerais } from '../../components/settings/ConfigGeral';
 import { ConfiguracoesFinanceiras } from '../../components/settings/ConfigFinance';
 import { ConfiguracoesAcademicas } from '../../components/settings/ConfigAcademy';
@@ -38,8 +38,8 @@ export const ConfiguracoesPage = () => {
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <FiSettings className="inline mr-3" />
-                  Configurações Gerais
+                  <FiHome className="inline mr-3" />
+                 Informações da Escola
                 </button>
 
                 <button

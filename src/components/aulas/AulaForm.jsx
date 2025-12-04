@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiBook, FiCalendar, FiClock, FiUsers, FiX } from 'react-icons/fi';
 import { Select } from '../ui/Select';
-import { turmaService } from '../../services/database/turmas';
+import { turmaService } from '../../services/database';
 
 export const AulaForm = ({ aula, turmas, disciplinas, onSubmit, onCancel, loading = false }) => {
   const [formData, setFormData] = useState({

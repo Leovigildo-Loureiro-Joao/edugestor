@@ -1,0 +1,16 @@
+[
+ {
+   "id": 1,
+   "nome_escola": "CETE - Centro Tia Esperança",
+   "endereco": "Morro-Bento, Luanda, Angola",
+   "email": "edugestor@gmail.com",
+   "numero_telefone": "+244 955383237",
+   "whatsapp": "+244 923686745",
+   "ano_lectivo": "2024-2025",
+   "valor_matricula": 1000,
+   "valor_confirmacao": 1000,
+   "valor_cartao": 800,
+   "created_at": "2025-11-24 12:20:37.778978",
+   "updated_at": "2025-11-26 00:27:05.144541"
+ }
+]

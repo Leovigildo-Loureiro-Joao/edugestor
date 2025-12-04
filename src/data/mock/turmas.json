@@ -1,0 +1,116 @@
+[
+  {
+    "id": "223a683e-b624-422d-b2f3-8939220998c5",
+    "nome_turma": "Alfabetização Noite",
+    "ano_lectivo": 2025,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Henrique Lucamba",
+    "capacidade_maxima": 15,
+    "turno": "Noite",
+    "curso_id": "d3a68ace-9732-b3b9-1304-b446ac5710fb",
+    "cursos": {
+      "nome": "Alfabetização",
+      "preco": 2500,
+      "duracao": "9 meses",
+      "disciplinas": ["Português", "Caligrafia"],
+      "vagas": 45,
+      "descricao": "Curso de ensinamento a adultos",
+      "ativo": true
+    }
+  },
+  {
+    "id": "225c2b38-e304-4da3-8fda-83d2a243be37",
+    "nome_turma": "Alfabetização Manhã",
+    "ano_lectivo": null,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Arão",
+    "capacidade_maxima": 25,
+    "turno": "Manhã",
+    "curso_id": "d3a68ace-9732-b3b9-1304-b446ac5710fb",
+    "cursos": {
+      "nome": "Alfabetização",
+      "preco": 2500,
+      "duracao": "9 meses",
+      "disciplinas": ["Português", "Caligrafia"],
+      "vagas": 45,
+      "descricao": "Curso de ensinamento a adultos",
+      "ativo": true
+    }
+  },
+  {
+    "id": "8374ae4e-7f22-4193-af4e-4a68fea4af0d",
+    "nome_turma": "Reforço Manhã",
+    "ano_lectivo": null,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Henrique Lucamba",
+    "capacidade_maxima": 30,
+    "turno": "Manhã",
+    "curso_id": "52514e2a-3ec1-bf72-362b-7a8799ce6a0d",
+    "cursos": {
+      "nome": "Reforço",
+      "preco": 2000,
+      "duracao": "5 meses",
+      "disciplinas": ["Algebra", "Trigonometria"],
+      "vagas": 20,
+      "descricao": "Matemática básica",
+      "ativo": true
+    }
+  },
+  {
+    "id": "89526de3-f976-4611-8927-f5c1e1ae788d",
+    "nome_turma": "Reforço Tarde",
+    "ano_lectivo": null,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Henrique Lucamba",
+    "capacidade_maxima": 30,
+    "turno": "Tarde",
+    "curso_id": "52514e2a-3ec1-bf72-362b-7a8799ce6a0d",
+    "cursos": {
+      "nome": "Reforço",
+      "preco": 2000,
+      "duracao": "5 meses",
+      "disciplinas": ["Algebra", "Trigonometria"],
+      "vagas": 20,
+      "descricao": "Matemática básica",
+      "ativo": true
+    }
+  },
+  {
+    "id": "b6381c99-54cb-4b84-a248-036d74240696",
+    "nome_turma": "Alfabetização Tarde",
+    "ano_lectivo": null,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Arão",
+    "capacidade_maxima": 25,
+    "turno": "Tarde",
+    "curso_id": "d3a68ace-9732-b3b9-1304-b446ac5710fb",
+    "cursos": {
+      "nome": "Alfabetização",
+      "preco": 2500,
+      "duracao": "9 meses",
+      "disciplinas": ["Português", "Caligrafia"],
+      "vagas": 45,
+      "descricao": "Curso de ensinamento a adultos",
+      "ativo": true
+    }
+  },
+  {
+    "id": "c05caa40-85b1-471a-8f17-6035cd7afc4f",
+    "nome_turma": "Regular Tarde",
+    "ano_lectivo": null,
+    "created_at": "2025-11-19T01:03:35.11135+00",
+    "professor": "Henrique Lucamba",
+    "capacidade_maxima": 20,
+    "turno": "Tarde",
+    "curso_id": "3941d793-e7e1-a74b-d288-fd7230232fbb",
+    "cursos": {
+      "nome": "Regular",
+      "preco": 2500,
+      "duracao": "9 meses",
+      "disciplinas": ["Português", "Desenho", "Matemática"],
+      "vagas": 5,
+      "descricao": "Ensinamento antigo",
+      "ativo": true
+    }
+  }
+]

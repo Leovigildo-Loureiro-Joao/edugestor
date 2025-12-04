@@ -1,0 +1,24 @@
+[
+ {
+   "id": "6b55e37c-7c95-487e-a278-1be14bb62dac",
+   "turma_id": "8374ae4e-7f22-4193-af4e-4a68fea4af0d",
+   "disciplina": "Física",
+   "data_aula": "2025-11-29",
+   "hora_inicio": "16:24:00",
+   "hora_fim": "12:29:00",
+   "conteudo_ministrado": "aasdas dasas asd asdasd",
+   "created_at": "2025-11-22 11:24:32.036+00",
+   "tema_aula": "asdasda sd asd asdas d"
+ },
+ {
+   "id": "aa954353-b892-4b19-b863-683f7223589f",
+   "turma_id": "225c2b38-e304-4da3-8fda-83d2a243be37",
+   "disciplina": "Português",
+   "data_aula": "2025-11-29",
+   "hora_inicio": "11:52:00",
+   "hora_fim": "12:52:00",
+   "conteudo_ministrado": "sdfs dfs dfs dfsd fsdfs",
+   "created_at": "2025-11-22 10:33:51.702+00",
+   "tema_aula": "sdfdfsd sdfsdfs"
+ }
+]

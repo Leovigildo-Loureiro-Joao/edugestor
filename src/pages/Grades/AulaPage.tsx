@@ -9,6 +9,7 @@ import { turmaService } from '../../services/database/turmas.ts';
 import { Aula, AulaFormData } from '../../types/aula.ts';
 import { Turma} from '../../types/turma.ts';
 import { FaBookAtlas } from 'react-icons/fa6';
+import { SelectTyped } from '../../components/students/StudentForm.tsx';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -164,7 +165,7 @@ export const AulasPage = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Turma
                 </label>
-                <Select 
+                <SelectTyped 
                   vect={turmasSelect} 
                   icon={FaBookAtlas} 
                   onChange={setFiltroTurma}

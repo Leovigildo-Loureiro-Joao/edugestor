@@ -1,0 +1,68 @@
+[
+ {
+   "id": "2250ff4d-a922-4068-b847-c4b23014b581",
+   "titulo": "ABACOS PARA CONTAR OU PEDRINHAS",
+   "categoria": "importante",
+   "prioridade": "media",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "6f04f932-6949-45bb-b247-cfdd3dd494aa",
+   "titulo": "LONA",
+   "categoria": "urgente",
+   "prioridade": "alta",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "aa5b15f3-257d-4db3-a1f1-f31818bdb89f",
+   "titulo": "LAVAR AS MESAS E CADEIRA",
+   "categoria": "importante",
+   "prioridade": "alta",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "bf5b41e5-ba21-4bfd-89f2-0d1cf9a3b761",
+   "titulo": "BALDE DE LIMPAR O CHÃO",
+   "categoria": "importante",
+   "prioridade": "media",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "cb735909-5271-43bb-93de-13be1f7c9b62",
+   "titulo": "BURACOS NO PAVIMENTO (COREDOR ESALA",
+   "categoria": "importante",
+   "prioridade": "alta",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ },
+ {
+   "id": "ef72b239-f7b2-4287-9e78-f214dd169135",
+   "titulo": "IMPRIMIR PLANO DE ACTIVIDADES DO CENTRO/HORARIO",
+   "categoria": "urgente",
+   "prioridade": "alta",
+   "concluida": false,
+   "data_limite": "",
+   "responsavel": "",
+   "created_at": "2025-11-19 00:41:43.347672+00",
+   "updated_at": "2025-11-19 00:41:43.347672+00"
+ }
+]

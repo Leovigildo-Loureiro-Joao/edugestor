@@ -1,0 +1,2414 @@
+[
+ {
+   "id": "00835262-4d0d-4845-a961-7f329b5a5f0f",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Marivalda Mateus",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "00a60e4d-943f-4b51-92b4-6363d3d55802",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 250,
+   "descricao": "Aguá",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "02b65d41-29d8-4d26-bbe5-88096429d991",
+   "data": "2025-09-23",
+   "tipo": "saida",
+   "valor": 1700,
+   "descricao": "produtos de cosinha",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "03383b96-063e-4998-bd64-0cf82c80c9b2",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Abiel Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "033b5589-1eb6-432b-99fe-2f0005a12a01",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Novembro 2024 - Nelson Maurício",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "062f2524-6ab3-48f9-9292-cda4b5957b68",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "076f2824-80bf-48d2-a1c3-329593d1e0d4",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Leandro Alcino Kiluamge Campos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "07830992-47bb-454f-a287-5407efbe7c3c",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Kadjex Cabenge",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "09a3095b-0a4c-4a20-b334-221818838085",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Mario Germano",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "0aaffe28-ef53-4c16-860c-6fa49d703be6",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Outubro 2024 - Esperança Marta Vinevala",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "0b6edaf4-3bc2-4df2-8bfa-d318012f2fda",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Adilson Candondo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "0d5e3647-cdf2-4555-b900-0d5eac30acbf",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Maria Luisa",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "0dc5a0ab-fd90-4645-be1e-0004d93325ec",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Manel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "0ed7b2ea-c340-4e90-8671-58acda34e45e",
+   "data": "2025-09-05",
+   "tipo": "saida",
+   "valor": 1330,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "0f2abaae-75eb-4523-a2b3-3c0f60e61e2d",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "pendente de 2024/25",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1052464c-3529-430e-a1c7-bad08fafb882",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 150,
+   "descricao": "lapiseira",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "106799eb-396a-4b4d-9087-e444b645f069",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Laurinda Amélia Henrique",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1127d085-a72c-4922-833f-ce7a2d1002fe",
+   "data": "2025-11-14",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "pão",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "115f4d92-44ce-4189-be09-4026cd771de9",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "água",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "11c1cd42-e22f-4166-8964-147dac551060",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "13f6a097-b17b-4a6c-9b31-8115887e3225",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 15000,
+   "descricao": "Ana",
+   "categoria": "salario",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "150a0b76-0849-4d7b-b10c-d3781ec2f64f",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Biatriz Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "15972576-c187-4303-9b42-562bde14efbe",
+   "data": "2025-09-14",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "ana",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "16c3c497-33e2-4b3c-8c67-018b4dd58098",
+   "data": "2025-11-18",
+   "tipo": "saida",
+   "valor": 1500,
+   "descricao": "refeição (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "17c55399-6da4-4d24-aa09-7607df4efb1b",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 3007.32,
+   "descricao": "mouse",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1860a2b5-1d9b-4965-b98f-c2784b3da78b",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Yasmini de Sousa",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "19240706-64a2-44fb-923b-3e272b4dc318",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Gelson Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "19357fdb-7b03-4452-9d7f-5729d86fb243",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "Lapizeira",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "19b93576-17ac-456c-94f9-bb9d47a206fa",
+   "data": "2025-09-13",
+   "tipo": "saida",
+   "valor": 1000,
+   "descricao": "jantar",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "19c073b0-f06e-4aab-9245-823c74fee968",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Laurinda Amélia Henrique",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1a274f24-4764-4087-98ee-bfef56f90cc8",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Tonilson Soares Domingos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1a60e35f-2170-4b5c-869e-0070f648bd42",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1a83d640-cd40-4ad1-9fa0-523d2d986db3",
+   "data": "2025-09-08",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "leite-cete",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1b452f08-8ee8-45f8-ab96-a57e000918ae",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1dfe8a67-57cc-4620-803b-2a10894d66c3",
+   "data": "2025-09-16",
+   "tipo": "saida",
+   "valor": 1400,
+   "descricao": "CREDITO-Henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1e116cfd-cfed-4656-86b7-e42383b7e0b4",
+   "data": "2025-09-09",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "copia de fichas de cadastro(15)",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "1e586d1e-9735-43ce-b103-441c76229d16",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 3500,
+   "descricao": "Mensalidade Novembro 2024 - Benicio José",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1eb2f921-9644-4a77-b7ae-2868745ae6fd",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Olivio António da Silva",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "1f21f6cb-7c55-47a0-9ebb-ff7b1bd84015",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Abiude Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "21c4883d-f3cd-47a9-95ee-65fe14af8d2b",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Levi Paulo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "2519a465-d72b-4876-8ba4-50b845d263c3",
+   "data": "2025-09-04",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "2648367d-bfae-4623-a760-7c449c93929d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Messias Augusto Januario",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "27d19bb4-2a23-41a2-be83-46b33301c37f",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Abiel Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "2993719f-df87-4daf-82e7-176ebf56e560",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Edgar Arcenio",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "2ab78061-bbc5-46ca-b797-56a96de18284",
+   "data": "2025-09-10",
+   "tipo": "saida",
+   "valor": 13000,
+   "descricao": "CREDITO-Henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "2b2834a3-1255-406b-abfc-140bb9d673a7",
+   "data": "2025-09-02",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "2b49bcc6-e77f-4340-b1eb-c31007ebd320",
+   "data": "2025-11-14",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "manteiga",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "2bebdc5d-3452-4ece-bf37-70e087699346",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 100,
+   "descricao": "doação",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "2cd42eb8-8223-43bc-8b54-b1445934c479",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Zacarias Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "2d062066-fd19-4c91-a315-8ef4c71316a9",
+   "data": "2025-09-19",
+   "tipo": "saida",
+   "valor": 1200,
+   "descricao": "taxi-henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "2d87bab1-6a9a-47b8-9a54-bfafb3155a8f",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Emanuel Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "2da57fdc-0584-4a01-9968-5d19291a26e8",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Zacarias Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "307534c8-04e0-4bf2-9f4b-cf36329ac94d",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Avelina Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "30c15981-1081-4fca-a46b-3d51cd3e05f3",
+   "data": "2025-09-09",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "317aacbe-a073-486d-9119-699fe522ed49",
+   "data": "2025-09-16",
+   "tipo": "saida",
+   "valor": 1000,
+   "descricao": "ana-compprimidos",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "33c3a46e-6176-4379-80a6-5a6de58d57da",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Micaela Simão",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "347af818-3960-4fc5-8aa1-40101cff18f5",
+   "data": "2025-02-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Fevereiro 2025 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3734449a-4f77-4389-a830-51e92ea4747f",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Emanuel Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "37d85eea-fdf5-4471-9437-1b796f9c2e96",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Novembro 2024 - Esperança Marta Vinevala",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "38051e7a-192b-4da6-a3a2-f263b9f16bd1",
+   "data": "2025-11-17",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "399666b5-d08d-419f-909a-f84a9f94f2c0",
+   "data": "2025-09-09",
+   "tipo": "saida",
+   "valor": 800,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "39e0beee-de33-4cea-8c07-58f5e790782c",
+   "data": "2025-01-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Janeiro 2025 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3b52b1f7-6a89-4e04-a0f1-e9876783344e",
+   "data": "2025-09-05",
+   "tipo": "saida",
+   "valor": 5000,
+   "descricao": "esperança-pendente",
+   "categoria": "salario",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "3b5e75a8-5502-4433-a3fd-265bded27ff1",
+   "data": "2025-11-17",
+   "tipo": "saida",
+   "valor": 1350,
+   "descricao": "refeição (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "3c671535-4719-4b37-bdcf-87f300665444",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Novembro 2024 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3ccb80ed-ec8b-42ab-89ae-8a5d969d3a24",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Eltivanio",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3d662111-0e9f-4649-92c9-508769822aa2",
+   "data": "2025-09-20",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "refeições-henriques",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "3d6a0fb7-ac63-4a58-a2cc-b2f0f8ef48f1",
+   "data": "2025-09-04",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "3e64f777-0337-4f80-9977-d075e5791b4b",
+   "data": "2025-09-15",
+   "tipo": "saida",
+   "valor": 6000,
+   "descricao": "taxi semanal da ANA",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "3f22e0bf-dc63-418e-b5e7-ebaf5383976b",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Salustiano Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3f8205cb-c6d2-4e9b-a524-46d197076455",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Zlenio Augusto Januario",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "3fb98bb3-c8fa-44d9-9604-33564c8c21c3",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "400b3c2c-5e5d-4ca7-8b6a-f43f1e7eac82",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Manel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "40b1a9d2-c181-40aa-a123-00f52c5c43d9",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Victoria Gimarões Joaquim",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "41a34133-ccfd-46b0-99e7-d05fb90588eb",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Helena Mendes Francisco da Silva",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "4581ebd8-d9bc-4a4b-8734-2e8cadc3d799",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 3500,
+   "descricao": "resma a4",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "45e1c001-8cc1-4b27-ae28-62c8a143ac4c",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Helena Mendes Francisco da Silva",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "49c18c6a-aa40-4cf6-9593-c38bf530fdb4",
+   "data": "2025-09-07",
+   "tipo": "saida",
+   "valor": 1000,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "49ca42f4-6302-4128-89ee-ded987ed5bcb",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 7500,
+   "descricao": "(30) fitas e (30)porta passes",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "4b2031ca-83cd-40bc-b57e-6ccc565a3958",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Domingas Sebastião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "4b3f04cc-8ce1-4556-af37-a22c53a31585",
+   "data": "2025-11-14",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "saldo Leu",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "4b5ff599-05d8-47bb-a37c-14373945f267",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Adilson Candondo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "4c8cb344-23db-480f-82bd-5553411adf67",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Henriqueta Freita",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "4cbc2ab3-bc04-4cdd-b1cd-093849a8232c",
+   "data": "2025-09-13",
+   "tipo": "saida",
+   "valor": 1500,
+   "descricao": "soda caustica",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "4cd7a9de-7a51-4bfc-a809-964694d2003d",
+   "data": "2025-09-07",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "4dc358d5-6da6-4d66-b5f5-54a26eed3893",
+   "data": "2025-09-09",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "4ed86730-d661-4610-8367-358b33fa8485",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Marilha Cakuamba",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "4f2896dc-6fc4-4a26-ae37-9367573ff02c",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Emanuel Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "50caec29-0e21-4c27-9f18-209f836fd904",
+   "data": "2025-09-08",
+   "tipo": "saida",
+   "valor": 2200,
+   "descricao": "transporte-ANA",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "50f177b2-6f2e-4b65-ad93-c6f306e5aab3",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "jantar",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "51f5632b-b1c4-4b14-8450-4f5f71629d07",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Salustiano Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "5249f3ba-6637-45d5-a84d-335ee01c6342",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Teresa Kinzembe",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "53ee6187-9a20-455b-b092-f09f3587cf82",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 3500,
+   "descricao": "Mensalidade Outubro 2024 - Benicio José",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "555e7d1b-5dae-4dd9-b896-a0f0d1a16e0f",
+   "data": "2025-09-16",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "gaz",
+   "categoria": "utilidades",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "55dc15ea-20c5-44ee-bec3-c9cf26d7fa9d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Olivio António da Silva",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "55ff851b-4123-4bbf-8c7d-e9bb7aae4c6d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Lubvania Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "568110e8-bab7-4ae2-acfb-34a693558cb8",
+   "data": "2025-09-09",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "57bdd695-0f57-4cf2-81c9-109a2d7975a2",
+   "data": "2025-09-09",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "59a92892-5985-41f0-a4c9-3f336ee87f14",
+   "data": "2025-09-17",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "59bee0eb-93f8-46f2-8f03-7e9ec0e51808",
+   "data": "2025-09-23",
+   "tipo": "saida",
+   "valor": 1900,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5c3e537c-bcb2-404b-9978-54afb63c7887",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "saldo-CETE",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5c4f8ccd-0632-4c32-a4cb-aea345cdb262",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Mario Germano",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "5cb0d7c9-5caa-4171-bda3-f1f79bc7e7ad",
+   "data": "2025-09-05",
+   "tipo": "saida",
+   "valor": 7000,
+   "descricao": "conta da energia",
+   "categoria": "utilidades",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5cb442c7-ba00-4001-a67f-3d96165f7513",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Antonia Gimarões Joaquim",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "5cd56d64-bdb9-4ba0-aa0c-adc634df1386",
+   "data": "2025-09-14",
+   "tipo": "saida",
+   "valor": 1000,
+   "descricao": "CREDITO-henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5cd8fb0f-8a55-4d83-9e6d-eea2c4bea9a4",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "pão",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5ce07e39-5709-496e-b297-86e2bf4f19a8",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "transporte",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5d45f29c-a29b-409a-bde6-472a143eb991",
+   "data": "2025-09-15",
+   "tipo": "saida",
+   "valor": 10000,
+   "descricao": "Invest. Para impressora",
+   "categoria": "investimento",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "5ff815fc-198c-49f5-adc7-d4ee5a5121c9",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Gelson Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "6092a0ba-37ee-4293-b885-3eec8a862464",
+   "data": "2025-09-23",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "624be694-7afd-4db4-8080-f0df441d9f94",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Inacia Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "6681b9c7-3fbc-490e-824d-8243b93779d3",
+   "data": "2025-09-06",
+   "tipo": "saida",
+   "valor": 150,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "67afd747-21a2-4a2b-803c-32beb8cd0568",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Levi Paulo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "67b0e556-00b2-49f8-bd27-30aae07b117f",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Teresa Kinzembe",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "68738f35-8416-4e8c-839b-c0f6873eb445",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Kadjex Cabenge",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "68fa7281-2180-4adf-9026-d9684a3e54ed",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Tonilson Soares Domingos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "698000ef-d19e-4a93-9666-ab54b620cb80",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Josenildo António Viera",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "69b71b60-20c3-466d-93c9-5295947622a0",
+   "data": "2025-09-19",
+   "tipo": "saida",
+   "valor": 800,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "69ebecde-57f0-4272-b8dc-cdb08f6d2bda",
+   "data": "2025-09-06",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "6b34272f-9906-4e16-ab60-352698bdfb14",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Luquenia Campos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "6dfb3209-807f-4712-8093-55a3e5c8a596",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 350,
+   "descricao": "saldo arão",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "6e9ae19f-e511-4412-a01e-1547eca156bd",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 100,
+   "descricao": "Água Henriques",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "6f521e96-62a7-446a-afde-f374b01a5bb8",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 14000,
+   "descricao": "Esperança",
+   "categoria": "salario",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "6fa7dbfd-8179-42a2-9e08-29ab2e69541f",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Maria Luisa",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "70222038-cf1d-46ce-97b6-8aad4abaaf4d",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 800,
+   "descricao": "alimentação",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "713b76f2-33d4-49c5-9681-597b49856521",
+   "data": "2025-09-04",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "7381aaec-e248-4a0a-a2ac-7ae9455cb691",
+   "data": "2025-09-10",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "74d851c9-5c67-4418-9ac4-ea4de44b40a4",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Domingas Sebastião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "75401c77-3adb-43dc-9d1f-5d80eede96eb",
+   "data": "2025-10-06",
+   "tipo": "saida",
+   "valor": 350,
+   "descricao": "tesoura",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "75577280-a7e3-490d-9ca6-51a174ce70b8",
+   "data": "2025-09-04",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "755cf6c6-b237-431c-98d9-a68f04adb923",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Laurinda Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "7585a93d-9e14-4ade-a502-c27359ee1b0e",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 400,
+   "descricao": "refeição cete",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "76a070e7-3d11-4371-85ae-cfb27c03bf34",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 15000,
+   "descricao": "Arão",
+   "categoria": "salario",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "78a009d1-7947-418c-a3e3-fb8e7fbed2d6",
+   "data": "2025-01-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Janeiro 2025 - Emanuel Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "7c82de9f-d872-4e04-97af-1dec43aea72b",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "7cafe954-39ee-43ce-b32a-652240aa6cb6",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Karina Luís Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "7cddabbd-44b5-42fe-adb9-af42b1772f5c",
+   "data": "2025-09-24",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "7d22dc1b-d695-4355-99ab-f0ac9e9e5c4b",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Joseane Sabino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "7ddca597-d1ea-4cad-8769-a9ce83a318e9",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Abiude Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "80256f18-0656-414c-8a64-8bd2c8a52ff4",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "saldo-BOSS",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "81f388a7-6e9e-4630-8b40-d39698d93071",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Abidiner Correia",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "830fd4a2-ff34-4119-b3e2-e24665d53ce4",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Steviandro Soares Domingos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8446c4d6-a294-4e41-8df2-8f029faaa10b",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Elizabeth Belma Franque",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "84d69277-af09-476e-8b13-fd95747d6fc8",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "tabela de sons",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "871d5f97-8944-46ea-9dcc-f2e936a5d6e4",
+   "data": "2025-09-15",
+   "tipo": "saida",
+   "valor": 700,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "88188cf5-d44d-4e74-a30d-c0391e623b7f",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "refeição henriques",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "88edff79-2932-4b29-b668-142907970dff",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Raquel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8ad491b3-c13c-4a86-b446-8f5ab01f4358",
+   "data": "2025-02-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Fevereiro 2025 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8ad93e93-6c77-4f40-a2c4-e9a5bd10235f",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Kadjex Cabenge",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8b0a4658-9a8c-4361-ab4e-c72a1c8f666d",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 700,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "8b127097-2c22-4b48-b44a-8aed2325d6f4",
+   "data": "2025-09-04",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "8b931859-f4f4-4055-a23a-2eba29651656",
+   "data": "2025-09-04",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "8d892895-d19f-4170-b027-e00c7af0e9b2",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Mario Barros Domingos Camacoza",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8db7b877-55e2-489e-a04f-d774eacc6438",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Feliciano Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8eb4ac22-edd2-484a-8ec5-a67d257319aa",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Laurinda Amélia Henrique",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "8efe392a-6e36-4a8d-9154-4e8a6613cc99",
+   "data": "2025-09-17",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "8f430263-c0dd-491d-b6e4-105069f23cb1",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Zacarias Campos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "90767c88-5f13-4672-9202-877d57ca6d96",
+   "data": "2025-09-13",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "pão",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "917ecc4b-fda1-41dd-b0cd-f21de65fe49d",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "taxi",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "92b10b29-2c84-485e-9e0f-eb2935a6a566",
+   "data": "2025-11-12",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "96dd1878-8c49-42d8-908a-30254b8d47e7",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Victoria Gimarões Joaquim",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "976f6656-fa20-4d64-8661-773f3192257e",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Ana Barros Domingo Camacoza",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "98c5030a-9aea-4489-a3d5-2a2df46f1556",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Lubvania Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "99f8eb2a-5841-47aa-9d5c-6a80a179ad74",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "carvão",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "9aa0bd3b-d959-45d5-99ca-e75a60263b04",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Alberto Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "9ae40c98-ccee-4b72-bcc5-ccef5b33a5db",
+   "data": "2025-09-17",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "9b46eb9a-e450-410f-9a34-bdd011761030",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Laurinda Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "9d294025-a9d6-4313-8468-a8bfdb4acc5e",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 1500,
+   "descricao": "Mensalidade Novembro 2024 - Abidiner Correia",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "9d2d4cff-45d2-4b7a-af23-19d407560990",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Marivalda Mateus",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "9f2cfc78-0870-4501-8592-3f09dfed67cf",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Domingos Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a006dca1-d903-4afa-93db-f9ee122f3768",
+   "data": "2025-11-15",
+   "tipo": "saida",
+   "valor": 5000,
+   "descricao": "taxi e refeição (Henriques)",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "a1b3cdac-3b30-4c1a-864a-16de939cbe93",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "pão",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "a29da0ed-9118-4ae8-8308-c552a4358530",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Biatriz Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a2ab326e-c5ee-42ed-a661-82848046f2a3",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Outubro 2024 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a334f92f-88dc-48ab-bdd7-1b352aa04b51",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Josué Kiluanje Campos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a5a1ab0a-a862-43b4-8e4d-20504a05f99b",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 700,
+   "descricao": "taxi ana",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "a69bc24b-a44a-445d-8037-c247ecd8e9ba",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Marivalda Mateus",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a9211d0e-6c26-4385-85a6-fbfa160476ae",
+   "data": "2025-09-07",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "a9236e91-c716-4732-ae05-3d808fa32514",
+   "data": "2025-09-08",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "açucar-cete",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "a97b2287-89b0-4248-9483-bb39c26c75e7",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Levi Paulo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "a9e96166-9332-4114-a655-983ebd917b69",
+   "data": "2025-09-11",
+   "tipo": "saida",
+   "valor": 1900,
+   "descricao": "CREDITO-Henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "aaed8fdf-b10b-44fc-84b2-230c0cc362d7",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Rodrigo dos Santos Rodrigues",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "aed42aa1-6bd1-4cf1-ae31-fea1f454b1c1",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Feliciano Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "aee83e37-29a8-4f83-94cf-9dcac4894360",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Abiel Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "af5b1305-5a7f-47e8-8d9e-a8e9bf156527",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Maristela Augusto Januario",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "af8fcb27-e2c0-456e-8f90-0fc2da12a38e",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "1 ovo 2 salsichas 2 molhos",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "afe38490-5ae5-4f4c-ae13-8c050e05fbaf",
+   "data": "2025-11-13",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "Impressão(2)",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "b998669c-dba8-4397-a7ee-1a52bdf71791",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Raquel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "b9feb32c-181d-4971-af97-e6d70ee7048d",
+   "data": "2025-09-22",
+   "tipo": "saida",
+   "valor": 1400,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "ba84b54e-2fc8-475d-afd8-249a4bbaf6f0",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Jorge Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "ba968da0-fa2c-44bc-9fb3-d80d7846fc25",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Raquel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "bb8a6cac-8f98-4534-9928-079dc5615648",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Maria Lucinda",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "bc291542-4392-4274-ba7f-eb137f822a94",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Adalgiza (Caligrafia)",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "bceaf35f-57cf-4541-86a5-633dfae34d59",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Emanuel Gimarões Joaquim",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "bf019fd9-0fb6-48e5-9fc2-f90f7f2f16f8",
+   "data": "2025-09-02",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "c00408f4-07d0-416f-9a43-a93a95a8f2f0",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Yasmini de Sousa",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "c2d8994d-1d1f-4c78-9c7b-4260371365d3",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Gelson Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "c3666090-e343-48b1-9b4a-61c632cfdf65",
+   "data": "2025-09-23",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "c5880f29-5738-482b-9973-fc168a940968",
+   "data": "2025-09-06",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "c62b3548-97e3-439b-82f2-83a9ec7f86c3",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "manteiga",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "c8301c4b-a04c-4e41-a94c-e9001263aa9d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Josenildo António Viera",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "c8a2e838-221d-439b-9444-07711fea9871",
+   "data": "2025-01-15",
+   "tipo": "entrada",
+   "valor": 3000,
+   "descricao": "Mensalidade Janeiro 2025 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "c99206ae-304b-4fa6-8ffc-ab7de133d96d",
+   "data": "2025-09-21",
+   "tipo": "saida",
+   "valor": 6000,
+   "descricao": "taxi-ana",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "cac6c22a-e33d-48e2-b92e-203d88493c5b",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Inacia Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "cb1df093-1052-4e38-9165-d6ee1e72e005",
+   "data": "2025-09-16",
+   "tipo": "saida",
+   "valor": 2500,
+   "descricao": "vassora",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "cf145e3e-0b77-40ed-9958-1bb425045ec6",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Angelo Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "cfabb82c-6245-4309-9737-f9f4ac0752fc",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "sabão",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "cfd3dc6c-013b-4cfb-a8fc-24a6bf24044f",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Mariclene Francisco Benedido Garcia",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d1e2e904-c4f0-42a0-8b67-ca68d1a2676f",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Joseane Sabino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d2c7923d-c09a-4d58-8ead-755ba3bda73e",
+   "data": "2025-09-10",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "d35bc689-97e1-4d5e-a51a-628a03e12291",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Domingos Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d35ef998-68c7-4071-a3f5-ca72cb6b80d4",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Mario Germano",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d38525c6-08ad-4fb1-bc18-4c438058170c",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "taxi",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "d525c7ed-045c-415b-b65d-b65b5d81dbaa",
+   "data": "2025-09-09",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "transporte-ANA",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "d582ebd3-d97d-45d2-9338-53d9ab887f70",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Angelo Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d597a65d-f43c-401f-9e7b-94e04f354f65",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Elizabeth Belma Franque",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d78439eb-7c4c-405a-bc3c-783f2ca58362",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Domingos Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d7b8d14a-a3e9-48b4-806e-a3444b6dd3e0",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Edgar Arcenio",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d7c1c71b-1f4c-4081-a5c3-b0ab9a609a86",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Outubro 2024 - Avelina Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d81771ed-5dd3-4d84-b62c-c95e2c6890f8",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Henriqueta Freita",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d891521d-e810-46cc-8842-613ca3b78d54",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Dadiva Arsênio",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "d9369d3f-66f8-4ed6-b931-8a5042169c0b",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Sergio Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "da105408-26be-443b-9d9f-942ed75fc349",
+   "data": "2025-09-23",
+   "tipo": "saida",
+   "valor": 800,
+   "descricao": "farmacos",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "da90f7af-86a3-4bca-ae9f-c3de4ee6126a",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Feliciano Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "daec6eaf-11d4-48d2-a062-9dbb49c7c0d8",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Inacia Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "db1b4e93-7e05-4074-89a4-c712a311564c",
+   "data": "2025-09-02",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "db7e7b2e-8e59-432e-b882-b9a9f45fecfa",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Joseane Sabino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "dc2fef35-d79f-48ad-94b4-2ddb9d8325dc",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Kadjex Cabenge",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "dd9c10d4-24c3-482f-8982-c9513515b1e2",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 600,
+   "descricao": "copias de relataorio e regulamentos 20 cada",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "deba0d89-b1f7-4638-a9c6-f375ce927029",
+   "data": "2025-09-10",
+   "tipo": "saida",
+   "valor": 2100,
+   "descricao": "Comida, Água(4GALÕES), Trasnporte(ana)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "debb89c2-af68-4935-b202-e63d03658f4d",
+   "data": "2025-09-18",
+   "tipo": "saida",
+   "valor": 1000,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "df976a4a-b986-4e24-aa73-da0c1ecced42",
+   "data": "2025-09-11",
+   "tipo": "saida",
+   "valor": 10915,
+   "descricao": "",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "dfb7b690-2d26-4289-aff0-99f6f17c67a9",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 2950,
+   "descricao": "CREDITO-Henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e14e3d57-3025-4c94-b214-3fd502b74ca1",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Domingas Panzo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e21de1cd-568e-45b4-8fa4-747ef99f8159",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Maria Luisa",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e344327e-dbcc-4810-8bd4-c0b3d22f1f98",
+   "data": "2025-11-18",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e3e996ea-24b9-46ae-9a26-5da879043a49",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Antonia Gimarões Joaquim",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e3eee186-f6dc-43d8-910c-8855b7a91870",
+   "data": "2025-09-08",
+   "tipo": "saida",
+   "valor": 350,
+   "descricao": "saldo-BOSS",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e4560204-6df5-4df7-a638-0240989627ed",
+   "data": "2025-09-04",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "e47fec36-ed26-47e1-a0d0-e8200f70be47",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Alberto Manuel dos Santos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e4f1af11-6f7d-4f02-b82c-737b460c1cd1",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Abiude Manuel",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e5d39f44-8983-4dd0-8a30-0a0154f6dfcc",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 100,
+   "descricao": "lixivia",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e71aec46-dcd5-4e79-9c44-298a47e3a56f",
+   "data": "2025-11-17",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "antónio",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e81008e7-cce5-4a72-ab98-be6662294d19",
+   "data": "2025-09-10",
+   "tipo": "saida",
+   "valor": 5000,
+   "descricao": "fundo de investimento-cete",
+   "categoria": "investimento",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e81c4c46-0c4b-42e5-878c-2ca4101bf924",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2000,
+   "descricao": "Mensalidade Novembro 2024 - Avelina Paulino",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "e8da7113-565d-4e74-a92f-0307f0d52243",
+   "data": "2025-11-12",
+   "tipo": "saida",
+   "valor": 700,
+   "descricao": "4 salsi/ 6 pães",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "e9e6ad5d-1d73-4207-81ed-54d6266a73e7",
+   "data": "2024-11-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Novembro 2024 - Mariclene Francisco Benedido Garcia",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "ea75177e-d3eb-46d4-9b21-70d1344a4d3f",
+   "data": "2025-09-06",
+   "tipo": "saida",
+   "valor": 700,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "eb2aa343-935b-4252-b5c9-f4f6afc9027e",
+   "data": "2025-09-09",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "eb3bf3ae-97b5-438d-997a-40cada27dfb9",
+   "data": "2025-09-17",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "matricula",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "eb50f282-279e-4059-851e-55cf62f8962f",
+   "data": "2025-09-17",
+   "tipo": "saida",
+   "valor": 4500,
+   "descricao": "prancheta (2)saco de pedrinhas (1) tesoura",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "ed8aa77d-f16f-4679-9fb1-cd5e8dee3b49",
+   "data": "2025-09-06",
+   "tipo": "saida",
+   "valor": 200,
+   "descricao": "henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "ee06de3e-bc72-479f-94e5-0379585f663d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Narcilio Augusto Januario",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "ee9f3c84-6904-4738-b57c-535561a030d3",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Manel Bernardo",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "ef5f41f3-6439-48e9-8571-cbc58c437ed9",
+   "data": "2025-09-24",
+   "tipo": "saida",
+   "valor": 2000,
+   "descricao": "almoço (cete)",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "ef6b4f3b-3216-4ed5-b070-57f712080acd",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Solange Kimbela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "efe697bf-4f4d-4504-b123-c4d873d19519",
+   "data": "2025-11-17",
+   "tipo": "saida",
+   "valor": 500,
+   "descricao": "copia (25)",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "f0fd5d5c-7751-45af-848b-207fcda54fd5",
+   "data": "2025-09-02",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "f147ad0e-df7c-4f60-aada-7f7c32e184ad",
+   "data": "2025-10-06",
+   "tipo": "saida",
+   "valor": 300,
+   "descricao": "pão",
+   "categoria": "alimentacao",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "f2696eeb-c5ad-45ee-9bb7-db4005ce1a95",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2700,
+   "descricao": "Mensalidade Setembro 2024 - Micaela Simão",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "f5c2d186-1b0c-43c0-99f4-96ed28af3393",
+   "data": "2025-10-02",
+   "tipo": "entrada",
+   "valor": 700,
+   "descricao": "cartão",
+   "categoria": "cartão",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ },
+ {
+   "id": "f7ff9f7e-fc10-49e1-a76b-092da7d2c50d",
+   "data": "2024-10-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Outubro 2024 - Sergio Colela",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "fb826c56-8f94-4781-90ef-68ebbaf5ce1b",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 2400,
+   "descricao": "impress fv de 6 cartolinas (passes)",
+   "categoria": "material",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "fd5e13c2-3bc3-4055-a084-8ce553952cc8",
+   "data": "2024-12-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Dezembro 2024 - Emanuel Barroso Baião",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "fd8c6840-d760-4cd1-a44d-47b45fcf090a",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Dadiva Arsênio",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "fe7568b1-9d0e-47c0-bb75-749fd7a7c6b2",
+   "data": "2025-09-12",
+   "tipo": "saida",
+   "valor": 1500,
+   "descricao": "CREDITO-Henriques",
+   "categoria": "transporte",
+   "created_at": "2025-11-24 06:20:51.063578+00"
+ },
+ {
+   "id": "fed2b998-41e9-42b5-a98d-51284f37315f",
+   "data": "2024-09-15",
+   "tipo": "entrada",
+   "valor": 2500,
+   "descricao": "Mensalidade Setembro 2024 - Steviandro Soares Domingos",
+   "categoria": "mensalidade",
+   "created_at": "2025-11-20 16:02:42.125588+00"
+ },
+ {
+   "id": "ffcb1220-4498-4452-88a6-edf7f7871002",
+   "data": "2025-10-02",
+   "tipo": "entrada",
+   "valor": 1000,
+   "descricao": "confirmação",
+   "categoria": "matricula",
+   "created_at": "2025-11-24 06:34:45.736509+00"
+ }
+]

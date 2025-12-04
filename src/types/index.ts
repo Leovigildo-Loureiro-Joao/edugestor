@@ -54,12 +54,18 @@ export interface ResumoMensal {
 }
 
 export interface Instituicao {
-  nome_escola:string,
-  endereco:string,
-  email:string,
-  numero_telefone:string,
-  whatssap:string,
-  ano_lectivo:string,
-  
+  nome_escola?:string,
+  endereco?:string,
+  email?:string,
+  numero_telefone?:string,
+  whatsapp?:string,
+  ano_lectivo?:string,
+  valor_cartao?:number,
+  valor_confirmacao?:number
+  valor_matricula?:number
+  created_at: string;
+  updated_at: string;
 }
+
+
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiActivity, FiSave, FiShield } from "react-icons/fi";
-import { Select } from "../ui/Select";
+import { SelectTyped } from "../students/StudentForm";
 
 export const ConfiguracoesBackup = () => {
   const [config, setConfig] = useState({
@@ -110,7 +110,7 @@ export const ConfiguracoesBackup = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Frequência
                   </label>
-                   <Select
+                   <SelectTyped
                       vect={["Diário","Semanal","Semanal","Mensal"]}
                       icon={FiActivity}
                       onChange={(e:any) => setConfig(prev => ({...prev, frequenciaBackup: e}))}

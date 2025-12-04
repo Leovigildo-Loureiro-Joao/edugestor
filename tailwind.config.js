@@ -1,7 +1,18 @@
 export default {
+  darkMode:"class",
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    'dark',
+    'bg-white',
+    'dark:bg-gray-800',
+    'text-gray-900',
+    'dark:text-white',
+    'bg-gray-50',
+    'dark:bg-gray-900',
+
   ],
   theme: {
     extend: {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiPlus, FiEdit, FiTrash2, FiUsers, FiBook, FiClock, FiSearch } from 'react-icons/fi';
-import { turmaService } from '../../services/database/turmas.ts';
+import { turmaService } from '../../services/database';
 import { Select } from '../../components/ui/Select';
 
 const Turmas = () => {
@@ -11,6 +11,7 @@ const Turmas = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroTurno, setFiltroTurno] = useState('Todos Turnos');
   const [filtroCurso, setFiltroCurso] = useState('Todos Cursos');
+  const nav = useNavigate();
 
   useEffect(() => {
     loadTurmas();
@@ -26,6 +27,11 @@ const Turmas = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const abrirTurma = (cursoId) => {
+    console.log('Abrir curso com ID:', cursoId);
+    nav(`/turmas/${cursoId}`);
   };
 
   const handleDelete = async (id) => {
@@ -208,9 +214,9 @@ const Turmas = () => {
                   className="hover:bg-white"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <FiBook className="text-primary-600" />
+                    <div className="flex items-center"   onClick={() => abrirTurma(turma.od)} >
+                      <div className="flex-shrink-0 h-10 w-10 hover:bg-primary-700 transition-colors  bg-primary-100 rounded-full flex items-center justify-center">
+                        <FiBook className="text-primary-600 hover:text-primary-200" />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -220,7 +226,7 @@ const Turmas = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {turma.curso}
+                    {turma?.cursos.nome}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {turma.professor}
