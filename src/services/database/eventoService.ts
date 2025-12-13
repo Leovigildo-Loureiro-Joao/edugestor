@@ -1,0 +1,38 @@
+import { EventFormData } from "../../types/eventos";
+import { supabase } from "../supabase/config";
+
+export const eventoService = {
+  async listarEventos() {
+    const { data, error} = await supabase.from('evento').select('*');
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  },
+
+  async criarEvento(eventoData:EventFormData): Promise<EventFormData> {
+    const { data, error } = await supabase.from('evento').insert(eventoData).select();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data[0];
+
+  },
+
+  async atualizarEvento(eventoId:string, eventoData:EventFormData) : Promise<EventFormData>{
+    const { data, error } = await supabase.from('evento').update(eventoData).eq('id', eventoId).select();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data[0];
+  },
+
+  async deletarEvento(eventoId:string) {
+    const { data, error } = await supabase.from('evento').delete().eq('id', eventoId).select();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  },
+};
+

@@ -26,6 +26,8 @@ import TurmaDetails from './pages/Turmas/TurmasPage.tsx';
 import CourseDetails from './pages/Courses/CursoPage.tsx';
 import { CompletarMatricula } from './pages/Finance/RegistraMatricula.tsx';
 import { configService } from './services/database/config.ts';
+import EstrategiaPage from './pages/Estrategia/Estrategia.tsx';
+import TarefaPage from './components/strategy/TarefaPage.tsx';
 // ... outros imports
 
 // Componente para rotas protegidas
@@ -76,6 +78,10 @@ function App() {
                     <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
                     <Route path="/financeiro" element={<FinanceiroPage/>} />
                     <Route path="/cursos" element={<Courses/>} />
+                    <Route path="/estrategia/tarefas/nova" element={<TarefaPage />} />
+                    <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
+                    <Route path="/estrategia/:seccao" element={<EstrategiaPage/>} />
+                    <Route path="/estrategia" element={<EstrategiaPage/>} />
                     <Route path="/cursos/novo" element={<CursoNew/>} />
                     <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
                     <Route path="/cursos/:id" element={<CourseDetails/>} />

@@ -112,6 +112,7 @@ export const studentsService = {
         data_matricula, 
         pagamento_em_dia,
         estado, 
+        ano_lectivo,
         created_at, 
         updated_at, 
         numero_estudante, 
@@ -124,6 +125,7 @@ export const studentsService = {
         contacto_secundario, 
         cartao_pago,
         ultima_verificacao_pagamento,
+        propina(mes_referencia,data_pagamento),
         turmas (
           nome_turma,
           professor

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { FiSearch, FiFilter, FiDollarSign, FiUser, FiCreditCard, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw, FiArrowLeft, FiCalendar } from 'react-icons/fi';
 import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
-import {  Student } from '../../types/aluno.ts';
+import { Student } from '../../types/aluno.ts';
 import { Turma } from '../../types/turma.ts';
-import { propinaService,studentsService,turmaService } from '../../services/database'
+import { propinaService, studentsService, turmaService } from '../../services/database'
 import { DadosPagamentoCash, Transacao } from '../../types/transacao.ts';
 import { HistoricoPagamentos } from '../../components/finance/historicoPagamento.jsx';
 import { useNavigate } from 'react-router-dom';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
+import { configService } from '../../services/database/config.ts';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -18,10 +19,11 @@ export const PagamentosPage = () => {
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
   const [filtroMes, setFiltroMes] = useState('Todos os Meses');
-  const [alunoSelecionado, setAlunoSelecionado] = useState<Student|null>(null);
+  const [mesesDoAno, setMesesDoano] = useState<string[] | []>([]);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<Student | null>(null);
   const [historicoPagamentos, setHistoricoPagamentos] = useState<any[]>([]);
-  const [mesesPagamentos, setMesesPagamentos] = useState<{[alunoId: string]: string[]}>({});
-  const [mesesPendente, setMesesPendentes] = useState<{[alunoId: string]: string[]}>({});
+  const [mesesPagamentos, setMesesPagamentos] = useState<{ [alunoId: string]: string[] }>({});
+  const [mesesPendente, setMesesPendentes] = useState<{ [alunoId: string]: string[] }>({});
 
   const navigate = useNavigate();
 
@@ -29,21 +31,15 @@ export const PagamentosPage = () => {
     console.log('Abrir aluno com ID:', alunoId);
     navigate(`/alunos/${alunoId}`);
   };
+  
 
-  // Meses do ano para filtro
-  const mesesDoAno = [
-    'Todos os Meses',
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
+ 
 
   // Carregar dados iniciais
   useEffect(() => {
     carregarDados();
   }, []);
 
-
-   
   const carregarHistoricoPagamentos = async () => {
     try {
       const historico = await propinaService.getHistoricoPagamentos();
@@ -54,37 +50,81 @@ export const PagamentosPage = () => {
     }
   };
 
-
+  // ✅ Função corrigida para extrair mês abreviado
   const extrairMesAbreviado = (mesCompleto: string): string => {
-  const mapaMeses: {[key: string]: string} = {
-    'Janeiro': 'Jan', 'Fevereiro': 'Fev', 'Março': 'Mar', 'Abril': 'Abr',
-    'Maio': 'Mai', 'Junho': 'Jun', 'Julho': 'Jul', 'Agosto': 'Ago',
-    'Setembro': 'Set', 'Outubro': 'Out', 'Novembro': 'Nov', 'Dezembro': 'Dez'
+    if (!mesCompleto) return '';
+    
+    const mapaMeses: { [key: string]: string } = {
+      'Setembro': 'Set', 'Outubro': 'Out', 'Novembro': 'Nov', 'Dezembro': 'Dez',
+      'Janeiro': 'Jan', 'Fevereiro': 'Fev', 'Março': 'Mar', 'Abril': 'Abr',
+      'Maio': 'Mai', 'Junho': 'Jun', 'Julho': 'Jul', 'Agosto': 'Ago'
+      
+    };
+
+    // Extrair apenas o nome do mês (remover ano se existir)
+    const partes = mesCompleto.split(' ');
+    const mesNome = partes[0]; // Pega o primeiro elemento (Setembro, Outubro, etc.)
+    
+    return mapaMeses[mesNome] || mesNome.substring(0, 3);
   };
-  
-  // Extrair apenas o nome do mês (remover ano)
-  const mesNome = mesCompleto.split(' ')[0];
-  return mapaMeses[mesNome] || mesNome.substring(0, 3);
-};
 
-// ✅ Nova função para obter meses pendentes do aluno
-const getMesesPendentesAluno = (aluno: Student): string[] => {
-  if (!aluno.meses_em_aberto || !Array.isArray(aluno.meses_em_aberto)) {
-    return [];
-  }
-  
-  return aluno.meses_em_aberto.map(extrairMesAbreviado);
-};
+  // ✅ Função corrigida para obter meses pendentes do aluno
+  const getMesesPendentesAluno = (aluno: Student): string[] => {
+    if (!aluno.meses_em_aberto || !Array.isArray(aluno.meses_em_aberto)) {
+      return [];
+    }
+    
+    // Retorna os meses pendentes já no formato abreviado
+    return aluno.meses_em_aberto.map(extrairMesAbreviado);
+  };
 
-// ✅ Nova função para obter meses pagos (todos menos os em aberto)
 const getMesesPagosAluno = (aluno: Student): string[] => {
-  const todosMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  if (!aluno.data_matricula || !mesesDoAno.length) return [];
+  
+  const todosMeses = mesesDoAno
+    .filter(mes => mes !== "Todos os Meses")
+    .map(extrairMesAbreviado);
+
+  // 1. Obter meses pendentes uma única vez
   const mesesPendentes = getMesesPendentesAluno(aluno);
   
-  return todosMeses.filter(mes => !mesesPendentes.includes(mes));
+  // 2. Determinar ponto de partida (primeiro mês pago)
+  let startIndex = 0;
+  console.log("Histórico de pagamentos do aluno:", aluno.propina);
+  // Tentar usar histórico de pagamentos primeiro
+  if (aluno.propina?.length) {
+    // Encontrar o pagamento mais antigo
+    const primeiroPagamento = aluno.propina.reduce((maisAntigo, atual) => {
+      if (!maisAntigo) return atual;
+      if (!atual.data_pagamento || !maisAntigo.data_pagamento) return maisAntigo;
+      return new Date(atual.data_pagamento) < new Date(maisAntigo.data_pagamento) 
+        ? atual : maisAntigo;
+    });
+    
+    if (primeiroPagamento?.mes_referencia) {
+      const mesAbreviado = extrairMesAbreviado(primeiroPagamento.mes_referencia);
+      startIndex = todosMeses.indexOf(mesAbreviado);
+    }
+  }
+  
+  // Fallback para data de matrícula se histórico não existir ou mês não encontrado
+  if (startIndex < 0) {
+    const mesMatricula = new Date(aluno.data_matricula).getMonth() + 1;
+    
+    if (mesMatricula >= 9 && mesMatricula <= 12) {
+      startIndex = mesMatricula - 9; // Set(0), Out(1), Nov(2), Dez(3)
+    } else if (mesMatricula >= 1 && mesMatricula <= 6) {
+      startIndex = mesMatricula + 3; // Jan(4), Fev(5), Mar(6), etc.
+    } else {
+      startIndex = 0; // Julho/Agosto → começar em Setembro
+    }
+  }
+  startIndex = Math.max(0, startIndex);
+
+  const mesesEsperados = todosMeses.slice(startIndex);
+  return mesesEsperados.filter(mes => !mesesPendentes.includes(mes));
 };
 
-// ✅ Nova função para formatar meses pagos
 const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
   const mesesPagos = getMesesPagosAluno(aluno);
   
@@ -92,106 +132,128 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
   
   if (mesReferencia === "Todos os Meses") {
     if (mesesPagos.length > 3) return `${mesesPagos.slice(0, 3).join(', ')} +${mesesPagos.length - 3}`;
-    return mesesPagos.join(', ');  
+    return mesesPagos.join(', ');
   } else {
     const mesAbreviado = extrairMesAbreviado(mesReferencia);
-    return mesesPagos.includes(mesAbreviado) ? mesAbreviado : 'Não pago';
+    return mesesPagos.includes(mesAbreviado) ? 'Pago' : 'Não pago';
   }
 };
 
-// ✅ Nova função para formatar meses pendentes
-const getMesesPendentesFormatados = (aluno: Student, mesReferencia: string) => {
-  const mesesPendentes = getMesesPendentesAluno(aluno);
-  
-  if (mesesPendentes.length === 0) return 'Todos pagos';
-  
-  if (mesReferencia === "Todos os Meses") {
-    if (mesesPendentes.length > 3) return `${mesesPendentes.slice(0, 3).join(', ')} +${mesesPendentes.length - 3}`;
-    return mesesPendentes.join(', ');
-  } else {
-    const mesAbreviado = extrairMesAbreviado(mesReferencia);
-    return mesesPendentes.includes(mesAbreviado) ? mesAbreviado : 'Pago';
-  }
-};
-
-// ✅ Nova função simplificada para filtro de mês
-const alunoPagouMes = (aluno: Student, mes: string) => {
-  if (mes === 'Todos os Meses') return false;
-  
-  const mesAbreviado = extrairMesAbreviado(mes);
-  const mesesPagos = getMesesPagosAluno(aluno);
-  
-  return mesesPagos.includes(mesAbreviado);
-};
-
-const alunoTemMesPendente = (aluno: Student, mes: string) => {
-  if (mes === 'Todos os Meses') return false;
-  
-  const mesAbreviado = extrairMesAbreviado(mes);
-  const mesesPendentes = getMesesPendentesAluno(aluno);
-  
-  return mesesPendentes.includes(mesAbreviado);
-};
-
-
-const carregarDados = async () => {
-  try {
-    setLoading(true);
+  // ✅ Função corrigida para formatar meses pendentes
+  const getMesesPendentesFormatados = (aluno: Student, mesReferencia: string) => {
+    const mesesPendentes = getMesesPendentesAluno(aluno);
     
-    // ✅ Só carregar alunos e turmas (os meses já vêm com o aluno!)
-    const [alunosData, turmasData] = await Promise.all([
-      studentsService.getStudents(),
-      turmaService.getTurmas()
-    ]);
+    if (mesesPendentes.length === 0) return 'Todos pagos';
+    
+    if (mesReferencia === "Todos os Meses") {
+      if (mesesPendentes.length > 3) return `${mesesPendentes.slice(0, 3).join(', ')} +${mesesPendentes.length - 3}`;
+      return mesesPendentes.join(', ');
+    } else {
+      const mesAbreviado = extrairMesAbreviado(mesReferencia);
+      return mesesPendentes.includes(mesAbreviado) ? 'Pendente' : 'Pago';
+    }
+  };
 
-    // Processar alunos
-    const alunosNormalized = alunosData.map((a: any) => ({
-      ...a,
-      turmas: Array.isArray(a.turmas) ? (a.turmas[0] ?? null) : (a.turmas ?? null),
-    })) as Student[];
+  // ✅ Função corrigida para verificar se aluno pagou um mês específico
+  const alunoPagouMes = (aluno: Student, mes: string) => {
+    if (mes === 'Todos os Meses') return false;
     
-    setAlunos(alunosNormalized);
-    setTurmas(turmasData || []);
+    const mesAbreviado = extrairMesAbreviado(mes);
+    const mesesPagos = getMesesPagosAluno(aluno);
     
-    console.log(`✅ ${alunosNormalized.length} alunos carregados com meses_em_aberto`);
-    
-    // ✅ Calcular estatísticas para debug
-    const alunosComPendencias = alunosNormalized.filter(a => 
-      a.meses_em_aberto && a.meses_em_aberto.length > 0
-    );
-    console.log(`📊 ${alunosComPendencias.length} alunos com meses pendentes`);
+    return mesesPagos.includes(mesAbreviado);
+  };
 
-  } catch (error) {
-    console.error('❌ Erro ao carregar dados:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-const alunosFiltrados = alunos.filter(aluno => {
+  // ✅ Função corrigida para verificar se aluno tem mês pendente
+  const alunoTemMesPendente = (aluno: Student, mes: string) => {
+    if (mes === 'Todos os Meses') return false;
+    
+    const mesAbreviado = extrairMesAbreviado(mes);
+    const mesesPendentes = getMesesPendentesAluno(aluno);
+    
+    return mesesPendentes.includes(mesAbreviado);
+  };
+
+  // ✅ Função corrigida para calcular meses pagos e pendentes para estatísticas
+  const calcularMesesPorAluno = (alunosData: Student[]) => {
+    const mesesPagamentosObj: { [alunoId: string]: string[] } = {};
+    const mesesPendentesObj: { [alunoId: string]: string[] } = {};
+
+    alunosData.forEach(aluno => {
+      mesesPagamentosObj[aluno.id] = getMesesPagosAluno(aluno);
+      mesesPendentesObj[aluno.id] = getMesesPendentesAluno(aluno);
+    });
+
+    setMesesPagamentos(mesesPagamentosObj);
+    setMesesPendentes(mesesPendentesObj);
+  };
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+
+      const [alunosData, turmasData] = await Promise.all([
+        studentsService.getStudents(),
+        turmaService.getTurmas()
+      ]);
+
+      // Processar alunos
+      const alunosNormalized = alunosData.map((a: any) => ({
+        ...a,
+        turmas: Array.isArray(a.turmas) ? (a.turmas[0] ?? null) : (a.turmas ?? null),
+      })) as Student[];
+      const resulst =await configService.getPaymentConfig()
+      setMesesDoano(["Todos os Meses",...resulst.mesesPagamento]) // <-- aqui estava
+      setAlunos(alunosNormalized);
+      setTurmas(turmasData || []);
+
+      calcularMesesPorAluno(alunosNormalized);
+
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const alunosFiltrados = alunos.filter(aluno => {
     // Filtro de busca
-    const matchBusca = !busca || 
-        aluno.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
-        aluno.numero_estudante?.toString().includes(busca);
-    
+    const matchBusca = !busca ||
+      aluno.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
+      aluno.numero_estudante?.toString().includes(busca);
+
     // Filtro de turma
-    const matchTurma = filtroTurma === 'Todas Turmas' || aluno.turmas?.nome_turma === filtroTurma;
+    const turmaNome = Array.isArray(aluno.turmas) ? aluno.turmas[0]?.nome_turma : aluno.turmas?.nome_turma;
+    const matchTurma = filtroTurma === 'Todas Turmas' || turmaNome === filtroTurma;
 
     // Filtro de status
     const mesesPendentes = getMesesPendentesAluno(aluno);
-    const matchStatus = filtroStatus === 'Todos' ||
-        (filtroStatus === 'Pago' && aluno.pagamento_em_dia) ||
-        (filtroStatus === 'Pendente' && mesesPendentes.length > 0) ||
-        (filtroStatus === 'Atrasado' && !aluno.pagamento_em_dia);
+    const mesesPagos = getMesesPagosAluno(aluno);
+    let matchStatus = true;
 
-    // Filtro de mês (USANDO OS NOVOS DADOS)
-    const matchMes = filtroMes === 'Todos os Meses' ||
-        (filtroStatus === 'Pago' && alunoPagouMes(aluno, filtroMes)) ||
-        (filtroStatus === 'Pendente' && alunoTemMesPendente(aluno, filtroMes)) ||
-        (filtroStatus !== 'Pago' && filtroStatus !== 'Pendente' && 
-         (alunoPagouMes(aluno, filtroMes) || alunoTemMesPendente(aluno, filtroMes)));
+    if (filtroStatus === 'Pago') {
+      matchStatus = mesesPagos.length > 0;
+    } else if (filtroStatus === 'Pendente') {
+      matchStatus = mesesPendentes.length > 0;
+    } else if (filtroStatus === 'Todos') {
+      matchStatus = true;
+    }
+
+    // Filtro de mês específico
+    let matchMes = true;
+    if (filtroMes !== 'Todos os Meses') {
+      if (filtroStatus === 'Pago') {
+        matchMes = alunoPagouMes(aluno, filtroMes);
+      } else if (filtroStatus === 'Pendente') {
+        matchMes = alunoTemMesPendente(aluno, filtroMes);
+      } else {
+        // Para "Todos" ou outros status, mostra tanto pagos quanto pendentes
+        matchMes = alunoPagouMes(aluno, filtroMes) || alunoTemMesPendente(aluno, filtroMes);
+      }
+    }
 
     return matchBusca && matchTurma && matchStatus && matchMes;
-});
+  });
 
   const handleSelecionarAluno = (aluno: Student) => {
     setAlunoSelecionado(aluno);
@@ -213,16 +275,16 @@ const alunosFiltrados = alunos.filter(aluno => {
 
   return (
     <div>
-      <button 
+      <button
         onClick={() => navigate("/financeiro")}
         className="flex items-center gap-2 mb-4 text-blue-600 hover:text-blue-800"
       >
         <FiArrowLeft /> Voltar ao Dashboard
       </button>
-      
+
       <div className="min-h-screen p-6">
         <div className="max-w-7xl mx-auto">
-          
+
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -234,15 +296,15 @@ const alunosFiltrados = alunos.filter(aluno => {
                 </div>
               </div>
               <div className="relative ">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    placeholder="Nome ou número de estudante..."
-                    className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Nome ou número de estudante..."
+                  className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
               <button
                 onClick={carregarDados}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -256,50 +318,47 @@ const alunosFiltrados = alunos.filter(aluno => {
           {/* Filtros e Busca */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
             <div className="flex flex-wrap gap-4">
-                 
-                {/* Filtro Turma */}
-                <div>
-                  <SelectTyped 
-                    vect={prepararDadosSelect.turmas} 
-                    icon={FaBookAtlas}
-                    onChange={setFiltroTurma}
-                    value={filtroTurma}
-                  />
-                </div>
 
-                {/* Filtro Status */}
-                <div>
-                  <SelectTyped 
-                    vect={prepararDadosSelect.status}
-                    onChange={setFiltroStatus}
-                    value={filtroStatus}
-                  />
-                </div>
-
-                {/* Filtro Mês */}
-                <div>
-                  <SelectTyped 
-                    vect={prepararDadosSelect.meses}
-                    icon={FiCalendar}
-                    onChange={setFiltroMes}
-                    value={filtroMes}
-                  />
-                </div>
-
-                  {/* Botão Limpar Filtros */}
-                  <div className="">
-                    <button
-                      onClick={limparFiltros}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      <FiFilter size={16} />
-                      Limpar Filtros
-                    </button>
-                  </div>
+              {/* Filtro Turma */}
+              <div>
+                <SelectTyped
+                  vect={prepararDadosSelect.turmas}
+                  icon={FaBookAtlas}
+                  onChange={setFiltroTurma}
+                  value={filtroTurma}
+                />
               </div>
 
+              {/* Filtro Status */}
+              <div>
+                <SelectTyped
+                  vect={prepararDadosSelect.status}
+                  onChange={setFiltroStatus}
+                  value={filtroStatus}
+                />
+              </div>
 
-          
+              {/* Filtro Mês */}
+              <div>
+                <SelectTyped
+                  vect={prepararDadosSelect.meses}
+                  icon={FiCalendar}
+                  onChange={setFiltroMes}
+                  value={filtroMes}
+                />
+              </div>
+
+              {/* Botão Limpar Filtros */}
+              <div className="">
+                <button
+                  onClick={limparFiltros}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  <FiFilter size={16} />
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Resumo de Filtros Ativos */}
@@ -343,20 +402,20 @@ const alunosFiltrados = alunos.filter(aluno => {
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               {/* Cabeçalho da Tabela */}
               <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">
-                <div className="col-span-4">Estudante</div>
+                <div className="col-span-3">Estudante</div>
                 <div className="col-span-2">Turma</div>
                 <div className="col-span-3">Meses Pagos</div>
                 <div className="col-span-2">Status Geral</div>
-                <div className="col-span-1 text-center">Ação</div>
+                <div className="col-span-2 text-center">Ação</div>
               </div>
 
               {/* Lista de Estudantes */}
               <div className="divide-y divide-gray-200">
                 {alunosFiltrados.map((aluno: Student) => (
                   <div key={aluno.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <div className="flex items-center gap-3">
-                        <div onClick={()=> abrirAluno(aluno.id)} className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div onClick={() => abrirAluno(aluno.id)} className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-colors">
                           <FiUser className="text-blue-600" />
                         </div>
                         <div>
@@ -365,38 +424,39 @@ const alunosFiltrados = alunos.filter(aluno => {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="col-span-2 text-gray-700">{Array.isArray(aluno.turmas) ? aluno.turmas[0]?.nome_turma || 'N/A' : aluno.turmas?.nome_turma || 'N/A'}</div>
-                    <div className="col-span-3">
-                    {/* SEMPRE mostra meses pagos E pendentes */}
-                    <div className="space-y-1">
-                      {/* Meses Pagos */}
-                      <div className={filtroStatus=="Pendente"?"hidden":"block text-sm"}  >
-                        <span className="text-green-600 font-medium">Pagou:</span>{' '}
-                        {getMesesPagosFormatados(aluno,filtroMes)}
-                      </div>
-                      
-                      {/* Meses Pendentes */}
-                      <div className={filtroStatus=="Pago"?"hidden":"block text-sm"}  >
-                        <span className="text-red-600 font-medium">Pendente:</span>{' '}
-                        {getMesesPendentesFormatados(aluno,filtroMes)}
-                      </div>
+
+                    <div className="col-span-2 text-gray-700">
+                      {Array.isArray(aluno.turmas) ? aluno.turmas[0]?.nome_turma || 'N/A' : aluno.turmas?.nome_turma || 'N/A'}
                     </div>
-  
+                    <div className="col-span-3">
+                      {/* Sempre mostra meses pagos E pendentes */}
+                      <div className="space-y-1">
+                        {/* Meses Pagos */}
+                        <div className={filtroStatus === "Pendente" ? "hidden" : "block text-sm"}>
+                          <span className="text-green-600 font-medium">Pagou:</span>{' '}
+                          {getMesesPagosFormatados(aluno, filtroMes)}
+                        </div>
+
+                        {/* Meses Pendentes */}
+                        <div className={filtroStatus === "Pago" ? "hidden" : "block text-sm"}>
+                          <span className="text-red-600 font-medium">Pendente:</span>{' '}
+                          {getMesesPendentesFormatados(aluno, filtroMes)}
+                        </div>
+                      </div>
+
                       {/* Contadores totais */}
                       <div className="text-xs text-gray-500 mt-1 flex gap-2">
-                        
-                        <span className={filtroStatus=="Pendente"?"hidden":"block"}>✓ {mesesPagamentos[aluno.id]?.length || 0}</span>
-                        <span className={filtroStatus=="Pago"?"hidden":"block"}>✗ {mesesPendente[aluno.id]?.length || 0}</span>
+                        <span className={filtroStatus === "Pendente" ? "hidden" : "block"}>✓ {getMesesPagosAluno(aluno).length}</span>
+                        <span className={filtroStatus === "Pago" ? "hidden" : "block"}>✗ {getMesesPendentesAluno(aluno).length}</span>
                       </div>
                     </div>
-                    
+
                     <div className="col-span-2">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                        aluno.pagamento_em_dia 
-                          ? 'bg-green-100 text-green-800' 
+                        aluno.pagamento_em_dia
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
-                      }`}>
+                        }`}>
                         {aluno.pagamento_em_dia ? (
                           <>
                             <FiCheckCircle size={14} />
@@ -410,18 +470,15 @@ const alunosFiltrados = alunos.filter(aluno => {
                         )}
                       </span>
                     </div>
-                    
-                    <div className="col-span-1 text-center items-center">
+
+                   <div className="col-span-2 text-center justify-center flex items-center">
                       <button
                         onClick={() => handleSelecionarAluno(aluno)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                          aluno.pagamento_em_dia
-                            ? 'bg-gray-100 text-gray-400'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                        disabled={aluno.pagamento_em_dia}
+                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
+                        title="Realizar pagamento (mês atual ou adiantado)"
                       >
-                        Pagar
+                        <FiDollarSign size={16} />
+                        <span>Pagar</span>
                       </button>
                     </div>
                   </div>

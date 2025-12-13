@@ -1,4 +1,5 @@
 import strict from "assert/strict";
+import { Propina } from "./propina";
 
 // types/student.ts
 export interface Student {
@@ -19,10 +20,11 @@ export interface Student {
   data_matricula: string;
   estado: 'ativo' | 'transferido' | 'desistente';
   created_at: string;
+  ano_lectivo: string;
   updated_at: string;
   numero_estudante: number;
   meses_em_aberto: string[];
-  propina: number;
+  propina: Propina[];
   sexo: 'M' | 'F';
   curso: string;
   classe_escolar: string;

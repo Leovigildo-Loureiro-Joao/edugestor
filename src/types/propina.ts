@@ -25,3 +25,25 @@ export interface PropinaFormData {
   data_vencimento: string;
   data_pagamento?: string;
 }
+
+export interface ResumoPropinasDetalhado {
+  pagas: {
+    count: number;
+    valor: number;
+  };
+  pendentes: {
+    count: number;
+    valor: number;
+  };
+}
+
+export interface ComparativoPropinasMensal {
+  mes_atual: ResumoPropinasDetalhado;
+  mes_anterior: ResumoPropinasDetalhado;
+}
+
+export type ParamsResumoPropinas = {
+  p_mes_atual: string;
+  p_mes_anterior: string; 
+  p_ano_lectivo: string;
+};

@@ -1,6 +1,7 @@
 // Tipos principais do sistema
 import { Frequencia } from "./frequencia";
 import { Student,StudentFormData,StudentFormProps } from "./aluno";
+import { IconType } from "react-icons";
 export { Frequencia, Student,StudentFormData,StudentFormProps };
 
 
@@ -34,15 +35,6 @@ export interface CustomPieChartProps {
 }
 
 
-export interface DashboardStats {
-  totalAlunos: number;
-  alunosAtivos: number;
-  propinasPagas: number;
-  propinasPendentes: number;
-  frequenciaMedia: number;
-  totalMensal: number; // ← ADICIONAR
-  saldoAtual: number; // ← ADICIONAR
-}
 
 export interface ResumoMensal {
   mes: string;
@@ -69,3 +61,43 @@ export interface Instituicao {
 
 
 
+export interface DashboardStats {
+  totalAlunos: number;
+  totalAlunosAnterior: number;
+  propinaPagasCountAnterior: number;
+  propinaPendentesCount: number;
+  propinaPendentesCountAnterior: number;
+  alunosAtivos: number;
+  propinaPagas: number;
+  propinaPagasCount: number;
+  propinaPagasAnterior: number;
+  propinaPendentes: number;
+  propinaPendentesAnterior: number;
+  frequencias: number; // Percentual
+  totalMensal?: number; // ← ADICIONAR
+  saldoAtual?: number; // ← ADICIONAR
+}
+
+export interface EstrategiaStats {
+  tarefasPendentes: number;
+  metasConcluidas: number;
+  metasAtrasadas: number;
+  proximasAtividades: AtividadeEstrategica[];
+}
+
+export interface AtividadeEstrategica {
+  titulo: string;
+  prioridade: 'alta' | 'media' | 'baixa';
+  data_limite?: string;
+}
+interface StatCard {
+  title: string;
+  value: number | string;
+  change: string;
+  color: 'blue' | 'green' | 'emerald' | 'orange' | 'purple' | 'indigo' | 'red' | 'yellow';
+  icon: IconType;
+  aux: string;
+  fix: boolean;
+  linkTo?: string;
+}
+export { StatCard };

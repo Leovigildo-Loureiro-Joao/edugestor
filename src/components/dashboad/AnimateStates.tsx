@@ -1,5 +1,15 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactElement } from 'react';
+import { IconType } from 'react-icons';
+import { StatCard } from '../../types';
+
+// Tipos
+
+
+interface AnimatedStatProps {
+  stat: StatCard;
+  index: number;
+}
 
 // Mapeamento de cores para classes Tailwind
 const colorMap = {
@@ -12,6 +22,16 @@ const colorMap = {
     bg: 'bg-green-50',
     text: 'text-green-600', 
     bar: 'bg-green-200'
+  },
+  emerald: {
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-600',
+    bar: 'bg-emerald-200'
+  },
+  indigo: {
+    bg: 'bg-indigo-50',
+    text: 'text-indigo-600',
+    bar: 'bg-indigo-200'
   },
   purple: {
     bg: 'bg-purple-50',
@@ -35,10 +55,10 @@ const colorMap = {
   }
 };
 
-export const AnimatedStat = ({ stat, index }) => {
-  const [displayValue, setDisplayValue] = useState('0');
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef(null);
+export const AnimatedStat = ({ stat, index }: AnimatedStatProps): ReactElement => {
+  const [displayValue, setDisplayValue] = useState<string>('0');
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   // Get classes do mapeamento
   const colorClasses = colorMap[stat.color] || colorMap.blue;
@@ -58,7 +78,7 @@ export const AnimatedStat = ({ stat, index }) => {
   }, []);
 
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && typeof stat.value === 'number') {
       const isFloat = stat.value % 1 !== 0;
       const decimalPlaces = isFloat ? 1 : 0;
       
@@ -81,6 +101,9 @@ export const AnimatedStat = ({ stat, index }) => {
       }, duration / steps);
 
       return () => clearInterval(timer);
+    } else if (isVisible && typeof stat.value === 'string') {
+      // Se for string, apenas define o valor diretamente
+      setDisplayValue(stat.value);
     }
   }, [isVisible, stat.value]);
 

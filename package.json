@@ -18,6 +18,7 @@
     "@mui/material": "^7.3.5",
     "@supabase/supabase-js": "^2.81.1",
     "date-fns": "^4.1.0",
+    "date-holidays": "^3.26.5",
     "firebase": "^12.6.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.553.0",
