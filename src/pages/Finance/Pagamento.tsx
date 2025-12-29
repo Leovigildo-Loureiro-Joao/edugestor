@@ -4,7 +4,7 @@ import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
 import { Student } from '../../types/aluno.ts';
 import { Turma } from '../../types/turma.ts';
-import { propinaService, studentsService, turmaService } from '../../services/database'
+import { propinaService, alunosService, turmaService } from '../../services/database'
 import { DadosPagamentoCash, Transacao } from '../../types/transacao.ts';
 import { HistoricoPagamentos } from '../../components/finance/historicoPagamento.jsx';
 import { useNavigate } from 'react-router-dom';
@@ -193,7 +193,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
       setLoading(true);
 
       const [alunosData, turmasData] = await Promise.all([
-        studentsService.getStudents(),
+        alunosService.getAllStudents(),
         turmaService.getTurmas()
       ]);
 
@@ -223,7 +223,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
       aluno.numero_estudante?.toString().includes(busca);
 
     // Filtro de turma
-    const turmaNome = Array.isArray(aluno.turmas) ? aluno.turmas[0]?.nome_turma : aluno.turmas?.nome_turma;
+    const turmaNome = aluno.turma_nome
     const matchTurma = filtroTurma === 'Todas Turmas' || turmaNome === filtroTurma;
 
     // Filtro de status

@@ -1,16 +1,17 @@
 import { JSX, useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from 'framer-motion';
 import { FiBookOpen, FiCalendar, FiDollarSign, FiMapPin, FiPlus, FiUsers, FiClock as FiTime, FiFlag, FiEdit, FiTrash, FiEye } from "react-icons/fi";
 import { eventoService } from "../../services/database/eventoService";
 import { EventFormData } from "../../types/eventos";
 import Holidays from 'date-holidays';
 import { IconType } from "react-icons";
-import EventModalForm from "../event/EventModalForm";
+import EventModalForm from "../event/EventosPage";
 
 // Adicione este tipo
 type ModalMode = 'list' | 'view' | 'edit' | 'create';
-
 export const CalendarWithEvents = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<EventFormData[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -19,6 +20,7 @@ export const CalendarWithEvents = () => {
   const [modalMode, setModalMode] = useState<ModalMode>('list'); // Nova state para controlar o modo
   const [loading, setLoading] = useState<boolean>(false);
   const currentYear = currentDate.getFullYear();
+
 
   // Inicializar date-holidays para Angola
   const hd = useMemo(() => {
@@ -31,6 +33,20 @@ export const CalendarWithEvents = () => {
       return null;
     }
   }, []);
+
+  const getMetaBadge = (metaId?: string, metaTitulo?: string) => {
+    if (!metaId) return null;
+    
+    const cores = ['bg-blue-100', 'bg-green-100', 'bg-purple-100', 'bg-orange-100', 'bg-pink-100'];
+    const cor = cores[parseInt(metaId.charAt(metaId.length - 1)) % cores.length];
+    
+    return (
+      <span className={`text-xs ${cor} text-gray-700 px-2 py-0.5 rounded-full ml-2`}>
+        📊 {metaTitulo?.substring(0, 15)}...
+      </span>
+    );
+  };
+
 
   // Obter feriados para o ano atual
   const feriadosAngola = useMemo((): EventFormData[] => {
@@ -288,6 +304,7 @@ export const CalendarWithEvents = () => {
     const canAddEvent = new Date().setHours(0, 0, 0, 0) <= selectedDate.setHours(0, 0, 0, 0);
 
     const renderEventList = () => (
+    
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {dayEvents.map(event => {
           const EventIcon = getEventTypeIcon(event.type);
@@ -308,8 +325,15 @@ export const CalendarWithEvents = () => {
                     {isAutoHoliday && (
                       <span className="text-xs bg-red-500 text-white px-1 rounded">Feriado</span>
                     )}
+
                     {event.importance === 'high' && !isAutoHoliday && (
                       <span className="text-xs bg-yellow-500 text-white px-1 rounded">Alta</span>
+                    )}
+                     {/* BADGE DA META */}
+                      {event.meta_id && getMetaBadge(event.meta_id, event.meta_titulo)}
+                      
+                      {event.importance === 'high' && (
+                        <span className="text-xs bg-yellow-500 text-white px-1 rounded">Alta</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-600 mb-2">{event.description}</p>
@@ -329,6 +353,7 @@ export const CalendarWithEvents = () => {
                       {event.participants.length > 3 && ` +${event.participants.length - 3}`}
                     </div>
                   )}
+                  
                 </div>
               </div>
               
@@ -370,20 +395,8 @@ export const CalendarWithEvents = () => {
       switch (modalMode) {
         case 'edit':
         case 'create':
-          return (
-            <EventModalForm
-              isOpen={modalMode === 'edit' || modalMode === 'create'}
-              date={selectedDate.toISOString().split('T')[0]}
-              onClose={() => {
-                setIsModalOpen(false);
-                setModalMode('list');
-                setSelectedEvent(null);
-              }}
-              onSubmit={handleEventSubmit}
-              event={selectedEvent}
-              mode={modalMode === 'edit' ? 'edit' : 'create'}
-            />
-          );
+          navigate("/eventos/add");
+          break
         case 'list':
         default:
           return loading ? (
@@ -481,7 +494,7 @@ export const CalendarWithEvents = () => {
   const dayNames: string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg   border-gray-200 p-6">
+    <div className="bg-white border dark:bg-gray-800 rounded-lg   border-gray-200 p-6">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold dark:text-white text-gray-900">Calendário Académico - Angola</h3>
         <div className="flex items-center gap-4">

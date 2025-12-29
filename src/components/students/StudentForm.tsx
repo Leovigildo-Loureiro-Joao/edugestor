@@ -1,6 +1,11 @@
 import { FaMoneyBill, FaPeopleCarry } from "react-icons/fa";
 import { FaPeopleLine } from "react-icons/fa6";
-import { FiActivity, FiCalendar, FiHome, FiMail, FiPhone, FiUsers, FiFileText, FiSave, FiUser, FiBook } from "react-icons/fi";
+import { 
+  FiActivity, FiCalendar, FiHome, FiMail, 
+  FiPhone, FiUsers, FiFileText, FiSave, 
+  FiUser, FiBook, FiTarget, FiAward, 
+  FiClock, FiBookOpen 
+} from "react-icons/fi";
 import { RxPerson } from "react-icons/rx";
 import { Student, StudentFormData, StudentFormProps } from "../../types";
 import { useState, useEffect } from "react";
@@ -10,6 +15,7 @@ import { cursosService } from "../../services/database/curso.ts";
 import { Turma } from "../../types/turma";
 import { Course } from "../../types/curso";
 import { Select } from "../ui/Select.jsx";
+import { configService } from "../../services/database/config.ts";
 
 // ✅ Chave para localStorage
 const getStorageKey = (studentId?: string) => 
@@ -22,10 +28,14 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [cursos, setCursos] = useState<Course[]>([]);
   const [turmasFiltradas, setTurmasFiltradas] = useState<Turma[]>([]);
+  const [tipoMatricula, setTipoMatricula] = useState<'regular' | 'reforco_personalizado'>(
+    student?.tipo_matricula || 'regular'
+  );
+    const [ano, setAno] = useState<string>("");
   const storageKey = getStorageKey(student?.id);
   
-  // Estado interno do formulário - REMOVIDO campo 'horario'
-  const initialData: Student = student ? {
+  // Estado interno do formulário
+  const initialData: StudentFormData = student ? {
     nome_completo: student.nome_completo || '',
     data_nascimento: student.data_nascimento || '',
     nome_pai: student.nome_pai || '',
@@ -43,7 +53,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     curso: student.curso || '',
     classe_escolar: student.classe_escolar || '',
     cartao_pago: student.cartao_pago || false,
-    turmas: student.turmas || undefined,
+    // NOVOS CAMPOS
+    tipo_matricula: student.tipo_matricula || 'regular',
+    modalidade_atendimento: student.modalidade_atendimento || 'individual',
+    frequencia_semanal: student.frequencia_semanal || 1,
+    disciplinas_reforco: student.disciplinas_reforco || [],
+    nivel_conhecimento: student.nivel_conhecimento || 'A',
+    grupo_aprendizado: student.grupo_aprendizado || 'gama',
+    objetivos_academicos: student.objetivos_academicos || '',
+    pagamento_em_dia:false,
+    ano_lectivo:ano,
+    sync_status:"pending"
+
+
   } : {
     nome_completo: '',
     data_nascimento: '',
@@ -62,7 +84,17 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     curso: '',
     classe_escolar: '',
     cartao_pago: false,
-    turmas: undefined,
+    // NOVOS CAMPOS (valores padrão)
+    tipo_matricula: 'regular',
+    modalidade_atendimento: 'individual',
+    frequencia_semanal: 1,
+    disciplinas_reforco: [],
+    nivel_conhecimento: 'A',
+    grupo_aprendizado: 'gama',
+    objetivos_academicos: '',
+    ano_lectivo:"",
+    pagamento_em_dia:false,
+    sync_status:"pending"
   };
 
   const { 
@@ -77,29 +109,39 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   // ✅ Carregar cursos e turmas
   useEffect(() => {
     loadCursos();
-    loadTurmas();
+  loadTurmas();
   }, []);
 
   // ✅ Filtrar turmas quando o curso mudar
   useEffect(() => {
-    if (formData.curso && turmas.length > 0) {
-      const turmasDoCurso = turmas.filter(turma => 
-        turma.cursos.nome === formData.curso
+    if (formData.curso && turmas.length > 0 && tipoMatricula === 'regular') {
+     
+      const turmasDoCurso = turmas.filter(turma => {
+         console.log(turma.curso_nome)
+         return turma.curso_nome === formData.curso
+      }
+        
       );
       setTurmasFiltradas(turmasDoCurso);
       
       // ✅ Se a turma atual não pertence ao curso selecionado, limpar turma
       if (formData.turma_id) {
         const turmaAtual = turmas.find(t => t.id === formData.turma_id);
-        if (turmaAtual && turmaAtual.cursos.nome !== formData.curso) {
-          setFormData(prev => ({ ...prev, turma_id: '' }));
+        if (turmaAtual && turmaAtual.curso_nome !== formData.curso) {
+          setFormData((prev:Student) => ({ ...prev, turma_id: '' }));
         }
       }
     } else {
       setTurmasFiltradas([]);
-      setFormData(prev => ({ ...prev, turma_id: '' }));
+      if (tipoMatricula !== 'regular') {
+        setFormData((prev:Student) => ({ ...prev, turma_id: '' }));
+      }
     }
-  }, [formData.curso, turmas]);
+  }, [formData.curso, turmas, tipoMatricula]);
+
+  useEffect(() => {
+    setTipoMatricula(formData.tipo_matricula || 'regular');
+  }, [formData.tipo_matricula]);
 
   const loadCursos = async () => {
     try {
@@ -117,6 +159,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
+    setAno(await configService.getConfigValue("academic","academic_year"))
+
   };
 
   // ✅ Limpar rascunho após submit bem-sucedido
@@ -147,6 +191,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     }));
   };
 
+  const handleMultiSelect = (field: string, value: string[]) => {
+    setFormData((prev: StudentFormData) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleManualSave = () => {
     saveDraft();
   };
@@ -160,6 +211,27 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   };
 
   const title = isEditing ? 'Editar Aluno' : 'Novo Aluno';
+
+  // Disciplinas disponíveis
+  const disciplinasDisponiveis = [
+    'Matemática', 'Português', 'Física', 'Química', 
+    'Biologia', 'História', 'Geografia', 'Inglês',
+    'Francês', 'Filosofia', 'Educação Visual', 'Educação Física'
+  ];
+
+  // Grupos de aprendizado
+  const gruposAprendizado = [
+    { value: 'gama', label: 'Gama - Aprendizado Rápido' },
+    { value: 'beta', label: 'Beta - Ritmo Moderado' },
+    { value: 'alfa', label: 'Alfa - Necessita mais tempo' }
+  ];
+
+  // Níveis de conhecimento
+  const niveisConhecimento = [
+    { value: 'A', label: 'A - Excelente' },
+    { value: 'B', label: 'B - Bom' },
+    { value: 'C', label: 'C - Precisa melhorar' }
+  ];
 
   return (
     <>
@@ -189,10 +261,87 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           </div>
         </div>
         
+        {/* SELEÇÃO DE TIPO DE MATRÍCULA */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <FiTarget className="mr-2" />
+            Tipo de Matrícula
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setTipoMatricula('regular');
+                handleChangeSel('tipo_matricula', 'regular');
+              }}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                tipoMatricula === 'regular'
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                <div className={`p-2 rounded-full mr-3 ${
+                  tipoMatricula === 'regular' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  <FiUsers />
+                </div>
+                <div>
+                  <div className="font-semibold">Turma Regular</div>
+                  <div className="text-sm text-gray-600">Acompanha turma fixa com disciplinas exatas</div>
+                </div>
+              </div>
+              <ul className="text-sm text-gray-600 ml-11 space-y-1">
+                <li>• Segue grade curricular fixa</li>
+                <li>• Horários definidos por turma</li>
+                <li>• Disciplinas padrão do curso</li>
+                <li>• Grupo ABC + Gama/Beta/Alfa</li>
+              </ul>
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => {
+                setTipoMatricula('reforco_personalizado');
+                handleChangeSel('tipo_matricula', 'reforco_personalizado');
+              }}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                tipoMatricula === 'reforco_personalizado'
+                  ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                <div className={`p-2 rounded-full mr-3 ${
+                  tipoMatricula === 'reforco_personalizado' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  <FiUser />
+                </div>
+                <div>
+                  <div className="font-semibold">Reforço Personalizado</div>
+                  <div className="text-sm text-gray-600">Acompanhamento individualizado</div>
+                </div>
+              </div>
+              <ul className="text-sm text-gray-600 ml-11 space-y-1">
+                <li>• Disciplinas específicas por aluno</li>
+                <li>• Horários flexíveis</li>
+                <li>• Foco em dificuldades pontuais</li>
+                <li>• Sessões personalizadas</li>
+              </ul>
+            </button>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* Coluna Esquerda */}
+          {/* Coluna Esquerda - DADOS PESSOAIS */}
           <div className="flex flex-col gap-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+              <RxPerson className="mr-2" />
+              Dados Pessoais
+            </h3>
+            
             {/* Nome Completo */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_completo" className="text-sm font-medium text-gray-700">
@@ -233,7 +382,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </div>
             </div>
 
-            {/* ✅ SEXO - Agora usando componente Select */}
+            {/* SEXO */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-gray-700">
                 Sexo *
@@ -288,28 +437,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </div>
             </div>
 
-            {/* ✅ CURSO - Agora usando componente Select */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                Curso *
-              </label>
-              <SelectTyped 
-                vect={cursos.map(curso => (
-                 curso.nome
-               ))} 
-                icon={FiFileText}
-                onChange={(value: string) => handleChangeSel('curso', value)}
-                value={formData.curso}
-                placeholder="Selecione o curso"
-                disabled={cursos.length === 0}
-              />
-              {cursos.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Carregando cursos...
-                </p>
-              )}
-            </div>
-
             {/* Data de Matrícula */}
             <div className="flex flex-col gap-2">
               <label htmlFor="data_matricula" className="text-sm font-medium text-gray-700">
@@ -350,8 +477,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             </div>
           </div>
 
-          {/* Coluna Direita */}
+          {/* Coluna Direita - INFORMAÇÕES ACADÊMICAS E CONTATO */}
           <div className="flex flex-col gap-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+              <FiBookOpen className="mr-2" />
+              Informações Acadêmicas e Contato
+            </h3>
+            
             {/* Contacto Telefónico Principal */}
             <div className="flex flex-col gap-2">
               <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700">
@@ -367,7 +499,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   value={formData.contacto_principal}
                   onChange={handleChange}
                   id="contacto_principal"
-                  
                 />
               </div>
             </div>
@@ -432,7 +563,142 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </div>
             </div>
 
-            {/* ✅ CLASSE ESCOLAR - Usando componente Select */}
+            {/* ✅ CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
+            {tipoMatricula === 'regular' ? (
+              <>
+                {/* CURSO */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Curso *
+                  </label>
+                  <SelectTyped 
+                    vect={cursos.map(curso => curso.nome)} 
+                    icon={FiFileText}
+                    onChange={(value: string) => handleChangeSel('curso', value)}
+                    value={formData.curso}
+                    placeholder="Selecione o curso"
+                    disabled={cursos.length === 0}
+                  />
+                  {cursos.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">Carregando cursos...</p>
+                  )}
+                </div>
+
+                {/* TURMA */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Turma *
+                  </label>
+                  <SelectTyped 
+                    vect={turmasFiltradas.map(turma => ({
+                      value: turma.id,
+                      label: turma.nome_turma
+                    }))} 
+                    icon={FiUsers}
+                    onChange={(value: string) => handleChangeSel('turma_id', value)}
+                    value={formData.turma_id}
+                    placeholder={formData.curso ? 'Selecione a turma' : 'Selecione primeiro o curso'}
+                    disabled={!formData.curso || turmasFiltradas.length === 0}
+                  />
+                  {!formData.curso && (
+                    <p className="text-xs text-gray-500 mt-1">Selecione um curso para ver as turmas</p>
+                  )}
+                </div>
+
+                {/* GRUPO DE APRENDIZADO (Gama/Beta/Alfa) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Grupo de Aprendizado *
+                  </label>
+                  <SelectTyped 
+                    vect={gruposAprendizado} 
+                    icon={FiAward}
+                    onChange={(value: string) => handleChangeSel('grupo_aprendizado', value)}
+                    value={formData.grupo_aprendizado}
+                    placeholder="Selecione o grupo"
+                  />
+                </div>
+
+                {/* NÍVEL DE CONHECIMENTO (A/B/C) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Nível de Conhecimento Atual *
+                  </label>
+                  <SelectTyped 
+                    vect={niveisConhecimento} 
+                    icon={FiActivity}
+                    onChange={(value: string) => handleChangeSel('nivel_conhecimento', value)}
+                    value={formData.nivel_conhecimento}
+                    placeholder="Selecione o nível"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* DISCIPLINAS DE REFORÇO (multi-select) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Disciplinas para Reforço *
+                  </label>
+                  <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                    {disciplinasDisponiveis.map(disciplina => (
+                      <div key={disciplina} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={`disciplina-${disciplina}`}
+                          checked={formData.disciplinas_reforco?.includes(disciplina) || false}
+                          onChange={(e) => {
+                            const current = formData.disciplinas_reforco || [];
+                            const updated = e.target.checked
+                              ? [...current, disciplina]
+                              : current.filter((d:string) => d !== disciplina);
+                            handleMultiSelect('disciplinas_reforco', updated);
+                          }}
+                          className="mr-2"
+                        />
+                        <label htmlFor={`disciplina-${disciplina}`} className="text-sm">
+                          {disciplina}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* FREQUÊNCIA SEMANAL */}
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="frequencia_semanal" className="text-sm font-medium text-gray-700">
+                    Frequência Semanal (vezes)
+                  </label>
+                  <input
+                    type="number"
+                    name="frequencia_semanal"
+                    id="frequencia_semanal"
+                    value={formData.frequencia_semanal}
+                    onChange={handleChange}
+                    min="1"
+                    max="5"
+                    className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm"
+                  />
+                </div>
+
+                {/* OBJETIVOS ACADÊMICOS */}
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="objetivos_academicos" className="text-sm font-medium text-gray-700">
+                    Objetivos Acadêmicos
+                  </label>
+                  <textarea
+                    name="objetivos_academicos"
+                    id="objetivos_academicos"
+                    value={formData.objetivos_academicos}
+                    onChange={handleChange}
+                    className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-24"
+                    placeholder="Ex: Melhorar notas em matemática, passar no exame..."
+                  />
+                </div>
+              </>
+            )}
+
+            {/* ✅ CLASSE ESCOLAR */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-gray-700">
                 Classe Escolar *
@@ -446,38 +712,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               />
             </div>
             
-            {/* ✅ TURMA - Agora usando componente Select */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                Turma *
-              </label>
-              <SelectTyped 
-                vect={turmasFiltradas.map(turma => ({
-                  value: turma.id,
-                  label: turma.nome_turma
-                }))} 
-                icon={FiUsers}
-                onChange={(value: string) => handleChangeSel('turma_id', value)}
-                value={{
-                  value: formData.turma_id,
-                  label: formData.turmas?.nome_turma
-                }}
-                placeholder={formData.curso ? 'Selecione a turma' : 'Selecione primeiro o curso'}
-                disabled={!formData.curso || turmasFiltradas.length === 0}
-              />
-              {!formData.curso && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Selecione um curso para ver as turmas disponíveis
-                </p>
-              )}
-              {formData.curso && turmasFiltradas.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Nenhuma turma disponível para este curso
-                </p>
-              )}
-            </div>
-
-            {/* ✅ ESTADO - Usando componente Select */}
+            {/* ✅ ESTADO */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-gray-700">
                 Estado *
@@ -495,19 +730,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               />
             </div>
 
-            {/* Cartão Pago */}
-            <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
-              <input 
-                type="checkbox" 
-                name="cartao_pago"
-                id="cartao_pago"
-                checked={formData.cartao_pago}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <label htmlFor="cartao_pago" className="text-sm font-medium text-gray-700">
-                Cartão já foi pago?
+            {/* Observações Específicas */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="observacoes_especificas" className="text-sm font-medium text-gray-700">
+                Observações Específicas
               </label>
+              <textarea
+                name="observacoes_especificas"
+                id="observacoes_especificas"
+                value={formData.observacoes_especificas}
+                onChange={handleChange}
+                className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-20"
+                placeholder="Alergias, condições médicas, necessidades especiais..."
+              />
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ import {
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos';
 import { estrategiaService } from '../../services/strategy/estrategiaService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 
 interface TarefasKanbanProps {
@@ -43,7 +43,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [draggedTask, setDraggedTask] = useState<Tarefa | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const { usuario } = useAuth(); // Hook para pegar usuário logado
+  const { user } = useAuth(); // Hook para pegar usuário logado
   const navigate = useNavigate();
   // Função para abrir modal de criação
   const abrirModalNovaTarefa = () => {

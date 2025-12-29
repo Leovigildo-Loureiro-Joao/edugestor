@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiUser, FiDollarSign, FiCalendar, FiArrowLeft, FiCheckCircle, FiInfo } from 'react-icons/fi';
 import { Student } from '../../types/aluno.ts';
 import { useParams, useNavigate } from 'react-router-dom';
-import { studentsService } from '../../services/database/students.ts';
+import { alunosService } from '../../services/database/alunosService.ts';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { propinaService } from '../../services/database/propinas.ts';
 import { mesesUtils } from '../../utils/meses.ts';
@@ -72,7 +72,7 @@ useEffect(() => {
       
       try {
         setLoading(true);
-        const alunoData = await studentsService.getStudentById(alunoId);
+        const alunoData = await alunosService.getStudentById(alunoId);
         
         if (alunoData) {
           // Normalizar turmas se for array

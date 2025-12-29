@@ -1,4 +1,7 @@
-export interface Turma {
+import { Student } from "./aluno";
+import { BaseEntity } from "./base";
+
+export interface Turma extends BaseEntity{
   id: string;
   nome_turma: string;
   ano_lectivo: string;
@@ -6,21 +9,34 @@ export interface Turma {
   professor: string;
   capacidade_maxima: number;
   turno: 'manhã' | 'tarde' | 'noite';
-  cursos:{
-    nome:string
-  }
-  created_at: string;
+  estado: 'ativa' | 'inativa' | 'concluida';
+  descricao?: string;
+  vagas_disponiveis?: number;
+  curso_nome:string;
 }
 
+export interface TurmaCompleta extends Turma {
+  horarios?: HorarioAula[];
+  alunos?: (Student & {
+    media?: number;
+    presenca?: number;
+    ultimaAvaliacao?: number;
+  })[];
+}
 
- export interface TurmaFormData{
-    nome_turma: string,
-    ano_lectivo: Date,
-    curso: string,
-    professor: string,
-    capacidade_maxima: number,
-    turno: string
-  };
+export interface HorarioAula {
+  id: string;
+  dia_semana: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado';
+  hora_inicio: string;
+  hora_fim: string;
+  disciplina: string;
+  sala: string;
+  professor_responsavel: string;
+}
+
+export type TurmaFormData = Omit<Turma, 
+  'id' | 'created_at'|'cursos'
+>;
 
 export interface AlunoDesempenho {
   id: number;
@@ -32,12 +48,6 @@ export interface AlunoDesempenho {
   foto?: string;
 }
 
-export interface HorarioAula {
-  id: number;
-  dia: string;
-  horaInicio: string;
-  horaFim: string;
-  disciplina: string;
-  sala: string;
-  professor: string;
-}
+
+export type HorarioAulaForm = Omit<HorarioAula, 'id'>;
+ 

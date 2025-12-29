@@ -67,6 +67,15 @@ export const estrategiaService = {
     if (error) throw error;
     return data;
   },
+   async updateRotinaStatus(rotinaId: string, concluida: string) {
+    const { data, error } = await supabase
+      .from('rotinas')
+      .update({"status":concluida})
+      .eq('id', rotinaId);
+    
+    if (error) throw error;
+    return data;
+  },
   async getMetas(){
     const { data, error } = await supabase
       .from('metas')
@@ -93,5 +102,14 @@ export const estrategiaService = {
     
     if (error) throw error;
     return data || [];
+  },
+  async executarRotina(rotinaId: string) {
+    const { data, error } = await supabase
+      .from('rotinas')
+      .update({ status: 'executada' })
+      .eq('id', rotinaId);
+    
+    if (error) throw error;
+    return data;
   }
 };

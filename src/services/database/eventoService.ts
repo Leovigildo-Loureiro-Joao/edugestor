@@ -10,6 +10,14 @@ export const eventoService = {
     return data;
   },
 
+  async listarEventoPorId(eventoId:string): Promise<EventFormData> {
+    const { data, error} = await supabase.from('evento').select('*').eq('id', eventoId).single();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  },
+
   async criarEvento(eventoData:EventFormData): Promise<EventFormData> {
     const { data, error } = await supabase.from('evento').insert(eventoData).select();
     if (error) {

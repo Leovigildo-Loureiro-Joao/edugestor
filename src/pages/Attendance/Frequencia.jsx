@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiCalendar, FiFilter, FiCheckCircle, FiRefreshCw, FiX, FiChevronDown, FiChevronUp, FiUsers, FiBarChart2, FiClock, FiCheckSquare } from 'react-icons/fi';
 import { frequenciaService } from '../../services/database/frequenciaService.ts';
 import { aulaService } from '../../services/database/aulaService.ts';
-import { studentsService } from '../../services/database/students.ts';
+import { alunosService } from '../../services/database/alunosService.ts';
 import { turmaService } from '../../services/database/turmas.ts';
 import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas } from 'react-icons/fa6';
@@ -47,7 +47,7 @@ export const FrequenciaPage = () => {
       console.log('📚 Aulas recebidas:', aulasRecentes);
       
       // Buscar alunos
-      const alunosData = await studentsService.getStudents();
+      const alunosData = await alunosService.getAllStudents();
       console.log('👥 Alunos recebidos:', alunosData);
       setAlunos(alunosData);
 
@@ -226,7 +226,7 @@ export const FrequenciaPage = () => {
     try {
       const turmasData = await turmaService.getTurmas();
       console.log('🏫 Turmas carregadas:', turmasData);
-      setTurmas(turmasData);
+      setTurmas(turmasData?turmasData:[]);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }

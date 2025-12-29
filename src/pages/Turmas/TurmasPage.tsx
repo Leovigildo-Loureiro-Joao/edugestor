@@ -10,182 +10,231 @@ import {
   FiStar, 
   FiClock,
   FiBook,
-  FiMapPin,
-  FiUser,
+  FiBarChart2,
+  FiActivity,
+  FiTarget,
   FiPlus,
-  FiTrash2,
-  FiBarChart2
+  FiPlusCircle,
 } from 'react-icons/fi';
-import { FaCrown, FaMedal, FaAward, FaChalkboardTeacher } from 'react-icons/fa';
-import { AlunoDesempenho, HorarioAula } from '../../types/turma';
+import { 
+  FaCrown, 
+  FaMedal, 
+  FaAward as FaAwardSolid,
+  FaChalkboardTeacher,
+  FaMoneyBill
+} from 'react-icons/fa';
+import { 
+  RxPerson 
+} from 'react-icons/rx';
+import { turmaService } from '../../services/database/turmas';
+import { alunosService } from '../../services/database/alunosService';
+import { HorarioAula, HorarioAulaForm, Turma } from '../../types/turma';
+import { Student } from '../../types';
+import HorarioModal from '../../components/turmas/HorarioModal';
 
-// Definição dos cursos e suas disciplinas
+// Definição dos cursos e suas disciplinas - atualizado para corresponder ao StudentForm
 const CURSOS_DISCIPLINAS = {
-  "ALPHA": ["Português", "Matemática", "Estudo do Meio", "Expressão Artística", "Educação Física"],
-  "BETA": ["Matemática Avançada", "Física", "Química", "Biologia", "Geologia"],
-  "GAMA": ["Língua Portuguesa", "Literatura", "História", "Geografia", "Filosofia"],
-  "DELTA": ["Inglês", "Francês", "Espanhol", "Alemão", "Línguas Locais"],
-  "Reforço Matemática Avançada": ["Álgebra", "Geometria", "Aritmética", "Cálculo", "Estatística"],
-  "Reforço de Línguas": ["Gramática", "Leitura", "Escrita", "Conversação", "Interpretação"]
+  "Matemática": ["Álgebra", "Geometria", "Aritmética", "Cálculo", "Estatística"],
+  "Português": ["Gramática", "Leitura", "Escrita", "Interpretação", "Literatura"],
+  "Física": ["Mecânica", "Termodinâmica", "Óptica", "Eletromagnetismo"],
+  "Química": ["Química Geral", "Orgânica", "Inorgânica", "Físico-Química"],
+  "Biologia": ["Biologia Celular", "Genética", "Ecologia", "Anatomia"],
+  "História": ["História Geral", "História de Angola", "História Africana"],
+  "Geografia": ["Geografia Física", "Geografia Humana", "Geografia Econômica"],
+  "Inglês": ["Gramática", "Conversação", "Leitura", "Escrita"],
+  "Francês": ["Gramática", "Conversação", "Leitura", "Escrita"],
+  "Filosofia": ["Filosofia Antiga", "Filosofia Moderna", "Ética", "Lógica"],
+  "Educação Visual": ["Desenho", "Pintura", "Escultura", "História da Arte"],
+  "Educação Física": ["Esportes", "Ginástica", "Atletismo", "Saúde"]
 };
 
-interface TurmaDetails {
-  id: number;
-  nome: string;
-  professor: string;
-  curso: string;
-  ano: string;
-  vagas: number;
-  alunosInscritos: number;
-  descricao: string;
-  ativa: boolean;
+// Tipos atualizados para refletir o StudentForm
+interface AlunoDesempenho extends Student {
+  media: number;
+  presenca: number;
+  ultimaAvaliacao: number;
+}
+
+interface TurmaDetailsData extends Turma {
   alunos: AlunoDesempenho[];
   horarios: HorarioAula[];
+  vagas?: number;
 }
 
 const TurmaDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [turma, setTurma] = useState<TurmaDetails | null>(null);
+  const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'horarios' | 'alunos'>('overview');
-  const [novoHorario, setNovoHorario] = useState({
-    dia: 'segunda',
-    horaInicio: '08:00',
-    horaFim: '09:30',
-    disciplina: '',
-    sala: '',
-    professor: ''
-  });
+  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'>('overview');
+  const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
+  const [filtroTipoMatricula, setFiltroTipoMatricula] = useState<'todos' | 'regular' | 'reforco_personalizado'>('todos');
+  const [filtroGrupoAprendizado, setFiltroGrupoAprendizado] = useState<string>('todos');
+  const [filtroNivelConhecimento, setFiltroNivelConhecimento] = useState<string>('todos');
+  const [horarioEditando, setHorarioEditando] = useState<HorarioAula | null>(null);
+  const [isHorarioModalOpen, setIsHorarioModalOpen] = useState(false);
 
-  // Obter disciplinas disponíveis para o curso da turma
-  const disciplinasDisponiveis = turma ? 
-    CURSOS_DISCIPLINAS[turma.curso as keyof typeof CURSOS_DISCIPLINAS] || 
-    CURSOS_DISCIPLINAS.ALPHA : 
-    CURSOS_DISCIPLINAS.ALPHA;
+
+  // Grupos de aprendizado - alinhado com StudentForm
+  const gruposAprendizado = [
+    { value: 'gama', label: 'Gama - Aprendizado Rápido' },
+    { value: 'beta', label: 'Beta - Ritmo Moderado' },
+    { value: 'alfa', label: 'Alfa - Necessita mais tempo' }
+  ];
+
+  // Níveis de conhecimento - alinhado com StudentForm
+  const niveisConhecimento = [
+    { value: 'A', label: 'A - Excelente' },
+    { value: 'B', label: 'B - Bom' },
+    { value: 'C', label: 'C - Precisa melhorar' }
+  ];
+
+  const handleEditarHorario = (horario: HorarioAula) => {
+  setHorarioEditando(horario);
+  setIsHorarioModalOpen(true);
+};
+
+// Função para salvar horário
+const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): Promise<void> => {
+  try {
+    if (horario.id) {
+      // Atualizar horário existente
+      await turmaService.updateHorario(horario.id, horario);
+    } else {
+      // Criar novo horário
+      await turmaService.createHorario(
+        horario as HorarioAulaForm,
+        id || ''
+      );
+    }
+    
+    // Recarregar dados da turma
+    loadTurmaDetails();
+  } catch (error) {
+    console.error('Erro ao salvar horário:', error);
+    throw error;
+  }
+};
+// Função para excluir horário
+const handleExcluirHorario = async (horarioId: string) => {
+  try {
+    await turmaService.excluirHorario(horarioId);
+    loadTurmaDetails();
+  } catch (error) {
+    console.error('Erro ao excluir horário:', error);
+    throw error;
+  }
+};
+
 
   useEffect(() => {
     loadTurmaDetails();
   }, [id]);
 
+  useEffect(() => {
+    if (turma?.alunos) {
+      let filtered = turma.alunos;
+
+      // Filtrar por tipo de matrícula
+      if (filtroTipoMatricula !== 'todos') {
+        filtered = filtered.filter(aluno => aluno.tipo_matricula === filtroTipoMatricula);
+      }
+
+      // Filtrar por grupo de aprendizado
+      if (filtroGrupoAprendizado !== 'todos') {
+        filtered = filtered.filter(aluno => aluno.grupo_aprendizado === filtroGrupoAprendizado);
+      }
+
+      // Filtrar por nível de conhecimento
+      if (filtroNivelConhecimento !== 'todos') {
+        filtered = filtered.filter(aluno => aluno.nivel_conhecimento === filtroNivelConhecimento);
+      }
+
+      setAlunosFiltrados(filtered);
+    }
+  }, [turma, filtroTipoMatricula, filtroGrupoAprendizado, filtroNivelConhecimento]);
+
   const loadTurmaDetails = async () => {
     try {
       setLoading(true);
-      // TODO: Substituir pelo service real
+      // Carregar dados da turma
+      const turmaData = await turmaService.findBy(id||'');
       
-      // Mock data
-      setTimeout(() => {
-        setTurma({
-          id: Number(id),
-          nome: "10ª A - Matemática",
-          professor: "Arão Silva",
-          curso: "Reforço Matemática Avançada",
-          ano: "2024",
-          vagas: 25,
-          alunosInscritos: 18,
-          descricao: "Turma de reforço em matemática para alunos da 10ª classe, focada em álgebra e geometria.",
-          ativa: true,
-          alunos: [
-            {
-              id: 1,
-              nome: "Maria Santos",
-              numero_estudante: "2024001",
-              media: 18.5,
-              presenca: 95,
-              ultimaAvaliacao: 19,
-            },
-            {
-              id: 2,
-              nome: "João Pereira",
-              numero_estudante: "2024002",
-              media: 17.2,
-              presenca: 92,
-              ultimaAvaliacao: 18,
-            },
-            {
-              id: 3,
-              nome: "Ana Costa",
-              numero_estudante: "2024003",
-              media: 16.8,
-              presenca: 98,
-              ultimaAvaliacao: 17,
-            },
-            {
-              id: 4,
-              nome: "Carlos Lima",
-              numero_estudante: "2024004",
-              media: 15.5,
-              presenca: 85,
-              ultimaAvaliacao: 16,
-            }
-          ],
-          horarios: [
-            {
-              id: 1,
-              dia: 'segunda',
-              horaInicio: '14:00',
-              horaFim: '15:30',
-              disciplina: 'Álgebra',
-              sala: 'Sala 2',
-              professor: 'Arão Silva'
-            },
-            {
-              id: 2,
-              dia: 'quarta',
-              horaInicio: '14:00',
-              horaFim: '15:30',
-              disciplina: 'Geometria',
-              sala: 'Sala 2',
-              professor: 'Arão Silva'
-            },
-            {
-              id: 3,
-              dia: 'sexta',
-              horaInicio: '15:30',
-              horaFim: '17:00',
-              disciplina: 'Revisão Geral',
-              sala: 'Sala 2',
-              professor: 'Arão Silva'
-            }
-          ]
-        });
+      if (!turmaData) {
         setLoading(false);
-      }, 1000);
+        return;
+      }
+
+      // Carregar alunos desta turma
+      const alunosDaTurma = await alunosService.getAlunosPorTurma(turmaData.id);
+      const horario = await turmaService.getHoraios(turmaData.id);
+      // Transformar alunos com dados de desempenho simulados
+      const alunosComDesempenho: AlunoDesempenho[] = alunosDaTurma.map(aluno => ({
+        ...aluno,
+        media: Math.random() * 5 + 10, // 10-15
+        presenca: Math.floor(Math.random() * 20) + 80, // 80-100%
+        ultimaAvaliacao: Math.floor(Math.random() * 6) + 14 // 14-20
+      } as AlunoDesempenho));
+
+      // Dados completos da turma
+      const turmaCompleta: TurmaDetailsData = {
+        ...turmaData,
+        alunos: alunosComDesempenho,
+        horarios: horario,
+        professor: turmaData.cursos?.nome || 'Professor a definir',
+        vagas: 30 // Valor padrão
+      };
+
+      setTurma(turmaCompleta);
+      setAlunosFiltrados(alunosComDesempenho);
+      setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar turma:', error);
       setLoading(false);
     }
   };
 
-  const adicionarHorario = () => {
-    if (turma && novoHorario.disciplina && novoHorario.sala) {
-      const horario = {
-        id: Math.max(...turma.horarios.map(h => h.id)) + 1,
-        ...novoHorario
-      };
-      
-      setTurma(prev => prev ? {
-        ...prev,
-        horarios: [...prev.horarios, horario]
-      } : null);
-      
-      setNovoHorario({
-        dia: 'segunda',
-        horaInicio: '08:00',
-        horaFim: '09:30',
-        disciplina: '',
-        sala: '',
-        professor: turma?.professor || ''
-      });
+  const getTipoMatriculaLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'regular': return 'Turma Regular';
+      case 'reforco_personalizado': return 'Reforço Personalizado';
+      default: return tipo;
     }
   };
 
-  const removerHorario = (horarioId: number) => {
-    if (turma) {
-      setTurma(prev => prev ? {
-        ...prev,
-        horarios: prev.horarios.filter(h => h.id !== horarioId)
-      } : null);
+  const getGrupoAprendizadoLabel = (grupo: string) => {
+    const grupoObj = gruposAprendizado.find(g => g.value === grupo);
+    return grupoObj ? grupoObj.label.split(' - ')[0] : grupo;
+  };
+
+  const getNivelConhecimentoLabel = (nivel: string) => {
+    const nivelObj = niveisConhecimento.find(n => n.value === nivel);
+    return nivelObj ? nivelObj.label.split(' - ')[0] : nivel;
+  };
+
+  const getBadgeColor = (tipo: string) => {
+    switch (tipo) {
+      case 'regular': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'reforco_personalizado': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getBadgeColorGrupo = (grupo: string) => {
+    switch (grupo) {
+      case 'gama': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'beta': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'alfa': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getBadgeColorNivel = (nivel: string) => {
+    switch (nivel) {
+      case 'A': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300';
+      case 'B': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'C': return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
 
@@ -220,7 +269,10 @@ const TurmaDetails = () => {
     );
   }
 
-  const taxaOcupacao = (turma.alunosInscritos / turma.vagas) * 100;
+  const taxaOcupacao = turma.vagas ? (turma.alunos.length / turma.vagas) * 100 : 0;
+  const mediaGeral = turma.alunos.length > 0 
+    ? (turma.alunos.reduce((acc, aluno) => acc + aluno.media, 0) / turma.alunos.length).toFixed(1)
+    : '0.0';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -239,19 +291,30 @@ const TurmaDetails = () => {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {turma.nome}
+                  {turma.nome_turma}
                 </h1>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  turma.ativa 
+                  turma.estado === 'ativa' 
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                     : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                 }`}>
-                  {turma.ativa ? 'Ativa' : 'Inativa'}
+                  {turma.estado === 'ativa' ? 'Ativa' : 'Inativa'}
                 </span>
               </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                {turma.curso} • {turma.ano}
-              </p>
+              <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400">
+                <span className="flex items-center gap-1">
+                  <FiBook size={16} />
+                  {turma.cursos?.nome}
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiCalendar size={16} />
+                  {turma.ano_lectivo}
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiUsers size={16} />
+                  {turma.alunos.length} alunos
+                </span>
+              </div>
             </div>
             
             <Link
@@ -326,26 +389,39 @@ const TurmaDetails = () => {
                           <div className="flex items-center gap-2">
                             {index === 0 && <FaCrown className="text-yellow-500" />}
                             {index === 1 && <FaMedal className="text-gray-400" />}
-                            {index === 2 && <FaAward className="text-amber-600" />}
+                            {index === 2 && <FaAwardSolid className="text-amber-600" />}
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                               {index === 0 ? '1º Lugar' : index === 1 ? '2º Lugar' : '3º Lugar'}
                             </span>
                           </div>
                           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {aluno.media}
+                            {aluno.media.toFixed(1)}
                           </div>
                         </div>
                         
                         <div className="text-center">
                           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <FiUser className="text-blue-600 dark:text-blue-400" size={24} />
+                            <RxPerson className="text-blue-600 dark:text-blue-400" size={24} />
                           </div>
                           <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                            {aluno.nome}
+                            {aluno.nome_completo}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {aluno.numero_estudante}
                           </p>
+                          
+                          {/* Badges de informação */}
+                          <div className="flex flex-wrap justify-center gap-1 mt-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${getBadgeColor(aluno.tipo_matricula || 'regular')}`}>
+                              {getTipoMatriculaLabel(aluno.tipo_matricula || 'regular')}
+                            </span>
+                            {aluno.grupo_aprendizado && (
+                              <span className={`px-2 py-1 text-xs rounded-full ${getBadgeColorGrupo(aluno.grupo_aprendizado)}`}>
+                                {getGrupoAprendizadoLabel(aluno.grupo_aprendizado)}
+                              </span>
+                            )}
+                          </div>
+                          
                           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
                             <span>Presença: {aluno.presenca}%</span>
                             <span>Última: {aluno.ultimaAvaliacao}</span>
@@ -370,28 +446,52 @@ const TurmaDetails = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <FiUsers className="mx-auto text-blue-600 dark:text-blue-400 mb-2" size={24} />
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{turma.alunosInscritos}</div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{turma.alunos.length}</div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">Alunos</div>
                     </div>
                     
                     <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                       <FiStar className="mx-auto text-green-600 dark:text-green-400 mb-2" size={24} />
                       <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {(turma.alunos.reduce((acc, aluno) => acc + aluno.media, 0) / turma.alunos.length).toFixed(1)}
+                        {mediaGeral}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">Média Geral</div>
                     </div>
                     
                     <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <FiCalendar className="mx-auto text-purple-600 dark:text-purple-400 mb-2" size={24} />
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{turma.horarios.length}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Aulas/Semana</div>
+                      <FaMoneyBill className="mx-auto text-purple-600 dark:text-purple-400 mb-2" size={24} />
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {turma.alunos.filter(a => a.tipo_matricula === 'regular').length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Matrículas Regulares</div>
                     </div>
                     
                     <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                      <FiBarChart2 className="mx-auto text-amber-600 dark:text-amber-400 mb-2" size={24} />
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{taxaOcupacao.toFixed(1)}%</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Ocupação</div>
+                      <FiTarget className="mx-auto text-amber-600 dark:amber-400 mb-2" size={24} />
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {turma.alunos.filter(a => a.tipo_matricula === 'reforco_personalizado').length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Reforços</div>
+                    </div>
+                  </div>
+
+                  {/* Distribuição por Grupo de Aprendizado */}
+                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Distribuição por Grupo de Aprendizado
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {gruposAprendizado.map(grupo => {
+                        const count = turma.alunos.filter(a => a.grupo_aprendizado === grupo.value).length;
+                        return (
+                          <div key={grupo.value} className="text-center">
+                            <div className={`px-3 py-2 rounded-lg ${getBadgeColorGrupo(grupo.value)}`}>
+                              <div className="text-lg font-bold">{count}</div>
+                              <div className="text-xs">{grupo.label.split(' - ')[0]}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </motion.div>
@@ -405,9 +505,53 @@ const TurmaDetails = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
               >
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Lista de Alunos ({turma.alunos.length})
-                </h2>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Lista de Alunos ({alunosFiltrados.length}/{turma.alunos.length})
+                  </h2>
+                  
+                  {/* Filtros */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* Filtro Tipo Matrícula */}
+                    <select
+                      value={filtroTipoMatricula}
+                      onChange={(e) => setFiltroTipoMatricula(e.target.value as any)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                    >
+                      <option value="todos">Todos os tipos</option>
+                      <option value="regular">Turma Regular</option>
+                      <option value="reforco_personalizado">Reforço Personalizado</option>
+                    </select>
+
+                    {/* Filtro Grupo Aprendizado */}
+                    <select
+                      value={filtroGrupoAprendizado}
+                      onChange={(e) => setFiltroGrupoAprendizado(e.target.value)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                    >
+                      <option value="todos">Todos os grupos</option>
+                      {gruposAprendizado.map(grupo => (
+                        <option key={grupo.value} value={grupo.value}>
+                          {grupo.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Filtro Nível Conhecimento */}
+                    <select
+                      value={filtroNivelConhecimento}
+                      onChange={(e) => setFiltroNivelConhecimento(e.target.value)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                    >
+                      <option value="todos">Todos os níveis</option>
+                      {niveisConhecimento.map(nivel => (
+                        <option key={nivel.value} value={nivel.value}>
+                          {nivel.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -417,7 +561,13 @@ const TurmaDetails = () => {
                           Aluno
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Nº Estudante
+                          Tipo Matrícula
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Grupo
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Nível
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Média
@@ -431,20 +581,41 @@ const TurmaDetails = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {turma.alunos.map((aluno, index) => (
+                      {alunosFiltrados.map((aluno) => (
                         <tr key={aluno.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                <FiUser className="text-blue-600 dark:text-blue-400" size={14} />
+                                <RxPerson className="text-blue-600 dark:text-blue-400" size={14} />
                               </div>
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {aluno.nome}
-                              </span>
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {aluno.nome_completo}
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">
+                                  {aluno.numero_estudante}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {aluno.numero_estudante}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColor(aluno.tipo_matricula || 'regular')}`}>
+                              {getTipoMatriculaLabel(aluno.tipo_matricula || 'regular')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {aluno.grupo_aprendizado && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColorGrupo(aluno.grupo_aprendizado)}`}>
+                                {getGrupoAprendizadoLabel(aluno.grupo_aprendizado)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {aluno.nivel_conhecimento && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColorNivel(aluno.nivel_conhecimento)}`}>
+                                {getNivelConhecimentoLabel(aluno.nivel_conhecimento)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -454,7 +625,7 @@ const TurmaDetails = () => {
                                 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
                                 : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                             }`}>
-                              {aluno.media}
+                              {aluno.media.toFixed(1)}
                             </span>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -467,6 +638,12 @@ const TurmaDetails = () => {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {alunosFiltrados.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      Nenhum aluno encontrado com os filtros aplicados.
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -497,37 +674,46 @@ const TurmaDetails = () => {
                   <FiBook className="text-gray-400" size={20} />
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Curso</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{turma.curso}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{turma.cursos?.nome}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <FiUsers className="text-gray-400" size={20} />
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Vagas</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Capacidade</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {turma.alunosInscritos}/{turma.vagas}
+                      {turma.alunos.length}/{turma.vagas}
                     </p>
                   </div>
                 </div>
 
-                {/* Disciplinas do Curso */}
+                <div className="flex items-center gap-3">
+                  <FiActivity className="text-gray-400" size={20} />
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Estado</p>
+                    <p className="font-medium text-gray-900 dark:text-white capitalize">
+                      {turma.estado}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Distribuição por Tipo de Matrícula */}
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Disciplinas do Curso</p>
-                  <div className="flex flex-wrap gap-1">
-                    {disciplinasDisponiveis.slice(0, 4).map((disciplina) => (
-                      <span 
-                        key={disciplina}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 text-xs rounded"
-                      >
-                        {disciplina}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Tipos de Matrícula</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Regular:</span>
+                      <span className="font-medium">
+                        {turma.alunos.filter(a => a.tipo_matricula === 'regular').length}
                       </span>
-                    ))}
-                    {disciplinasDisponiveis.length > 4 && (
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                        +{disciplinasDisponiveis.length - 4}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Reforço:</span>
+                      <span className="font-medium">
+                        {turma.alunos.filter(a => a.tipo_matricula === 'reforco_personalizado').length}
                       </span>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -547,12 +733,35 @@ const TurmaDetails = () => {
               transition={{ delay: 0.3 }}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Próximas Aulas
+             <div className="flex items-center justify-between">
+                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Horários da Turma
               </h3>
-              
+            <button
+            onClick={() => {
+              setHorarioEditando(null);
+              setIsHorarioModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <FiPlus size={18} />
+     
+          </button>
+             </div>
+              <HorarioModal
+                isOpen={isHorarioModalOpen}
+                onClose={() => {
+                  setIsHorarioModalOpen(false);
+                  setHorarioEditando(null);
+                }}
+                onSubmit={handleSalvarHorario}
+                onDelete={handleExcluirHorario}
+                horarioEdit={horarioEditando}
+                turmaId={turma.id}
+                title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
+              />
               <div className="space-y-3">
-                {turma.horarios.slice(0, 3).map((horario, index) => (
+                {turma.horarios.map((horario, index) => (
                   <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <FiClock className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -560,7 +769,10 @@ const TurmaDetails = () => {
                         {horario.disciplina}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-                        {horario.dia} • {horario.horaInicio}
+                        {horario.dia_semana} • {horario.hora_inicio} - {horario.hora_fim}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {horario.sala} • {horario.professor_responsavel}
                       </p>
                     </div>
                   </div>
@@ -568,7 +780,7 @@ const TurmaDetails = () => {
                 
                 {turma.horarios.length === 0 && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                    Nenhuma aula agendada
+                    Nenhum horário definido
                   </p>
                 )}
               </div>

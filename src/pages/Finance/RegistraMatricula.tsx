@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiUser, FiDollarSign, FiCheckCircle, FiCalendar, FiCreditCard } from 'react-icons/fi';
-import { studentsService } from '../../services/database/students.ts';
+import { alunosService } from '../../services/database/alunosService.ts';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { Student } from '../../types/aluno.ts';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
@@ -49,7 +49,7 @@ export const CompletarMatricula = () => {
             setLoading(true);
             
             const [alunoData, configData] = await Promise.all([
-                studentsService.getStudentById(alunoId!),
+                alunosService.getStudentById(alunoId!),
                 instituicaoService.getConfig()
             ]);
             
@@ -121,7 +121,7 @@ const calcularTotalPropina = (): number => {
 
                 if (!resultadoCartao.sucesso) {
                     // Atualizar status do cartão no aluno
-                    await studentsService.atualizarCartaoPago(aluno.id,false);
+                    await alunosService.atualizarCartaoPago(aluno.id,false);
                     transacoes.push('Cartão');
                 }
             }
@@ -149,7 +149,7 @@ const calcularTotalPropina = (): number => {
             }
 
             // 4. Atualizar status da matrícula do aluno
-            await studentsService.atualizarStatusMatricula(aluno.id, true);
+            await alunosService.atualizarStatusMatricula(aluno.id, true);
             
             setSucesso(true);
             
@@ -173,7 +173,7 @@ const calcularTotalPropina = (): number => {
     const handlePular = () => {
         // Apenas marca a matrícula como ativa sem pagamentos
         if (aluno && window.confirm('Deseja ativar a matrícula sem registrar pagamentos?')) {
-            studentsService.atualizarStatusMatricula(aluno.id, true)
+            alunosService.atualizarStatusMatricula(aluno.id, true)
                 .then(() => {
                     navigate('/alunos');
                 })

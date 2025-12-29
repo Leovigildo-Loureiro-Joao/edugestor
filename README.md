@@ -47,10 +47,25 @@ src/
 
 ## 📋 Funcionalidades
 
-- [x] Dashboard com estatísticas
-- [ ] Gestão de Alunos
-- [ ] Controle Financeiro (Propinas)
-- [ ] Registro de Frequência
+- [-] Dashboard com estatísticas
+    - [x] Stats para dashboard
+    - [ ] Mostar actividades para hoje
+- [x] Gestão de Alunos
+    - [x] Add Aluno 
+    - [x] Edita Aluno
+    - [x] Elimina Aluno
+    - [x] Registra matricula e cartão
+- [-] Controle Financeiro (Propinas)
+    - [ ] Testes 
+- [x] Registro de Frequência
+- [-] Gestão de turmas
+    - [x] Add/Edit/Del Curso
+    - [x] Add turma
+    - [x] Edita Turma 
+    - [x] Elimina Turma
+    - [x] Add horario
+    - [x] Ja tem stats cards para ux
+    - [ ] Encerrar Turma
 - [ ] Lançamento de Notas
 - [ ] Relatórios Automáticos
 - [ ] Backup em Cloud

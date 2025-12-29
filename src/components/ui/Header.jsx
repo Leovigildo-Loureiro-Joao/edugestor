@@ -1,22 +1,17 @@
 // src/components/layout/Header.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiBell, 
   FiSearch, 
-  FiUser, 
-  FiLogOut, 
-  FiSettings,
   FiMoon,
   FiSun,
-  FiSave,
   FiWifi,
   FiWifiOff
 } from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 
-const Header = ({setIsDarkMode,isDarkMode}) => {
-
+const Header = ({ setIsDarkMode, isDarkMode }) => {
   const notifications = [
     {
       id: 1,
@@ -44,47 +39,44 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
     }
   ];
 
-
-  const { logout, user} = useAuth();
+  const { logout, user } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-
   const unreadNotifications = notifications.filter(n => !n.read).length;
 
   const getStatusColor = () => {
     switch (saveStatus) {
       case 'saving':
-        return 'text-warning-600 bg-warning-50';
+        return 'text-warning-600 bg-warning-50 dark:bg-warning-900/20 dark:text-warning-400';
       case 'saved':
-        return 'text-success-600 bg-success-50';
+        return 'text-success-600 bg-success-50 dark:bg-success-900/20 dark:text-success-400';
       case 'error':
-        return 'text-danger-600 bg-danger-50';
+        return 'text-danger-600 bg-danger-50 dark:bg-danger-900/20 dark:text-danger-400';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-400';
     }
   };
 
+  // Monitorar conexão
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-  
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-  const getStatusIcon = () => {
-    switch (saveStatus) {
-      case 'saving':
-        return <FiSave className="animate-spin" />;
-      case 'saved':
-        return <FiSave />;
-      case 'error':
-        return <FiSave />;
-      default:
-        return <FiSave />;
-    }
-  };
+    // Limpar intervalos e listeners
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
-   const getStatusText = () => {
+  const getStatusText = useCallback(() => {
     if (!isOnline) return 'Modo Offline';
     
     switch (saveStatus) {
@@ -97,7 +89,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
       default:
         return 'Pronto';
     }
-  };
+  }, [isOnline, saveStatus]);
 
   // Monitorar mudança de tema do sistema
   useEffect(() => {
@@ -111,16 +103,17 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  }, [setIsDarkMode]);
 
-  // Resto do código permanece igual...
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    localStorage.setItem('darkMode', newMode);
   };
 
-  const handleLogout=()=>{
-    logout()
-  }
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <header className="bg-white dark:bg-gray-800 px-6 py-4 shadow-sm relative z-10 border-b border-gray-200 dark:border-gray-700">
@@ -135,7 +128,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
               placeholder="Buscar alunos, turmas, relatórios..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400  text-gray-900 dark:text-white placeholder-gray-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
         </div>
@@ -146,7 +139,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
           {/* Status de Save/Conexão */}
           <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
             isOnline 
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
+              ? getStatusColor()
               : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
           }`}>
             {isOnline ? (
@@ -162,6 +155,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
             onClick={toggleDarkMode}
             className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}
+            aria-label={isDarkMode ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
           >
             {isDarkMode ? <FiSun size={18} /> : <FiMoon size={18} />}
           </button>
@@ -171,6 +165,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
+              aria-label={`Notificações (${unreadNotifications} não lidas)`}
             >
               <FiBell size={18} />
               {unreadNotifications > 0 && (
@@ -230,12 +225,7 @@ const Header = ({setIsDarkMode,isDarkMode}) => {
             </AnimatePresence>
           </div>
 
-          {/* User Menu */}
-          <div className="relative">
-
-
-           
-          </div>
+         
         </div>
       </div>
     </header>

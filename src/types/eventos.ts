@@ -9,7 +9,10 @@ export interface EventFormData {
   participants: string[];
   duration: string;
   importance: 'low' | 'medium' | 'high';
-  // Removidos: teacher, subject
+  meta_id?: string; 
+  meta_titulo?: string;
+  objetivo_evento?: string;
+  tarefas_relacionadas?: string[]; 
 }
 
 
@@ -53,13 +56,13 @@ export interface Meta {
   responsaveis_secundarios?: string[];
   
   // Indicadores
-  kpis: Array<{
+  kpis?: Array<{
     nome: string;
     valor_atual: number;
     valor_meta: number;
     unidade: string;
     frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral';
-  }>;
+  }>| undefined;
   
   // Recursos
   orcamento_previsto?: number;

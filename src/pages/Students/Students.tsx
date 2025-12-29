@@ -1,15 +1,14 @@
-// src/pages/Students/Students.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiPlus, FiEdit, FiTrash2, FiUser, FiSearch } from 'react-icons/fi';
-import { studentsService } from '../../services/database';
-import { Select } from '../../components/ui/Select';
+import { alunosService } from '../../services/database/alunosService'; // ← Import correto
 import { FaBookAtlas, FaGraduationCap, FaPeopleGroup } from 'react-icons/fa6';
 import { RxPerson } from 'react-icons/rx';
 import { StatCard } from '../../components/students/StatCard';
 import { Student } from '../../types';
 import { SelectTyped } from '../../components/students/StudentForm';
+import { useSyncAlunos } from '../../hooks/useSyncAlunos'; // ← Hook corrigido
 
 
 const Students = () => {
@@ -20,56 +19,94 @@ const Students = () => {
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
   const nav = useNavigate();
 
+  // Hook de sincronização
+  const { sync } = useSyncAlunos();
+
   const abrirAluno = (alunoId: string) => {
     console.log('Abrir aluno com ID:', alunoId);
     nav(`/alunos/${alunoId}`);
   };
 
+  // Extrair professores e turmas únicos
   const { professores, turmas } = useMemo(() => {
-    const profs = [...new Set(students.map(s => s.turmas?.professor).filter(Boolean))];
-    const turms = [...new Set(students.map(s => s.turmas?.nome_turma).filter(Boolean))];
+    // Extrai valores únicos, lidando com undefined
+    const profsSet = new Set<string>();
+    const turmsSet = new Set<string>();
+    
+    students.forEach(student => {
+      if (student.professor) {
+        profsSet.add(student.professor);
+      }
+      if (student.turma_nome) {
+        turmsSet.add(student.turma_nome);
+      }
+    });
     
     return {
-      professores: ['Todos Professores', ...profs],
-      turmas: ['Todas Turmas', ...turms]
+      professores: ['Todos Professores', ...Array.from(profsSet)],
+      turmas: ['Todas Turmas', ...Array.from(turmsSet)]
     };
   }, [students]);
 
   useEffect(() => {
-    loadStudents();
+    Reload();
   }, []);
 
-  const loadStudents = async () => {
-    try {
-      setLoading(true);
-      const studentsData = await studentsService.getStudents();
-      setStudents(studentsData);
-    } catch (error) {
-      console.error('Erro ao carregar alunos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  function Reload(){
 
-  const estatisticas = useMemo(() => {
+    const loadStudents = async () => {
+      try {
+        setLoading(true);
+        console.log('🔄 Carregando alunos...');
+        
+        const studentsData = await alunosService.getAllStudents();
+        console.log(`✅ ${studentsData.length} alunos carregados`);
+        setStudents(studentsData);
+      } catch (error) {
+        console.error('❌ Erro ao carregar alunos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+      loadStudents();
+  }
+
+
+  
+
+
+  interface Estatisticas {
+    total: number;
+    ativos: number;
+    inativos: number;
+    transferidos: number;
+    desistentes: number;
+    cartaoPago: number;
+    percentualCartao: number;
+  }
+
+
+  // Calcular estatísticas
+  const estatisticas: Estatisticas = useMemo(() => {
     const alunosFiltrados = students.filter(student => {
-      const matchesSearch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (student.numero_estudante+"")?.includes(searchTerm);
+      const nomeMatch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const numeroMatch = student.numero_estudante?.toString().includes(searchTerm) || false;
+      const matchesSearch = nomeMatch || numeroMatch;
       
       const matchesProfessor = filtroProfessor === 'Todos Professores' || 
-                             student.turmas?.professor === filtroProfessor;
+                             student.professor === filtroProfessor;
       
       const matchesTurma = filtroTurma === 'Todas Turmas' || 
-                          student.turmas?.nome_turma === filtroTurma;
+                          student.turma_nome === filtroTurma;
 
       return matchesSearch && matchesProfessor && matchesTurma;
     });
 
     const total = alunosFiltrados.length;
     const ativos = alunosFiltrados.filter(s => s.estado === 'ativo').length;
-    const inativos = alunosFiltrados.filter(s => s.estado !== 'ativo').length;
     const transferidos = alunosFiltrados.filter(s => s.estado === 'transferido').length;
     const desistentes = alunosFiltrados.filter(s => s.estado === 'desistente').length;
+    const inativos = transferidos + desistentes;
     const cartaoPago = alunosFiltrados.filter(s => s.cartao_pago).length;
 
     return {
@@ -83,21 +120,51 @@ const Students = () => {
     };
   }, [students, searchTerm, filtroProfessor, filtroTurma]);
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.numero_estudante+"")?.includes(searchTerm);
-    
-    const matchesProfessor = filtroProfessor === 'Todos Professores' || 
-                           student.turmas?.professor === filtroProfessor;
-    
-    const matchesTurma = filtroTurma === 'Todas Turmas' || 
-                        student.turmas?.nome_turma === filtroTurma;
+  // Filtrar alunos para a tabela
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      const nomeMatch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const numeroMatch = student.numero_estudante?.toString().includes(searchTerm) || false;
+      const matchesSearch = nomeMatch || numeroMatch;
+      
+      const matchesProfessor = filtroProfessor === 'Todos Professores' || 
+                             student.professor === filtroProfessor;
+      
+      const matchesTurma = filtroTurma === 'Todas Turmas' || 
+                          student.turma_nome=== filtroTurma;
 
-    return matchesSearch && matchesProfessor && matchesTurma;
-  });
+      return matchesSearch && matchesProfessor && matchesTurma;
+    });
+  }, [students, searchTerm, filtroProfessor, filtroTurma]);
+
+  // Função para deletar aluno com confirmação
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (window.confirm(`Tem certeza que deseja deletar o aluno "${studentName}"?`)) {
+      try {
+        await alunosService.deleteStudent(studentId);
+        setStudents(prev => prev.filter(s => s.id !== studentId));
+        console.log(`✅ Aluno ${studentName} deletado`);
+      } catch (error) {
+        console.error('❌ Erro ao deletar aluno:', error);
+        alert('Erro ao deletar aluno. Verifique o console.');
+      }
+    }
+  };
+
+  // Se estiver carregando
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Carregando alunos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-5">
       {/* Cabeçalho com Busca Integrada */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -264,8 +331,8 @@ const Students = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Professor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                  Número de Estudante
+                <th className="px-6 py-3 text-nowrap text-left text-xs font-medium text-white uppercase tracking-wider">
+                  Nº Estudante
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Turma
@@ -306,13 +373,13 @@ const Students = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {student.turmas?.professor || 'N/A'}
+                    {student.professor || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {student.numero_estudante}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {student.turmas?.nome_turma || 'Sem turma'}
+                    {student.turma_nome || 'Sem turma'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -334,7 +401,7 @@ const Students = () => {
                     </Link>
                     <button
                       onClick={() => {
-                        studentsService.deleteStudent(student.id);
+                        alunosService.deleteStudent(student.id);
                         setStudents(prev => prev.filter(s => s.id !== student.id));
 
                       }}
@@ -353,6 +420,8 @@ const Students = () => {
           <div className="text-center py-12">
             <FiUser className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum aluno encontrado</h3>
+             <button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium "
+              onClick={Reload}>Reload pagina</button>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm ? 'Tente ajustar os termos da busca.' : 'Comece adicionando um novo aluno.'}
             </p>

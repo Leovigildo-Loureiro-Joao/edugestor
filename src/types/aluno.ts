@@ -1,36 +1,46 @@
 import strict from "assert/strict";
 import { Propina } from "./propina";
+import { BaseEntity } from "./base";
 
-// types/student.ts
-export interface Student {
-  id: string;
+
+export interface Student extends BaseEntity {
   nome_completo: string;
   data_nascimento: string;
   nome_pai: string;
   nome_mae: string;
   contacto_principal: string;
+  contacto_secundario?: string;
   email?: string;
   endereco: string;
-  pagamento_em_dia:boolean,
-  turma_id: string;
-  turmas?: {
-    nome_turma: string;
-    professor: string;
-  }[];
-  data_matricula: string;
-  estado: 'ativo' | 'transferido' | 'desistente';
-  created_at: string;
-  ano_lectivo: string;
-  updated_at: string;
-  numero_estudante: number;
-  meses_em_aberto: string[];
-  propina: Propina[];
+
   sexo: 'M' | 'F';
+  numero_estudante: number;
+  ano_lectivo: string;
   curso: string;
   classe_escolar: string;
-  contacto_secundario?: string;
-  ultima_verificacao_pagamento: string;
+
+  turma_id: string;
+  estado: 'ativo' | 'transferido' | 'desistente';
+
+  tipo_matricula: 'regular' | 'reforco_personalizado';
+  modalidade_atendimento: 'individual' | 'grupo' | 'ambos';
+  frequencia_semanal: number;
+  disciplinas_reforco: string[];
+
+  nivel_conhecimento: 'A' | 'B' | 'C';
+  grupo_aprendizado: 'gama' | 'beta' | 'alfa';
+  objetivos_academicos: string;
+
+  pagamento_em_dia: boolean;
   cartao_pago: boolean;
+  meses_em_aberto?: string[];
+  ultima_verificacao_pagamento?: string;
+
+  propina: number;
+
+  data_matricula: string;
+  turma_nome?:string;
+  professor?:string;
 }
 
 

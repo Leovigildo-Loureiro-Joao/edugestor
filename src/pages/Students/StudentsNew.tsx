@@ -1,6 +1,6 @@
 import { StudentForm } from "../../components/students/StudentForm";
 import { useNavigate } from 'react-router-dom';
-import { studentsService } from "../../services/database/students.ts";
+import { alunosService } from "../../services/database/alunosService.ts";
 import { useState } from 'react';
 import { ModalMatricula } from '../../components/finance/ModalMatricula.tsx';
 
@@ -13,7 +13,7 @@ export const StudentNew = () => {
         try {
             setLoading(true);
             // Cria o aluno primeiro
-            const alunoCriado = await studentsService.createStudent(formData);
+            const alunoCriado = await alunosService.saveStudent(formData);
             
             if (alunoCriado) {
                 setNovoAlunoId(alunoCriado);

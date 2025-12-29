@@ -1,7 +1,7 @@
 // components/financeiro/ModalMatricula.tsx
 import { useState, useEffect } from 'react';
 import { FiX, FiUser, FiDollarSign, FiCheckCircle, FiCalendar, FiCreditCard } from 'react-icons/fi';
-import { studentsService } from '../../services/database/students.ts';
+import { alunosService } from '../../services/database/alunosService.ts';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { Student } from '../../types/aluno.ts';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
@@ -39,7 +39,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
             
             // Carregar aluno e configurações em paralelo
             const [alunoData, configData] = await Promise.all([
-                studentsService.getStudentById(alunoId),
+                alunosService.getStudentById(alunoId),
                 instituicaoService.getConfig()
             ]);
             
@@ -107,7 +107,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
 
                 if (resultadoCartao.sucesso) {
                     // Atualizar status do cartão no aluno
-                    await studentsService.updateStudent(aluno.id, {
+                    await alunosService.updateStudent(aluno.id, {
                         ...aluno,
                         cartao_pago: true
                     });
@@ -133,7 +133,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
             }
 
             // 4. Atualizar status da matrícula do aluno
-            await studentsService.atualizarStatusMatricula(aluno.id, true);
+            await alunosService.atualizarStatusMatricula(aluno.id, true);
             
             setSucesso(true);
             

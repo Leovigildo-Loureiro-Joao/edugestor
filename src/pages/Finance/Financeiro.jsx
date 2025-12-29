@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiDollarSign, FiTrendingUp, FiTrendingDown, FiUsers, FiCreditCard, FiCalendar, FiArrowLeft, FiArrowRight, FiBarChart2, FiPieChart } from 'react-icons/fi';
 import { transacaoService } from '../../services/database/transacaoService.ts';
-import { studentsService } from '../../services/database/students.ts';
+import { alunosService } from '../../services/database/alunosService.ts';
 import { useNavigate } from 'react-router-dom';
 import { CustomPieChart } from '../../components/finance/PieChartDespesa.tsx';
 import GraficoBarrasDuplas from '../../components/finance/BarraDupla.jsx';
@@ -110,7 +110,7 @@ export const FinanceiroPage = () => {
       setLoading(true);
       
       const pagamentos = await transacaoService.getPagamentosPorAno(anoSelecionado);
-      const alunos = await studentsService.getStudents();
+      const alunos = await alunosService.getAllStudents();
       const despesas = await transacaoService.getDespesasPorAno(anoSelecionado);
 
       const totalRecebido = pagamentos.reduce((sum, p) => sum + p.valor, 0);

@@ -1,12 +1,12 @@
 // src/components/auth/Login.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import logo from '../../assets/logo.png';
 import bg from '../../assets/funcionario-que-trabalha-num-ambiente-de-comercializacao.jpg';
-import { FiMail, FiLock, FiUser, FiPhone } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,14 +14,16 @@ const Login = () => {
     email: '',
     password: '',
     displayName: '',
-    phone: ''
+    confirmPassword: ''
   });
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [formError, setFormError] = useState('');
   
-  const { user, login, register, loginWithGoogle, loginWithPhone, loading, error, clearError } = useAuth();
+  const { user, login, register, loginWithGoogle, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Frases para a máquina de escrever
   const phrases = [
@@ -61,40 +63,89 @@ const Login = () => {
     return () => clearTimeout(timeout);
   }, [currentText, currentIndex, isDeleting, phrases]);
 
+  // Verificar se há erro na query string (do callback)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const errorParam = searchParams.get('error');
+    
+    if (errorParam) {
+      // Decodificar a mensagem de erro
+      const errorMessage = decodeURIComponent(errorParam);
+      if (errorMessage === 'auth_failed') {
+        setFormError('Falha na autenticação. Tente novamente.');
+      } else {
+        setFormError(errorMessage);
+      }
+      
+      // Limpar a query string
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
+
+  const validateForm = () => {
+    setFormError('');
+    
+    if (!isLogin) {
+      // Validação para registro
+      if (!formData.displayName.trim()) {
+        setFormError('Por favor, informe seu nome completo');
+        return false;
+      }
+      
+      if (formData.password.length < 6) {
+        setFormError('A senha deve ter pelo menos 6 caracteres');
+        return false;
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        setFormError('As senhas não coincidem');
+        return false;
+      }
+    }
+    
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setFormError('Por favor, informe um email válido');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearError();
+    setFormError('');
+    
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       if (isLogin) {
         await login(formData.email, formData.password);
       } else {
         await register(formData.email, formData.password, formData.displayName);
+        // Após registro bem-sucedido, redirecionar para página de boas-vindas
+        navigate('/welcome');
       }
     } catch (error) {
       console.error('Erro de autenticação:', error);
+      // O erro já é tratado no AuthContext
     }
   };
 
   const handleGoogleLogin = async () => {
     clearError();
+    setFormError('');
+    
     try {
       await loginWithGoogle();
+      // O redirecionamento é feito pelo próprio Supabase
     } catch (error) {
       console.error('Erro no login com Google:', error);
-    }
-  };
-
-  const handlePhoneLogin = async () => {
-    clearError();
-    if (formData.phone) {
-      try {
-        await loginWithPhone(formData.phone);
-      } catch (error) {
-        console.error('Erro no login com telefone:', error);
-      }
-    } else {
-      setError('Por favor, insira seu número de telefone');
+      setFormError('Erro ao tentar login com Google. Tente novamente.');
     }
   };
 
@@ -104,6 +155,11 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Limpar erros quando o usuário começa a digitar
+    if (formError) {
+      setFormError('');
+    }
   };
 
   useEffect(() => {
@@ -140,12 +196,27 @@ const Login = () => {
                 
                 {/* Máquina de escrever */}
                 <div className="h-16 lg:h-20 flex items-center justify-center">
-                  <p className="text-xl lg:text-2xl font-medium text-primary-200">
+                  <p className="text-xl lg:text-2xl font-medium text-primary-300">
                     {currentText}
                     <span className="ml-1 animate-pulse">|</span>
                   </p>
                 </div>
 
+                {/* Dicas de login para teste */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1 }}
+                  className="mt-8 bg-black/40 backdrop-blur-sm rounded-lg p-4 max-w-md"
+                >
+                  <h3 className="text-sm font-semibold text-primary-200 mb-2">
+                    💡 Para testes:
+                  </h3>
+                  <div className="text-left text-sm space-y-1">
+                    <p><strong>Admin:</strong> admin@escola.com / Admin123!</p>
+                    <p><strong>Como se tornar admin?</strong> Acesse /setup/promote-admin</p>
+                  </div>
+                </motion.div>
               </motion.div>
             </div>
           </div>
@@ -167,17 +238,22 @@ const Login = () => {
             </div>
           </div>
 
-          {error && (
+          {/* Exibir erros */}
+          {(error || formError) && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={`p-4 rounded-lg mb-4 text-sm ${
+                error?.includes('✅') 
+                  ? 'bg-green-50 border border-green-200 text-green-700'
+                  : 'bg-red-50 border border-red-200 text-red-700'
+              }`}
             >
-              {error}
+              {error || formError}
             </motion.div>
           )}
 
-          {/* Botões de Login Social */}
+          {/* Botão de Login Social */}
           <div className="space-y-3 mb-6">
             <button
               onClick={handleGoogleLogin}
@@ -185,32 +261,14 @@ const Login = () => {
               className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
             >
               <FcGoogle className="text-xl" />
-              Continuar com Google
+              {loading ? 'Processando...' : 'Continuar com Google'}
             </button>
 
-            {/* Opção de Telefone (apenas para login) */}
-            {isLogin && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                      placeholder="+244 9XX XXX XXX"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handlePhoneLogin}
-                  disabled={loading || !formData.phone}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm lg:text-base"
-                >
-                  Enviar SMS
-                </button>
+            {/* Mensagem sobre primeiro acesso */}
+            {!isLogin && (
+              <div className="text-center text-sm text-gray-600">
+                <p>Após o registro, você terá acesso como usuário básico.</p>
+                <p>Para acesso administrativo, contate um administrador existente.</p>
               </div>
             )}
           </div>
@@ -230,7 +288,7 @@ const Login = () => {
             {!isLogin && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome Completo
+                  Nome Completo *
                 </label>
                 <div className="relative">
                   <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -239,7 +297,7 @@ const Login = () => {
                     name="displayName"
                     value={formData.displayName}
                     onChange={handleInputChange}
-                    required={!isLogin}
+                    required
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                     placeholder="Seu nome completo"
                   />
@@ -249,7 +307,7 @@ const Login = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Email *
               </label>
               <div className="relative">
                 <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -267,7 +325,7 @@ const Login = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Senha
+                Senha *
               </label>
               <div className="relative">
                 <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -278,18 +336,50 @@ const Login = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                  placeholder="Sua senha"
+                  placeholder="Mínimo 6 caracteres"
                   minLength={6}
                 />
               </div>
             </div>
+
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirmar Senha *
+                </label>
+                <div className="relative">
+                  <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                    placeholder="Confirme sua senha"
+                  />
+                </div>
+              </div>
+            )}
+
+            {isLogin && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
             >
-              {loading ? 'Carregando...' : (isLogin ? 'Entrar com Email' : 'Criar Conta')}
+              {loading ? 'Processando...' : (isLogin ? 'Entrar com Email' : 'Criar Conta')}
             </button>
           </form>
 
@@ -298,22 +388,36 @@ const Login = () => {
               onClick={() => {
                 setIsLogin(!isLogin);
                 clearError();
+                setFormError('');
                 setFormData({
                   email: '',
                   password: '',
                   displayName: '',
-                  phone: ''
+                  confirmPassword: ''
                 });
               }}
               className="text-primary-600 hover:text-primary-700 font-medium text-sm lg:text-base"
             >
-              {isLogin ? 'Precisa de uma conta? Registre-se' : 'Já tem uma conta? Entre'}
+              {isLogin ? 'Não tem uma conta? Registre-se' : 'Já tem uma conta? Entre'}
             </button>
           </div>
 
+          {/* Link para promoção a admin (apenas para login) */}
+          {isLogin && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => navigate('/setup/promote-admin')}
+                className="text-sm text-gray-600 hover:text-gray-800"
+              >
+                Precisa de acesso administrativo?
+              </button>
+            </div>
+          )}
+
           {/* Informações de segurança */}
           <div className="mt-6 text-center text-xs text-gray-500">
-            <p>Seus dados estão seguros conosco. Usamos criptografia de ponta.</p>
+            <p>✅ Seus dados estão seguros com criptografia de ponta</p>
+            <p className="mt-1">⚠️ Use apenas para testes educacionais</p>
           </div>
         </motion.div>
       </div>
@@ -321,4 +425,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export { Login };

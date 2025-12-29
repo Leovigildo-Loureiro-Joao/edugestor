@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   FiHome, 
   FiUsers, 
@@ -8,6 +8,7 @@ import {
   FiBook,
   FiSettings, 
   FiBookOpen,
+  FiChevronDown,
   FiMenu,
   FiX,
   FiChevronLeft,
@@ -17,11 +18,13 @@ import {
   FiTrendingUp
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { FaGraduationCap } from 'react-icons/fa';
 
 const Sidebar = () => {
-  const { user,logout } = useAuth();
+    const userMenuRef = useRef(null);
+  const navigate = useNavigate()
+  const { user,logout,profile } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -213,72 +216,145 @@ const Sidebar = () => {
                   exit={{ opacity: 0, width: 0 }}
                   className="flex items-center gap-3 flex-1"
                 >
-                  {/* Avatar do usuário */}
-                  <div className="w-8 h-8 bg-gray-500 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
-                    {user?.photoURL ? (
-                      <img 
-                        src={user.photoURL} 
-                        alt={`Foto de ${user.displayName}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+           
+                  
+                
+
+                  {/* User Menu */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => {
+                  setShowUserMenu(!showUserMenu);
+                }}
+                className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none"
+                aria-label="Menu do usuário"
+              >
+                <div className="relative">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-medium shadow-sm">
+                    {profile?.full_name ? (
+                      profile.full_name.charAt(0).toUpperCase()
+                    ) : user?.email ? (
+                      user.email.charAt(0).toUpperCase()
                     ) : (
-                      <span className="text-white text-sm font-semibold">
-                        {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-                      </span>
+                      <FiUser className="h-4 w-4" />
                     )}
                   </div>
-                  
-                  {/* Informações do usuário */}
-                  <div className="text-left flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {user?.displayName || 'Usuário'}
-                    </p>
-                    <p className="text-xs max-w-32 text-gray-500 dark:text-gray-400 truncate">
-                      {user?.email || 'user@email.com'}
-                    </p>
-                  </div>
+                  {profile?.role === 'admin' && (
+                    <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                  )}
+                </div>
+                
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]">
+                    {profile?.full_name || user?.email || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {profile?.role === 'admin' ? 'Administrador' :
+                     profile?.role === 'manager' ? 'Gerente' :
+                     profile?.role === 'teacher' ? 'Professor' : 'Usuário'}
+                  </p>
+                </div>
+                
+                <FiChevronDown className={`h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+                  showUserMenu ? 'rotate-180' : ''
+                }`} />
+              </button>
 
-                  {/* Menu do usuário */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <FiUser className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                    </button>
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                  >
+                    <div className="p-2">
+                      {/* Info do usuário */}
+                      <div className="px-3 py-2 mb-1 border-b border-gray-100 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {profile?.full_name || user?.email}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user?.email}
+                        </p>
+                        <div className="mt-1">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                            profile?.role === 'admin' 
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' 
+                              : profile?.role === 'manager'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              : profile?.role === 'teacher'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {profile?.role === 'admin' ? 'Administrador' :
+                             profile?.role === 'manager' ? 'Gerente' :
+                             profile?.role === 'teacher' ? 'Professor' : 'Usuário'}
+                          </span>
+                        </div>
+                      </div>
 
-                    <AnimatePresence>
-                      {showUserMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                      {/* Menu items */}
+                      <button 
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          // Navegar para perfil
+                        }}
+                      >
+                        <FiUser className="w-4 h-4" />
+                        <span>Meu Perfil</span>
+                      </button>
+                      
+                      <button 
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          // Navegar para configurações
+                        }}
+                      >
+                        <FiSettings className="w-4 h-4" />
+                        <span>Configurações</span>
+                      </button>
+
+                      {/* Divisor */}
+                      <hr className="my-2 border-gray-200 dark:border-gray-600" />
+
+                      {/* Apenas admin vê esta opção */}
+                      {profile?.role === 'admin' && (
+                        <button 
+                          className="w-full text-left px-3 py-2 text-sm text-primary-600 dark:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            navigate("/admin/dashboard")
+                          }}
                         >
-                          <div className="p-2">
-                            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2">
-                              <FiUser className="w-4 h-4" />
-                              Perfil
-                            </button>
-                            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2">
-                              <FiSettings className="w-4 h-4" />
-                              Configurações
-                            </button>
-                            <hr className="my-1 border-gray-200 dark:border-gray-600" />
-                            <button 
-                            onClick={logout}
-                            className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2">
-                              <FiLogOut className="w-4 h-4" />
-                              Sair
-                            </button>
-                          </div>
-                        </motion.div>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>Painel Admin</span>
+                        </button>
                       )}
-                    </AnimatePresence>
-                  </div>
+
+                      {/* Divisor antes de sair */}
+                      <hr className="my-2 border-gray-200 dark:border-gray-600" />
+
+                      <button 
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md flex items-center gap-2 transition-colors"
+                      >
+                        <FiLogOut className="w-4 h-4" />
+                        <span>Sair</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
                 </motion.div>
               )}
             </AnimatePresence>

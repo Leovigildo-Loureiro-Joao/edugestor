@@ -1,6 +1,6 @@
 // services/paymentChecker.ts
 import { propinaService } from './propinas';
-import { studentsService } from './students';
+import { alunosService } from './students';
 import { configService } from './config';
 import { Student } from '../../types';
 
@@ -21,7 +21,7 @@ export const paymentChecker = {
       }
       
       // 3. Buscar todos os alunos
-      const alunos = await studentsService.getStudents();
+      const alunos = await alunosService.getAllStudents();
       
       // 4. Para cada aluno, verificar pagamentos
       for (const aluno of alunos) {
@@ -67,7 +67,7 @@ export const paymentChecker = {
       // 5. Atualizar status do aluno
       if (!pagouMesAtual && vencimentoPassou) {
         // Aluno está em atraso
-        await studentsService.updateStudent(aluno.id, {
+        await alunosService.updateStudent(aluno.id, {
           ...aluno,
           pagamento_em_dia: false,
           ultima_verificacao_pagamento: new Date().toISOString()
@@ -80,7 +80,7 @@ export const paymentChecker = {
         
       } else if (pagouMesAtual) {
         // Aluno está em dia
-        await studentsService.updateStudent(aluno.id, {
+        await alunosService.updateStudent(aluno.id, {
           ...aluno,
           pagamento_em_dia: true,
           ultima_verificacao_pagamento: new Date().toISOString()

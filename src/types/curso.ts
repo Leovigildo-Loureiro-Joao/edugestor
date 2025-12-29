@@ -1,3 +1,5 @@
+import { BaseEntity } from "./base";
+
 export interface CourseFormData {
   nome: string;
   preco: number;
@@ -8,8 +10,8 @@ export interface CourseFormData {
   ativo: boolean;
 }
 
-export interface Course {
-  id:number  
+export interface Course extends BaseEntity{
+  id:string  
   nome: string;
   preco: number;
   duracao: string;
@@ -18,11 +20,7 @@ export interface Course {
   descricao: string;
   ativo: boolean;
     created_at: string;
-  alunos:{
-    curso:string
-  }[];
-  turmas:{
-    nome_turma:string
-  }[];
+  alunos:number;
+  turmas:string[];
   updated_at: string;
 }

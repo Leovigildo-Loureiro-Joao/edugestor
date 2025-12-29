@@ -123,15 +123,15 @@ export const ConfiguracoesNotificacoes = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Configurações de Notificações</h2>
+    <div className="bg-white dark:bg-gray-800 dark:border-gray-700 rounded-lg border border-gray-200 shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Notificações</h2>
       
       <div className="space-y-8">
         
         {/* Configuração do Twilio (WhatsApp + SMS) */}
         <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            <FiMessageSquare className="inline mr-2 mb-1" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <FiMessageSquare className="inline mr-2 mb-1 dark:text-white" />
             Twilio - WhatsApp & SMS
           </h3>
           
@@ -143,7 +143,7 @@ export const ConfiguracoesNotificacoes = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Account SID *
               </label>
               <input
@@ -156,7 +156,7 @@ export const ConfiguracoesNotificacoes = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Auth Token *
               </label>
               <input
@@ -406,15 +406,15 @@ export const ConfiguracoesNotificacoes = () => {
 
         {/* Tipos de Notificação */}
         <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Tipos de Notificação</h3>
+          <h3 className="text-lg font-medium dark:text-white text-gray-900 mb-4">Tipos de Notificação</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
                   Pagamentos realizados
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-200">
                   Notificar quando um pagamento for registrado
                 </p>
               </div>
@@ -428,10 +428,10 @@ export const ConfiguracoesNotificacoes = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
                   Pagamentos em atraso
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-200">
                   Alertar sobre pagamentos pendentes
                 </p>
               </div>
@@ -445,10 +445,10 @@ export const ConfiguracoesNotificacoes = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
                   Lembretes de vencimento
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-200">
                   Lembrar antes do vencimento das propinas
                 </p>
               </div>
@@ -464,7 +464,7 @@ export const ConfiguracoesNotificacoes = () => {
           {config.notificarLembretes && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 ml-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 mb-2">
                   Dias antes do vencimento
                 </label>
                 <input
@@ -478,7 +478,7 @@ export const ConfiguracoesNotificacoes = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 mb-2">
                   Horário das notificações
                 </label>
                 <input

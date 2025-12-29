@@ -12,7 +12,7 @@ import {
   FiAlertTriangle,
   FiTrendingUp
 } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AnimatedStat } from '../../components/dashboad/AnimateStates.tsx';
 import { dashboardService } from '../../services/dashboard/dashboardService.ts';
 import { PropinasChart } from '../../components/dashboad/PropunasChart.jsx';
@@ -22,6 +22,8 @@ import { CalendarWithEvents } from '../../components/dashboad/Calendary.tsx';
 import { estrategiaService } from '../../services/strategy/estrategiaService.ts';
 import { DashboardStats, EstrategiaStats, StatCard } from '../../types/index.ts';
 import { IconType } from 'react-icons';
+import { logoB } from '../../components/auth/Login.jsx';
+import { ErrorSection } from '../../components/ui/ErrorSection.tsx';
 
 // Tipos
 
@@ -29,6 +31,7 @@ import { IconType } from 'react-icons';
 // Dashboard Principal atualizado
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const navigate=useNavigate()
   const [estrategiaStats, setEstrategiaStats] = useState<EstrategiaStats>({
     tarefasPendentes: 0,
     metasConcluidas: 0,
@@ -37,8 +40,8 @@ const Dashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
+  function Reload() {
+     const loadDashboardData = async () => {
       try {
         setLoading(true);
         const [dashboardStats, estrategiaData] = await Promise.all([
@@ -60,6 +63,9 @@ const Dashboard: React.FC = () => {
     };
 
     loadDashboardData();
+  }
+  useEffect(() => {
+   Reload()
   }, []);
 
   // Função final ajustada para seu caso
@@ -76,7 +82,7 @@ const Dashboard: React.FC = () => {
     const variacaoAbsoluta = valorAtual - valorAnterior;
     const variacaoPercentual = (variacaoAbsoluta / valorAnterior) * 100;
     const sinal = variacaoAbsoluta >= 0 ? "+" : "";
-    
+
     // Para variações muito grandes (>500%), mostrar apenas absoluto
     if (Math.abs(variacaoPercentual) > 500) {
       return `${sinal}${variacaoAbsoluta}`;
@@ -118,11 +124,7 @@ const Dashboard: React.FC = () => {
   }
 
   if (!stats) {
-    return (
-      <div className="text-center text-gray-500">
-        Erro ao carregar estatísticas
-      </div>
-    );
+    return ErrorSection("Erro ao buscar as Estatisticas",Reload)
   }
 
   // Cálculo de progresso para Visão Estratégica
@@ -213,105 +215,6 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* NOVA SEÇÃO: Resumo Estratégico */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <FiTarget className="text-red-500" />
-            Visão Estratégica & Planeamento
-          </h2>
-          <Link 
-            to="/estrategia" 
-            className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 font-medium text-sm flex items-center gap-1"
-          >
-            Ver plano completo →
-          </Link>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                <FiAlertTriangle className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Tarefas Pendentes</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                  {estrategiaStats.tarefasPendentes}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
-                <FiCheckCircle className="text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Metas Concluídas</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                  {estrategiaStats.metasConcluidas}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-800 rounded-lg">
-                <FiClock className="text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Metas Atrasadas</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                  {estrategiaStats.metasAtrasadas}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
-                <FiTrendingUp className="text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Progresso Geral</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                  {progressoEstrategia}%
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Próximas Atividades */}
-        <div>
-          <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-            <FiCalendar className="text-primary-500" />
-            Próximas Atividades
-          </h3>
-          <div className="space-y-2">
-            {estrategiaStats.proximasAtividades.slice(0, 3).map((atividade, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    atividade.prioridade === 'alta' ? 'bg-red-500' :
-                    atividade.prioridade === 'media' ? 'bg-yellow-500' : 'bg-green-500'
-                  }`} />
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {atividade.titulo}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {atividade.data_limite ? new Date(atividade.data_limite).toLocaleDateString('pt-AO') : 'Sem data'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Gráficos e Calendário */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

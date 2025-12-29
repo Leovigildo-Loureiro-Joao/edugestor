@@ -10,6 +10,7 @@ import { FaChalkboardTeacher } from 'react-icons/fa';
 import { Course, CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
 import { SelectTyped } from '../../components/students/StudentForm';
+import { useSyncCursos } from '../../hooks/useSyncCursos';
 
 // Mock data - depois substitui pelo service real
 
@@ -22,7 +23,7 @@ export const Courses = () => {
   const [filtroStatus, setFiltroStatus] = useState('Todos Status');
   const nav = useNavigate();
 
-  const abrirCurso = (cursoId: number) => {
+  const abrirCurso = (cursoId: string) => {
     console.log('Abrir curso com ID:', cursoId);
     nav(`/cursos/${cursoId}`);
   };
@@ -34,23 +35,30 @@ export const Courses = () => {
       status: stats
     };
   }, [cursos]);
+    const { sync } = useSyncCursos(); 
 
   useEffect(() => {
-    loadCursos();
+    Reload();
   }, []);
+
+  function Reload(){
 
   const loadCursos = async () => {
     try {
       setLoading(true);
-     
       const cursosData = await cursosService.getCourse();
-      setCursos(cursosData);
-      setLoading(false);
+        setCursos(cursosData||[]);
+       
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
+      }finally{
       setLoading(false);
     }
   };
+      loadCursos();
+  }
+
+ 
 
   const estatisticas = useMemo(() => {
     const cursosFiltrados = cursos.filter(curso => {
@@ -67,9 +75,9 @@ export const Courses = () => {
     const ativos = cursosFiltrados.filter(c => c.ativo).length;
     const inativos = cursosFiltrados.filter(c => !c.ativo).length;
     const totalVagas = cursosFiltrados.reduce((acc, cur) => acc + cur.vagas, 0);
-    const totalInscritos = cursosFiltrados.reduce((acc, cur) => acc + cur.alunos.length, 0);
+    const totalInscritos = cursosFiltrados.reduce((acc, cur) => acc + cur.alunos, 0);
     const taxaOcupacao = totalVagas > 0 ? (totalInscritos / totalVagas) * 100 : 0;
-    const receitaPotencial = cursosFiltrados.reduce((acc, cur) => acc + (cur.preco * cur.alunos.length), 0);
+    const receitaPotencial = cursosFiltrados.reduce((acc, cur) => acc + (cur.preco * cur.alunos), 0);
 
     return {
       total,
@@ -93,11 +101,19 @@ export const Courses = () => {
     return matchesSearch  && matchesStatus;
   });
 
-  const deleteCurso = (cursoId: number) => {
+  const deleteCurso = (cursoId: string) => {
     if (window.confirm('Tem certeza que deseja excluir este curso?')) {
       setCursos(prev => prev.filter(curso => curso.id !== cursoId));
     }
   };
+
+    if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +131,7 @@ export const Courses = () => {
           {/* Botão Novo Curso */}
           <Link
             to="/cursos/novo"
-            className="bg-primary-600 text-white px-4 py-2.5 transition-colors rounded-md hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-md hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
           >
             <FiPlus size={18} />
             <span>Novo Curso</span>
@@ -311,11 +327,11 @@ export const Courses = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-white text-gray-900">
                     <div className="flex items-center gap-2">
-                      <span>{curso.alunos.length}/{curso.vagas}</span>
+                      <span>{curso.alunos}/{curso.vagas}</span>
                       <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-green-500 h-2 rounded-full" 
-                          style={{ width: `${(curso.alunos.length/ curso.vagas) * 100}%` }}
+                          style={{ width: `${(curso.alunos/ curso.vagas) * 100}%` }}
                         />
                       </div>
                     </div>
@@ -327,7 +343,7 @@ export const Courses = () => {
                           key={idx}
                           className="inline-block bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs px-2 py-1 rounded"
                         >
-                          {turma.nome_turma}
+                          {turma}
                         </span>
                       ))}
                     </div>
@@ -368,6 +384,8 @@ export const Courses = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm ? 'Tente ajustar os termos da busca.' : 'Comece adicionando um novo curso.'}
             </p>
+              <button className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-2 rounded-lg font-medium hover:from-blue-700 my-5 hover:to-indigo-800"
+              onClick={Reload}>Reload pagina</button>
           </div>
         )}
       </div>

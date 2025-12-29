@@ -2,6 +2,7 @@
 import { Frequencia } from "./frequencia";
 import { Student,StudentFormData,StudentFormProps } from "./aluno";
 import { IconType } from "react-icons";
+import { BaseEntity } from "./base";
 export { Frequencia, Student,StudentFormData,StudentFormProps };
 
 
@@ -15,7 +16,7 @@ export interface Disciplina {
   curso_id: string;
 }
 
-export interface Curso {
+export interface Curso extends BaseEntity{
   id: string;
   nome_curso: string;
   duracao_anos: number;

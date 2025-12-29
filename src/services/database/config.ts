@@ -306,6 +306,13 @@ export const configService = {
         data_type: 'array',
         description: 'Períodos académicos'
       },
+      {
+        category: 'academic',
+        key_name: 'academic_year',
+        value: new Date().getFullYear().toString(),
+        data_type: 'string',
+        description: 'Ano letivo atual'
+      },
        // Configurações Financeiras
       {
         category: 'finance',
@@ -328,13 +335,7 @@ export const configService = {
         data_type: 'number',
         description: 'Dia de vencimento dos pagamentos (1-31)'
       },
-      {
-        category: 'finance',
-        key_name: 'academic_year',
-        value: new Date().getFullYear().toString(),
-        data_type: 'string',
-        description: 'Ano letivo atual'
-      },
+      
       {
         category: 'finance',
         key_name: 'payment_months',

@@ -1,4 +1,6 @@
-export interface Frequencia {
+import { BaseEntity } from "./base";
+
+export interface Frequencia extends BaseEntity{
   id: string;
   aluno_id: string;
   aula_id: string;
@@ -16,6 +18,7 @@ export interface FrequenciaData {
 }
 export interface RegistroFrequenciaLote {
   aula_id: string;
+    data_aula: string;
   registros: {
     aluno_id: string;
     presente: boolean;

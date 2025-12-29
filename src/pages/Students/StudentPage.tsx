@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { propinaService } from '../../services/database/propinas';
-import { studentsService } from '../../services/database/students';
+import { alunosService } from '../../services/database/alunosService';
 import {  Student } from '../../types/aluno';
 import { frequenciaService } from '../../services/database/frequenciaService';
 import { Propina, PropinaFormData } from '../../types/propina';
@@ -14,7 +14,7 @@ const StudentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
-  const [aluno, setAluno] = useState<Student | null>(null);
+  const [aluno, setAluno] = useState<Student | undefined>(undefined);
   const [propinas, setPropinas] = useState<Propina[]>([]);
   const [frequencias, setFrequencias] = useState<FrequenciaData[]>([]);
   const [notas, setNotas] = useState<NotaData[]>([]);
@@ -31,7 +31,7 @@ const StudentPage: React.FC = () => {
       setLoading(true);
       
       // Carregar dados básicos do aluno
-      const alunoData = await studentsService.getStudentById(id!);
+      const alunoData = await alunosService.getStudentById(id!);
       setAluno(alunoData);
 
       // Carregar propinas
@@ -147,7 +147,7 @@ const StudentPage: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{aluno.nome_completo}</h1>
                 <p className="text-gray-600 text-lg">
-                  {aluno.numero_estudante} • {aluno.curso} • {aluno.periodo}
+                  {aluno.numero_estudante} • {aluno.curso}
                 </p>
               </div>
             </div>
@@ -407,7 +407,7 @@ const StudentPage: React.FC = () => {
                     <div>
                       <strong className="text-gray-700">Idade:</strong>{' '}
                       <span className="text-gray-600">
-                        {aluno.data_nascimento ? new Date(aluno.data_nascimento).getFullYear()-new Date().getFullYear() : '-'}
+                        {aluno.data_nascimento ? new Date(aluno.data_nascimento).getFullYear()-new Date().getFullYear() : 'Não definida'}
                       </span>
                     </div>
                     <div>
@@ -416,7 +416,7 @@ const StudentPage: React.FC = () => {
                     </div>
                     <div>
                       <strong className="text-gray-700">Contacto:</strong>{' '}
-                      <span className="text-gray-600">{aluno.contacto_principal}</span>
+                      <span className="text-gray-600">{aluno.contacto_principal||'Não informado'}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Email:</strong>{' '}
@@ -438,11 +438,11 @@ const StudentPage: React.FC = () => {
                     </div>
                     <div>
                       <strong className="text-gray-700">Turma:</strong>{' '}
-                      <span className="text-gray-600">{aluno.turmas?.nome_turma || 'Não definida'}</span>
+                      <span className="text-gray-600">{aluno.turma_nome || 'Não definida'}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Professor:</strong>{' '}
-                      <span className="text-gray-600">{aluno.turmas?.professor || 'Não definido'}</span>
+                      <span className="text-gray-600">{aluno.professor || 'Não definido'}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Nº Estudante:</strong>{' '}
@@ -453,7 +453,7 @@ const StudentPage: React.FC = () => {
 
                 <div className="lg:col-span-2  p-6 rounded-lg border-t border-primary-200">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Endereço</h3>
-                  <p className="text-gray-600">{aluno.endereco}</p>
+                  <p className="text-gray-600">{aluno.endereco||"Não foi disponiblizado ..."}</p>
                 </div>
               </div>
             )}

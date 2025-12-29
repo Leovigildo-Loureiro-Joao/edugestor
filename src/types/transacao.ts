@@ -1,20 +1,18 @@
-export interface Transacao {
-  id: string;
+import { BaseEntity } from "./base";
+
+export interface Transacao extends BaseEntity{
   data: string;
   tipo: 'entrada' | 'saida';
   valor: number;
   descricao: string;
   categoria: 'mensalidade' | 'matricula' | 'salario' | 'cartão'  |'material' | 'alimentacao' | 'transporte' | 'utilidades' | 'investimento';
-  created_at: string;
 }
 
-export interface TransacaoFormData {
-  data: string;
-  tipo: 'entrada' | 'saida';
-  valor: number;
-  descricao: string;
-  categoria: 'mensalidade' | 'matricula' | 'salario'| 'cartão'  | 'material' | 'alimentacao' | 'transporte' | 'utilidades' | 'investimento';
-}
+export type TransacaoFormData = Omit<Transacao, 
+  'id' | 'created_at' | 'updated_at' | 'turmas'|'sync_status'
+>;
+
+
 
 export interface ProcessarPagamentoResponse {
   sucesso: boolean;
