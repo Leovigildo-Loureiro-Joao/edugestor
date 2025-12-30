@@ -33,8 +33,6 @@ export const PagamentosPage = () => {
   };
   
 
- 
-
   // Carregar dados iniciais
   useEffect(() => {
     carregarDados();
@@ -91,21 +89,24 @@ const getMesesPagosAluno = (aluno: Student): string[] => {
   // 2. Determinar ponto de partida (primeiro mês pago)
   let startIndex = 0;
   console.log("Histórico de pagamentos do aluno:", aluno.propina);
-  // Tentar usar histórico de pagamentos primeiro
-  if (aluno.propina?.length) {
-    // Encontrar o pagamento mais antigo
-    const primeiroPagamento = aluno.propina.reduce((maisAntigo, atual) => {
-      if (!maisAntigo) return atual;
-      if (!atual.data_pagamento || !maisAntigo.data_pagamento) return maisAntigo;
-      return new Date(atual.data_pagamento) < new Date(maisAntigo.data_pagamento) 
-        ? atual : maisAntigo;
-    });
-    
-    if (primeiroPagamento?.mes_referencia) {
-      const mesAbreviado = extrairMesAbreviado(primeiroPagamento.mes_referencia);
-      startIndex = todosMeses.indexOf(mesAbreviado);
-    }
-  }
+   propinaService.getByAluno(aluno.id).then((value)=>{
+        // Tentar usar histórico de pagamentos primeiro
+      if (value.length) {
+        // Encontrar o pagamento mais antigo
+        const primeiroPagamento = value.reduce((maisAntigo, atual) => {
+          if (!maisAntigo) return atual;
+          if (!atual.data_pagamento || !maisAntigo.data_pagamento) return maisAntigo;
+          return new Date(atual.data_pagamento) < new Date(maisAntigo.data_pagamento) 
+            ? atual : maisAntigo;
+        });
+        
+        if (primeiroPagamento?.mes_referencia) {
+          const mesAbreviado = extrairMesAbreviado(primeiroPagamento.mes_referencia);
+          startIndex = todosMeses.indexOf(mesAbreviado);
+        }
+      }
+   })
+ 
   
   // Fallback para data de matrícula se histórico não existir ou mês não encontrado
   if (startIndex < 0) {
@@ -426,7 +427,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
                     </div>
 
                     <div className="col-span-2 text-gray-700">
-                      {Array.isArray(aluno.turmas) ? aluno.turmas[0]?.nome_turma || 'N/A' : aluno.turmas?.nome_turma || 'N/A'}
+                      { aluno.turma_nome || 'N/A'}
                     </div>
                     <div className="col-span-3">
                       {/* Sempre mostra meses pagos E pendentes */}

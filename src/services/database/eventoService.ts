@@ -1,5 +1,5 @@
 import { EventFormData } from "../../types/eventos";
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 export const eventoService = {
   async listarEventos() {

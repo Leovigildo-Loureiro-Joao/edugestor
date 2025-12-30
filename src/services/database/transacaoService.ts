@@ -1,8 +1,9 @@
 // services/database/transacaoService.ts
-import { supabase } from '../supabase/config';
+import { supabase } from '../database/db';
 import { propinaService } from './propinas';
 import db from './db';
 import { DadosPagamentoCash, Transacao, TransacaoFormData } from '../../types/transacao';
+import { syncService } from './syncService';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -52,7 +53,7 @@ export const transacaoService = {
       
       // Se online, tentar sincronizar imediatamente
       if (navigator.onLine) {
-        await this.syncPendingTransactions();
+        await this.syncTransacoes();
         
         // Buscar transação sincronizada
         const transacaoSincronizada = await db.transacoes.get(transacaoId);
@@ -119,12 +120,13 @@ export const transacaoService = {
           mes_referencia: mesRef,
           transacao_id: transacaoId,
           estado: 'pago',
+
         });
       }
 
       // Sincronizar se online
       if (navigator.onLine) {
-        await this.syncPendingTransactions();
+        await this.syncTransacoes();
       }
 
       return {
@@ -165,223 +167,19 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Sincronização bidirecional de transações
-  async syncAllPending() {
-    if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização de transações adiada');
-      return;
-    }
-
-    try {
-      console.log('🔄 Iniciando sincronização bidirecional de transações...');
-      
-      // FASE 1: DOWNLOAD - Buscar transações do Supabase
-      console.log('📥 FASE 1: Baixando transações do Supabase...');
-      await this.downloadFromSupabase();
-      
-      // FASE 2: UPLOAD - Enviar alterações locais para Supabase
-      console.log('📤 FASE 2: Enviando alterações locais...');
-      await this.uploadToSupabase();
-      
-      console.log('✅ Sincronização de transações concluída');
-      
-    } catch (error) {
-      console.error('❌ Erro geral na sincronização de transações:', error);
-    }
-  },
-
-  // ✅ DOWNLOAD: Baixar transações do Supabase
-  async downloadFromSupabase() {
-    try {
-      console.log('📥 Buscando últimas transações do Supabase...');
-      
-      const lastSync = localStorage.getItem('last_sync_transacoes');
-      console.log('Última sincronização de transações:', lastSync || 'Primeira vez');
-      
-      let query = supabase
-        .from('transacoes')
-        .select('*')
-        .order('updated_at', { ascending: false });
-      
-      if (lastSync) {
-        query = query.gt('updated_at', lastSync);
-      }
-      
-      const { data: transacoesSupabase, error } = await query;
-      
-      if (error) {
-        console.error('❌ Erro ao buscar transações do Supabase:', error);
-        return;
-      }
-      
-      console.log(`📥 ${transacoesSupabase?.length || 0} transações encontradas no Supabase`);
-      
-      if (!transacoesSupabase || transacoesSupabase.length === 0) {
-        console.log('📭 Nenhuma transação nova/atualizada no Supabase');
-        return;
-      }
-      
-      // Processar cada transação do Supabase
-      for (const transacaoSupabase of transacoesSupabase) {
-        try {
-          const transacaoLocal = await db.transacoes.get(transacaoSupabase.id);
-          
-          if (!transacaoLocal) {
-            // NOVA TRANSAÇÃO DO SUPABASE
-            const transacaoParaSalvar = {
-              ...transacaoSupabase,
-              sync_status: 'synced' as const,
-              deleted: false
-            };
-            
-            await db.transacoes.put(transacaoParaSalvar);
-            console.log(`✅ Nova transação baixada: ${transacaoSupabase.descricao}`);
-            
-          } else if (transacaoLocal.sync_status === 'synced') {
-            // ATUALIZAÇÃO DO SUPABASE - Só atualizar se não tivermos alterações pendentes
-            const localUpdated = new Date(transacaoLocal.updated_at || 0);
-            const remoteUpdated = new Date(transacaoSupabase.updated_at || 0);
-            
-            if (remoteUpdated > localUpdated) {
-              // Supabase tem versão mais recente
-              const transacaoAtualizada = {
-                ...transacaoLocal,
-                ...transacaoSupabase,
-                sync_status: 'synced' as const,
-              };
-              
-              await db.transacoes.put(transacaoAtualizada);
-              console.log(`✏️ Transação atualizada do Supabase: ${transacaoSupabase.descricao}`);
-            }
-          }
-          // Se sync_status = 'pending', não sobrescrever (temos alterações locais não enviadas)
-          
-        } catch (transacaoError) {
-          console.error(`❌ Erro processando transação ${transacaoSupabase.id}:`, transacaoError);
-        }
-      }
-      
-      // Atualizar timestamp da última sincronização
-      localStorage.setItem('last_sync_transacoes', new Date().toISOString());
-      console.log('✅ Download do Supabase concluído');
-      
-    } catch (error) {
-      console.error('❌ Erro no download do Supabase:', error);
-    }
-  },
-
-  // ✅ UPLOAD: Enviar alterações locais para Supabase
-  async uploadToSupabase() {
-    try {
-      // Buscar itens da fila específicos para transações
-      const pendingItems = await db.syncQueue
-        .where('table')
-        .equals('transacoes')
-        .and(item => item.status === 'pending')
-        .toArray();
-
-      console.log(`📤 ${pendingItems.length} transações pendentes para envio`);
-
-      for (const item of pendingItems) {
-        try {
-          const transacao = await db.transacoes.get(item.record_id);
-          if (!transacao) {
-            await db.syncQueue.delete(item.id || -1);
-            continue;
-          }
-
-          if (item.operation === 'upsert') {
-            // Preparar dados para envio
-            const { sync_status, deleted, created_at, updated_at, ...dadosParaEnviar } = transacao;
-            
-            // Verificar se já existe no Supabase
-            let transacaoExistente = null;
-            if (!transacao.id.startsWith('local_')) {
-              const { data } = await supabase
-                .from('transacoes')
-                .select('id')
-                .eq('id', transacao.id)
-                .maybeSingle();
-              transacaoExistente = data;
-            }
-
-            let resultado;
-            if (transacaoExistente) {
-              // UPDATE no Supabase
-              resultado = await supabase
-                .from('transacoes')
-                .update(dadosParaEnviar)
-                .eq('id', transacao.id);
-            } else {
-              // INSERT no Supabase
-              resultado = await supabase
-                .from('transacoes')
-                .insert(dadosParaEnviar)
-                .select()
-                .single();
-              
-              // Se criou no Supabase, atualizar ID local
-              if (resultado.data && transacao.id.startsWith('local_')) {
-                await db.transacoes.update(transacao.id, {
-                  id: resultado.data.id,
-                  sync_status: 'synced' as const
-                });
-                
-                // Atualizar referência na fila
-                await db.syncQueue.update(item.id || -1, {
-                  record_id: resultado.data.id
-                });
-              }
-            }
-
-            if (resultado.error) {
-              console.error('Erro Supabase:', resultado.error);
-              throw resultado.error;
-            }
-            
-            // Marcar como sincronizado
-            await db.transacoes.update(item.record_id, { 
-              sync_status: 'synced' as const,
-              updated_at: new Date().toISOString()
-            });
-            await db.syncQueue.delete(item.id || -1);
-            
-          } else if (item.operation === 'delete') {
-            // Só deletar no Supabase se não for um ID local
-            if (!transacao.id.startsWith('local_')) {
-              await supabase.from('transacoes').delete().eq('id', transacao.id);
-            }
-            
-            // Deletar localmente
-            await db.transacoes.delete(item.record_id);
-            await db.syncQueue.delete(item.id || -1);
-          }
-
-          console.log(`[Sync] Transação ${item.record_id} sincronizada`);
-          
-        } catch (itemError) {
-          console.error(`[Sync] Erro na transação ${item.record_id}:`, itemError);
-          
-          // Incrementar tentativas
-          const novasTentativas = (item.retryCount || 0) + 1;
-          await db.syncQueue.update(item.id || -1, {
-            retryCount: novasTentativas,
-            status: novasTentativas >= 3 ? 'failed' : 'pending'
-          });
-        }
-        
-        // Pausa entre operações
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      console.log('✅ Upload para Supabase concluído');
-    } catch (error) {
-      console.error('❌ Erro no upload para Supabase:', error);
-    }
-  },
-
-  // ✅ Função auxiliar para sincronizar transações pendentes
-  async syncPendingTransactions() {
-    return this.syncAllPending();
+    async syncTransacoes() {
+      return syncService.downloadTableBatch('transacoes', new Date(0));
+    },
+  
+  // ✅ Função auxiliar para marcar como pendente
+   async markForSync(recordId: string, operation: 'upsert' | 'delete') {
+    await db.syncQueue.add({
+      table: 'transacoes',
+      record_id: recordId,
+      operation,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
   },
 
   // ✅ Buscar transações por tipo

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { supabase } from '../../services/supabase/config.js';
+import { supabase } from '../../services/database/db.js';
 
 export const PropinasChart = () => {
   const [data, setData] = useState([]);

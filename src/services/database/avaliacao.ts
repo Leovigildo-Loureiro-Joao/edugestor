@@ -1,4 +1,4 @@
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 export const notasService = {
   async getByAluno(alunoId: string) {

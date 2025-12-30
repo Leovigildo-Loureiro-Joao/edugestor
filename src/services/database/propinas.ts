@@ -1,5 +1,5 @@
 // services/database/propinaService.ts
-import { supabase } from '../supabase/config';
+import { supabase } from '../database/db';
 import db from './db';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { alunosService } from './alunosService';
@@ -39,7 +39,7 @@ export const propinaService = {
       
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
-        table: 'propinas',
+        table: 'propina',
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -189,7 +189,7 @@ export const propinaService = {
       // Buscar itens da fila específicos para propinas
       const pendingItems = await db.syncQueue
         .where('table')
-        .equals('propinas')
+        .equals('propina')
         .and(item => item.status === 'pending')
         .toArray();
 
@@ -451,7 +451,7 @@ export const propinaService = {
 
       // Adicionar/atualizar na fila
       await db.syncQueue.add({
-        table: 'propinas',
+        table: 'propina',
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -483,7 +483,7 @@ export const propinaService = {
         });
         
         await db.syncQueue.add({
-          table: 'propinas',
+          table: 'propina',
           record_id: id,
           operation: 'delete',
           status: 'pending',
@@ -614,7 +614,7 @@ export const propinaService = {
       const propinaCount = await db.propinas.count();
       const queueCount = await db.syncQueue
         .where('table')
-        .equals('propinas')
+        .equals('propina')
         .and(item => item.status === 'pending')
         .count();
       

@@ -1,7 +1,9 @@
 // src/pages/Setup/InitialSetup.tsx - VERSÃO SIMPLIFICADA
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../services/supabase/config';
+import { supabase } from '../../services/database/db';
+import { jpg } from '../admin/PromoteToAdmin';
+import { logo } from '../../components/auth/Login';
 
 const InitialSetup = () => {
   const navigate = useNavigate();
@@ -131,10 +133,13 @@ const InitialSetup = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+
+     <section className='rounded-2xl shadow-xl max-w-5xl flex justify-center'>
+        <img src={jpg} alt="" className='w-1/2 rounded-l-2xl object-cover'/>
+         <div className=" w-1/2 bg-white rounded-r-2xl p-8">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl text-white">👑</span>
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <img src={logo} alt="" className='w-20 h-20 rounded-full' />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Configuração Inicial
@@ -155,7 +160,7 @@ const InitialSetup = () => {
               </p>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-blue-800 mb-2">⚠️ Aviso Importante</h3>
+                <h3 className="font-semibold text-blue-800 mb-2">Aviso Importante</h3>
                 <p className="text-sm text-blue-800">
                   O primeiro usuário criado será o <strong>Administrador Principal</strong> com acesso total ao sistema.
                 </p>
@@ -279,6 +284,7 @@ const InitialSetup = () => {
           </p>
         </div>
       </div>
+     </section>
     </div>
   );
 };

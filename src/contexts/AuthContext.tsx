@@ -1,6 +1,6 @@
 // src/contexts/AuthContext.tsx - VERSÃO CORRIGIDA
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabase/config';
+import { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
 
 // Tipos para o contexto

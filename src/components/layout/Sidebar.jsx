@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { FaGraduationCap } from 'react-icons/fa';
+import { initializeSyncSystem } from '../../services/database/syncManager.ts';
 
 const Sidebar = () => {
     const userMenuRef = useRef(null);
@@ -28,6 +29,16 @@ const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+    useEffect(() => {
+      // ✅ Inicializar sistema de sincronização
+      const initSync = async () => {
+        await initializeSyncSystem();
+        console.log('✅ Sistema de sincronização inicializado');
+      };
+      
+      initSync();
+    }, []);
   
   const navigation = [
     { name: 'Dashboard', href: '/', icon: FiHome },

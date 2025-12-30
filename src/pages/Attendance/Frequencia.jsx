@@ -10,6 +10,7 @@ import { AulaFrequenciaItem } from '../../components/attendance/aulaFrequenciaCa
 import { EstatisticasView } from '../../components/attendance/EstatisticasView.jsx';
 import { FrequenciasRegistradasView } from '../../components/attendance/FrequenciasRegistradasView.jsx';
 
+
 export const FrequenciaPage = () => {
   const [aulas, setAulas] = useState([]);
   const [alunos, setAlunos] = useState([]);
@@ -22,7 +23,8 @@ export const FrequenciaPage = () => {
   const [estatisticas, setEstatisticas] = useState(null);
   const [frequenciasRegistradas, setFrequenciasRegistradas] = useState([]);
 
-  // Carregar dados iniciais
+
+
   useEffect(() => {
     carregarDados();
     carregarTurmas();

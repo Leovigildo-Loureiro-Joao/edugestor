@@ -11,6 +11,7 @@ import { Turma} from '../../types/turma.ts';
 import { FaBookAtlas } from 'react-icons/fa6';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 
+
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,7 @@ export const AulasPage = () => {
     'Matemática', 'Português', 'Física', 'Química', 'Biologia', 
     'História', 'Geografia', 'Inglês', 'Educação Física'
   ]);
+
 
   // Carregar aulas e turmas
   useEffect(() => {

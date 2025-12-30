@@ -9,7 +9,7 @@ export interface Propina extends BaseEntity{
   data_vencimento: string;
   data_pagamento?: string;
   estado: 'pendente' | 'pago' | 'atrasado';
-  multa: number;
+  multa?: number;
   recibo_numero?: string;
   transacao_id: string;
   created_at: string;
@@ -17,7 +17,7 @@ export interface Propina extends BaseEntity{
 }
 
 export type PropinaFormData = Omit<Propina, 
-  'id' | 'created_at' | 'updated_at'
+  'id' | 'created_at' | 'updated_at'|'sync_status'
 >;
 
 export interface ResumoPropinasDetalhado {

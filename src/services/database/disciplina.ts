@@ -1,5 +1,5 @@
 import { Disciplina } from "../../types";
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 const disciplina ={
     async create(disciplina:Disciplina){

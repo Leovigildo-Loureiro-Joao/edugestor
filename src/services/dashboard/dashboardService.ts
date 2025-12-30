@@ -1,5 +1,5 @@
 // services/dashboard/dashboardService.ts
-import { supabase } from '../supabase/config';
+import { supabase } from '../database/db';
 
 // Tipos
 import { DashboardStats } from '../../types';

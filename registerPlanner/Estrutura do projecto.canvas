@@ -1,8 +1,8 @@
 {
 	"nodes":[
-		{"id":"6b16a88a4c00c0fe","type":"text","text":"Alunos\n- [ ] CRUD ALUNO\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [ ] Estatisticas do aluno\n- [x] Sync IndexedDB\n- [x] Buscar por turma\n- [x] Buscar por professor","x":-860,"y":-500,"width":250,"height":340},
-		{"id":"5fa8359b64ba17a5","type":"text","text":"Cursos\n- [ ] CRUD TURMAS\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [x] Estatisticas\n- [x] Sync IndexedDB\n","x":-160,"y":-500,"width":250,"height":300},
-		{"id":"68f8e58453e1226f","type":"text","text":"Turmas\n- [ ] CRUD TURMAS\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [x] Estatisticas\n- [x] Sync IndexedDB","x":-520,"y":-500,"width":250,"height":300}
+		{"id":"6b16a88a4c00c0fe","type":"text","text":"Alunos\n- [ ] CRUD ALUNO\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [ ] Estatisticas do aluno\n- [x] Sync IndexedDB\n- [x] Buscar por turma\n- [x] Buscar por professor","x":-960,"y":-760,"width":250,"height":340},
+		{"id":"68f8e58453e1226f","type":"text","text":"Turmas\n- [ ] CRUD TURMAS\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [x] Estatisticas\n- [x] Sync IndexedDB","x":-620,"y":-760,"width":250,"height":300},
+		{"id":"5fa8359b64ba17a5","type":"text","text":"Cursos\n- [ ] CRUD TURMAS\n\t- [ ] Add\n\t- [ ] Edit\n\t- [ ] Delete\n\t- [x] Select\n- [x] Estatisticas\n- [x] Sync IndexedDB\n","x":-280,"y":-760,"width":250,"height":300}
 	],
 	"edges":[]
 }

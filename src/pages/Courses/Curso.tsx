@@ -10,8 +10,6 @@ import { FaChalkboardTeacher } from 'react-icons/fa';
 import { Course, CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
 import { SelectTyped } from '../../components/students/StudentForm';
-import { useSyncCursos } from '../../hooks/useSyncCursos';
-
 // Mock data - depois substitui pelo service real
 
  
@@ -35,7 +33,7 @@ export const Courses = () => {
       status: stats
     };
   }, [cursos]);
-    const { sync } = useSyncCursos(); 
+
 
   useEffect(() => {
     Reload();

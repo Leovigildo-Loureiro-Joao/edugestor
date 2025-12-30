@@ -1,5 +1,5 @@
 import { Tarefa } from "../../types/eventos";
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 const tarefaService = { 
     async createTarefa(tarefa: Partial<Tarefa>): Promise<void> {

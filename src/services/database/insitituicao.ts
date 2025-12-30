@@ -1,5 +1,5 @@
 import { Instituicao } from "../../types";
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 // Serviço
 export const instituicaoService = {

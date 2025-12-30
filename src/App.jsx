@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import Layout from './components/layout/Layout';
-import {Login} from './components/auth/Login';
+import {Login, logoBlack} from './components/auth/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Students from './pages/Students/Students.tsx';
 import { StudentNew } from './pages/Students/StudentsNew';
@@ -29,15 +29,15 @@ import MetaPage from './components/strategy/MetaForm.tsx';
 import EventosPage from './components/event/EventosPage.tsx';
 import TurmaForm from './components/turmas/TurmasForm.tsx';
 import AuthCallback from './components/auth/AuthCallback.tsx';
-import { supabase } from './services/supabase/config.js';
+import { supabase } from './services/database/db.js';
 import InitialSetup from './pages/setup/InitialSetup.tsx';
 import PromoteToAdmin from './pages/admin/PromoteToAdmin.tsx';
 import AdminDashboard from './pages/admin/AdminDashboard.tsx';
+import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate(); // 🔥 ADICIONAR ESTE HOOK
   
   const [showTimeout, setShowTimeout] = React.useState(false);
   
@@ -54,30 +54,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (showTimeout) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="text-yellow-500 text-5xl mb-4">⏳</div>
-          <h2 className="text-xl font-semibold mb-2">Carregamento lento</h2>
-          <p className="text-gray-600 mb-4">
-            A autenticação está demorando mais que o normal. 
-            Verifique sua conexão ou tente recarregar a página.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-            >
-              Recarregar
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Ir para Login
-            </button>
-          </div>
-        </div>
-      </div>
+     <ShowTimeot/>
     );
   }
 
@@ -99,6 +76,17 @@ const ProtectedRoute = ({ children }) => {
 function AppContent() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
+
+  useEffect(() => {
+    // ✅ Inicializar sistema de sincronização
+    const sincronizar = async () => {
+      const result = await syncDatabase.syncAll();
+      if (result.success) {
+        console.log('Sincronização completa!');
+      }
+    };
+    sincronizar()
+  }, []);
 
   // 🔥 TODOS OS HOOKS DEVEM SER CHAMADOS SEMPRE
   useEffect(() => {
@@ -145,7 +133,7 @@ function AppContent() {
     initializeApp();
   }, [needsSetup]); // 🔥 ADICIONAR DEPENDÊNCIA
 
-  if (checkingSetup) {
+  if (!checkingSetup) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -156,7 +144,7 @@ function AppContent() {
     );
   }
 
-  if (needsSetup) {
+  if (!needsSetup) {
     return (
       <AuthProvider>
         <Router>

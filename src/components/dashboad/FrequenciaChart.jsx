@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { supabase } from '../../services/supabase/config';
+import { supabase } from '../../services/database/db';
 
 export const FrequenciaChart = () => {
   const [data, setData] = useState([]);

@@ -19,12 +19,13 @@ export interface BaseEntity {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'alunos' | 'turmas' | 'cursos' | 'transacoes'|'aulas'|'propinas'|'frequencias';
+  table: 'alunos' | 'turmas' | 'cursos' | 'transacoes'|'aulas'|'propina'|'frequencias';
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
   retryCount?: number;
   created_at?: string;
+  error?:string;
   data?: string; // JSON string dos dados
 }
 

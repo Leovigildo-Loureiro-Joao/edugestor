@@ -11,6 +11,7 @@ import { Course } from '../../types/curso';
 import { Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
+import { syncService } from './syncService';
 
 // Configurar Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -34,16 +35,31 @@ class EduGestorDatabase extends Dexie {
   constructor() {
     super('EduGestorDB_Final');
     
-    this.version(1).stores({
+    this.version(3).stores({
       // 🔥 Agora sua IDE vai entender ESTA estrutura
-      alunos: 'id, nome_completo, numero_estudante, sync_status, deleted',
-      turmas: 'id, nome_turma, professor, sync_status',
-      cursos: '++id, nome, sync_status',
-      transacoes:'id, sync_status',
+      alunos: '++id, nome_completo, numero_estudante, sync_status, deleted',
+      turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
+      cursos: '++id, nome, area, nivel, sync_status, deleted, [sync_status+deleted]',
+      turma_horarios: '++id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana]',
+      transacoes: '++id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
       propinas: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
       frequencias: '++id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: '++id, turma_id, data_aula, sync_status, deleted, updated_at',
       syncQueue: '++id, table, record_id, operation, status'
+    });
+
+      // ✅ ADICIONE ESTES LISTENERS PARA DEBUG
+    this.on('populate', () => {
+      console.log('🎯 Dexie: Banco populado pela primeira vez');
+    });
+    
+    this.on('ready', () => {
+      console.log('🎯 Dexie: Banco pronto para uso');
+      console.log('🎯 Dexie: Tabelas disponíveis:', this.tables.map(t => t.name));
+    });
+    
+    this.on('blocked', (error) => {
+      console.error('🎯 Dexie ERRO:', error);
     });
   }
 }
@@ -67,3 +83,74 @@ export function getDatabase(): DatabaseInstance {
 // Exportar a instância tipada
 const db: DatabaseInstance = getDatabase();
 export default db;
+
+
+export const syncDatabase = {
+  async syncAll() {
+    if (!navigator.onLine) {
+      console.log('🌐 Offline - sincronização adiada');
+      return { success: false, message: 'Offline' };
+    }
+    
+    try {
+      console.log('🔄 Iniciando sincronização completa...');
+      
+      // 1. Primeiro upload (enviar alterações locais)
+      await syncService.uploadBatch();
+      
+      // 2. Depois download (buscar atualizações remotas)
+      await syncService.downloadBatch();
+      
+      console.log('✅ Sincronização completa concluída');
+      return { success: true, message: 'Sincronizado com sucesso' };
+      
+    } catch (error: any) {
+      console.error('❌ Erro na sincronização:', error);
+      return { success: false, message: error.message };
+    }
+  },
+  
+  // Sincronização apenas upload
+  async syncUpload() {
+    return syncService.uploadBatch();
+  },
+  
+  // Sincronização apenas download
+  async syncDownload() {
+    return syncService.downloadBatch();
+  },
+  
+  // Verificar status
+  async getSyncStatus() {
+    const pendingCount = await db.syncQueue
+      .where('status')
+      .equals('pending')
+      .count();
+    
+    const lastSync = localStorage.getItem('last_sync_global');
+    
+    return {
+      online: navigator.onLine,
+      pendingItems: pendingCount,
+      lastSync: lastSync ? new Date(lastSync).toLocaleString() : 'Nunca',
+      databaseSize: await this.getDatabaseSize()
+    };
+  },
+  
+  // Estimar tamanho do banco
+  async getDatabaseSize() {
+    try {
+      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias'];
+      let total = 0;
+      
+      for (const tableName of tables) {
+        const count = await db.table(tableName).count();
+        total += count;
+      }
+      
+      return total;
+    } catch {
+      return 0;
+    }
+  }
+};

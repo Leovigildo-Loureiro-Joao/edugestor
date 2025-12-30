@@ -192,8 +192,6 @@
     "src/contexts/AuthContext.tsx",
     "src/pages/Courses/Curso.tsx",
     "src/pages/Turmas/Turmas.tsx",
-    "src/hooks/useSyncTurmas.ts",
-    "src/hooks/useSyncCursos copy.ts",
     "node_modules/@types/dexie/README.md",
     "README.md"
   ]

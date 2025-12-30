@@ -1,7 +1,8 @@
 // services/database/frequenciaService.ts
-import { supabase } from '../supabase/config';
+import { supabase } from '../database/db';
 import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
+import { syncService } from './syncService';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -77,228 +78,19 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Sincronização bidirecional de frequências
-  async syncAllPending() {
-    if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização de frequências adiada');
-      return;
-    }
-
-    try {
-      console.log('🔄 Iniciando sincronização bidirecional de frequências...');
-      
-      // FASE 1: DOWNLOAD - Buscar frequências do Supabase
-      console.log('📥 FASE 1: Baixando frequências do Supabase...');
-      await this.downloadFromSupabase();
-      
-      // FASE 2: UPLOAD - Enviar alterações locais para Supabase
-      console.log('📤 FASE 2: Enviando alterações locais...');
-      await this.uploadToSupabase();
-      
-      console.log('✅ Sincronização de frequências concluída');
-      
-    } catch (error) {
-      console.error('❌ Erro geral na sincronização de frequências:', error);
-    }
-  },
-
-  // ✅ DOWNLOAD: Baixar frequências do Supabase
-  async downloadFromSupabase() {
-    try {
-      console.log('📥 Buscando últimas frequências do Supabase...');
-      
-      const lastSync = localStorage.getItem('last_sync_frequencias');
-      console.log('Última sincronização de frequências:', lastSync || 'Primeira vez');
-      
-      let query = supabase
-        .from('frequencias')
-        .select('*, alunos(nome_completo)')
-        .order('updated_at', { ascending: false });
-      
-      if (lastSync) {
-        query = query.gt('updated_at', lastSync);
-      }
-      
-      const { data: frequenciasSupabase, error } = await query;
-      
-      if (error) {
-        console.error('❌ Erro ao buscar frequências do Supabase:', error);
-        return;
-      }
-      
-      console.log(`📥 ${frequenciasSupabase?.length || 0} frequências encontradas no Supabase`);
-      
-      if (!frequenciasSupabase || frequenciasSupabase.length === 0) {
-        console.log('📭 Nenhuma frequência nova/atualizada no Supabase');
-        return;
-      }
-      
-      // Processar cada frequência do Supabase
-      for (const frequenciaSupabase of frequenciasSupabase) {
-        try {
-          const frequenciaLocal = await db.frequencias.get(frequenciaSupabase.id);
-          
-          if (!frequenciaLocal) {
-            // NOVA FREQUÊNCIA DO SUPABASE
-            const frequenciaParaSalvar = {
-              ...frequenciaSupabase,
-              sync_status: 'synced' as const,
-              deleted: false,
-              aluno_nome: frequenciaSupabase.alunos?.nome_completo
-            };
-            
-            await db.frequencias.put(frequenciaParaSalvar);
-            console.log(`✅ Nova frequência baixada: aluno ${frequenciaSupabase.aluno_id} na aula ${frequenciaSupabase.aula_id}`);
-            
-          } else if (frequenciaLocal.sync_status === 'synced') {
-            // ATUALIZAÇÃO DO SUPABASE - Só atualizar se não tivermos alterações pendentes
-            const localUpdated = new Date(frequenciaLocal.updated_at || 0);
-            const remoteUpdated = new Date(frequenciaSupabase.updated_at || 0);
-            
-            if (remoteUpdated > localUpdated) {
-              // Supabase tem versão mais recente
-              const frequenciaAtualizada = {
-                ...frequenciaLocal,
-                ...frequenciaSupabase,
-                sync_status: 'synced' as const,
-                aluno_nome: frequenciaSupabase.alunos?.nome_completo
-              };
-              
-              await db.frequencias.put(frequenciaAtualizada);
-              console.log(`✏️ Frequência atualizada do Supabase: ${frequenciaSupabase.id}`);
-            }
-          }
-          // Se sync_status = 'pending', não sobrescrever (temos alterações locais não enviadas)
-          
-        } catch (freqError) {
-          console.error(`❌ Erro processando frequência ${frequenciaSupabase.id}:`, freqError);
-        }
-      }
-      
-      // Atualizar timestamp da última sincronização
-      localStorage.setItem('last_sync_frequencias', new Date().toISOString());
-      console.log('✅ Download do Supabase concluído');
-      
-    } catch (error) {
-      console.error('❌ Erro no download do Supabase:', error);
-    }
-  },
-
-  // ✅ UPLOAD: Enviar alterações locais para Supabase
-  async uploadToSupabase() {
-    try {
-      // Buscar itens da fila específicos para frequências
-      const pendingItems = await db.syncQueue
-        .where('table')
-        .equals('frequencias')
-        .and(item => item.status === 'pending')
-        .toArray();
-
-      console.log(`📤 ${pendingItems.length} frequências pendentes para envio`);
-
-      for (const item of pendingItems) {
-        try {
-          const frequencia = await db.frequencias.get(item.record_id);
-          if (!frequencia) {
-            await db.syncQueue.delete(item.id || -1);
-            continue;
-          }
-
-          if (item.operation === 'upsert') {
-            // Preparar dados para envio
-            const { sync_status, deleted, aluno_nome, created_at, updated_at, ...dadosParaEnviar } = frequencia;
-            
-            // Verificar se já existe no Supabase
-            let frequenciaExistente = null;
-            if (!frequencia.id.startsWith('local_')) {
-              const { data } = await supabase
-                .from('frequencias')
-                .select('id')
-                .eq('id', frequencia.id)
-                .maybeSingle();
-              frequenciaExistente = data;
-            }
-
-            let resultado;
-            if (frequenciaExistente) {
-              // UPDATE no Supabase
-              resultado = await supabase
-                .from('frequencias')
-                .update(dadosParaEnviar)
-                .eq('id', frequencia.id)
-                .select('*, alunos(nome_completo)')
-                .single();
-            } else {
-              // INSERT no Supabase
-              resultado = await supabase
-                .from('frequencias')
-                .insert(dadosParaEnviar)
-                .select('*, alunos(nome_completo)')
-                .single();
-              
-              // Se criou no Supabase, atualizar ID local
-              if (resultado.data && frequencia.id.startsWith('local_')) {
-                await db.frequencias.update(frequencia.id, {
-                  id: resultado.data.id,
-                  sync_status: 'synced' as const,
-                  aluno_nome: resultado.data.alunos?.nome_completo
-                });
-                
-                // Atualizar referência na fila
-                await db.syncQueue.update(item.id || -1, {
-                  record_id: resultado.data.id
-                });
-              }
-            }
-
-            if (resultado.error) {
-              console.error('Erro Supabase:', resultado.error);
-              throw resultado.error;
-            }
-            
-            // Marcar como sincronizado
-            await db.frequencias.update(item.record_id, { 
-              sync_status: 'synced' as const,
-              updated_at: new Date().toISOString()
-            });
-            await db.syncQueue.delete(item.id || -1);
-            
-          } else if (item.operation === 'delete') {
-            // Só deletar no Supabase se não for um ID local
-            if (!frequencia.id.startsWith('local_')) {
-              await supabase.from('frequencias').delete().eq('id', frequencia.id);
-            }
-            
-            // Deletar localmente
-            await db.frequencias.delete(item.record_id);
-            await db.syncQueue.delete(item.id || -1);
-          }
-
-          console.log(`[Sync] Frequência ${item.record_id} sincronizada`);
-          
-        } catch (itemError) {
-          console.error(`[Sync] Erro na frequência ${item.record_id}:`, itemError);
-          
-          // Incrementar tentativas
-          const novasTentativas = (item.retryCount || 0) + 1;
-          await db.syncQueue.update(item.id || -1, {
-            retryCount: novasTentativas,
-            status: novasTentativas >= 3 ? 'failed' : 'pending'
-          });
-        }
-        
-        // Pausa entre operações
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      console.log('✅ Upload para Supabase concluído');
-    } catch (error) {
-      console.error('❌ Erro no upload para Supabase:', error);
-    }
-  },
-
-  // ✅ Função auxiliar para sincronizar frequências pendentes
-  async syncPendingFrequencias() {
-    return this.syncAllPending();
+    async syncFrequencias() {
+      return syncService.downloadTableBatch('frequencias', new Date(0));
+    },
+  
+  // ✅ Função auxiliar para marcar como pendente
+   async markForSync(recordId: string, operation: 'upsert' | 'delete') {
+    await db.syncQueue.add({
+      table: 'frequencias',
+      record_id: recordId,
+      operation,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
   },
 
   // ✅ Buscar frequência por aula (com suporte offline)

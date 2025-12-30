@@ -1,16 +1,16 @@
-// src/services/database/index.ts
-
-
-/*export { mockStudentsService as alunosService } from './mockStudents';
-export { mockTurmaService as turmaService } from './mockTurmas';
-export { mockTransacaoService as transacaoService } from './mockTransacoes';
-export { mockPropinaService as propinaService } from './mockPropina';
-export { mockCursosService as cursosService } from './mockCursos'; */
-export { alunosService } from './alunosService';
-export { turmaService } from './turmas';
-export { transacaoService } from './transacaoService';
-export { propinaService } from './propinas';
 export { cursosService } from './curso';
+import db, { syncDatabase } from './db';
+export { turmaService } from './turmas';
+export { syncDatabase } from './db';
+export { alunosService } from './alunosService';
+export { transacaoService } from './transacaoService';
+export { aulaService } from './aulaService';
+export { propinaService } from './propinas';
+export { frequenciaService } from './frequenciaService';
 
 
+
+
+
+// Em qualquer componente:
 

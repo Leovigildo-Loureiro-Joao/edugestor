@@ -25,7 +25,7 @@ import {
   FaChalkboardTeacher,
   FaMoneyBillWave 
 } from 'react-icons/fa';
-import { supabase } from '../../services/supabase/config';
+import { supabase } from '../../services/database/db';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface User {

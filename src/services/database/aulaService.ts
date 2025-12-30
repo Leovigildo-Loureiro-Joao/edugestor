@@ -1,7 +1,8 @@
 // services/database/aulaService.ts
-import { supabase } from '../supabase/config';
+import { supabase } from '../database/db';
 import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
+import { syncService } from './syncService';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -66,225 +67,19 @@ export const aulaService = {
     }
   },
 
-  // ✅ Sincronização bidirecional de aulas
-  async syncAllPending() {
-    if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização de aulas adiada');
-      return;
-    }
-
-    try {
-      console.log('🔄 Iniciando sincronização bidirecional de aulas...');
-      
-      // FASE 1: DOWNLOAD - Buscar aulas do Supabase
-      console.log('📥 FASE 1: Baixando aulas do Supabase...');
-      await this.downloadFromSupabase();
-      
-      // FASE 2: UPLOAD - Enviar alterações locais para Supabase
-      console.log('📤 FASE 2: Enviando alterações locais...');
-      await this.uploadToSupabase();
-      
-      console.log('✅ Sincronização de aulas concluída');
-      
-    } catch (error) {
-      console.error('❌ Erro geral na sincronização de aulas:', error);
-    }
-  },
-
-  // ✅ DOWNLOAD: Baixar aulas do Supabase
-  async downloadFromSupabase() {
-    try {
-      console.log('📥 Buscando últimas aulas do Supabase...');
-      
-      const lastSync = localStorage.getItem('last_sync_aulas');
-      console.log('Última sincronização de aulas:', lastSync || 'Primeira vez');
-      
-      let query = supabase
-        .from('aulas')
-        .select('*, turmas(nome_turma)')
-        .order('updated_at', { ascending: false });
-      
-      if (lastSync) {
-        query = query.gt('updated_at', lastSync);
-      }
-      
-      const { data: aulasSupabase, error } = await query;
-      
-      if (error) {
-        console.error('❌ Erro ao buscar aulas do Supabase:', error);
-        return;
-      }
-      
-      console.log(`📥 ${aulasSupabase?.length || 0} aulas encontradas no Supabase`);
-      
-      if (!aulasSupabase || aulasSupabase.length === 0) {
-        console.log('📭 Nenhuma aula nova/atualizada no Supabase');
-        return;
-      }
-      
-      // Processar cada aula do Supabase
-      for (const aulaSupabase of aulasSupabase) {
-        try {
-          const aulaLocal = await db.aulas.get(aulaSupabase.id);
-          
-          if (!aulaLocal) {
-            // NOVA AULA DO SUPABASE
-            const aulaParaSalvar = {
-              ...aulaSupabase,
-              sync_status: 'synced' as const,
-              deleted: false
-            };
-            
-            await db.aulas.put(aulaParaSalvar);
-            console.log(`✅ Nova aula baixada: ${aulaSupabase.tema_aula || 'Sem tema da aula'}`);
-            
-          } else if (aulaLocal.sync_status === 'synced') {
-            // ATUALIZAÇÃO DO SUPABASE - Só atualizar se não tivermos alterações pendentes
-            const localUpdated = new Date(aulaLocal.updated_at || 0);
-            const remoteUpdated = new Date(aulaSupabase.updated_at || 0);
-            
-            if (remoteUpdated > localUpdated) {
-              // Supabase tem versão mais recente
-              const aulaAtualizada = {
-                ...aulaLocal,
-                ...aulaSupabase,
-                sync_status: 'synced' as const,
-              };
-              
-              await db.aulas.put(aulaAtualizada);
-              console.log(`✏️ Aula atualizada do Supabase: ${aulaSupabase.tema_aula || 'Sem tema da aula'}`);
-            }
-          }
-          // Se sync_status = 'pending', não sobrescrever (temos alterações locais não enviadas)
-          
-        } catch (aulaError) {
-          console.error(`❌ Erro processando aula ${aulaSupabase.id}:`, aulaError);
-        }
-      }
-      
-      // Atualizar timestamp da última sincronização
-      localStorage.setItem('last_sync_aulas', new Date().toISOString());
-      console.log('✅ Download do Supabase concluído');
-      
-    } catch (error) {
-      console.error('❌ Erro no download do Supabase:', error);
-    }
-  },
-
-  // ✅ UPLOAD: Enviar alterações locais para Supabase
-  async uploadToSupabase() {
-    try {
-      // Buscar itens da fila específicos para aulas
-      const pendingItems = await db.syncQueue
-        .where('table')
-        .equals('aulas')
-        .and(item => item.status === 'pending')
-        .toArray();
-
-      console.log(`📤 ${pendingItems.length} aulas pendentes para envio`);
-
-      for (const item of pendingItems) {
-        try {
-          const aula = await db.aulas.get(item.record_id);
-          if (!aula) {
-            await db.syncQueue.delete(item.id || -1);
-            continue;
-          }
-
-          if (item.operation === 'upsert') {
-            // Preparar dados para envio
-            const { sync_status, deleted, created_at, updated_at, ...dadosParaEnviar } = aula;
-            
-            // Verificar se já existe no Supabase
-            let aulaExistente = null;
-            if (!aula.id.startsWith('local_')) {
-              const { data } = await supabase
-                .from('aulas')
-                .select('id')
-                .eq('id', aula.id)
-                .maybeSingle();
-              aulaExistente = data;
-            }
-
-            let resultado;
-            if (aulaExistente) {
-              // UPDATE no Supabase
-              resultado = await supabase
-                .from('aulas')
-                .update(dadosParaEnviar)
-                .eq('id', aula.id)
-                .select('*, turmas(nome_turma)')
-                .single();
-            } else {
-              // INSERT no Supabase
-              resultado = await supabase
-                .from('aulas')
-                .insert(dadosParaEnviar)
-                .select('*, turmas(nome_turma)')
-                .single();
-              
-              // Se criou no Supabase, atualizar ID local
-              if (resultado.data && aula.id.startsWith('local_')) {
-                await db.aulas.update(aula.id, {
-                  id: resultado.data.id,
-                  sync_status: 'synced' as const
-                });
-                
-                // Atualizar referência na fila
-                await db.syncQueue.update(item.id || -1, {
-                  record_id: resultado.data.id
-                });
-              }
-            }
-
-            if (resultado.error) {
-              console.error('Erro Supabase:', resultado.error);
-              throw resultado.error;
-            }
-            
-            // Marcar como sincronizado
-            await db.aulas.update(item.record_id, { 
-              sync_status: 'synced' as const,
-              updated_at: new Date().toISOString()
-            });
-            await db.syncQueue.delete(item.id || -1);
-            
-          } else if (item.operation === 'delete') {
-            // Só deletar no Supabase se não for um ID local
-            if (!aula.id.startsWith('local_')) {
-              await supabase.from('aulas').delete().eq('id', aula.id);
-            }
-            
-            // Deletar localmente
-            await db.aulas.delete(item.record_id);
-            await db.syncQueue.delete(item.id || -1);
-          }
-
-          console.log(`[Sync] Aula ${item.record_id} sincronizada`);
-          
-        } catch (itemError) {
-          console.error(`[Sync] Erro na aula ${item.record_id}:`, itemError);
-          
-          // Incrementar tentativas
-          const novasTentativas = (item.retryCount || 0) + 1;
-          await db.syncQueue.update(item.id || -1, {
-            retryCount: novasTentativas,
-            status: novasTentativas >= 3 ? 'failed' : 'pending'
-          });
-        }
-        
-        // Pausa entre operações
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      console.log('✅ Upload para Supabase concluído');
-    } catch (error) {
-      console.error('❌ Erro no upload para Supabase:', error);
-    }
-  },
-
-  // ✅ Função auxiliar para sincronizar aulas pendentes
-  async syncPendingAulas() {
-    return this.syncAllPending();
+    async syncAulas() {
+      return syncService.downloadTableBatch('aulas', new Date(0));
+    },
+  
+  // ✅ Função auxiliar para marcar como pendente
+   async markForSync(recordId: string, operation: 'upsert' | 'delete') {
+    await db.syncQueue.add({
+      table: 'aulas',
+      record_id: recordId,
+      operation,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
   },
 
   // ✅ Buscar aulas recentes (com suporte offline)

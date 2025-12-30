@@ -1,9 +1,11 @@
 // src/pages/Admin/PromoteToAdmin.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../services/supabase/config';
+import { supabase } from '../../services/database/db';
 import { useAuth } from '../../contexts/AuthContext';
+import jpg from '../../assets/admin.jpg';
 
+export {jpg};
 const PromoteToAdmin = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -76,71 +78,74 @@ const PromoteToAdmin = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">👑</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Tornar-se Administrador
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Digite a chave secreta para se tornar administrador do sistema
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Chave Secreta
-            </label>
-            <input
-              type="password"
-              value={secretKey}
-              onChange={(e) => setSecretKey(e.target.value)}
-              placeholder="Digite a chave secreta"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-              {error}
+     <section className='flex'>
+        <img src={jpg} alt="" />
+         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">👑</span>
             </div>
-          )}
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Dica:</strong> Para testes, você pode usar a chave:{' '}
-              <code className="bg-blue-100 px-2 py-1 rounded">ESCOLA_SETUP_2024</code>
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              ⚠️ Em produção, remova esta dica e use uma chave segura!
+            <h1 className="text-2xl font-bold text-gray-900">
+              Tornar-se Administrador
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Digite a chave secreta para se tornar administrador do sistema
             </p>
           </div>
 
-          <button
-            onClick={handlePromote}
-            disabled={loading || !secretKey}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Processando...' : 'Tornar-se Admin'}
-          </button>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Chave Secreta
+              </label>
+              <input
+                type="password"
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                placeholder="Digite a chave secreta"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
 
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-          >
-            Voltar ao Dashboard
-          </button>
-        </div>
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-          <p className="text-sm text-gray-500">
-            Se perdeu a chave, contate o desenvolvedor.
-          </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Dica:</strong> Para testes, você pode usar a chave:{' '}
+                <code className="bg-blue-100 px-2 py-1 rounded">ESCOLA_SETUP_2024</code>
+              </p>
+              <p className="text-xs text-blue-600 mt-2">
+                ⚠️ Em produção, remova esta dica e use uma chave segura!
+              </p>
+            </div>
+
+            <button
+              onClick={handlePromote}
+              disabled={loading || !secretKey}
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? 'Processando...' : 'Tornar-se Admin'}
+            </button>
+
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              Voltar ao Dashboard
+            </button>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+            <p className="text-sm text-gray-500">
+              Se perdeu a chave, contate o desenvolvedor.
+            </p>
+          </div>
         </div>
-      </div>
+     </section>
     </div>
   );
 };

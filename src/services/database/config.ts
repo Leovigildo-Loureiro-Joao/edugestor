@@ -1,6 +1,6 @@
 import { AcademyConfig, PaymentConfig, TipoAvaliacao } from "../../types/config";
 import { SystemConfig, SystemConfigFormData } from "../../types/config";
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 import { instituicaoService } from "./insitituicao";
 
 export const configService = {

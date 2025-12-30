@@ -1,4 +1,4 @@
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 
 const gerarCor = (turma, index) => {
   const cores = [

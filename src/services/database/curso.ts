@@ -1,250 +1,279 @@
-import { CourseFormData } from "../../types/curso";
-import { supabase } from "../supabase/config";
+// services/database/cursoService.ts
+import { Course, CourseFormData } from "../../types/curso";
+import { supabase } from "../database/db";
 import db from "./db";
+import { syncService } from "./syncService";
 
-export const cursosService={
-    async create(course:CourseFormData) {
-      const { data, error } = await supabase.from("cursos")
-        .insert(course)
-         .select();
+const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        if (error) throw error;
-        return data;
-    },
-    
-    async getCourse() {
-      try {
-          const todosCursos = await db.cursos.toArray();
-          const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
-          cursosAtivos.sort((a,b)=>a.nome.localeCompare(b.nome))
-          return cursosAtivos;
-      } catch (error:any) {
-        console.error("Erro ao carregar os cursos"+error.message)
+export const cursosService = {
+  // ✅ Criar curso localmente
+  async create(course: CourseFormData): Promise<string> {
+    try {
+      const id = generateUniqueId();
+      const now = new Date().toISOString();
+      
+      const curso = {
+        ...course,
+        id,
+        created_at: now,
+        updated_at: now,
+        sync_status: 'pending',
+        deleted: false,
+      } as Course;
+
+      console.log('💾 Salvando curso:', curso.nome);
+      
+      await db.cursos.put(curso);
+      
+      // Adicionar à fila de sincronização
+      await db.syncQueue.add({
+        table: 'cursos',
+        record_id: id,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: now
+      });
+
+      console.log('✅ Curso salvo com ID:', id);
+      return id;
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar curso:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Buscar todos os cursos
+  async getCourse(): Promise<Course[]> {
+    try {
+      console.log('📋 Buscando cursos...');
+      
+      const todosCursos = await db.cursos.toArray();
+      
+      // Filtrar os não deletados
+      const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
+      
+      // Ordenar por nome
+      cursosAtivos.sort((a, b) => 
+        (a.nome || '').localeCompare(b.nome || '')
+      );
+      
+      console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
+      return cursosAtivos;
+    } catch (error) {
+      console.error('❌ Erro ao buscar cursos:', error);
+      return [];
+    }
+  },
+
+  // ✅ Buscar curso por ID
+  async getCourseById(id: string): Promise<Course | null> {
+    try {
+      const curso = await db.cursos.get(id);
+      return curso && !curso.deleted ? curso : null;
+    } catch (error) {
+      console.error('Erro ao buscar curso por ID:', error);
+      return null;
+    }
+  },
+
+  // ✅ Buscar curso por ID (com cache remoto)
+  async getCourseId(id: string): Promise<Course | null> {
+    try {
+      // Primeiro busca localmente
+      const cursoLocal = await this.getCourseById(id);
+      if (cursoLocal) {
+        return cursoLocal;
       }
+      
+      // Se não encontrou localmente e está online, busca no Supabase
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from("cursos")
+          .select("*, turmas(nome_turma)")
+          .eq("id", id)
+          .single();
+          
+        if (!error && data) {
+          // Salvar localmente para cache
+          await db.cursos.put({
+            ...data,
+            sync_status: 'synced' as const,
+            deleted: false
+          });
+          return data;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar curso:', error);
+      return null;
+    }
+  },
+
+  // ✅ Atualizar curso
+  async updateCourse(id: string, courseData: Partial<CourseFormData>) {
+    try {
+      const updated_at = new Date().toISOString();
+      
+      await db.cursos.update(id, {
+        ...courseData,
+        updated_at,
+        sync_status: 'pending'
+      });
+
+      // Adicionar/atualizar na fila
+      await db.syncQueue.add({
+        table: 'cursos',
+        record_id: id,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: updated_at
+      });
+      
+      console.log(`✏️ Curso ${id} marcado para atualização`);
+      
+    } catch (error) {
+      console.error('Erro ao atualizar curso:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Deletar curso (soft delete)
+  async deleteCourse(id: string) {
+    try {
+      const curso = await db.cursos.get(id);
+      if (!curso) return;
+
+      if (curso.sync_status === 'synced' && !curso.id.startsWith('local_')) {
+        // Se já sincronizado, marcar para deleção remota
+        await db.cursos.update(id, { 
+          deleted: true, 
+          sync_status: 'pending_delete',
+          updated_at: new Date().toISOString()
+        });
+        
+        await db.syncQueue.add({
+          table: 'cursos',
+          record_id: id,
+          operation: 'delete',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+        
+        console.log(`🗑️ Curso ${id} marcado para deleção remota`);
+      } else {
+        // Se nunca sincronizado, deletar completamente
+        await db.cursos.delete(id);
+        
+        // Remover da fila se existir
+        await db.syncQueue
+          .where('record_id')
+          .equals(id)
+          .delete();
+          
+        console.log(`🗑️ Curso ${id} deletado localmente`);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao deletar curso:', error);
+      throw error;
+    }
+  },
+
+ async syncCursos() {
+      return syncService.downloadTableBatch('cursos', new Date(0));
+    },
+  
+  // ✅ Função auxiliar para marcar como pendente
+   async markForSync(recordId: string, operation: 'upsert' | 'delete') {
+    await db.syncQueue.add({
+      table: 'cursos',
+      record_id: recordId,
+      operation,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+  },
 
 
-    },
+  // ✅ Verificar saúde do banco de cursos
+  async checkDatabaseHealth() {
+    try {
+      const cursoCount = await db.cursos.count();
+      const queueCount = await db.syncQueue
+        .where('table')
+        .equals('cursos')
+        .and(item => item.status === 'pending')
+        .count();
+      
+      const cursosAtivos = (await this.getCourse()).length;
+      
+      return {
+        cursosTotal: cursoCount,
+        cursosAtivos: cursosAtivos,
+        pendentes: queueCount,
+        online: navigator.onLine,
+        bancoAberto: db.isOpen()
+      };
+    } catch (error: any) {
+      return {
+        error: error.message,
+        bancoAberto: false
+      };
+    }
+  },
 
-    async getCourseId(id:string) {
-      const { data, error } = await supabase.from("cursos")
-        .select("*,cursos(curso),turmas(nome_turma)")
-        .eq("id=",id);
-        if (error) throw error;
-        return data[0];
-    },
-    async syncAllPending() {
-      if (!navigator.onLine) {
-        console.log('🌐 Offline - sincronização adiada');
-        return;
-      }
-    
-      try {
-        console.log('🔄 Iniciando sincronização bidirecional...');
+  // ✅ Obter estatísticas
+  async getEstatisticas() {
+    try {
+      const cursos = await this.getCourse();
+      
+      // Agrupar por área ou tipo
+      const porArea: Record<string, number> = {};
+      const porNivel: Record<string, number> = {};
+      
+      cursos.forEach(curso => {
+        // Por área (se existir o campo)
+        const areaKey = (curso as any).area || 'sem_area';
+        porArea[areaKey] = (porArea[areaKey] || 0) + 1;
         
-        // 🔄 FASE 1: DOWNLOAD - Buscar cursos do Supabase
-        console.log('📥 FASE 1: Baixando cursos do Supabase...');
-        await this.downloadFromSupabase();
-        
-        // 🔄 FASE 2: UPLOAD - Enviar alterações locais para Supabase
-        console.log('📤 FASE 2: Enviando alterações locais...');
-        await this.uploadToSupabase();
-        
-        console.log('✅ Sincronização bidirecional concluída');
-        
-      } catch (error) {
-        console.error('❌ Erro geral na sincronização:', error);
-      }
-    },
-    
-    // 🔄 NOVA FUNÇÃO: Baixar cursos do Supabase
-    async downloadFromSupabase() {
-      try {
-        console.log('📥 Buscando últimos cursos do Supabase...');
-        
-        // Buscar última data de sincronização
-        const lastSync = localStorage.getItem('last_sync_cursos');
-        console.log('Última sincronização:', lastSync || 'Primeira vez');
-        
-        let query = supabase
-          .rpc('get_courses_with_counts_and_turmas')
-        
-        // Se já sincronizou antes, buscar apenas alterações recentes
-        if (lastSync) {
-          query = query.gt('updated_at', lastSync);
-        }
-        
-        const { data: cursosSupabase, error } = await query;
-        
-        if (error) {
-          console.error('❌ Erro ao buscar cursos do Supabase:', error);
-          return;
-        }
-        
-        console.log(`📥 ${cursosSupabase?.length || 0} cursos encontrados no Supabase`);
-        
-        if (!cursosSupabase || cursosSupabase.length === 0) {
-          console.log('📭 Nenhum curso novo/atualizado no Supabase');
-          return;
-        }
-        
-        // Processar cada curso do Supabase
-        for (const cursosupabase of cursosSupabase) {
-          try {
-            // Verificar se já existe localmente
-            const cursoLocal = await db.cursos.get(cursosupabase.id);
-            
-            if (!cursoLocal) {
-              // 🔴 NOVO curso DO SUPABASE - Criar localmente
-              const cursoParaSalvar = {
-                ...cursosupabase,
-                // Garantir que temos todos os campos necessários
-                sync_status: 'synced',
-                deleted: false
-              };
-              
-              await db.cursos.put(cursoParaSalvar);
-              console.log(`✅ Novo curso baixado: ${cursosupabase.nome_completo}`);
-              
-            } else if (cursoLocal.sync_status === 'synced') {
-              // 🔴 ATUALIZAÇÃO DO SUPABASE - Só atualizar se não tivermos alterações pendentes
-              // Comparar timestamps para ver quem é mais recente
-              const localUpdated = new Date(cursoLocal.updated_at || 0);
-              const remoteUpdated = new Date(cursosupabase.updated_at || 0);
-              
-              if (remoteUpdated > localUpdated) {
-                // Supabase tem versão mais recente
-                const cursoAtualizado = {
-                  ...cursoLocal,           // Manter campos locais
-                  ...cursosupabase,        // Sobrescrever com dados do Supabase
-                  sync_status: 'synced',   // Manter sincronizado
-                };
-                
-                await db.cursos.put(cursoAtualizado);
-                console.log(`✏️ curso atualizado do Supabase: ${cursosupabase.nome_completo}`);
-              }
-            }
-            // Se sync_status = 'pending', não sobrescrever (temos alterações locais não enviadas)
-            
-          } catch (cursoError) {
-            console.error(`❌ Erro processando curso ${cursosupabase.id}:`, cursoError);
-          }
-        }
-        
-        // Atualizar timestamp da última sincronização
-        localStorage.setItem('last_sync_cursos', new Date().toISOString());
-        console.log('✅ Download do Supabase concluído');
-        
-      } catch (error) {
-        console.error('❌ Erro no download do Supabase:', error);
-      }
-    },
-    
-    // 🔄 FUNÇÃO: Enviar alterações locais para Supabase (mantém a sua lógica)
-    async uploadToSupabase() {
-       try {
-          // Buscar apenas itens da tabela 'cursos'
-          const pendingItems = await db.syncQueue
-          .where('status')
-          .equals('pending')
-          .toArray();
-    
-            console.log(`📤 ${pendingItems.length} itens pendentes para envio`);
-    
-          for (const item of pendingItems) {
-            try {
-              // Buscar curso da tabela 'cursos'
-              const curso = await db.cursos.get(item.record_id);
-              if (!curso) {
-                await db.syncQueue.delete(item.id||-1);
-                continue;
-              }
-    
-              if (item.operation === 'upsert') {
-                // Preparar dados para envio (remover campos internos)
-                const { sync_status, deleted, created_at, updated_at, ...dadosParaEnviar } = curso;
-                
-                // VERIFICAÇÃO CRÍTICA: curso já existe no Supabase?
-                let cursoExistente = null;
-                if (!curso.id.startsWith('local_')) {
-                  const { data } = await supabase
-                    .from('cursos')
-                    .select('id')
-                    .eq('id', curso.id)
-                    .maybeSingle();
-                  cursoExistente = data;
-                }
-    
-                let resultado;
-                if (cursoExistente) {
-                  // UPDATE no Supabase
-                  resultado = await supabase
-                    .from('cursos')
-                    .update(dadosParaEnviar)
-                    .eq('id', curso.id);
-                } else {
-                  // INSERT no Supabase
-                  resultado = await supabase
-                    .from('cursos')
-                    .insert(dadosParaEnviar)
-                    .select()
-                    .single();
-                  
-                  // Se criou no Supabase, atualizar ID local
-                  if (resultado.data && curso.id.startsWith('local_')) {
-                    await db.cursos.update(curso.id, {
-                      id: resultado.data.id,
-                      sync_status: 'synced'
-                    });
-                    
-                    // Atualizar referência na fila
-                    await db.syncQueue.update(item.id||-1, {
-                      record_id: resultado.data.id
-                    });
-                  }
-                }
-    
-                if (resultado.error) {
-                  console.error('Erro Supabase:', resultado.error);
-                  throw resultado.error;
-                }
-                
-                // Marcar como sincronizado
-                await db.cursos.update(item.record_id, { 
-                  sync_status: 'synced',
-                  updated_at: new Date().toISOString()
-                });
-                await db.syncQueue.delete(item.id||-1);
-                
-              } else if (item.operation === 'delete') {
-                // Só deletar no Supabase se não for um ID local
-                if (!curso.id.startsWith('local_')) {
-                  await supabase.from('cursos').delete().eq('id', curso.id);
-                }
-                
-                // Deletar localmente
-                await db.cursos.delete(item.record_id);
-                await db.syncQueue.delete(item.id||-1);
-              }
-    
-              console.log(`[Sync] curso ${item.record_id} sincronizado`);
-              
-            } catch (itemError) {
-              console.error(`[Sync] Erro no curso ${item.record_id}:`, itemError);
-              
-              // Incrementar tentativas
-              const novasTentativas = (item.retryCount || 0) + 1;
-              await db.syncQueue.update(item.id||-1, {
-                retryCount: novasTentativas,
-                status: novasTentativas >= 3 ? 'failed' : 'pending'
-              });
-            }
-            
-            // Pausa entre operações
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-           console.log('✅ Upload para Supabase concluído');
-        } catch (error) {
-          console.error('❌ Erro no upload para Supabase:', error);
-        }
-    },
-}
+        // Por nível (se existir o campo)
+        const nivelKey = (curso as any).nivel || 'sem_nivel';
+        porNivel[nivelKey] = (porNivel[nivelKey] || 0) + 1;
+      });
+      
+      return {
+        total: cursos.length,
+        porArea,
+        porNivel,
+        ultimaAtualizacao: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('❌ Erro ao gerar estatísticas:', error);
+      return {
+        total: 0,
+        porArea: {},
+        porNivel: {},
+        ultimaAtualizacao: new Date().toISOString()
+      };
+    }
+  },
+
+  // ✅ Buscar cursos com filtros
+  async searchCursos(filtro: string): Promise<Course[]> {
+    try {
+      const cursos = await this.getCourse();
+      
+      return cursos.filter(curso => 
+        curso.nome.toLowerCase().includes(filtro.toLowerCase()) ||
+        (curso.descricao && curso.descricao.toLowerCase().includes(filtro.toLowerCase()))
+      );
+    } catch (error) {
+      console.error('Erro ao buscar cursos:', error);
+      return [];
+    }
+  }
+};

@@ -6,7 +6,6 @@ import { turmaService } from '../../services/database';
 import { Select } from '../../components/ui/Select';
 import {Turma} from "../../types/turma"
 import { SelectTyped } from '../../components/students/StudentForm';
-import { useSyncTurmas } from '../../hooks/useSyncTurmas';
 
 // Definição das interfaces
 
@@ -30,8 +29,6 @@ const Turmas: React.FC = () => {
   const [filtroCurso, setFiltroCurso] = useState<string>('Todos Cursos');
   const nav = useNavigate();
 
-
-  const { sync } = useSyncTurmas();
   useEffect(() => {
       Reload();
     }, []);

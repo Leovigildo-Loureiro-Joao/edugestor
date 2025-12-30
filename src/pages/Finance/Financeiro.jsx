@@ -7,6 +7,7 @@ import { CustomPieChart } from '../../components/finance/PieChartDespesa.tsx';
 import GraficoBarrasDuplas from '../../components/finance/BarraDupla.jsx';
 import GraficoBarrasLucro from '../../components/finance/BarraMensal.jsx';
 
+
 // Componente Selector Profissional
 const SelectorVisualizacao = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);

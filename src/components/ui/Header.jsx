@@ -10,6 +10,7 @@ import {
   FiWifiOff
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { initializeSyncSystem } from '../../services/database/syncManager.ts';
 
 const Header = ({ setIsDarkMode, isDarkMode }) => {
   const notifications = [
@@ -38,6 +39,16 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
       read: true
     }
   ];
+
+    useEffect(() => {
+      // ✅ Inicializar sistema de sincronização
+      const initSync = async () => {
+        await initializeSyncSystem();
+        console.log('✅ Sistema de sincronização inicializado');
+      };
+      
+      initSync();
+    }, []);
 
   const { logout, user } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);

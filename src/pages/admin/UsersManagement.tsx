@@ -1,7 +1,7 @@
 // src/pages/Admin/UsersManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabase/config';
+import { supabase } from '../../services/database/db';
 
 interface UserWithProfile {
   id: string;

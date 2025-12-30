@@ -1,4 +1,4 @@
-import { supabase } from "../supabase/config";
+import { supabase } from "../database/db";
 import { Meta } from "../../types/eventos";
 
 export const metasService= { 

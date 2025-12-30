@@ -8,7 +8,7 @@ import { RxPerson } from 'react-icons/rx';
 import { StatCard } from '../../components/students/StatCard';
 import { Student } from '../../types';
 import { SelectTyped } from '../../components/students/StudentForm';
-import { useSyncAlunos } from '../../hooks/useSyncAlunos'; // ← Hook corrigido
+
 
 
 const Students = () => {
@@ -19,9 +19,7 @@ const Students = () => {
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
   const nav = useNavigate();
 
-  // Hook de sincronização
-  const { sync } = useSyncAlunos();
-
+  
   const abrirAluno = (alunoId: string) => {
     console.log('Abrir aluno com ID:', alunoId);
     nav(`/alunos/${alunoId}`);
