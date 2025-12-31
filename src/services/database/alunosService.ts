@@ -45,37 +45,25 @@ export const alunosService = {
   },
 
   // ✅ Buscar todos os alunos - CORRIGIDO
-  async getAllStudents(): Promise<Student[]> {
-    try {
-      console.log('📋 Buscando alunos...');
-      
-      // FORMA CORRETA: buscar todos e filtrar manualmente
-      const todosAlunos = await db.alunos.toArray();
-      
-      // Filtrar os não deletados
-      const alunosAtivos = todosAlunos.filter(aluno => !aluno.deleted);
-
-      alunosAtivos.map((aluno)=> {
-        const turma = db.turmas.get(aluno.turma_id);
-        turma.then((t)=>{
-          aluno.turma_nome=t?.nome_turma;
-          aluno.professor=t?.professor;
-        })
-       
-      })
-      
-      // Ordenar por nome
-      alunosAtivos.sort((a, b) => 
-        (a.nome_completo || '').localeCompare(b.nome_completo || '')
-      );
-      
-      console.log(`✅ Encontrados ${alunosAtivos.length} alunos ativos`);
-      return alunosAtivos;
-    } catch (error) {
-      console.error('❌ Erro ao buscar alunos:', error);
-      return [];
-    }
-  },
+async getAllStudents() {
+    const alunosAll = await db.alunos.toArray()
+    const alunos = alunosAll.filter(aluno => !aluno.deleted);
+    alunos.sort((a,b)=>(a.nome_completo.localeCompare(b.nome_completo)))
+    console.log(alunos)
+    const todasTurmas = await db.turmas.toArray();
+    const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
+    const turmaMap = new Map(turmasAtivas.map(t => [t.id, t]));
+  
+  return alunos.map(aluno => {
+    const turma = aluno.turma_id ? turmaMap.get(aluno.turma_id) : null;
+    
+    return {
+      ...aluno,  // ✅ Mantém todas as propriedades originais do aluno
+      turma_nome: turma ? turma.nome_turma : 'Sem turma',
+      professor: turma ? turma.professor : 'Sem professor',
+    };
+  });
+},
 
   async syncAlunos() {
       return syncService.downloadTableBatch('alunos', new Date(0));

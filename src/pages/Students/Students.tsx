@@ -352,7 +352,7 @@ const Students = () => {
                   transition={{ delay: index * 0.1 }}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div 
                         onClick={() => abrirAluno(student.id)} 

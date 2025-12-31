@@ -36,7 +36,7 @@ export interface EduGestorDatabase {
   cursos: Dexie.Table<Course, string>;
   transacoes: Dexie.Table<Transacao, string>;
   aulas: Dexie.Table<Aula, string>;
-  propinas:Dexie.Table<Propina,string>;
+  propina:Dexie.Table<Propina,string>;
   frequencias:Dexie.Table<Frequencia,string>;
   syncQueue: Dexie.Table<SyncQueueItem, number>;
 }

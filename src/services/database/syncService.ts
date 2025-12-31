@@ -271,7 +271,6 @@ export const syncService = {
       const { data: remoteData, error } = await supabase
         .from(tableName)
         .select('*')
-        .gt('updated_at', since.toISOString())
         .order('updated_at', { ascending: true })
         .limit(500); // Limite para evitar sobrecarga
       

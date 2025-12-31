@@ -12,7 +12,7 @@ export interface Turma extends BaseEntity{
   estado: 'ativa' | 'inativa' | 'concluida';
   descricao?: string;
   vagas_disponiveis?: number;
-  curso_nome:string;
+  curso_nome?:string;
 }
 
 export interface TurmaCompleta extends Turma {

@@ -1,4 +1,5 @@
 import { BaseEntity } from "./base";
+import { Turma } from "./turma";
 
 export interface Aula extends BaseEntity{
   turma_id: string; // "10A", "11B", etc.
@@ -8,10 +9,11 @@ export interface Aula extends BaseEntity{
   hora_fim: string;
   conteudo_ministrado?: string;
   tema_aula: string;
+  turmas?: Turma
 }
 
 export type AulaFormData = Omit<Aula, 
-  'id' | 'created_at' | 'updated_at' | 'sync_status'
+  'id' | 'created_at' | 'updated_at' | 'sync_status'|'turma'
 >;
 
 

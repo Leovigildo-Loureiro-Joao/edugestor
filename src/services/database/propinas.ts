@@ -35,7 +35,7 @@ export const propinaService = {
 
       console.log('💾 Salvando propina:', propina.mes_referencia, 'para aluno:', data.aluno_id);
       
-      await db.propinas.put(propina);
+      await db.propina.put(propina);
       
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
@@ -60,7 +60,7 @@ export const propinaService = {
     try {
       console.log('📋 Buscando propinas...');
       
-      const todasPropinas = await db.propinas.toArray();
+      const todasPropinas = await db.propina.toArray();
       
       // Filtrar as não deletadas
       const propinasAtivas = todasPropinas.filter(propina => !propina.deleted);
@@ -137,7 +137,7 @@ export const propinaService = {
       // Processar cada propina do Supabase
       for (const propinaSupabase of propinasSupabase) {
         try {
-          const propinaLocal = await db.propinas.get(propinaSupabase.id);
+          const propinaLocal = await db.propina.get(propinaSupabase.id);
           
           if (!propinaLocal) {
             // NOVA PROPINA DO SUPABASE
@@ -147,7 +147,7 @@ export const propinaService = {
               deleted: false
             };
             
-            await db.propinas.put(propinaParaSalvar);
+            await db.propina.put(propinaParaSalvar);
             console.log(`✅ Nova propina baixada: ${propinaSupabase.mes_referencia} do aluno ${propinaSupabase.aluno_id}`);
             
           } else if (propinaLocal.sync_status === 'synced') {
@@ -163,7 +163,7 @@ export const propinaService = {
                 sync_status: 'synced' as const,
               };
               
-              await db.propinas.put(propinaAtualizada);
+              await db.propina.put(propinaAtualizada);
               console.log(`✏️ Propina atualizada do Supabase: ${propinaSupabase.mes_referencia}`);
             }
           }
@@ -197,7 +197,7 @@ export const propinaService = {
 
       for (const item of pendingItems) {
         try {
-          const propina = await db.propinas.get(item.record_id);
+          const propina = await db.propina.get(item.record_id);
           if (!propina) {
             await db.syncQueue.delete(item.id || -1);
             continue;
@@ -237,7 +237,7 @@ export const propinaService = {
               
               // Se criou no Supabase, atualizar ID local
               if (resultado.data && propina.id.startsWith('local_')) {
-                await db.propinas.update(propina.id, {
+                await db.propina.update(propina.id, {
                   id: resultado.data.id,
                   sync_status: 'synced' as const
                 });
@@ -255,7 +255,7 @@ export const propinaService = {
             }
             
             // Marcar como sincronizado
-            await db.propinas.update(item.record_id, { 
+            await db.propina.update(item.record_id, { 
               sync_status: 'synced' as const,
               updated_at: new Date().toISOString()
             });
@@ -268,7 +268,7 @@ export const propinaService = {
             }
             
             // Deletar localmente
-            await db.propinas.delete(item.record_id);
+            await db.propina.delete(item.record_id);
             await db.syncQueue.delete(item.id || -1);
           }
 
@@ -302,7 +302,7 @@ export const propinaService = {
   // ✅ Buscar meses pagos (com suporte offline)
   async SearchMesesPagos(alunoId: string): Promise<string[]> {
     try {
-      const propinas = await db.propinas
+      const propinas = await db.propina
         .where('aluno_id')
         .equals(alunoId)
         .and(propina => propina.estado === 'pago' && !propina.deleted)
@@ -327,7 +327,7 @@ export const propinaService = {
   // ✅ Buscar propinas por aluno
   async getByAluno(alunoId: string): Promise<Propina[]> {
     try {
-      const propinas = await db.propinas
+      const propinas = await db.propina
         .where('aluno_id')
         .equals(alunoId)
         .and(propina => !propina.deleted)
@@ -392,7 +392,7 @@ export const propinaService = {
   // ✅ Buscar histórico de pagamentos (com suporte offline)
   async getHistoricoPagamentos(limite = 10) {
     try {
-      const propinas = await db.propinas
+      const propinas = await db.propina
         .where('data_pagamento')
         .notEqual('')
         .and(propina => !propina.deleted)
@@ -431,7 +431,7 @@ export const propinaService = {
       
       // Se estiver atualizando valor pago, recalcular
       if (updates.valor_pago !== undefined) {
-        const propina = await db.propinas.get(id);
+        const propina = await db.propina.get(id);
         if (propina) {
           // Buscar valor da propina do aluno
           const aluno = await alunosService.getStudentById(propina.aluno_id);
@@ -443,7 +443,7 @@ export const propinaService = {
         }
       }
       
-      await db.propinas.update(id, {
+      await db.propina.update(id, {
         ...updates,
         updated_at,
         sync_status: 'pending' as const
@@ -460,7 +460,7 @@ export const propinaService = {
       
       console.log(`✏️ Propina ${id} marcada para atualização`);
       
-      return await db.propinas.get(id);
+      return await db.propina.get(id);
       
     } catch (error) {
       console.error('Erro ao atualizar propina:', error);
@@ -471,12 +471,12 @@ export const propinaService = {
   // ✅ Deletar propina (soft delete)
   async deletePropina(id: string) {
     try {
-      const propina = await db.propinas.get(id);
+      const propina = await db.propina.get(id);
       if (!propina) return;
 
       if (propina.sync_status === 'synced' && !propina.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
-        await db.propinas.update(id, { 
+        await db.propina.update(id, { 
           deleted: true, 
           sync_status: 'pending_delete' as const,
           updated_at: new Date().toISOString()
@@ -493,7 +493,7 @@ export const propinaService = {
         console.log(`🗑️ Propina ${id} marcada para deleção remota`);
       } else {
         // Se nunca sincronizado, deletar completamente
-        await db.propinas.delete(id);
+        await db.propina.delete(id);
         
         // Remover da fila se existir
         await db.syncQueue
@@ -513,7 +513,7 @@ export const propinaService = {
   // ✅ Buscar propinas por mês de referência
   async getByMesReferencia(mes: Propina['mes_referencia'], estado?: Propina['estado']) {
     try {
-      let query = db.propinas
+      let query = db.propina
         .where('mes_referencia')
         .equals(mes)
         .and(propina => !propina.deleted);
@@ -541,7 +541,7 @@ export const propinaService = {
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
       
-      const propinas = await db.propinas
+      const propinas = await db.propina
         .where('estado')
         .equals('pendente')
         .and(propina => !propina.deleted)
@@ -589,7 +589,7 @@ export const propinaService = {
   // ✅ Calcular total recebido por período
   async calcularTotalRecebido(inicio: Date, fim: Date): Promise<number> {
     try {
-      const propinas = await db.propinas
+      const propinas = await db.propina
         .where('estado')
         .equals('pago')
         .and(propina => !propina.deleted)
@@ -611,7 +611,7 @@ export const propinaService = {
   // ✅ Verificar saúde do banco de propinas
   async checkDatabaseHealth() {
     try {
-      const propinaCount = await db.propinas.count();
+      const propinaCount = await db.propina.count();
       const queueCount = await db.syncQueue
         .where('table')
         .equals('propina')

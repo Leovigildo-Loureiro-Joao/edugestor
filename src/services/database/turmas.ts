@@ -50,17 +50,26 @@ export const turmaService = {
       console.log('📋 Buscando turmas...');
       
       const todasTurmas = await db.turmas.toArray();
+      const todosCursos = await db.cursos.toArray();
+
       
       // Filtrar as não deletadas
       const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
-      
+      const cursosActivos = todosCursos.filter(curso => !curso.deleted);
+      const cursosMap = new Map(cursosActivos.map(c => [c.id, c]));
       // Ordenar por nome
       turmasAtivas.sort((a, b) => 
         (a.nome_turma || '').localeCompare(b.nome_turma || '')
       );
       
       console.log(`✅ Encontradas ${turmasAtivas.length} turmas ativas`);
-      return turmasAtivas;
+      return turmasAtivas.map(turma=>{
+         const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
+         return {
+          ...turma,
+          curso_nome:curso?.nome
+         }
+      })
     } catch (error) {
       console.error('❌ Erro ao buscar turmas:', error);
       return [];

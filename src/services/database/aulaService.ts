@@ -50,17 +50,26 @@ export const aulaService = {
       console.log('📋 Buscando aulas...');
       
       const todasAulas = await db.aulas.toArray();
+      const todasTurmas = await db.turmas.toArray();
       
       // Filtrar as não deletadas
       const aulasAtivas = todasAulas.filter(aula => !aula.deleted);
-      
+      const turmaAtivas = todasTurmas.filter(turma => !turma.deleted);
+        const turmaMap = new Map(turmaAtivas.map(t => [t.id, t]));
+
       // Ordenar por data (mais recente primeiro)
       aulasAtivas.sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
       
       console.log(`✅ Encontradas ${aulasAtivas.length} aulas ativas`);
-      return aulasAtivas;
+      return aulasAtivas.map((aulas)=>{
+        const turma=turmaMap.get(aulas.turma_id)
+        return {
+          ...aulas,
+          turmas:turma
+        }
+      });
     } catch (error) {
       console.error('❌ Erro ao buscar aulas:', error);
       return [];

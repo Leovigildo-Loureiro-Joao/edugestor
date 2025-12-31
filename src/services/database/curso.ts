@@ -50,9 +50,12 @@ export const cursosService = {
       console.log('📋 Buscando cursos...');
       
       const todosCursos = await db.cursos.toArray();
-      
+      const todasTurmas = await db.turmas.toArray();
+      const todosAlunos = await db.alunos.toArray();
       // Filtrar os não deletados
       const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
+      const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
+      const alunosAtivos = todosAlunos.filter(aluno => !aluno.deleted);
       
       // Ordenar por nome
       cursosAtivos.sort((a, b) => 
@@ -60,7 +63,17 @@ export const cursosService = {
       );
       
       console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
-      return cursosAtivos;
+      return cursosAtivos.map(curso=>{
+        const turmas=turmasAtivas.filter(turma=> turma.curso_id==curso.id)
+         const turmaNames = [...new Set(turmas.map(turma => turma.nome_turma).filter(Boolean))];
+         const alunosCount = alunosAtivos.filter(aluno => aluno.turma_id && turmasAtivas.some(turma => turma.id === aluno.turma_id && turma.curso_id === curso.id)).length;
+        return {
+          ...curso,
+          alunos: alunosCount,
+          turmas: turmaNames
+          
+        }
+      });
     } catch (error) {
       console.error('❌ Erro ao buscar cursos:', error);
       return [];

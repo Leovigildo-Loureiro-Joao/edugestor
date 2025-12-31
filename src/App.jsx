@@ -29,7 +29,7 @@ import MetaPage from './components/strategy/MetaForm.tsx';
 import EventosPage from './components/event/EventosPage.tsx';
 import TurmaForm from './components/turmas/TurmasForm.tsx';
 import AuthCallback from './components/auth/AuthCallback.tsx';
-import { supabase } from './services/database/db.js';
+import { supabase, syncDatabase } from './services/database/db.js';
 import InitialSetup from './pages/setup/InitialSetup.tsx';
 import PromoteToAdmin from './pages/admin/PromoteToAdmin.tsx';
 import AdminDashboard from './pages/admin/AdminDashboard.tsx';
@@ -133,7 +133,7 @@ function AppContent() {
     initializeApp();
   }, [needsSetup]); // 🔥 ADICIONAR DEPENDÊNCIA
 
-  if (!checkingSetup) {
+  if (checkingSetup) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -144,7 +144,7 @@ function AppContent() {
     );
   }
 
-  if (!needsSetup) {
+  if (needsSetup) {
     return (
       <AuthProvider>
         <Router>

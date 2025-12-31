@@ -42,7 +42,7 @@ export const joinService = {
     
     const [turma, propinas, frequencias] = await Promise.all([
       aluno.turma_id ? db.turmas.get(aluno.turma_id) : null,
-      db.propinas
+      db.propina
         .where('aluno_id')
         .equals(alunoId)
         .and(p => !p.deleted)
@@ -71,27 +71,8 @@ export const joinService = {
     };
   },
   
-  // ✅ Buscar Todos com Join
-  async getAllAlunosComTurmas() {
-    const alunos = await db.alunos
-      .where('deleted')
-      .equals(false+'')
-      .toArray();
-    
-    // Buscar todas as turmas de uma vez (mais eficiente)
-    const turmaIds = [...new Set(alunos.map(a => a.turma_id).filter(Boolean))];
-    const turmas = await db.turmas
-      .where('id')
-      .anyOf(turmaIds)
-      .toArray();
-    
-    const turmaMap = new Map(turmas.map(t => [t.id, t]));
-    
-    return alunos.map(aluno => ({
-      ...aluno,
-      turma: aluno.turma_id ? turmaMap.get(aluno.turma_id) : null
-    }));
-  },
+// ✅ Buscar Todos com Join - VERSÃO CORRIGIDA
+
   
   // ✅ Join com Filtro: Turmas com Alunos Ativos
   async getTurmasComAlunosAtivos() {

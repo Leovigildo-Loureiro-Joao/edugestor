@@ -28,7 +28,7 @@ class EduGestorDatabase extends Dexie {
   cursos!: Table<Course, string>;
   transacoes!: Table<Transacao, string>;
   aulas!: Table<Aula, string>;
-  propinas!: Table<Propina, string>;
+  propina!: Table<Propina, string>;
   frequencias!: Table<Frequencia, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
@@ -39,10 +39,10 @@ class EduGestorDatabase extends Dexie {
       // 🔥 Agora sua IDE vai entender ESTA estrutura
       alunos: '++id, nome_completo, numero_estudante, sync_status, deleted',
       turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
-      cursos: '++id, nome, area, nivel, sync_status, deleted, [sync_status+deleted]',
+      cursos: '++id, nome,ativo,vagas, sync_status, deleted, [sync_status+deleted]',
       turma_horarios: '++id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana]',
       transacoes: '++id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
-      propinas: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
+      propina: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
       frequencias: '++id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: '++id, turma_id, data_aula, sync_status, deleted, updated_at',
       syncQueue: '++id, table, record_id, operation, status'

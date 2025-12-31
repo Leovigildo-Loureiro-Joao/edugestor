@@ -46,7 +46,7 @@ export interface Student extends BaseEntity {
 
 
 export type StudentFormData = Omit<Student, 
-  'id' | 'created_at' | 'updated_at' | 'turmas'
+  'id' | 'created_at' | 'updated_at' 
 >;
 
 export interface StudentFormProps {
