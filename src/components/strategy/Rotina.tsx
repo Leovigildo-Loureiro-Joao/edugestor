@@ -26,7 +26,7 @@ import {
   FiCopy
 } from 'react-icons/fi';
 import { Rotina } from '../../types/eventos';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
+import { estrategiaService } from '../../services/database/estrategiaService.ts';
 
 const RotinasComponent = () => {
   const [rotinas, setRotinas] = useState<Rotina[]>([]);

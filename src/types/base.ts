@@ -6,6 +6,11 @@ import { Transacao } from "./transacao";
 import { Aula } from "./aula";
 import { Propina } from "./propina";
 import { Frequencia } from "./frequencia";
+import { EventFormData, Meta, PlanoAcao, Rotina, Tarefa } from "./eventos";
+import { SystemConfig } from "./config";
+import { UserProfile } from "./profile";
+import { Instituicao } from ".";
+import { Notificacao } from "../services/database/notificacaoService";
 
 export type SyncStatus = 'pending' | 'synced' | 'pending_delete' | 'failed' | 'conflict';
 
@@ -19,7 +24,7 @@ export interface BaseEntity {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'alunos' | 'turmas' | 'cursos' | 'transacoes'|'aulas'|'propina'|'frequencias';
+  table: 'alunos' | 'turmas' | 'cursos' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao';
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
@@ -39,6 +44,14 @@ export interface EduGestorDatabase {
   propina:Dexie.Table<Propina,string>;
   frequencias:Dexie.Table<Frequencia,string>;
   syncQueue: Dexie.Table<SyncQueueItem, number>;
+  tarefas: Dexie.Table<Tarefa, string>;
+  metas: Dexie.Table<Meta, string>;
+  rotinas: Dexie.Table<Rotina, string>;
+  evento: Dexie.Table<EventFormData, string>;
+  profiles: Dexie.Table<UserProfile, string>;
+  system_config: Dexie.Table<SystemConfig, string>;
+  instituicao: Dexie.Table<Instituicao, string>;
+  notificacao: Dexie.Table<Notificacao, string>;
 }
 
 // Helper para tipar o banco

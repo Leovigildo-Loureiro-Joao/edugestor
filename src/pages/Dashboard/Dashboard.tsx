@@ -7,23 +7,15 @@ import {
   FiClock,
   FiBookOpen,
   FiTarget,
-  FiCalendar,
-  FiCheckCircle,
-  FiAlertTriangle,
-  FiTrendingUp
 } from 'react-icons/fi';
-import { Link, useNavigate } from 'react-router-dom';
 import { AnimatedStat } from '../../components/dashboad/AnimateStates.tsx';
 import { dashboardService } from '../../services/dashboard/dashboardService.ts';
-import { PropinasChart } from '../../components/dashboad/PropunasChart.jsx';
 import { AlunosTurmaChart } from '../../components/dashboad/AlunosTurmaChart.jsx';
-import { FrequenciaChart } from '../../components/dashboad/FrequenciaChart.jsx';
-import { CalendarWithEvents } from '../../components/dashboad/Calendary.tsx';
-import { estrategiaService } from '../../services/strategy/estrategiaService.ts';
+import { estrategiaService } from '../../services/database/estrategiaService.ts';
 import { DashboardStats, EstrategiaStats, StatCard } from '../../types/index.ts';
-import { IconType } from 'react-icons';
-import { logoB } from '../../components/auth/Login.jsx';
 import { ErrorSection } from '../../components/ui/ErrorSection.tsx';
+import { GraficoDesempenho } from '../../components/dashboad/Strategic.tsx';
+import { CardsMetricas } from '../../components/dashboad/CardsMetricas.tsx';
 
 // Tipos
 
@@ -31,7 +23,6 @@ import { ErrorSection } from '../../components/ui/ErrorSection.tsx';
 // Dashboard Principal atualizado
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const navigate=useNavigate()
   const [estrategiaStats, setEstrategiaStats] = useState<EstrategiaStats>({
     tarefasPendentes: 0,
     metasConcluidas: 0,
@@ -218,11 +209,12 @@ const Dashboard: React.FC = () => {
 
       {/* Gráficos e Calendário */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 dark:border-gray-700 p-6 h-[100vh] rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 dark:border-gray-700 p-6  rounded-lg shadow-sm border border-gray-200">
           <AlunosTurmaChart />
         </div>
-        
-       
+
+          <GraficoDesempenho/>
+
       </div>
     </div>
   );

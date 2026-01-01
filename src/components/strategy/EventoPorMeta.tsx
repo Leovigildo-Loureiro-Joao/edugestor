@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiCalendar, FiTarget, FiTrendingUp } from 'react-icons/fi';
 import { eventoService } from '../../services/database/eventoService';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
+import { estrategiaService } from '../../services/database/estrategiaService';
 
 const EventosPorMeta = () => {
   const [eventos, setEventos] = useState<any[]>([]);

@@ -160,31 +160,7 @@ export const AlunosTurmaChart = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Lista de turmas (alternativa ao gráfico para muitos dados) */}
-      <div className="mt-4 border-t pt-4 hidden md:flex flex-col
-      ">
-        <h4 className="text-sm font-medium text-gray-700 mb-2 dark:text-gray-50">Detalhes por Turma</h4>
-        <div className="space-y-2 max-h-32 overflow-y-auto">
-          {data.map((turma, index) => (
-            <div key={index} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: turma.fill || COLORS[index % COLORS.length] }}
-                />
-                <span className="font-medium dark:text-gray-100">{turma.name}</span>
-              </div>
-              <div className="flex gap-4 text-xs">
-                <span className="text-green-600">{turma.ativos || 0} ativos</span>
-                <span className="text-gray-400">•</span>
-                <span className="text-red-600">{turma.inativos || 0} inativos</span>
-                <span className="text-gray-400">•</span>
-                <span className="font-semibold dark:text-gray-100">{turma.value} total</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+     
     </div>
   );
 };

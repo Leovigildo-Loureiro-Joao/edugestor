@@ -41,7 +41,7 @@ const Sidebar = () => {
     }, []);
   
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: FiHome },
+    { name: 'Dashboard', href: '/dashboard', icon: FiHome },
     { name: 'Estrategia', href: '/estrategia', icon: FiTrendingUp },
     { name: 'Alunos', href: '/alunos', icon: FiUsers },
     { name: 'Turmas', href: '/turmas', icon: FiLayers },
@@ -277,7 +277,7 @@ const Sidebar = () => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                    className="absolute bottom-full -right-20 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
                   >
                     <div className="p-2">
                       {/* Info do usuário */}
@@ -310,7 +310,7 @@ const Sidebar = () => {
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
                         onClick={() => {
                           setShowUserMenu(false);
-                          // Navegar para perfil
+                         navigate("/profile")
                         }}
                       >
                         <FiUser className="w-4 h-4" />
@@ -380,7 +380,8 @@ const Sidebar = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-white text-sm font-semibold">
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                    
                     {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
                   </span>
                 )}

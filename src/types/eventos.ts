@@ -1,5 +1,7 @@
-export interface EventFormData {
-  id?: number;
+import { BaseEntity, SyncStatus } from "./base";
+
+export interface EventFormData  {
+  id: string;
   title: string;
   date: string; // YYYY-MM-DD
   time: string;
@@ -13,11 +15,15 @@ export interface EventFormData {
   meta_titulo?: string;
   objetivo_evento?: string;
   tarefas_relacionadas?: string[]; 
+   sync_status?: SyncStatus;
+    deleted?: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 
 
-export interface VisaoEstrategica {
+export interface VisaoEstrategica extends BaseEntity {
   id: string;
   titulo: string;
   descricao: string;
@@ -28,7 +34,7 @@ export interface VisaoEstrategica {
 }
 
 // Nível 2: METAS (Médio Prazo - Trimestral/Anual)
-export interface Meta {
+export interface Meta extends BaseEntity {
   id: string;
   visao_id: string; // Relaciona com a Visão
   titulo: string;
@@ -77,7 +83,7 @@ export interface Meta {
 }
 
 // Nível 3: PLANOS DE AÇÃO (Curto Prazo - Mensal/Semanal)
-export interface PlanoAcao {
+export interface PlanoAcao extends BaseEntity {
   id: string;
   meta_id: string; // Relaciona com a Meta
   titulo: string;
@@ -123,7 +129,7 @@ export interface PlanoAcao {
 }
 
 // Nível 4: TAREFAS (Execução - Diária)
-export interface Tarefa {
+export interface Tarefa extends BaseEntity {
   id: string;
   plano_id?: string; // Opcional - relaciona com Plano
   meta_id?: string; // Opcional - relaciona diretamente com Meta
@@ -183,7 +189,7 @@ export interface Tarefa {
 }
 
 // Nível 5: ROTINAS (Processos Padronizados)
-export interface Rotina {
+export interface Rotina extends BaseEntity {
   id: string;
   nome: string;
   descricao: string;
@@ -207,7 +213,7 @@ export interface Rotina {
   dias_semana?: number[]; // 0=Domingo, 1=Segunda...
   
   // Controle
-  status: 'ativa' | 'inativa' | 'suspensa';
+  status: 'ativa' | 'inativa' | 'suspensa' ;
   versao: number;
   data_implementacao: string;
   data_revisao?: string;
@@ -231,7 +237,7 @@ export interface Rotina {
 
 // ==================== INTERFACES DE SUPORTE ====================
 
-export interface IndicadorDesempenho {
+export interface IndicadorDesempenho extends BaseEntity {
   id: string;
   nome: string;
   descricao: string;

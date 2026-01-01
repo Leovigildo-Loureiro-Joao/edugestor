@@ -114,7 +114,7 @@ Actualmente as diferenças são pequenas onde
 
 ## 📅 Próximas Jogadas
 ### Curto Prazo (Esta semana):
-- [ ] Join Tables
+- [x] Join Tables
 - [ ] View Results of the *Offline-First*
 - [ ] Fix Configs
 

@@ -17,6 +17,7 @@
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@supabase/supabase-js": "^2.89.0",
+    "chart.js": "^4.5.1",
     "date-fns": "^4.1.0",
     "date-holidays": "^3.26.5",
     "dexie": "^4.2.1",

@@ -27,7 +27,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // 🔥 SEM AUTENTICAÇÃO
-  if (!user) {
+  if (!user&&!profile) {
     console.warn('⚠️ Acesso não autorizado: Usuário não autenticado');
     return <Navigate to="/login" replace />;
   }

@@ -83,7 +83,17 @@ async getAllStudents() {
   // ✅ Buscar aluno por ID
   async getStudentById(id: string): Promise<Student | undefined> {
     try {
-      return await db.alunos.get(id);
+      const aluno = await db.alunos.get(id);
+      
+      if (!aluno) {
+        return undefined;
+      }
+
+      return {
+        ...aluno,
+        turma_nome: aluno.turma_id ? (await db.turmas.get(aluno.turma_id))?.nome_turma : 'Sem turma',
+        professor: aluno.turma_id ? (await db.turmas.get(aluno.turma_id))?.professor : 'Sem professor'
+      } as Student;
     } catch (error) {
       console.error('Erro ao buscar aluno:', error);
       return undefined;

@@ -23,8 +23,9 @@ import {
   FiSend
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos';
-import { tarefaService } from '../../services/strategy/tarefaService';
-import { metasService } from '../../services/strategy/metasService';
+import { estrategiaService } from '../../services/database/estrategiaService';
+import db from '../../services/database/db';
+
 
 
 const TarefaPage = () => {
@@ -72,12 +73,12 @@ const TarefaPage = () => {
       setLoading(true);
       try {
         // Carregar metas para relacionamento
-        const metasData = await metasService.getMetas();
+        const metasData = await estrategiaService.getMetas();
         setMetas(metasData.map((m:any) => ({ id: m.id, titulo: m.titulo })));
         
         // Se for edição, carregar a tarefa
         if (isEdicao && id) {
-          const tarefaData = await tarefaService.getTarefaPorId(id);
+          const tarefaData = await db.tarefas.get(id);
           setTarefa(tarefaData);
           setFormData({
             ...tarefaData,
@@ -169,9 +170,9 @@ const TarefaPage = () => {
       };
 
       if (isEdicao && id) {
-        await tarefaService.updateTarefa(id, dadosCompletos);
+        await estrategiaService.updateTarefa(id, dadosCompletos);
       } else {
-        await tarefaService.createTarefa(dadosCompletos);
+        await estrategiaService.saveTarefa(dadosCompletos);
       }
       
       // Adicionar ao histórico
@@ -202,7 +203,7 @@ const TarefaPage = () => {
     if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
     
     if (isEdicao && id) {
-      await tarefaService.deleteTarefa(id);
+      await estrategiaService.deleteTarefa(id);
       navigate('/tarefas');
     }
   };

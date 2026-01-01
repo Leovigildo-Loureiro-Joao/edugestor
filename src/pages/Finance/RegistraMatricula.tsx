@@ -23,7 +23,7 @@ export const CompletarMatricula = () => {
         incluirCartao: false,
         valorCartao: '0',
         incluirPropina: false,
-        mesesPropina: [],
+        mesesPropina: [] as string[],
         valorPropina: '0',
         observacao: 'Taxa de matrícula inicial',
 
@@ -53,7 +53,7 @@ export const CompletarMatricula = () => {
                 instituicaoService.getConfig()
             ]);
             
-            setAluno(alunoData);
+            setAluno(alunoData||null);
             setConfigInstituicao(configData);
             
             // Preencher valores padrão
@@ -121,7 +121,9 @@ const calcularTotalPropina = (): number => {
 
                 if (!resultadoCartao.sucesso) {
                     // Atualizar status do cartão no aluno
-                    await alunosService.atualizarCartaoPago(aluno.id,false);
+                    await alunosService.updateStudent(aluno.id,{
+                        cartao_pago: true
+                    });
                     transacoes.push('Cartão');
                 }
             }
@@ -149,7 +151,9 @@ const calcularTotalPropina = (): number => {
             }
 
             // 4. Atualizar status da matrícula do aluno
-            await alunosService.atualizarStatusMatricula(aluno.id, true);
+            await alunosService.updateStudent(aluno.id, {
+                estado: 'ativo'
+            });
             
             setSucesso(true);
             
@@ -171,15 +175,8 @@ const calcularTotalPropina = (): number => {
     };
 
     const handlePular = () => {
-        // Apenas marca a matrícula como ativa sem pagamentos
-        if (aluno && window.confirm('Deseja ativar a matrícula sem registrar pagamentos?')) {
-            alunosService.atualizarStatusMatricula(aluno.id, true)
-                .then(() => {
-                    navigate('/alunos');
-                })
-                .catch(error => {
-                    alert('Erro ao ativar matrícula: ' + error.message);
-                });
+        if (aluno && window.confirm('Deseja ativar a matrícula sem registrar pagamentos?')) { 
+            navigate('/alunos'); 
         }
     };
 
@@ -303,7 +300,7 @@ const calcularTotalPropina = (): number => {
                                 <div>
                                     <div className="text-sm text-gray-500">Turma</div>
                                     <div className="font-medium text-gray-900">
-                                        {aluno.turmas?.nome_turma || 'Não definida'}
+                                        {aluno.turma_nome || 'Não definida'}
                                     </div>
                                 </div>
                                 
@@ -541,7 +538,7 @@ const calcularTotalPropina = (): number => {
                                         {dadosMatricula.incluirPropina && (
                                             <div className="flex justify-between">
                                                 <span className="text-gray-600">
-                                                    Propina ({dadosMatricula.mesesPropina} {dadosMatricula.mesesPropina > 1 ? 'meses' : 'mês'}):
+                                                    Propina ({dadosMatricula.mesesPropina} {dadosMatricula.mesesPropina.length > 1 ? 'meses' : 'mês'}):
                                                 </span>
                                                 <span className="font-medium">{formatarMoeda(calcularTotalPropina())}</span>
                                             </div>

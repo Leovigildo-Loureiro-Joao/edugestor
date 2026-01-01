@@ -29,7 +29,7 @@ import {
 } from 'react-icons/fi';
 import { EventFormData } from '../../types/eventos';
 import { eventoService } from '../../services/database/eventoService';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
+import { estrategiaService } from '../../services/database/estrategiaService';
 
 const EventosPage = () => {
   const { id } = useParams<{ id: string }>();

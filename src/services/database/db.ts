@@ -5,13 +5,17 @@ import {
   DatabaseInstance,
   SyncQueueItem
 } from '../../types/base';
-import {  Frequencia, Student } from '../../types';
+import {  Frequencia, Instituicao, Student } from '../../types';
 import { Turma } from '../../types/turma';
 import { Course } from '../../types/curso';
 import { Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
 import { syncService } from './syncService';
+import { EventFormData, Meta, PlanoAcao, Rotina, Tarefa } from '../../types/eventos';
+import { SystemConfig } from '../../types/config';
+import { UserProfile } from '../../types/profile';
+import { Notificacao } from './notificacaoService';
 
 // Configurar Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -30,7 +34,15 @@ class EduGestorDatabase extends Dexie {
   aulas!: Table<Aula, string>;
   propina!: Table<Propina, string>;
   frequencias!: Table<Frequencia, string>;
+  tarefas!: Table<Tarefa, string>;
+  metas!: Table<Meta, string>;
+  evento!: Table<EventFormData, string>;
+  rotinas!: Table<Rotina, string>;
+  system_config!: Table<SystemConfig, string>;
   syncQueue!: Table<SyncQueueItem, number>;
+  instituicao!: Table<Instituicao, string>;
+  notificacao!: Table<Notificacao, string>;
+  profiles!: Table<UserProfile, string>;
 
   constructor() {
     super('EduGestorDB_Final');
@@ -45,7 +57,15 @@ class EduGestorDatabase extends Dexie {
       propina: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
       frequencias: '++id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: '++id, turma_id, data_aula, sync_status, deleted, updated_at',
-      syncQueue: '++id, table, record_id, operation, status'
+      tarefas: '++id, concluida, status, sync_status, deleted, created_at',
+      metas: '++id, status, sync_status, deleted, created_at',
+      rotinas: '++id, status, sync_status, deleted, created_at',
+      syncQueue: '++id, table, record_id, operation, status, created_at',
+      profiles: '++id, role, sync_status, deleted',
+      notificacao: `id,lida,tipo,instituicao_id,aluno_id,user_id,data_envio,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted`,
+      instituicao:'++id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at',
+      evento: '++id, data_evento, tipo, sync_status, deleted, created_at',
+      system_config:'++id, key_name, category,[category+deleted], [category+key_name],[category+key_name+deleted],sync_status, deleted'
     });
 
       // ✅ ADICIONE ESTES LISTENERS PARA DEBUG
@@ -140,7 +160,7 @@ export const syncDatabase = {
   // Estimar tamanho do banco
   async getDatabaseSize() {
     try {
-      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias'];
+      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao'];
       let total = 0;
       
       for (const tableName of tables) {

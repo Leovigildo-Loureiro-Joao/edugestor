@@ -20,7 +20,7 @@ import {
   FiRefreshCw
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
+import { estrategiaService } from '../../services/database/estrategiaService.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 

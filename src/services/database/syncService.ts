@@ -246,7 +246,7 @@ export const syncService = {
       const lastSyncDate = lastSync ? new Date(lastSync) : new Date(0);
       
       // 2. Baixar cada tabela em batch
-      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias'];
+      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao'];
       
       for (const tableName of tables) {
         console.log(`📥 Baixando ${tableName}...`);

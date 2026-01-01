@@ -112,6 +112,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   loadTurmas();
   }, []);
 
+  useEffect(() => {
+  if (formData.curso && formData.turma_id) {
+    const turmaSelecionada = turmas.find(t => t.id === formData.turma_id);
+    if (turmaSelecionada && turmaSelecionada.curso_nome !== formData.curso) {
+      // Se a turma selecionada não pertence ao curso atual, limpa
+      setFormData((prev: Student) => ({ 
+        ...prev, 
+        turma_id: '' 
+      }));
+    }
+  }
+}, [formData.curso, formData.turma_id, turmas]);
+
   // ✅ Filtrar turmas quando o curso mudar
   useEffect(() => {
     if (formData.curso && turmas.length > 0 && tipoMatricula === 'regular') {
@@ -165,9 +178,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
     console.log('📤 Submetendo formulário:', formData);
-    
+    e.preventDefault();
     // Limpar rascunho antes de submeter
     clearDraft();
     
@@ -590,15 +602,25 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                     Turma *
                   </label>
                   <SelectTyped 
-                    vect={turmasFiltradas.map(turma => ({
-                      value: turma.id,
-                      label: turma.nome_turma
-                    }))} 
+                    vect={formData.curso 
+                      ? turmasFiltradas.map(turma => ({
+                          value: turma.id,
+                          label: turma.nome_turma
+                        }))
+                      : turmas.map(turma => ({
+                          value: turma.id,
+                          label: `${turma.nome_turma} - ${turma.curso_nome}`,
+                          disabled: true // Desabilita se não tiver curso selecionado
+                        }))
+                    } 
                     icon={FiUsers}
                     onChange={(value: string) => handleChangeSel('turma_id', value)}
                     value={formData.turma_id}
-                    placeholder={formData.curso ? 'Selecione a turma' : 'Selecione primeiro o curso'}
-                    disabled={!formData.curso || turmasFiltradas.length === 0}
+                    placeholder={formData.curso 
+                      ? 'Selecione uma turma disponível' 
+                      : '↖️ Selecione um curso primeiro'
+                    }
+                    disabled={!formData.curso}
                   />
                   {!formData.curso && (
                     <p className="text-xs text-gray-500 mt-1">Selecione um curso para ver as turmas</p>

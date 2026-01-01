@@ -1,9 +1,10 @@
 // services/dashboard/dashboardService.ts
-import { supabase } from '../database/db';
+import db, { supabase } from '../database/db';
 
 // Tipos
 import { DashboardStats } from '../../types';
-import { ComparativoPropinasMensal, ParamsResumoPropinas, ResumoPropinasDetalhado } from '../../types/propina';
+import { ComparativoPropinasMensal, ParamsResumoPropinas, Propina, ResumoPropinasDetalhado } from '../../types/propina';
+import { m } from 'framer-motion';
 
 // Constantes
 const mes_actual: number = new Date().getMonth();
@@ -36,68 +37,39 @@ export const dashboardService = {
       frequenciasPromise
     ] = await Promise.all([
       // Total de alunos do ano atual
-      supabase
-        .rpc('get_alunos_ano_lectivo_actual'),
+      this.get_alunos_ano_lectivo_actual(),
       
       // Alunos do ano anterior
-      supabase
-        .rpc('alunos_ano_lectivo_anterior'),
+     this.alunos_ano_lectivo_anterior(),
       
       // Alunos ativos
-      supabase
-        .from('alunos')
-        .select('id', { count: 'exact', head: true })
-        .eq('estado', 'ativo'),
+      async function alunos_activo() {
+        return (await db.alunos
+        .toArray())
+        .filter(
+          (aluno)=> aluno.deleted!=false&&aluno.estado=='ativo'
+        )
+      }(),
 
       // ✅ Comparativo de propinas (mês atual vs anterior)
-      supabase
-        .rpc<string, ParamsResumoPropinas>('get_resumo_propinas_meses_comparativo', {
-          p_mes_atual: mesAtual,
-          p_mes_anterior: mesAnterior,
-          p_ano_lectivo: '2025-2026'
-        }),
+      this.get_resumo_propinas_meses_comparativo(),
+      async function frequencias() {
+        return (await db.frequencias
+        .toArray())
+        .filter(
+          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true
+        )
+      }()
       
-      // Frequências
-      supabase
-        .from('frequencias')
-        .select('presente')
     ]);
 
     // Desestruturação com tipos
-    const { data: totalAlunosData, error: alunosError } = totalAlunosPromise;
-    const { data: alunosAnteriorData, error: anteriorError } = alunosAnteriorPromise;
-    const { count: alunosAtivos, error: ativosError } = alunosAtivosPromise;
-    const { data: resultComparativo, error: comparativoError } = propinaPromiseComparativo;
-    const { data: frequencias, error: frequenciasError } = frequenciasPromise;
-
-    // ✅ Tratamento de erros
-    if (alunosError) {
-      console.error('❌ Erro alunos:', alunosError);
-      throw alunosError;
-    }
-    if (anteriorError) {
-      console.error('❌ Erro alunos anterior:', anteriorError);
-      throw anteriorError;
-    }
-    if (ativosError) {
-      console.error('❌ Erro alunos ativos:', ativosError);
-      throw ativosError;
-    }
-    if (comparativoError) {
-      console.error('❌ Erro comparativo propinas:', comparativoError);
-      throw comparativoError;
-    }
-    if (frequenciasError) {
-      console.error('❌ Erro frequências:', frequenciasError);
-      throw frequenciasError;
-    }
-
-    // ✅ Calcular totais
-    const totalAlunos: number = totalAlunosData?.length || 0;
-    const totalAlunosAnterior: number = alunosAnteriorData?.length || 0;
+   const totalAlunos: number = totalAlunosPromise?.length || 0;
+    const totalAlunosAnterior: number = alunosAnteriorPromise?.length || 0;
+  
 
     // ✅ Extrair dados do comparativo de propinas
-    const comparativo = resultComparativo || {
+    const comparativo = propinaPromiseComparativo || {
       mes_atual: {
         pagas: { count: 0, valor: 0 },
         pendentes: { count: 0, valor: 0 }
@@ -110,36 +82,18 @@ export const dashboardService = {
 
     // ✅ Calcular frequência média
     let frequenciaMedia: number = 0;
-    if (frequencias && frequencias.length > 0) {
-      const totalPresentes: number = frequencias.filter(f => f.presente).length;
-      frequenciaMedia = (totalPresentes / frequencias.length) * 100;
+    if (frequenciasPromise && frequenciasPromise.length > 0) {
+      const totalPresentes: number = frequenciasPromise.filter(f => f.presente).length;
+      frequenciaMedia = (totalPresentes / frequenciasPromise.length) * 100;
     }
 
-    // ✅ DEBUG: Ver o que está retornando
-    console.log('🔍 Debug dos counts:', {
-      totalAlunos,
-      totalAlunosAnterior,
-      alunosAtivos: alunosAtivos || 0,
-      propinas: {
-        // Mês atual
-        pagas_atual: comparativo.mes_atual.pagas.valor,
-        pagas_count_atual: comparativo.mes_atual.pagas.count,
-        pendentes_atual: comparativo.mes_atual.pendentes.valor,
-        pendentes_count_atual: comparativo.mes_atual.pendentes.count,
-        // Mês anterior
-        pagas_anterior: comparativo.mes_anterior.pagas.valor,
-        pagas_count_anterior: comparativo.mes_anterior.pagas.count,
-        pendentes_anterior: comparativo.mes_anterior.pendentes.valor,
-        pendentes_count_anterior: comparativo.mes_anterior.pendentes.count
-      },
-      frequencias: frequencias?.length || 0
-    });
+  
 
     // ✅ Criar objeto de estatísticas com tipos
     const stats: DashboardStats = {
       totalAlunos,
       totalAlunosAnterior,
-      alunosAtivos: alunosAtivos || 0,
+      alunosAtivos: alunosAtivosPromise.length || 0,
       
       // Propinas pagas (VALOR em dinheiro)
       propinaPagas: comparativo.mes_atual.pagas.valor,
@@ -200,5 +154,23 @@ export const dashboardService = {
       console.error(`❌ Erro ao buscar propinas ${estado}:`, error);
       return 0;
     }
+  }
+
+  ,async get_alunos_ano_lectivo_actual(){
+     const alunos= await db.alunos.toArray() 
+     const instituicao=(await db.instituicao.toArray())[0] 
+     const totalAlunos=alunos.filter((aluno)=> aluno.deleted!=false&&aluno.ano_lectivo==instituicao.ano_lectivo)
+     return totalAlunos
+  },
+
+  async alunos_ano_lectivo_anterior(){
+    const alunos= await db.alunos.toArray() 
+     const instituicao=(await db.instituicao.toArray())[0] 
+     const totalAlunos=alunos.filter((aluno)=> aluno.deleted!=false&&aluno.ano_lectivo==instituicao.ano_lectivo)
+      return totalAlunos
+  },
+
+  async get_resumo_propinas_meses_comparativo(){
+    return null;
   }
 };

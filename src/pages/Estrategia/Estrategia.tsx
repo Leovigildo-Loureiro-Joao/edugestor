@@ -19,7 +19,7 @@ import {
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tarefa, Meta, Rotina, PlanoAcao } from '../../types/eventos';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
+import { estrategiaService } from '../../services/database/estrategiaService';
 import { CalendarWithEvents } from '../../components/dashboad/Calendary';
 import TarefasKanban from '../../components/strategy/TarefasKanban';
 import { useParams } from 'react-router-dom';
@@ -32,7 +32,6 @@ const EstrategiaPage = () => {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [rotinas, setRotinas] = useState<Rotina[]>([]);
-  const [planoAtividades, setPlanoAtividades] = useState<PlanoAcao[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [newTask, setNewTask] = useState('');

@@ -1,4 +1,5 @@
-import { supabase } from "../database/db";
+import { alunosService } from "../database";
+import db, { supabase } from "../database/db";
 
 const gerarCor = (turma, index) => {
   const cores = [
@@ -24,22 +25,12 @@ const gerarCor = (turma, index) => {
 
 export async function PieChartTurmaAlunosState() {
   try {
-    const { data: alunos, error } = await supabase
-      .from('alunos')
-      .select(`
-        estado,
-        turma_id,
-        turmas (
-          nome_turma
-        )
-      `);
-
-    if (error) throw error;
+    const alunos= await alunosService.getAllStudents()
 
     // Agrupar alunos por turma
     const alunosPorTurma = alunos.reduce((acc, aluno) => {
       // CORREÇÃO: Acessar o nome da turma corretamente
-      const nomeTurma = aluno.turmas?.nome_turma || 'Sem Turma';
+      const nomeTurma = aluno.turma_nome || 'Sem Turma';
       
       if (!acc[nomeTurma]) {
         acc[nomeTurma] = { total: 0, ativos: 0 };

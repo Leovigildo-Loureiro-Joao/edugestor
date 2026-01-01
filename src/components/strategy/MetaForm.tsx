@@ -24,8 +24,9 @@ import {
   FiBarChart2
 } from 'react-icons/fi';
 import { Meta } from '../../types/eventos';
-import { estrategiaService } from '../../services/strategy/estrategiaService';
-import { metasService } from '../../services/strategy/metasService';
+import { estrategiaService } from '../../services/database/estrategiaService';
+import db from '../../services/database/db';
+
 
 const MetaPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -124,7 +125,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
       setLoading(true);
       try {
         if (isEdicao && id) {
-          const metaData = await metasService.getMetaPorId(id);
+          const metaData = await db.metas.get(id);
           if (metaData) {
              setMeta(metaData);
           setFormData({
@@ -218,9 +219,9 @@ const custoTotal = recursos.reduce((total, recurso) => {
       };
 
       if (isEdicao && id) {
-        await metasService.updateMeta(id, dadosCompletos);
+        await estrategiaService.updateMeta(id, dadosCompletos);
       } else {
-        await metasService.createMeta(dadosCompletos);
+        await estrategiaService.saveMeta(dadosCompletos);
       }
       
       navigate('/estrategia');
@@ -236,7 +237,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
     if (!confirm('Tem certeza que deseja excluir esta meta?')) return;
     
     if (isEdicao && id) {
-      await metasService.deleteMeta(id);
+      await estrategiaService.deleteMeta(id);
       navigate('/estrategia/metas');
     }
   };

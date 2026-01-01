@@ -46,7 +46,7 @@ export interface ResumoMensal {
   alunos_pendentes: number;
 }
 
-export interface Instituicao {
+export interface Instituicao extends BaseEntity{
   nome_escola?:string,
   endereco?:string,
   email?:string,

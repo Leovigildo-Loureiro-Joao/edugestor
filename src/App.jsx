@@ -34,6 +34,7 @@ import InitialSetup from './pages/setup/InitialSetup.tsx';
 import PromoteToAdmin from './pages/admin/PromoteToAdmin.tsx';
 import AdminDashboard from './pages/admin/AdminDashboard.tsx';
 import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
+import ProfilePage from './pages/User/ProfilePage.tsx';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -41,7 +42,7 @@ const ProtectedRoute = ({ children }) => {
   
   const [showTimeout, setShowTimeout] = React.useState(false);
   
-  React.useEffect(() => {
+  /*React.useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
         console.warn('⚠️ Loading de autenticação demorando mais de 8s');
@@ -50,7 +51,7 @@ const ProtectedRoute = ({ children }) => {
     }, 8000);
     
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [loading]);*/
 
   if (showTimeout) {
     return (
@@ -58,7 +59,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (loading) {
+  if (loading&&showTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -69,7 +70,9 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   
-  return user ? children : <Navigate to="/login" replace />;
+  return children ;
+  //return user ? children : <Navigate to="/login" replace />;
+
 };
 
 // Componente principal corrigido
@@ -93,6 +96,27 @@ function AppContent() {
     const checkIfNeedsSetup = async () => {
       try {
         // Verificar se existe algum admin no sistema
+        const hasAdminInLocalStorage = localStorage.getItem('has_admin_setup') === 'true';
+        if (hasAdminInLocalStorage) {
+          console.log('✅ Setup já realizado (cache local)');
+          setNeedsSetup(false);
+          setCheckingSetup(false);
+          return;
+        }
+        try {
+          const profilesTable = db.table('profiles');
+          const localProfiles = await profilesTable?.where('role').equals('admin').count();
+          
+          if (localProfiles && localProfiles > 0) {
+            console.log('✅ Admin encontrado no Dexie');
+            localStorage.setItem('has_admin_setup', 'true');
+            setNeedsSetup(false);
+            setCheckingSetup(false);
+            return;
+          }
+        } catch (dexieError) {
+          console.log('⚠️ Tabela profiles não existe no Dexie ainda');
+        }
         const { data: admins, error } = await supabase
           .from('profiles')
           .select('id')
@@ -116,7 +140,7 @@ function AppContent() {
     checkIfNeedsSetup();
   }, []);
 
-  // 🔥 ESTE useEffect DEVE EXISTIR SEMPRE, MESMO QUE NÃO SEJA USADO
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -132,6 +156,16 @@ function AppContent() {
 
     initializeApp();
   }, [needsSetup]); // 🔥 ADICIONAR DEPENDÊNCIA
+
+  // 🔥 SIMPLESMENTE COMENTE ou MODIFIQUE a verificação:
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setCheckingSetup(false);
+    setNeedsSetup(false); 
+  }, 1000);
+  
+  return () => clearTimeout(timer);
+}, []);
 
   if (checkingSetup) {
     return (
@@ -192,6 +226,7 @@ function AppContent() {
                       </ProtectedRoute>
                     } />
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/alunos" element={<Students />} />
                   <Route path="/alunos/:id" element={<StudentPage />} />
                   <Route path="/alunos/novo" element={<StudentNew />} />

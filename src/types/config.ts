@@ -1,5 +1,7 @@
+import { BaseEntity, SyncStatus } from "./base";
+
 // services/configService.ts
-export interface SystemConfig {
+export interface SystemConfig extends BaseEntity{
   id: string;
   category: string;
   key_name: string;
@@ -8,10 +10,11 @@ export interface SystemConfig {
   description?: string;
   updated_at: string;
   updated_by?: string;
+
 }
 
 export type SystemConfigFormData = Omit<SystemConfig
-,"id"|"updated_at">
+,"id"|"updated_at"|"sync_status"|"deleted"|"created_at">;
 
 
 export interface PaymentConfig {

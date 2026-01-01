@@ -1,10 +1,6 @@
 import Dexie from "dexie";
 import db from "./db";
-import { frequenciaService } from "./frequenciaService";
-import { transacaoService } from "./transacaoService";
-import { alunosService } from "./alunosService";
-import { propinaService } from "./propinas";
-import { aulaService } from "./aulaService";
+
 import { SyncQueueItem } from "../../types/base";
 
 export class SyncManager {

@@ -1,17 +1,12 @@
 // src/contexts/AuthContext.tsx - VERSÃO CORRIGIDA
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/database/db';
+import db, { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
+import { UserProfile } from '../types/profile';
+import { profileService } from '../services/database/profileService';
 
 // Tipos para o contexto
-interface UserProfile {
-  id: string;
-  email: string;
-  role: 'admin' | 'manager' | 'teacher' | 'user';
-  instituicao_id?: string;
-  full_name?: string;
-  created_at: string;
-}
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -21,14 +16,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
 
   // 🔥 FUNÇÃO PARA OBTER PERFIL DO USUÁRIO
+
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
+       if (!user && !navigator.onLine){
+        return await profileService.getLocalProfile();
+       }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
+         profileService.saveProfile(data);
       if (error) throw error;
       
       return data as UserProfile;
@@ -318,6 +319,7 @@ export const useAuth = () => {
   if (!context) {
     throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
+  
   return context;
 };
 
