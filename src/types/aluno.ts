@@ -1,6 +1,7 @@
 import strict from "assert/strict";
 import { Propina } from "./propina";
 import { BaseEntity } from "./base";
+import { Avaliacao } from "./avaliacao";
 
 
 export interface Student extends BaseEntity {
@@ -41,12 +42,13 @@ export interface Student extends BaseEntity {
   data_matricula: string;
   turma_nome?:string;
   professor?:string;
+  avaliacao?:Avaliacao[]
 }
 
 
 
 export type StudentFormData = Omit<Student, 
-  'id' | 'created_at' | 'updated_at' 
+  'id' | 'created_at' | 'updated_at' |'avaliacao'
 >;
 
 export interface StudentFormProps {

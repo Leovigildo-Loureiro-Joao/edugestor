@@ -93,13 +93,13 @@ export const GraficoDesempenho: React.FC<Props> = ({
 
     // Calcular totais
     const totalTarefas = tarefas.length;
-    const tarefasConcluidas = tarefas.filter(t => t.concluida === 'true').length;
+    const tarefasConcluidas = tarefas.filter(t => t.concluida).length;
     
     const totalMetas = metas.length;
     const metasConcluidas = metas.filter(m => m.status === 'concluida').length;
     
     const totalRotinas = rotinas.length;
-    const rotinasExecutadas = rotinas.filter(r => r.status === 'executada').length;
+    const rotinasExecutadas = rotinas.filter(r => r.status === 'suspensa').length;
 
     // Gerar dados de tendência para os últimos 7 dias
     const datasTendencia = Array.from({ length: 7 }, (_, i) => {

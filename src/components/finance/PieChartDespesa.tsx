@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { CustomPieChartProps } from '../../types';
 
 export const CustomPieChart = ({ dados, tipo = 'pagamentos', title }: CustomPieChartProps) => {
   const cores = tipo === 'despesas' 

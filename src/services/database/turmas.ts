@@ -2,7 +2,7 @@
 import { HorarioAula, HorarioAulaForm, Turma, TurmaFormData } from '../../types/turma';
 import { supabase } from '../database/db';
 import db from './db';
-import { syncService } from './syncService';
+import { syncManager } from './syncManager';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -80,7 +80,15 @@ export const turmaService = {
   async getTurmaById(id: string): Promise<Turma | undefined> {
     try {
       const turma = await db.turmas.get(id);
-      return turma && !turma.deleted ? turma : undefined;
+      const curso=await db.cursos.where('id')
+                  .equals(turma?.curso_id||'')
+                  .and(curso=> !curso.deleted)
+                  .first()
+
+      return turma&&!turma.deleted ? {
+        ...turma,
+        curso_nome:curso?.nome
+      } : undefined;
     } catch (error) {
       console.error('Erro ao buscar turma por ID:', error);
       return undefined;
@@ -326,7 +334,7 @@ export const turmaService = {
   },
 
  async syncTurmas() {
-      return syncService.downloadTableBatch('turmas', new Date(0));
+      return syncManager.downloadTableBatch('turmas', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente

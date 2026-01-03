@@ -43,16 +43,13 @@ export const dashboardService = {
      this.alunos_ano_lectivo_anterior(),
       
       // Alunos ativos
-      async function alunos_activo() {
-        return (await db.alunos
+
+      (await db.alunos
         .toArray())
         .filter(
-          (aluno)=> aluno.deleted!=false&&aluno.estado=='ativo'
-        )
-      }(),
-
-      // ✅ Comparativo de propinas (mês atual vs anterior)
-      this.get_resumo_propinas_meses_comparativo(),
+          (aluno)=> !aluno.deleted&&aluno.estado=='ativo'
+        ).length
+      ,this.obterComparativoPropinas(mesAtual, mesAnterior, '2025-2026'),
       async function frequencias() {
         return (await db.frequencias
         .toArray())
@@ -64,8 +61,8 @@ export const dashboardService = {
     ]);
 
     // Desestruturação com tipos
-   const totalAlunos: number = totalAlunosPromise?.length || 0;
-    const totalAlunosAnterior: number = alunosAnteriorPromise?.length || 0;
+   const totalAlunos: number = totalAlunosPromise || 0;
+    const totalAlunosAnterior: number = alunosAnteriorPromise || 0;
   
 
     // ✅ Extrair dados do comparativo de propinas
@@ -93,7 +90,7 @@ export const dashboardService = {
     const stats: DashboardStats = {
       totalAlunos,
       totalAlunosAnterior,
-      alunosAtivos: alunosAtivosPromise.length || 0,
+      alunosAtivos: alunosAtivosPromise || 0,
       
       // Propinas pagas (VALOR em dinheiro)
       propinaPagas: comparativo.mes_atual.pagas.valor,
@@ -158,19 +155,82 @@ export const dashboardService = {
 
   ,async get_alunos_ano_lectivo_actual(){
      const alunos= await db.alunos.toArray() 
-     const instituicao=(await db.instituicao.toArray())[0] 
-     const totalAlunos=alunos.filter((aluno)=> aluno.deleted!=false&&aluno.ano_lectivo==instituicao.ano_lectivo)
-     return totalAlunos
+     const instituicao=(await db.instituicao.toArray()).at(0) 
+     const totalAlunos=alunos.filter((aluno)=> !aluno.deleted&&aluno.ano_lectivo==instituicao.ano_lectivo)
+     return totalAlunos.length
   },
 
-  async alunos_ano_lectivo_anterior(){
-    const alunos= await db.alunos.toArray() 
-     const instituicao=(await db.instituicao.toArray())[0] 
-     const totalAlunos=alunos.filter((aluno)=> aluno.deleted!=false&&aluno.ano_lectivo==instituicao.ano_lectivo)
-      return totalAlunos
-  },
 
-  async get_resumo_propinas_meses_comparativo(){
-    return null;
-  }
+async alunos_ano_lectivo_anterior(){
+    const alunos = await db.alunos.toArray();
+    const instituicao = (await db.instituicao.toArray()).at(0);
+    
+    const anoAnterior = obterAnoLetivoAnterior(instituicao?.ano_lectivo || '');
+    
+    const totalAlunos = alunos.filter((aluno) => 
+        !aluno.deleted && 
+        aluno.ano_lectivo == anoAnterior
+    );
+    
+    return totalAlunos.length;
+},
+
+async  obterComparativoPropinas(
+  p_mes_atual: string,
+  p_mes_anterior: string,
+  p_ano_lectivo: string
+): Promise<ComparativoPropinasMensal> {
+  // Resumo do MÊS ATUAL
+  const propinasAtual = await db.propina
+    .where('mes_referencia')
+    .equals(p_mes_atual)
+    .and(propina => propina.ano_lectivo === p_ano_lectivo)
+    .toArray();
+
+  // Resumo do MÊS ANTERIOR
+  const propinasAnterior = await db.propina
+    .where('mes_referencia')
+    .equals(p_mes_anterior)
+    .and(propina => propina.ano_lectivo === p_ano_lectivo)
+    .toArray();
+
+  // Função auxiliar para calcular estatísticas
+  const calcularEstatisticas = (propinas: any[]) => {
+    if (!propinas || propinas.length === 0) {
+      return {
+        pagas: { count: 0, valor: 0 },
+        pendentes: { count: 0, valor: 0 }
+      };
+    }
+
+    const estatisticas = propinas.reduce((acc, propina) => {
+      if (propina.estado === 'pago') {
+        acc.pagas.count += 1;
+        acc.pagas.valor += propina.valor_pago || 0;
+      } else if (propina.estado === 'pendente') {
+        acc.pendentes.count += 1;
+        acc.pendentes.valor += propina.valor_falta || 0;
+      }
+      return acc;
+    }, {
+      pagas: { count: 0, valor: 0 },
+      pendentes: { count: 0, valor: 0 }
+    });
+
+    return estatisticas;
+  };
+
+  // Retornar comparativo
+  return {
+    mes_atual: calcularEstatisticas(propinasAtual),
+    mes_anterior: calcularEstatisticas(propinasAnterior)
+  };
+}
 };
+
+function obterAnoLetivoAnterior(anoAtual:string) {
+    const [inicio, fim] = anoAtual.split('-').map(Number);
+    return `${inicio - 1}-${fim - 1}`;
+}
+
+

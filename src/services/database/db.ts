@@ -11,18 +11,38 @@ import { Course } from '../../types/curso';
 import { Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
-import { syncService } from './syncService';
+import { syncManager } from './syncManager';
 import { EventFormData, Meta, PlanoAcao, Rotina, Tarefa } from '../../types/eventos';
 import { SystemConfig } from '../../types/config';
 import { UserProfile } from '../../types/profile';
 import { Notificacao } from './notificacaoService';
+import { Avaliacao } from '../../types/avaliacao';
 
 // Configurar Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Tipar o Supabase
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey,
+  {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Para sincronização offline, configure persistência
+if (typeof window !== 'undefined') {
+  // Persistir sessão no localStorage
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      localStorage.setItem('supabase.auth.token', session.access_token);
+    } else {
+      localStorage.removeItem('supabase.auth.token');
+    }
+  });
+}
 
 // ============ CLASSE TIPADA DO DEXIE ============
 class EduGestorDatabase extends Dexie {
@@ -42,6 +62,7 @@ class EduGestorDatabase extends Dexie {
   syncQueue!: Table<SyncQueueItem, number>;
   instituicao!: Table<Instituicao, string>;
   notificacao!: Table<Notificacao, string>;
+  avaliacao!: Table<Avaliacao,string>
   profiles!: Table<UserProfile, string>;
 
   constructor() {
@@ -49,7 +70,8 @@ class EduGestorDatabase extends Dexie {
     
     this.version(3).stores({
       // 🔥 Agora sua IDE vai entender ESTA estrutura
-      alunos: '++id, nome_completo, numero_estudante, sync_status, deleted',
+      alunos: '++id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted',
+      avaliacao:'++id,aluno_id,turma_id,disciplina, tipo_avaliacao, periodo, deleted, sync_status',
       turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
       cursos: '++id, nome,ativo,vagas, sync_status, deleted, [sync_status+deleted]',
       turma_horarios: '++id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana]',
@@ -63,7 +85,7 @@ class EduGestorDatabase extends Dexie {
       syncQueue: '++id, table, record_id, operation, status, created_at',
       profiles: '++id, role, sync_status, deleted',
       notificacao: `id,lida,tipo,instituicao_id,aluno_id,user_id,data_envio,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted`,
-      instituicao:'++id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at',
+      instituicao:'++id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at,sync_status,deleted',
       evento: '++id, data_evento, tipo, sync_status, deleted, created_at',
       system_config:'++id, key_name, category,[category+deleted], [category+key_name],[category+key_name+deleted],sync_status, deleted'
     });
@@ -116,10 +138,10 @@ export const syncDatabase = {
       console.log('🔄 Iniciando sincronização completa...');
       
       // 1. Primeiro upload (enviar alterações locais)
-      await syncService.uploadBatch();
+      await syncManager.uploadBatch();
       
       // 2. Depois download (buscar atualizações remotas)
-      await syncService.downloadBatch();
+      await syncManager.downloadBatch();
       
       console.log('✅ Sincronização completa concluída');
       return { success: true, message: 'Sincronizado com sucesso' };
@@ -132,12 +154,12 @@ export const syncDatabase = {
   
   // Sincronização apenas upload
   async syncUpload() {
-    return syncService.uploadBatch();
+    return syncManager.uploadBatch();
   },
   
   // Sincronização apenas download
   async syncDownload() {
-    return syncService.downloadBatch();
+    return syncManager.downloadBatch();
   },
   
   // Verificar status
@@ -160,7 +182,7 @@ export const syncDatabase = {
   // Estimar tamanho do banco
   async getDatabaseSize() {
     try {
-      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao'];
+      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacao'];
       let total = 0;
       
       for (const tableName of tables) {

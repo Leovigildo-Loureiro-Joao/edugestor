@@ -3,7 +3,8 @@ import { supabase } from '../database/db';
 import { propinaService } from './propinas';
 import db from './db';
 import { DadosPagamentoCash, Transacao, TransacaoFormData } from '../../types/transacao';
-import { syncService } from './syncService';
+import { syncManager } from './syncManager';
+import { configService } from './config';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -120,6 +121,7 @@ export const transacaoService = {
           mes_referencia: mesRef,
           transacao_id: transacaoId,
           estado: 'pago',
+          ano_lectivo:await configService.getConfigValue("academic", "academic_year")
 
         });
       }
@@ -168,7 +170,7 @@ export const transacaoService = {
   },
 
     async syncTransacoes() {
-      return syncService.downloadTableBatch('transacoes', new Date(0));
+      return syncManager.downloadTableBatch('transacoes', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente

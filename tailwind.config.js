@@ -14,6 +14,7 @@ export default {
     'dark:bg-gray-900',
 
   ],
+  
   theme: {
     extend: {
       colors: {
@@ -73,6 +74,7 @@ export default {
         'pulse-soft': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'bounce-soft': 'bounce 1s infinite',
       }
+      
     },
   },
   plugins: [],

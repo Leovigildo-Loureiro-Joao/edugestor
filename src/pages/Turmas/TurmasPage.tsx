@@ -49,7 +49,7 @@ const CURSOS_DISCIPLINAS = {
 };
 
 // Tipos atualizados para refletir o StudentForm
-interface AlunoDesempenho extends Student {
+export interface AlunoDesempenho extends Student {
   media: number;
   presenca: number;
   ultimaAvaliacao: number;
@@ -158,7 +158,7 @@ const handleExcluirHorario = async (horarioId: string) => {
     try {
       setLoading(true);
       // Carregar dados da turma
-      const turmaData = await turmaService.findBy(id||'');
+      const turmaData = await turmaService.findById(id||'');
       
       if (!turmaData) {
         setLoading(false);
@@ -167,26 +167,25 @@ const handleExcluirHorario = async (horarioId: string) => {
 
       // Carregar alunos desta turma
       const alunosDaTurma = await alunosService.getAlunosPorTurma(turmaData.id);
-      const horario = await turmaService.getHoraios(turmaData.id);
+      const horario = await turmaService.getHorarios(turmaData.id);
       // Transformar alunos com dados de desempenho simulados
-      const alunosComDesempenho: AlunoDesempenho[] = alunosDaTurma.map(aluno => ({
-        ...aluno,
-        media: Math.random() * 5 + 10, // 10-15
-        presenca: Math.floor(Math.random() * 20) + 80, // 80-100%
-        ultimaAvaliacao: Math.floor(Math.random() * 6) + 14 // 14-20
-      } as AlunoDesempenho));
-
+      const alunosDes=[]
+      const alunosComDesempenho: Promise<AlunoDesempenho>[] = await alunosService.getDesempemhoTurma(turmaData.id)
+      for (const element of alunosComDesempenho) {
+        alunosDes.push(await element)
+      }
+      
       // Dados completos da turma
       const turmaCompleta: TurmaDetailsData = {
         ...turmaData,
-        alunos: alunosComDesempenho,
+        alunos:  alunosDes,
         horarios: horario,
-        professor: turmaData.cursos?.nome || 'Professor a definir',
+        professor: turmaData.professor || 'Professor a definir',
         vagas: 30 // Valor padrão
       };
 
       setTurma(turmaCompleta);
-      setAlunosFiltrados(alunosComDesempenho);
+      setAlunosFiltrados(alunosDes);
       setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar turma:', error);
@@ -304,7 +303,7 @@ const handleExcluirHorario = async (horarioId: string) => {
               <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400">
                 <span className="flex items-center gap-1">
                   <FiBook size={16} />
-                  {turma.cursos?.nome}
+                  {turma.curso_nome}
                 </span>
                 <span className="flex items-center gap-1">
                   <FiCalendar size={16} />
@@ -674,7 +673,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                   <FiBook className="text-gray-400" size={20} />
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Curso</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{turma.cursos?.nome}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{turma.curso_nome}</p>
                   </div>
                 </div>
                 

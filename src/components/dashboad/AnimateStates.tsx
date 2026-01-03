@@ -111,13 +111,14 @@ export const AnimatedStat = ({ stat, index }: AnimatedStatProps): ReactElement =
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
+      whileHover={{ scale: 1.05, boxShadow: '0 8px 15px rgba(0, 0, 0, 0.1)',transition: { duration: 0.3 } }}
       animate={isVisible ? { 
         opacity: 1, 
         y: 0,
       } : {}}
       transition={{ 
         delay: index * 0.1,
-        duration: 0.4,
+        duration: 0.3,
       }}
       className="bg-white dark:bg-gray-800 dark:border-gray-700 p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
     >

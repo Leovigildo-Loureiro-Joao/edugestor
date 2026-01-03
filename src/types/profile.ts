@@ -4,5 +4,6 @@ export interface UserProfile {
   role: 'admin' | 'manager' | 'teacher' | 'user';
   instituicao_id?: string;
   full_name?: string;
+  updated_at: string;
   created_at: string;
 }

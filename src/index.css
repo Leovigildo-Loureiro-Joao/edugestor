@@ -5,3 +5,9 @@
 input,select,textarea,button {
     outline: none;
 }
+
+html{
+    scroll-behavior: smooth;
+    font-size: 90%;
+    background: linear-gradient(white,rgb(208, 228, 241)) ;
+}

@@ -6,8 +6,8 @@ import {  Student } from '../../types/aluno';
 import { frequenciaService } from '../../services/database/frequenciaService';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { FrequenciaData } from '../../types/frequencia';
-import { NotaData } from '../../types/nota';
-import { notasService } from '../../services/database/avaliacao';
+import { NotaData } from '../../types/avaliacao';
+import { av } from '../../services/database/avaliacao';
 import { Bar, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const StudentPage: React.FC = () => {

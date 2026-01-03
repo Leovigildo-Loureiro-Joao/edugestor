@@ -11,6 +11,7 @@ export interface Propina extends BaseEntity{
   estado: 'pendente' | 'pago' | 'atrasado';
   multa?: number;
   recibo_numero?: string;
+  ano_lectivo: string;
   transacao_id: string;
   created_at: string;
   updated_at: string;

@@ -61,7 +61,7 @@ import { cursosService } from '../../services/database/curso';
     );
   }
 
-  const taxaOcupacao = (course.alunos.length / course.vagas) * 100;
+  const taxaOcupacao = (course.alunos / course.vagas) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -177,6 +177,39 @@ import { cursosService } from '../../services/database/curso';
                 ))}
               </div>
             </motion.div>
+
+                   {/* Disciplinas */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+            >
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Turmas ({course.turmas.length})
+              </h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {course.turmas.map((turma, index) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.05, background:'linear-gradient(rgb(255, 255, 255),rgb(240, 249, 255))',boxShadow: '0 8px 15px rgba(0, 0, 0, 0.1)',transition: { duration: 0.3 } }}
+                    transition={{ delay: 0.1 }}
+                    key={index}
+                    className="flex cursor-pointer gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                    onClick={()=>navigate("/turmas/"+turma.id)}
+                  >
+                    <FiBook className="text-blue-600 dark:text-blue-400 mt-2" size={16} />
+                   <div className='flex-col gap-1 flex'>
+                       <span className="text-gray-900 dark:text-white font-medium">{turma.nome_turma}</span>
+                      <span className="text-gray-900 dark:text-white font-normal">Professor: {turma.professor}</span>
+                      <span className="text-gray-900  dark:text-white font-normal">Turno: {turma.turno}</span>
+                   </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
 
           {/* Sidebar - Estatísticas */}
@@ -196,7 +229,7 @@ import { cursosService } from '../../services/database/curso';
                 <div>
                   <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
                     <span>Vagas ocupadas</span>
-                    <span>{course.alunos.length}/{course.vagas}</span>
+                    <span>{course.alunos}/{course.vagas}</span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div 
@@ -212,13 +245,13 @@ import { cursosService } from '../../services/database/curso';
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {course.vagas - course.alunos.length}
+                      {course.vagas - course.alunos}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Vagas livres</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {course.alunos.length}
+                      {course.alunos}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Alunos inscritos</p>
                   </div>
@@ -241,13 +274,13 @@ import { cursosService } from '../../services/database/curso';
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Mensal</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {(course.preco * course.alunos.length).toLocaleString('pt-AO')} AOA
+                    {(course.preco * course.alunos).toLocaleString('pt-AO')} AOA
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Total do curso</span>
                   <span className="font-semibold text-green-600 dark:text-green-400">
-                    {(course.preco * course.alunos.length * 6).toLocaleString('pt-AO')} AOA
+                    {(course.preco * course.alunos * 6).toLocaleString('pt-AO')} AOA
                   </span>
                 </div>
               </div>

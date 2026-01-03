@@ -1,428 +1,566 @@
-import Dexie from "dexie";
-import db from "./db";
-
+// src/services/database/syncManager.ts
 import { SyncQueueItem } from "../../types/base";
+import db, { supabase } from "./db";
 
-export class SyncManager {
-  private isSyncing = false;
-  private syncQueue: Array<() => Promise<void>> = [];
-  private syncPriorities = {
-    alta: ['frequencias', 'aulas'],      // Dados críticos e frequentes
-    media: ['transacoes', 'propina'],   // Dados financeiros importantes
-    baixa: ['alunos', 'turmas']          // Dados mais estáticos
+
+// Interface para o serviço de sincronização
+interface SyncManager {
+  uploadBatch(): Promise<void>;
+  downloadBatch(): Promise<void>;
+  groupByTable(items: SyncQueueItem[]): Record<string, SyncQueueItem[]>;
+  processTableBatch(tableName: string, items: SyncQueueItem[]): Promise<void>;
+  processInsertBatch(tableName: string, items: SyncQueueItem[]): Promise<void>;
+  processSingleUpdate(tableName: string, item: SyncQueueItem): Promise<void>;
+  processDeleteBatch(tableName: string, items: SyncQueueItem[]): Promise<void>;
+  getRecordFromTable(tableName: string, recordId: string): Promise<any>;
+  updateLocalId(tableName: string, oldId: string, newId: string): Promise<void>;
+  markAsSynced(tableName: string, recordId: string): Promise<void>;
+  deleteLocalRecord(tableName: string, recordId: string): Promise<void>;
+  handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
+  downloadTableBatch(tableName: string, since: Date): Promise<void>;
+  processDownloadBatch(tableName: string, batch: any[]): Promise<void>;
+}
+
+// Hook personalizado para usar dentro do manager
+const useSyncAuthInManager = () => {
+  // Esta função simula o hook, mas pode ser chamada em qualquer lugar
+  const getAuthData = () => {
+    // Tentar obter do localStorage primeiro (para contexto não React)
+    console.log(localStorage.getItem('user_role'))
+    const token = localStorage.getItem('jwt_token') || 
+                  localStorage.getItem('supabase.auth.token');
+    const userRole = localStorage.getItem('user_role') || 'user';
+    const userId = localStorage.getItem('user_id');
+    
+    return {
+      authToken: token,
+      userRole,
+      userId,
+      isAuthenticated: !!token
+    };
   };
 
-  // ✅ Inicialização otimizada
-  async initialize() {
-    if (!navigator.onLine) {
-      console.log('📴 Offline - sincronização desabilitada');
-      return;
-    }
-
-    // Configurar Dexie para melhor performance
-    Dexie.debug = false; // Desativa logs no console
+  const getAuthHeaders = () => {
+    const token = getAuthData().authToken;
+    if (!token) return {};
     
-    // Abrir conexão única
-    await db.open();
+    return {
+      'Authorization': `Bearer ${token}`,
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+  };
+
+  const hasPermission = (requiredRole: string): boolean => {
+    const { userRole } = getAuthData();
     
-    // Configurar cache
-    await this.configureCache();
-  }
-
-  // ✅ Configurar cache para performance
-  private async configureCache() {
-    // Salvar timestamp da última sincronização bem-sucedida
-    const lastSync = localStorage.getItem('global_last_sync');
-    if (!lastSync) {
-      localStorage.setItem('global_last_sync', new Date().toISOString());
-    }
-  }
-
-  // ✅ Sincronização inteligente por prioridade
-  async syncInteligente() {
-    if (this.isSyncing) {
-      console.log('⏳ Sincronização já em andamento...');
-      return;
-    }
-
-    if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização adiada');
-      return;
-    }
-
-    this.isSyncing = true;
+    const roleHierarchy: Record<string, number> = {
+      'user': 0,
+      'teacher': 1,
+      'manager': 2,
+      'admin': 3
+    };
     
+    const userLevel = roleHierarchy[userRole] || 0;
+    const requiredLevel = roleHierarchy[requiredRole] || 0;
+    
+    return userLevel >= requiredLevel;
+  };
+
+  return {
+    getAuthData,
+    getAuthHeaders,
+    hasPermission
+  };
+};
+
+// Instância do SyncManager
+export const syncManager: SyncManager = {
+  // ✅ UPLOAD em BATCH (otimizado)
+  async uploadBatch() {
     try {
-      console.log('🚀 Iniciando sincronização inteligente...');
+      const { getAuthData } = useSyncAuthInManager();
       
-      // 1. Primeiro, sincronizar dados de alta prioridade (pequenos)
-      console.log('🔄 Fase 1: Dados de alta prioridade');
-      await this.syncBatch(this.syncPriorities.alta, 50); // Limite de 50 itens por batch
+      const authData = getAuthData();
+      console.log(authData)
+      if (!authData.isAuthenticated) {
+        console.warn('⚠️ Usuário não autenticado. Upload adiado.');
+        return;
+      }
       
-      // 2. Sincronizar dados de média prioridade
-      console.log('🔄 Fase 2: Dados de média prioridade');
-      await this.syncBatch(this.syncPriorities.media, 30);
+      console.log('🔄 Iniciando upload em batch...');
       
-      // 3. Sincronizar dados de baixa prioridade (maiores, podem esperar)
-      console.log('🔄 Fase 3: Dados de baixa prioridade');
-      await this.syncBatch(this.syncPriorities.baixa, 10);
+      // 1. Agrupar itens por tabela
+      const pendingItems = await db.syncQueue
+        .where('status')
+        .equals('pending')
+        .toArray();
       
-      // 4. Atualizar timestamp global
-      localStorage.setItem('global_last_sync', new Date().toISOString());
+      if (pendingItems.length === 0) {
+        console.log('📭 Nenhum item pendente para upload');
+        return;
+      }
       
-      console.log('✅ Sincronização inteligente concluída');
+      // 2. Agrupar por tabela
+      const itemsByTable = this.groupByTable(pendingItems);
+      
+      // 3. Processar cada tabela em batch
+      for (const [tableName, items] of Object.entries(itemsByTable)) {
+        console.log(`📤 Processando batch de ${items.length} ${tableName}...`);
+        await this.processTableBatch(tableName, items);
+      }
+      
+      console.log('✅ Upload batch concluído');
       
     } catch (error) {
-      console.error('❌ Erro na sincronização inteligente:', error);
-    } finally {
-      this.isSyncing = false;
+      console.error('❌ Erro no upload batch:', error);
+      throw error;
     }
-  }
-
-  // ✅ Sincronização em lotes (batch)
-  private async syncBatch(tabelas: string[], batchSize: number) {
-    for (const tabela of tabelas) {
-      console.log(`📊 Sincronizando ${tabela}...`);
-      
-      try {
-        // Usar serviços específicos
-         await this.syncBatchTable(batchSize,tabela);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Pausa entre tabelas
-      } catch (error) {
-        console.error(`❌ Erro sincronizando ${tabela}:`, error);
-        // Continuar com outras tabelas mesmo se uma falhar
+  },
+  
+  // ✅ Agrupar itens por tabela
+  groupByTable(items: SyncQueueItem[]) {
+    const groups: Record<string, SyncQueueItem[]> = {};
+    
+    items.forEach(item => {
+      if (!groups[item.table]) {
+        groups[item.table] = [];
       }
+      groups[item.table].push(item);
+    });
+    
+    return groups;
+  },
+  
+  // ✅ Processar tabela em batch
+  async processTableBatch(tableName: string, items: SyncQueueItem[]) {
+    try {
+      const { getAuthData } = useSyncAuthInManager();
+      const authData = getAuthData();
+      
+      // Separar INSERTs e UPDATEs
+      const inserts = items.filter(item => item.operation === 'upsert' && item.record_id.startsWith('local_'));
+      const updates = items.filter(item => item.operation === 'upsert' && !item.record_id.startsWith('local_'));
+      const deletes = items.filter(item => item.operation === 'delete');
+      
+      // Processar INSERTs em batch
+      if (inserts.length > 0) {
+        await this.processInsertBatch(tableName, inserts);
+      }
+      
+      // Processar UPDATEs em batch (um por um por segurança)
+      for (const item of updates) {
+        await this.processSingleUpdate(tableName, item);
+      }
+      
+      // Processar DELETEs em batch
+      if (deletes.length > 0) {
+        await this.processDeleteBatch(tableName, deletes);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro processando batch de ${tableName}:`, error);
+      throw error;
     }
-  }
-
-
-
- private async syncBatchTable(limit: number, name: string) {
-    console.log(`🔍 Buscando pendentes para ${name}...`);
+  },
+  
+  // ✅ Processar INSERTs em batch
+  async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
+    const { getAuthData } = useSyncAuthInManager();
+    const authData = getAuthData();
     
-    const pendentes = await db.syncQueue
-      .where('table')
-      .equals(name)
-      .and(item => item.status === 'pending')
-      .limit(limit)
-      .toArray();
-    
-    console.log(`📊 ${pendentes.length} pendentes para ${name}`);
-    
-    if (pendentes.length === 0) {
-      console.log(`📭 Nenhum item pendente para ${name}`);
+    if (!authData.isAuthenticated) {
+      console.warn(`⚠️ Usuário não autenticado. Ignorando INSERTs em ${tableName}`);
       return;
     }
     
-    for (const item of pendentes) {
-      console.log(`🔧 Processando item ${item.id} (${item.operation})...`);
-      await this.processItem(item);
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // 1. Buscar dados dos itens
+    const records = [];
+    for (const item of items) {
+      const record = await this.getRecordFromTable(tableName, item.record_id);
+      if (record) {
+        // Remover campos internos do Dexie e ID local
+        const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
+        
+        // ✅ ADICIONAR CAMPOS NECESSÁRIOS PARA RLS
+        const recordWithRLS = {
+          ...cleanRecord,
+          // Campos para RLS
+          created_by: authData.userId || record.created_by,
+          updated_by: authData.userId,
+          instituicao_id: record.instituicao_id || localStorage.getItem('active_instituicao_id'),
+          user_role: authData.userRole,
+          // Timestamps no formato do Supabase
+          created_at: record.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        records.push(recordWithRLS);
+      }
     }
-  }
-
-  // ✅ Processar item CORRETAMENTE
-  private async processItem(item: SyncQueueItem) {
-    console.log(`🔍 Processando item:`, item);
+    
+    if (records.length === 0) return;
+    
+    // Verificar se algum registro ainda tem ID local (deve ser removido)
+    records.forEach(record => {
+      if (record.id && record.id.startsWith('local_')) {
+        console.warn('⚠️ ID local encontrado e removido:', record.id);
+        delete record.id;
+      }
+    });
+    
+    // 2. INSERT em batch no Supabase
+    const { data, error } = await supabase
+      .from(tableName)
+      .insert(records)
+      .select();
+    
+    if (error) {
+      console.error(`❌ Erro inserindo batch em ${tableName}:`, error);
+      
+      // Se for erro de RLS, adicionar mais informações
+      if (error.message.includes('row-level security') || error.code === '42501') {
+        console.error('🔍 Detalhes do erro RLS:', {
+          table: tableName,
+          userRole: authData.userRole,
+          recordsCount: records.length,
+          firstRecord: records[0] ? {
+            ...records[0],
+            // Ocultar dados sensíveis para log
+            nome: records[0].nome_completo?.substring(0, 10) + '...',
+            hasCreatedBy: !!records[0].created_by,
+            hasInstituicaoId: !!records[0].instituicao_id
+          } : null
+        });
+      }
+      
+      throw error;
+    }
+    
+    // 3. Atualizar IDs locais com IDs do Supabase
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const supabaseRecord = data?.[i];
+      
+      if (supabaseRecord) {
+        // Atualizar ID local
+        await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+        
+        // Marcar como sincronizado
+        await db.syncQueue.delete(item.id!);
+      }
+    }
+    
+    console.log(`✅ ${records.length} registros inseridos em ${tableName}`);
+  },
+  
+  // ✅ Processar UPDATE individual (mais seguro)
+  async processSingleUpdate(tableName: string, item: SyncQueueItem) {
+    const { getAuthData } = useSyncAuthInManager();
+    const authData = getAuthData();
     
     try {
-      // Buscar o registro da tabela correspondente
-      const table = db.table<any>(item.table);
-      const record = await table.get(item.record_id);
-      
+      const record = await this.getRecordFromTable(tableName, item.record_id);
       if (!record) {
-        console.log(`❌ Registro ${item.record_id} não encontrado em ${item.table}`);
         await db.syncQueue.delete(item.id!);
         return;
       }
-
-      console.log(`📝 Registro encontrado:`, record);
-
-      // Usar supabase do arquivo db.ts
-      const { supabase } = await import('./db');
       
-      if (item.operation === 'upsert') {
-        // Preparar dados para envio
-        const { sync_status, deleted, created_at, updated_at, ...dadosParaEnviar } = record;
-        
-        console.log(`📤 Enviando upsert para ${item.table}:`, dadosParaEnviar);
-        
-        let resultado;
-        
-        // Se for um ID local (nunca sincronizado)
-        if (item.record_id.startsWith('local_')) {
-          // INSERT no Supabase
-          resultado = await supabase
-            .from(item.table)
-            .insert(dadosParaEnviar)
-            .select()
-            .single();
-          
-          if (resultado.error) {
-            console.error('❌ Erro no INSERT:', resultado.error);
-            throw resultado.error;
-          }
-          
-          // Atualizar ID local com ID do Supabase
-          if (resultado.data) {
-            await table.update(item.record_id, {
-              id: resultado.data.id,
-              sync_status: 'synced',
-              updated_at: new Date().toISOString()
-            });
-            
-            console.log(`🔄 ID atualizado: ${item.record_id} → ${resultado.data.id}`);
-          }
-        } else {
-          // UPDATE no Supabase (já tem ID remoto)
-          resultado = await supabase
-            .from(item.table)
-            .update(dadosParaEnviar)
-            .eq('id', item.record_id);
-          
-          if (resultado.error) {
-            console.error('❌ Erro no UPDATE:', resultado.error);
-            throw resultado.error;
-          }
-          
-          // Marcar como sincronizado localmente
-          await table.update(item.record_id, {
-            sync_status: 'synced',
-            updated_at: new Date().toISOString()
-          });
-        }
-        
-      } else if (item.operation === 'delete') {
-        // Só deletar no Supabase se não for um ID local
-        if (!item.record_id.startsWith('local_')) {
-          console.log(`🗑️ Deletando ${item.record_id} do Supabase...`);
-          
-          const resultado = await supabase
-            .from(item.table)
-            .delete()
-            .eq('id', item.record_id);
-          
-          if (resultado.error) {
-            console.error('❌ Erro no DELETE:', resultado.error);
-            throw resultado.error;
-          }
-        }
-        
-        // Deletar localmente
-        await table.delete(item.record_id);
-      }
-
-      // Remover da fila de sincronização
+      // Remover campos internos do Dexie
+      const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
+      
+      // ✅ ADICIONAR CAMPOS PARA RLS
+      const recordWithRLS = {
+        ...cleanRecord,
+        updated_by: authData.userId || record.updated_by,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from(tableName)
+        .update(recordWithRLS)
+        .eq('id', item.record_id);
+      
+      if (error) throw error;
+      
+      // Marcar como sincronizado
+      await this.markAsSynced(tableName, item.record_id);
       await db.syncQueue.delete(item.id!);
-      console.log(`✅ Item ${item.id} processado com sucesso`);
       
-    } catch (error: any) {
-      console.error(`❌ Erro processando item ${item.id}:`, error);
+      console.log(`✅ ${tableName} ${item.record_id} atualizado`);
+      
+    } catch (error) {
+      console.error(`❌ Erro atualizando ${tableName} ${item.record_id}:`, error);
       await this.handleSyncError(item, error);
     }
-  }
-
-  private async handleSyncError(item: SyncQueueItem, error: any) {
-    console.log(`🔄 Tentativa ${(item.retryCount || 0) + 1} falhou para item ${item.id}`);
+  },
+  
+  // ✅ Processar DELETEs em batch
+  async processDeleteBatch(tableName: string, items: SyncQueueItem[]) {
+    const { getAuthData } = useSyncAuthInManager();
+    const authData = getAuthData();
     
+    // Filtrar apenas IDs que não são locais
+    const idsToDelete = items
+      .filter(item => !item.record_id.startsWith('local_'))
+      .map(item => item.record_id);
+    
+    if (idsToDelete.length === 0) {
+      // Apenas deletar localmente
+      for (const item of items) {
+        await this.deleteLocalRecord(tableName, item.record_id);
+        await db.syncQueue.delete(item.id!);
+      }
+      return;
+    }
+    
+    // Verificar permissões para deletar
+    if (tableName === 'profiles' || tableName === 'instituicao') {
+      const { hasPermission } = useSyncAuthInManager();
+      if (!hasPermission('admin')) {
+        console.error(`❌ Permissão insuficiente para deletar ${tableName}`);
+        throw new Error(`Permissão insuficiente para deletar ${tableName}`);
+      }
+    }
+    
+    // Deletar no Supabase em batch
+    const { error } = await supabase
+      .from(tableName)
+      .delete()
+      .in('id', idsToDelete);
+    
+    if (error) {
+      console.error(`❌ Erro deletando batch de ${tableName}:`, error);
+      throw error;
+    }
+    
+    // Deletar localmente
+    for (const item of items) {
+      await this.deleteLocalRecord(tableName, item.record_id);
+      await db.syncQueue.delete(item.id!);
+    }
+    
+    console.log(`✅ ${idsToDelete.length} registros deletados de ${tableName}`);
+  },
+  
+  // ✅ Funções auxiliares
+  async getRecordFromTable(tableName: string, recordId: string) {
+    const table = db.table<any>(tableName);
+    return await table.get(recordId);
+  },
+  
+  async updateLocalId(tableName: string, oldId: string, newId: string) {
+    const table = db.table<any>(tableName);
+    const record = await table.get(oldId);
+    
+    if (record) {
+      // Criar novo registro com novo ID
+      await table.put({ 
+        ...record, 
+        id: newId,
+        updated_at: new Date().toISOString()
+      });
+      // Deletar registro antigo
+      await table.delete(oldId);
+    }
+  },
+  
+  async markAsSynced(tableName: string, recordId: string) {
+    const table = db.table<any>(tableName);
+    await table.update(recordId, { 
+      sync_status: 'synced',
+      updated_at: new Date().toISOString()
+    });
+  },
+  
+  async deleteLocalRecord(tableName: string, recordId: string) {
+    const table = db.table<any>(tableName);
+    await table.delete(recordId);
+  },
+  
+  async handleSyncError(item: SyncQueueItem, error: any) {
     const novasTentativas = (item.retryCount || 0) + 1;
     
     if (novasTentativas >= 3) {
-      console.log(`❌ Item ${item.id} marcado como falha permanente`);
+      // Marcar como falha permanente
       await db.syncQueue.update(item.id!, {
         status: 'failed',
         error: error.message,
-        retryCount: novasTentativas
+        retryCount: novasTentativas,
+        last_attempt: new Date().toISOString()
       });
     } else {
-      console.log(`⏱️ Item ${item.id} será retentado mais tarde`);
+      // Tentar novamente mais tarde
       await db.syncQueue.update(item.id!, {
         retryCount: novasTentativas,
-        status: 'pending'
+        status: 'pending',
+        last_attempt: new Date().toISOString()
       });
     }
-  }
-  private async processUpsert(item: SyncQueueItem,service:any){
-
-  }
-
-   private async processDelete(item: SyncQueueItem,service:any){
-    
-  }
-
-
-
-  // ✅ Reset otimizado que realmente limpa tudo
-  async resetCompleto() {
-    console.log('🧹 Iniciando reset otimizado...');
-    
+  },
+  
+  async downloadBatch() {
     try {
-      // 1. Parar todas as sincronizações
-      this.isSyncing = false;
+      const { getAuthData } = useSyncAuthInManager();
+      const authData = getAuthData();
       
-      // 2. Fechar todas as conexões Dexie
-      await this.closeAllConnections();
-      
-      // 3. Limpar IndexedDB de forma eficaz
-      await this.clearIndexedDB();
-      
-      // 4. Limpar caches específicos
-      await this.clearCaches();
-      
-      // 5. Forçar garbage collection (quando possível)
-      await this.forceGarbageCollection();
-      
-      console.log('✅ Reset completo realizado');
-      
-    } catch (error) {
-      console.error('❌ Erro no reset:', error);
-    }
-  }
-
-  private async closeAllConnections() {
-    try {
-      if (db.isOpen()) {
-        await db.close();
-        console.log('✅ Conexão Dexie fechada');
+      if (!authData.isAuthenticated) {
+        console.warn('⚠️ Usuário não autenticado. Download adiado.');
+        return;
       }
       
-      // Fechar outras possíveis conexões
-      const databases = await indexedDB.databases?.();
-      if (databases) {
-        for (const dbInfo of databases) {
-          if (dbInfo.name) {
-            const db = await indexedDB.open(dbInfo.name);
-            db.onupgradeneeded = null;
-            db.onsuccess = (event) => {
-              const connection = (event.target as IDBOpenDBRequest).result;
-              connection.close();
-            };
-          }
-        }
-      }
-    } catch (error) {
-      console.log('⚠️ Erro ao fechar conexões:', error);
-    }
-  }
-
-  private async clearIndexedDB() {
-    return new Promise<void>((resolve) => {
-      console.log('🗑️ Limpando IndexedDB...');
+      console.log('📥 Iniciando download em batch...');
       
-      // Lista de bancos para deletar
-      const dbNames = [
-        'EscolaDB',
-        'EduGestorDB',
-        'EduGestorOffline',
-        'EscolaDB_v1',
-        'EscolaDB_v2'
+      // 1. Buscar timestamp da última sincronização
+      const lastSync = localStorage.getItem(`last_sync_global`);
+      const lastSyncDate = lastSync ? new Date(lastSync) : new Date(0);
+      
+      // 2. Baixar cada tabela em batch (com base nas permissões)
+      const { hasPermission } = useSyncAuthInManager();
+      
+      const tables = [
+        'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
+        'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
+        'evento', 'profiles', 'system_config', 'instituicao', 'notificacao','avaliacao'
       ];
       
-      let completed = 0;
-      
-      const checkComplete = () => {
-        completed++;
-        if (completed === dbNames.length) {
-          console.log('✅ IndexedDB limpo');
-          resolve();
+      for (const tableName of tables) {
+        // Verificar permissões para tabelas sensíveis
+        if (tableName === 'profiles' || tableName === 'instituicao') {
+          if (!hasPermission('admin')) {
+            console.log(`⏭️  Pulando ${tableName} (permissão insuficiente)`);
+            continue;
+          }
         }
-      };
-      
-      dbNames.forEach(dbName => {
-        const req = indexedDB.deleteDatabase(dbName);
-        req.onsuccess = () => {
-          console.log(`   ✅ ${dbName} deletado`);
-          checkComplete();
-        };
-        req.onerror = () => {
-          console.log(`   ⚠️ ${dbName} já deletado ou não existe`);
-          checkComplete();
-        };
-        req.onblocked = () => {
-          console.log(`   ⚠️ ${dbName} bloqueado, tentando novamente...`);
-          setTimeout(() => indexedDB.deleteDatabase(dbName), 1000);
-        };
-      });
-      
-      // Timeout de segurança
-      setTimeout(() => {
-        console.log('⚠️ Timeout na limpeza do IndexedDB');
-        resolve();
-      }, 10000);
-    });
-  }
-
-  private async clearCaches() {
-    // Limpar localStorage seletivamente
-    const keys = Object.keys(localStorage);
-    const syncKeys = keys.filter(key => 
-      key.includes('sync') || 
-      key.includes('last_') || 
-      key.includes('cache_')
-    );
-    
-    syncKeys.forEach(key => {
-      localStorage.removeItem(key);
-      console.log(`   🗑️ localStorage: ${key}`);
-    });
-    
-    // Limpar sessionStorage
-    sessionStorage.clear();
-    
-    // Limpar cache de Service Worker se existir
-    if ('caches' in window) {
-      try {
-        const cacheNames = await caches.keys();
-        await Promise.all(
-          cacheNames.map(cacheName => caches.delete(cacheName))
-        );
-        console.log('✅ Cache de Service Worker limpo');
-      } catch (error) {
-        console.log('⚠️ Não foi possível limpar cache SW:', error);
+        
+        console.log(`📥 Baixando ${tableName}...`);
+        await this.downloadTableBatch(tableName, lastSyncDate);
+        await new Promise(resolve => setTimeout(resolve, 300)); // Pausa entre tabelas
       }
+      
+      // 3. Atualizar timestamp global
+      localStorage.setItem('last_sync_global', new Date().toISOString());
+      
+      console.log('✅ Download batch concluído');
+      
+    } catch (error) {
+      console.error('❌ Erro no download batch:', error);
     }
-  }
-
-  private async forceGarbageCollection() {
-    // Técnicas para forçar garbage collection (quando possível)
-    if (window.gc) {
-      window.gc(); // Chrome flag --js-flags="--expose-gc"
-      console.log('✅ Garbage collection forçado');
-    }
-    
-    // Liberar memória manualmente
+  },
+  
+  // ✅ Baixar tabela específica em batch
+  async downloadTableBatch(tableName: string, since: Date) {
     try {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-      iframe.contentWindow?.location.reload();
-      setTimeout(() => document.body.removeChild(iframe), 100);
-    } catch (e) {}
-  }
-
-  // ✅ Iniciar sincronização em background
-  startBackgroundSync() {
-    // Sincronizar a cada 5 minutos quando online
-    setInterval(() => {
-      if (navigator.onLine && !this.isSyncing) {
-        this.syncInteligente();
+      const { getAuthData, hasPermission } = useSyncAuthInManager();
+      const authData = getAuthData();
+      
+      // Buscar dados do Supabase (após a última sincronização)
+      let query = supabase
+        .from(tableName)
+        .select('*')
+        .order('updated_at', { ascending: true })
+        .limit(500);
+      
+      // Filtrar por instituição se não for admin
+      if (tableName !== 'profiles' && tableName !== 'instituicao' && !hasPermission('admin')) {
+        const instituicaoId = localStorage.getItem('active_instituicao_id');
+        if (instituicaoId) {
+          query = query.eq('instituicao_id', instituicaoId);
+        }
       }
-    }, 5 * 60 * 1000); // 5 minutos
+      
+      const { data: remoteData, error } = await query;
+      
+      if (error) {
+        console.error(`❌ Erro buscando ${tableName}:`, error);
+        return;
+      }
+      
+      if (!remoteData || remoteData.length === 0) {
+        console.log(`📭 Nenhum dado novo em ${tableName}`);
+        return;
+      }
+      
+      console.log(`📥 ${remoteData.length} registros encontrados em ${tableName}`);
+      
+      // Processar em lotes menores para não sobrecarregar o IndexedDB
+      const batchSize = 50;
+      for (let i = 0; i < remoteData.length; i += batchSize) {
+        const batch = remoteData.slice(i, i + batchSize);
+        await this.processDownloadBatch(tableName, batch);
+        console.log(`   Processado ${Math.min(i + batchSize, remoteData.length)}/${remoteData.length}`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro baixando ${tableName}:`, error);
+    }
+  },
+  
+  // ✅ Processar lote de download
+  async processDownloadBatch(tableName: string, batch: any[]) {
+    const table = db.table<any>(tableName);
     
-    // Sincronizar quando voltar online
-    window.addEventListener('online', () => {
-      console.log('🌐 Voltei online! Sincronizando...');
-      setTimeout(() => this.syncInteligente(), 2000);
+    // Usar transaction para melhor performance
+    await db.transaction('rw', table, async () => {
+      for (const remoteRecord of batch) {
+        try {
+          // Verificar se já existe localmente
+          const localRecord = await table.get(remoteRecord.id);
+          
+          if (!localRecord) {
+            // Novo registro - inserir
+            await table.put({
+              ...remoteRecord,
+              sync_status: 'synced',
+              deleted: false
+            });
+          } else if (localRecord.sync_status === 'synced') {
+            // Atualizar apenas se já estiver sincronizado
+            const localUpdated = new Date(localRecord.updated_at || 0);
+            const remoteUpdated = new Date(remoteRecord.updated_at || 0);
+            
+            if (remoteUpdated > localUpdated) {
+              // Manter campos de controle do Dexie
+              await table.put({
+                ...localRecord,
+                ...remoteRecord,
+                sync_status: 'synced'
+              });
+            }
+          }
+          // Se está 'pending', mantém as alterações locais
+          
+        } catch (recordError) {
+          console.error(`❌ Erro processando registro ${remoteRecord.id}:`, recordError);
+        }
+      }
     });
   }
-}
+};
 
-// Exportar instância singleton
-export const syncManager = new SyncManager();
-
-// Inicializar na carga da aplicação
+// Função de inicialização para usar no Sidebar
 export const initializeSyncSystem = async () => {
-  await syncManager.initialize();
-  syncManager.startBackgroundSync();
-  return syncManager;
+  try {
+    // Inicializar sistema de sincronização
+    console.log('🚀 Inicializando sistema de sincronização...');
+    
+    // Verificar se há conexão com a internet
+    if (navigator.onLine) {
+      // Tentar sincronizar automaticamente
+      await syncManager.downloadBatch();
+      
+      // Agendar sincronização periódica
+      setInterval(async () => {
+        if (navigator.onLine) {
+          await syncManager.uploadBatch();
+          await syncManager.downloadBatch();
+        }
+      }, 30000); // A cada 30 segundos
+    }
+    
+    console.log('✅ Sistema de sincronização inicializado');
+  } catch (error) {
+    console.error('❌ Erro ao inicializar sistema de sincronização:', error);
+  }
 };

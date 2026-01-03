@@ -2,7 +2,7 @@
 import { supabase } from '../database/db';
 import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
-import { syncService } from './syncService';
+import { syncManager } from './syncManager';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -77,7 +77,7 @@ export const aulaService = {
   },
 
     async syncAulas() {
-      return syncService.downloadTableBatch('aulas', new Date(0));
+      return syncManager.downloadTableBatch('aulas', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente

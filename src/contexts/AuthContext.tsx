@@ -1,27 +1,44 @@
 // src/contexts/AuthContext.tsx - VERSÃO CORRIGIDA
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import db, { supabase } from '../services/database/db';
+import { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
 import { UserProfile } from '../types/profile';
 import { profileService } from '../services/database/profileService';
 
-// Tipos para o contexto
+// 🔥 INTERFACE E CONTEXTO DEVEM VIR ANTES DO PROVIDER
+interface AuthContextType {
+  user: User | null;
+  profile: UserProfile | null;
+  session: Session | null;
+  loading: boolean;
+  error: string;
+  login: (email: string, password: string) => Promise<any>;
+  register: (email: string, password: string, displayName: string) => Promise<any>;
+  logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<any>;
+  clearError: () => void;
+  isAuthenticated: boolean;
+  isAdmin: () => boolean;
+  isManagerOrAdmin: () => boolean;
+  hasPermission: (requiredRole: string) => boolean;
+  updateUserRole: (userId: string, newRole: string) => Promise<void>;
+}
 
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null); // 🔥 NOVO ESTADO
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [session, setSession] = useState<Session | null>(null);
 
   // 🔥 FUNÇÃO PARA OBTER PERFIL DO USUÁRIO
-
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-       if (!user && !navigator.onLine){
+      if (!navigator.onLine) {
         return await profileService.getLocalProfile();
-       }
+      }
 
       const { data, error } = await supabase
         .from('profiles')
@@ -29,17 +46,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
 
-         profileService.saveProfile(data);
-      if (error) throw error;
-      
+      if (error) {
+        console.warn('Perfil não encontrado online, buscando local...');
+        return await profileService.getLocalProfile();
+      }
+
+      if (data) {
+        await profileService.saveProfile(data);
+      }
+
       return data as UserProfile;
     } catch (error) {
       console.error('❌ Erro ao buscar perfil:', error);
-      return null;
+      return await profileService.getLocalProfile();
     }
   };
 
-    const clearError = () => setError('');
+  const clearError = () => setError('');
 
   // 🔥 VERIFICAR SE É ADMIN
   const isAdmin = (): boolean => {
@@ -52,22 +75,145 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 🔥 VERIFICAR PERMISSÃO ESPECÍFICA
-  const hasPermission = (requiredRole: UserProfile['role']): boolean => {
-    const roleHierarchy = {
+  const hasPermission = (requiredRole: string): boolean => {
+    const roleHierarchy: Record<string, number> = {
       'user': 0,
       'teacher': 1,
       'manager': 2,
       'admin': 3
     };
     
-    if (!profile) return false;
-    return roleHierarchy[profile.role] >= roleHierarchy[requiredRole];
+    if (!profile?.role) return false;
+    return roleHierarchy[profile.role] >= (roleHierarchy[requiredRole] || 0);
+  };
+
+  // 🔥 CRIAR PERFIL DO USUÁRIO
+  const createUserProfile = async (user: User) => {
+    try {
+      const newProfile: Partial<UserProfile> = {
+        id: user.id,
+        email: user.email || '',
+        role: 'user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        full_name: user.user_metadata?.full_name || 
+                  user.user_metadata?.name || 
+                  user.email?.split('@')[0] || 
+                  'Usuário'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .insert([newProfile]);
+
+      if (error) throw error;
+      
+      console.log('✅ Perfil criado com role:', 'user');
+      
+      // Salvar localmente
+      await profileService.saveProfile(newProfile as UserProfile);
+      setProfile(newProfile as UserProfile);
+      
+    } catch (error) {
+      console.error('Erro ao criar perfil:', error);
+    }
+  };
+
+  // ⭐ NOVA FUNÇÃO: Atualizar metadados do usuário
+  const updateUserMetadata = async (user: User | null) => {
+    if (!user) return;
+    
+    try {
+      // Verificar se já tem role definida
+      const currentRole = user.user_metadata?.user_role;
+      console.log('Metadados atuais do usuário:', user.user_metadata);
+       const userProfile = await fetchUserProfile(user.id);
+      if (currentRole && currentRole == userProfile?.role) {
+        console.log('Role já definida nos metadados:', currentRole);
+        localStorage.setItem('active_instituicao_id', userProfile?.instituicao_id || '');
+        localStorage.setItem('user_role', currentRole);
+        return;
+      }
+      
+      // Definir role padrão 'user' se não existir
+      const newRole = userProfile?.role || 'user';
+      
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          user_role: newRole
+        }
+      });
+      
+      if (error) throw error;
+        localStorage.setItem('active_instituicao_id', userProfile?.instituicao_id || '');
+        localStorage.setItem('user_role', currentRole);
+      console.log(`✅ Metadados atualizados com role: ${newRole}`);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar metadados:', error);
+    }
+  };
+
+  const setupUserAfterLogin = async (user: User) => {
+    try {
+      // 1. Verificar se usuário tem instituição associada
+      const { data: userProfile, error } = await supabase
+        .from('profiles')
+        .select('instituicao_id, role')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (userProfile?.instituicao_id) {
+        localStorage.setItem('active_instituicao_id', userProfile.instituicao_id);
+        
+        // Atualizar metadados com instituição ativa
+        await supabase.auth.updateUser({
+          data: { 
+            active_instituicao_id: userProfile.instituicao_id
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao setup usuário:', error);
+    }
+  };
+
+  // Chamar após login bem-sucedido
+  const handleSuccessfulLogin = async (user: User) => {
+    await updateUserMetadata(user);
+    await setupUserAfterLogin(user);
+    
+    // Salvar token JWT no localStorage para sincronização offline
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      localStorage.setItem('supabase.auth.token', session.access_token);
+      localStorage.setItem('supabase.auth.refresh_token', session.refresh_token);
+    }
   };
 
   // Atualizar useEffect para buscar perfil
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        setLoading(true);
+        
+        // Primeiro tentar do localStorage
+        const storedSession = localStorage.getItem('supabase.auth.session');
+        if (storedSession && !navigator.onLine) {
+          const session = JSON.parse(storedSession);
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            const localProfile = await profileService.getLocalProfile();
+            setProfile(localProfile);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Se online, buscar do Supabase
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -95,7 +241,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      async (event:any, newSession:any) => {
+        console.log(`🔄 Auth state changed: ${event}`);
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
@@ -103,8 +251,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newSession?.user) {
           const userProfile = await fetchUserProfile(newSession.user.id);
           setProfile(userProfile);
+          
+          // Salvar sessão no localStorage
+          localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
         } else {
           setProfile(null);
+          localStorage.removeItem('supabase.auth.session');
+          localStorage.removeItem('active_instituicao_id');
         }
         
         setLoading(false);
@@ -114,30 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🔥 CRIAR PERFIL DO USUÁRIO
-  const createUserProfile = async (user: User) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: user.id,
-            email: user.email,
-            role: 'user', // 🔥 ROLE PADRÃO
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ]);
-
-      if (error) throw error;
-      
-      console.log('✅ Perfil criado com role:', 'user');
-    } catch (error) {
-      console.error('Erro ao criar perfil:', error);
-    }
-  };
-
-    // Login com email e senha
+  // Login com email e senha
   const login = async (email: string, password: string) => {
     try {
       setError('');
@@ -145,11 +275,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
       if (error) throw error;
       
+      // ⭐ NOVO: Após login, verificar/atualizar metadados do usuário
+      await handleSuccessfulLogin(data.user!);
       console.log('✅ Login bem-sucedido');
       return data;
     } catch (error: any) {
@@ -159,6 +291,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      setError('');
+      console.log('🔄 Iniciando login com Google...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account',
+            access_type: 'offline'
+          },
+          scopes: 'email profile',
+        }
+      });
+
+      if (error) throw error;
+      
+      console.log('✅ Redirecionando para Google OAuth');
+      return data;
+    } catch (error: any) {
+      console.error('❌ Erro no login com Google:', error);
+      const errorMessage = getSupabaseErrorMessage(error);
+      setError(errorMessage);
+      throw error;
     }
   };
 
@@ -172,7 +333,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
-          data: { display_name: displayName }
+          data: { 
+            display_name: displayName,
+            user_role: 'user'
+          }
         }
       });
 
@@ -190,46 +354,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ✅ Login com Google CORRIGIDO
-  const loginWithGoogle = async () => {
-    try {
-      setError('');
-      console.log('🔄 Iniciando login com Google...');
-      
-      // 🔧 Limpar estado anterior para evitar conflitos
-      await supabase.auth.signOut();
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            prompt: 'select_account'
-          }
-        }
-      });
-
-      if (error) throw error;
-      
-      console.log('✅ Redirecionando para Google OAuth');
-      return data;
-    } catch (error: any) {
-      console.error('❌ Erro no login com Google:', error);
-      const errorMessage = getSupabaseErrorMessage(error);
-      setError(errorMessage);
-      throw error;
-    }
-    // 🔥 REMOVI O finally - não altere loading aqui!
-  };
-
   // Logout
   const logout = async () => {
     try {
       setError('');
       console.log('🚪 Fazendo logout...');
       
+      // Limpar dados locais
+      localStorage.removeItem('supabase.auth.session');
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.refresh_token');
+      localStorage.removeItem('active_instituicao_id');
+      
+      // Fazer logout no Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Limpar estados
+      setUser(null);
+      setProfile(null);
+      setSession(null);
       
       console.log('✅ Logout bem-sucedido');
     } catch (error: any) {
@@ -240,9 +384,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-
   // 🔥 ATUALIZAR ROLE DO USUÁRIO (SÓ ADMIN)
-  const updateUserRole = async (userId: string, newRole: UserProfile['role']) => {
+  const updateUserRole = async (userId: string, newRole: string) => {
     if (!isAdmin()) {
       throw new Error('Apenas administradores podem alterar roles');
     }
@@ -259,6 +402,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       console.log(`✅ Role atualizada para ${newRole}`);
+      
+      // Se for o próprio usuário, atualizar estado local
+      if (user?.id === userId) {
+        const updatedProfile = await fetchUserProfile(userId);
+        setProfile(updatedProfile);
+      }
     } catch (error) {
       console.error('Erro ao atualizar role:', error);
       throw error;
@@ -268,23 +417,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🔥 ADICIONE AO VALUE DO CONTEXT
   const value: AuthContextType = {
     user,
-    profile, // 🔥 NOVO
+    profile,
     session,
+    loading,
+    error,
     login,
     register,
     logout,
     loginWithGoogle,
-    loading,
-    error,
     clearError,
     isAuthenticated: !!user,
-    isAdmin, // 🔥 NOVO
-    isManagerOrAdmin, // 🔥 NOVO
-    hasPermission, // 🔥 NOVO
-    updateUserRole // 🔥 NOVO
+    isAdmin,
+    isManagerOrAdmin,
+    hasPermission,
+    updateUserRole
   };
-
-  
 
   return (
     <AuthContext.Provider value={value}>
@@ -292,27 +439,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
-
-// Atualize a interface
-interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null; // 🔥 NOVO
-  session: Session | null;
-  loading: boolean;
-  error: string;
-  login: (email: string, password: string) => any;
-  register: (email: string, password: string, displayName: string) => any;
-  logout: () => any;
-  loginWithGoogle: () => any;
-  clearError: () => void;
-  isAuthenticated: boolean;
-  isAdmin: () => boolean; // 🔥 NOVO
-  isManagerOrAdmin: () => boolean; // 🔥 NOVO
-  hasPermission: (requiredRole: string) => boolean; // 🔥 NOVO
-  updateUserRole?: (userId: string, newRole: string) => any; // 🔥 NOVO
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -322,7 +448,6 @@ export const useAuth = () => {
   
   return context;
 };
-
 
 const getSupabaseErrorMessage = (error: any): string => {
   const errorMessages: Record<string, string> = {
@@ -338,5 +463,3 @@ const getSupabaseErrorMessage = (error: any): string => {
 
   return errorMessages[error.message] || error.message || 'Erro desconhecido na autenticação';
 };
-
-

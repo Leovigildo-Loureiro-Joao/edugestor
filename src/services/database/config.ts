@@ -103,10 +103,10 @@ export const configService = {
     defaultValue?: T
   ): Promise<T> {
     try {
-      const config = await db.system_config
-        .where('[category+key_name+deleted]')
-        .equals([category, key, false])
-        .first();
+     const config = await db.system_config
+  .where('category').equals(category)
+  .and(item => item.key_name === key && item.deleted === false)
+  .first();
 
       if (!config || config.value === undefined) {
         return defaultValue as T;

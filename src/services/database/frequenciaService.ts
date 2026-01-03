@@ -2,7 +2,7 @@
 import { supabase } from '../database/db';
 import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
-import { syncService } from './syncService';
+import { syncManager } from './syncManager';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -79,7 +79,7 @@ export const frequenciaService = {
   },
 
     async syncFrequencias() {
-      return syncService.downloadTableBatch('frequencias', new Date(0));
+      return syncManager.downloadTableBatch('frequencias', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente

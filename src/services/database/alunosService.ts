@@ -2,7 +2,10 @@ import { Student, StudentFormData } from "../../types";
 import db from "./db";
 import { supabase } from "./db";
 import { Turma } from '../../types/turma';
-import { syncService } from "./syncService";
+import { syncManager } from "./syncManager";
+import { SyncQueueItem } from "../../types/base";
+import { avaliacaoService } from "./avaliacao";
+import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -27,13 +30,16 @@ export const alunosService = {
       await db.alunos.put(aluno as Student);
       
       // Adicionar à fila de sincronização
-      await db.syncQueue.add({
+     const syncRecord = await db.syncQueue.add({
         table: 'alunos',
         record_id: id,
         operation: 'upsert',
         status: 'pending',
         created_at: now
       });
+      const alunosFromQueue = await db.syncQueue.get(syncRecord);
+      const insertBatch = [alunosFromQueue] as SyncQueueItem[];
+      syncManager.processInsertBatch('alunos', insertBatch);
 
       console.log('✅ Aluno salvo com ID:', id);
       return id;
@@ -44,8 +50,14 @@ export const alunosService = {
     }
   },
 
-  // ✅ Buscar todos os alunos - CORRIGIDO
-async getAllStudents() {
+  async  getAlunosPorTurma(turma_id:string) {
+     const alunos = await db.alunos.toArray()
+    console.log(alunos)
+    return alunos.filter(alunos=> !alunos.deleted&&alunos.turma_id.includes(turma_id))
+  },
+
+    // ✅ Buscar todos os alunos - CORRIGIDO
+  async getAllStudents() {
     const alunosAll = await db.alunos.toArray()
     const alunos = alunosAll.filter(aluno => !aluno.deleted);
     alunos.sort((a,b)=>(a.nome_completo.localeCompare(b.nome_completo)))
@@ -66,7 +78,7 @@ async getAllStudents() {
 },
 
   async syncAlunos() {
-      return syncService.downloadTableBatch('alunos', new Date(0));
+      return syncManager.downloadTableBatch('alunos', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente
@@ -123,7 +135,8 @@ async getAllStudents() {
       await db.alunos.update(id, {
         ...studentData,
         updated_at,
-        sync_status: 'pending'
+        sync_status: 'pending',
+        avaliacao:[]
       });
 
       // Adicionar/atualizar na fila
@@ -185,6 +198,28 @@ async getAllStudents() {
     }
   },
 
+    async getDesempemhoTurma(turma_id:string) :Promise<any>{
+      const alunos=await this.getAlunosPorTurma(turma_id)
+      try {
+        const dese=alunos.map(async (aluno)=> ( await this.getDesempemhoAluno(aluno.id)))
+         return dese? dese:[]
+      } catch (error) {
+        
+      }
+     return[]
+
+    },
+   async getDesempemhoAluno(id:string):Promise<AlunoDesempenho|null>{
+      const alunos=await this.getStudentById(id)
+      const avaliacao=await avaliacaoService.getAvaliacaoByIdAluno(alunos!.id||'')
+      
+      return alunos?{
+        ...alunos,
+        media:0,
+        presenca:10,
+        ultimaAvaliacao:0
+      }:null
+    },
   // ✅ Gerar próximo número de estudante
   async gerarProximoNumeroEstudante(): Promise<number> {
     try {

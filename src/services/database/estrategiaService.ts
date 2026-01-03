@@ -232,7 +232,7 @@ export const estrategiaService = {
 
   // Métodos para sincronização
   async syncTarefas() {
-    // Implementar conforme necessário usando syncService
+    // Implementar conforme necessário usando syncManager
     console.log('Sync tarefas...');
   },
 

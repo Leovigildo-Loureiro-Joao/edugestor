@@ -2,7 +2,7 @@
 import { Course, CourseFormData } from "../../types/curso";
 import { supabase } from "../database/db";
 import db from "./db";
-import { syncService } from "./syncService";
+import { syncManager } from "./syncManager";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -65,12 +65,11 @@ export const cursosService = {
       console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
       return cursosAtivos.map(curso=>{
         const turmas=turmasAtivas.filter(turma=> turma.curso_id==curso.id)
-         const turmaNames = [...new Set(turmas.map(turma => turma.nome_turma).filter(Boolean))];
          const alunosCount = alunosAtivos.filter(aluno => aluno.turma_id && turmasAtivas.some(turma => turma.id === aluno.turma_id && turma.curso_id === curso.id)).length;
         return {
           ...curso,
           alunos: alunosCount,
-          turmas: turmaNames
+          turmas: turmas
           
         }
       });
@@ -84,7 +83,13 @@ export const cursosService = {
   async getCourseById(id: string): Promise<Course | null> {
     try {
       const curso = await db.cursos.get(id);
-      return curso && !curso.deleted ? curso : null;
+      const alunos=(await db.alunos.where('curso').equals(curso?.nome||'').and(aluno => !aluno.deleted).toArray()).length
+      const turmas=(await db.turmas.where('curso_id').equals(curso?.id||'').and(turma => !turma.deleted).toArray())
+      return  !curso?.deleted ? {
+        ...curso,
+        alunos,
+        turmas
+      } as Course :null;
     } catch (error) {
       console.error('Erro ao buscar curso por ID:', error);
       return null;
@@ -197,7 +202,7 @@ export const cursosService = {
   },
 
  async syncCursos() {
-      return syncService.downloadTableBatch('cursos', new Date(0));
+      return syncManager.downloadTableBatch('cursos', new Date(0));
     },
   
   // ✅ Função auxiliar para marcar como pendente

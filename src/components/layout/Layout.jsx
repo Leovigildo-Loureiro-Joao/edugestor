@@ -1,7 +1,7 @@
 // src/components/layout/Layout.jsx
 import React, { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
-import Header from '../ui/Header';
+import Sidebar from './Sidebar.tsx';
+import Header from './Header';
 
 const Layout = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(() => {

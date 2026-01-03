@@ -31,7 +31,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const [tipoMatricula, setTipoMatricula] = useState<'regular' | 'reforco_personalizado'>(
     student?.tipo_matricula || 'regular'
   );
-    const [ano, setAno] = useState<string>("");
+  const [ano, setAno] = useState<string>("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const storageKey = getStorageKey(student?.id);
   
   // Estado interno do formulário
@@ -53,7 +54,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     curso: student.curso || '',
     classe_escolar: student.classe_escolar || '',
     cartao_pago: student.cartao_pago || false,
-    // NOVOS CAMPOS
     tipo_matricula: student.tipo_matricula || 'regular',
     modalidade_atendimento: student.modalidade_atendimento || 'individual',
     frequencia_semanal: student.frequencia_semanal || 1,
@@ -61,11 +61,9 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     nivel_conhecimento: student.nivel_conhecimento || 'A',
     grupo_aprendizado: student.grupo_aprendizado || 'gama',
     objetivos_academicos: student.objetivos_academicos || '',
-    pagamento_em_dia:false,
-    ano_lectivo:ano,
-    sync_status:"pending"
-
-
+    pagamento_em_dia: false,
+    ano_lectivo: ano,
+    sync_status: "pending"
   } : {
     nome_completo: '',
     data_nascimento: '',
@@ -84,7 +82,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     curso: '',
     classe_escolar: '',
     cartao_pago: false,
-    // NOVOS CAMPOS (valores padrão)
     tipo_matricula: 'regular',
     modalidade_atendimento: 'individual',
     frequencia_semanal: 1,
@@ -92,9 +89,9 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     nivel_conhecimento: 'A',
     grupo_aprendizado: 'gama',
     objetivos_academicos: '',
-    ano_lectivo:"",
-    pagamento_em_dia:false,
-    sync_status:"pending"
+    ano_lectivo: "",
+    pagamento_em_dia: false,
+    sync_status: "pending"
   };
 
   const { 
@@ -108,49 +105,53 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   // ✅ Carregar cursos e turmas
   useEffect(() => {
-    loadCursos();
-  loadTurmas();
+    const loadData = async () => {
+      await loadCursos();
+      await loadTurmas();
+      setIsInitialLoad(false);
+    };
+    loadData();
   }, []);
 
+  // ✅ Atualizar turma quando curso mudar E quando turmas forem carregadas
   useEffect(() => {
-  if (formData.curso && formData.turma_id) {
-    const turmaSelecionada = turmas.find(t => t.id === formData.turma_id);
-    if (turmaSelecionada && turmaSelecionada.curso_nome !== formData.curso) {
-      // Se a turma selecionada não pertence ao curso atual, limpa
-      setFormData((prev: Student) => ({ 
+    if (!isInitialLoad && formData.curso && turmas.length > 0 && tipoMatricula === 'regular') {
+      const turmasDoCurso = turmas.filter(turma => turma.curso_nome === formData.curso);
+      setTurmasFiltradas(turmasDoCurso);
+      
+      // Se não há turma selecionada OU a turma atual não pertence ao curso selecionado
+      if (!formData.turma_id || !turmasDoCurso.some(t => t.id === formData.turma_id)) {
+        const primeiraTurmaId = turmasDoCurso[0]?.id || '';
+        if (primeiraTurmaId) {
+          setFormData((prev: StudentFormData) => ({ 
+            ...prev, 
+            turma_id: primeiraTurmaId 
+          }));
+        }
+      }
+    } else if (tipoMatricula !== 'regular') {
+      setTurmasFiltradas([]);
+      setFormData((prev: StudentFormData) => ({ 
         ...prev, 
         turma_id: '' 
       }));
     }
-  }
-}, [formData.curso, formData.turma_id, turmas]);
+  }, [formData.curso, turmas, tipoMatricula, isInitialLoad]);
 
-  // ✅ Filtrar turmas quando o curso mudar
+  // ✅ Efeito especial para setar turma_id inicial quando o curso já vem preenchido
   useEffect(() => {
-    if (formData.curso && turmas.length > 0 && tipoMatricula === 'regular') {
-     
-      const turmasDoCurso = turmas.filter(turma => {
-         console.log(turma.curso_nome)
-         return turma.curso_nome === formData.curso
-      }
-        
-      );
-      setTurmasFiltradas(turmasDoCurso);
-      
-      // ✅ Se a turma atual não pertence ao curso selecionado, limpar turma
-      if (formData.turma_id) {
-        const turmaAtual = turmas.find(t => t.id === formData.turma_id);
-        if (turmaAtual && turmaAtual.curso_nome !== formData.curso) {
-          setFormData((prev:Student) => ({ ...prev, turma_id: '' }));
-        }
-      }
-    } else {
-      setTurmasFiltradas([]);
-      if (tipoMatricula !== 'regular') {
-        setFormData((prev:Student) => ({ ...prev, turma_id: '' }));
+    if (!isInitialLoad && turmas.length > 0 && formData.curso && !formData.turma_id && tipoMatricula === 'regular') {
+      const turmasDoCurso = turmas.filter(turma => turma.curso_nome === formData.curso);
+      if (turmasDoCurso.length > 0) {
+        const primeiraTurmaId = turmasDoCurso[0].id;
+        setFormData((prev: StudentFormData) => ({ 
+          ...prev, 
+          turma_id: primeiraTurmaId 
+        }));
+        console.log(`🏫 Turma inicial definida: ${primeiraTurmaId} para curso ${formData.curso}`);
       }
     }
-  }, [formData.curso, turmas, tipoMatricula]);
+  }, [isInitialLoad, turmas, formData.curso, tipoMatricula]);
 
   useEffect(() => {
     setTipoMatricula(formData.tipo_matricula || 'regular');
@@ -160,6 +161,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     try {
       const res = await cursosService.getCourse();
       setCursos(res ?? []);
+      setFormData((prev: StudentFormData) => ({ ...prev, curso: res?.[0]?.nome || '' }));
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
     }
@@ -169,38 +171,99 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     try {
       const res = await turmaService.getTurmas();
       setTurmas(res ?? []);
+      
+      // ✅ Se já temos um curso no formData, buscar ano letivo
+      if (formData.curso) {
+        setAno(await configService.getConfigValue("academic", "academic_year"));
+        
+        // ✅ Se é edição e já tem turma_id, não fazer nada
+        // ✅ Se é novo ou não tem turma_id, vamos definir
+        if (!isEditing || !formData.turma_id) {
+          const turmasDoCurso = res?.filter(turma => turma.curso_nome === formData.curso) || [];
+          if (turmasDoCurso.length > 0) {
+            // Usar a turma do student se existir, senão pegar a primeira
+            const turmaIdParaUsar = student?.turma_id || turmasDoCurso[0].id;
+            if (turmaIdParaUsar && !formData.turma_id) {
+              setFormData((prev: StudentFormData) => ({ 
+                ...prev, 
+                turma_id: turmaIdParaUsar 
+              }));
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
-    setAno(await configService.getConfigValue("academic","academic_year"))
+  };
 
+  // ✅ Função específica para quando o curso for alterado
+  const handleCursoChange = (cursoValue: string) => {
+    setFormData((prev: StudentFormData) => {
+      const newFormData = { 
+        ...prev, 
+        curso: cursoValue 
+      };
+      
+      // Se for matrícula regular e há turmas carregadas
+      if (tipoMatricula === 'regular' && turmas.length > 0) {
+        const turmasDoCurso = turmas.filter(turma => turma.curso_nome === cursoValue);
+        setTurmasFiltradas(turmasDoCurso);
+        
+        if (turmasDoCurso.length > 0) {
+          // Verificar se a turma atual pertence ao novo curso
+          const turmaAtual = prev.turma_id ? turmas.find(t => t.id === prev.turma_id) : null;
+          const turmaPertenceAoCurso = turmaAtual && turmaAtual.curso_nome === cursoValue;
+          
+          // Se não pertence ou não tem turma, pegar a primeira do novo curso
+          if (!turmaPertenceAoCurso) {
+            newFormData.turma_id = turmasDoCurso[0].id;
+            console.log(`🔄 Turma definida automaticamente: ${turmasDoCurso[0].id}`);
+          }
+        } else {
+          newFormData.turma_id = '';
+        }
+      } else if (tipoMatricula !== 'regular') {
+        newFormData.turma_id = '';
+        setTurmasFiltradas([]);
+      }
+      
+      return newFormData;
+    });
   };
 
   // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
     console.log('📤 Submetendo formulário:', formData);
     e.preventDefault();
-    // Limpar rascunho antes de submeter
     clearDraft();
-    
     onSubmit(formData);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
-    setFormData((prev: any) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
-              type === 'number' ? Number(value) : value
-    }));
+    if (name === 'curso') {
+      // Usar a função específica para mudança de curso
+      handleCursoChange(value);
+    } else {
+      setFormData((prev: any) => ({
+        ...prev,
+        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+                type === 'number' ? Number(value) : value
+      }));
+    }
   };
 
   const handleChangeSel = (field: string, value: any) => {
-    setFormData((prev: StudentFormData) => ({ 
-      ...prev, 
-      [field]: value 
-    }));
+    if (field === 'curso') {
+      handleCursoChange(value);
+    } else {
+      setFormData((prev: StudentFormData) => ({ 
+        ...prev, 
+        [field]: value 
+      }));
+    }
   };
 
   const handleMultiSelect = (field: string, value: string[]) => {
@@ -389,7 +452,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   value={formData.data_nascimento}
                   max={new Date(new Date().getFullYear() - 4, new Date().getMonth(), new Date().getDate()).toISOString().split('T')[0]}
                   onChange={handleChange}
-                  required
+                  
                 />
               </div>
             </div>

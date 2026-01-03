@@ -1,6 +1,5 @@
-// src/components/layout/Header.jsx
+// src/components/layout/Header.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiSearch, 
   FiMoon,
@@ -12,18 +11,65 @@ import {
   FiSettings,
   FiUserCheck
 } from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { initializeSyncSystem } from '../../services/database/syncManager.ts';
-import { NotificacoesBell } from '../../components/ui/Notificao.tsx';
-import { notificacaoService } from '../../services/database/notificacaoService.ts';
+import { useAuth } from '../../contexts/AuthContext';
+import { initializeSyncSystem } from '../../services/database/syncManager';
+import { NotificacoesBell } from './Notificao';
+import { notificacaoService } from '../../services/database/notificacaoService';
 
-const Header = ({ setIsDarkMode, isDarkMode }) => {
-  const { logout, user } = useAuth();
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [saveStatus, setSaveStatus] = useState('saved');
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [syncStatus, setSyncStatus] = useState({ pending: 0, errors: 0 });
+// Interface para o status de sincronização
+interface SyncStatus {
+  pending: number;
+  errors: number;
+}
+
+// Interface para o usuário
+interface User {
+  id: string;
+  name: string;
+  email?: string;
+  // Adicione outras propriedades conforme necessário
+}
+
+// Interface para o contexto de autenticação
+interface AuthContextType {
+  logout: () => Promise<void>;
+  user: User | null;
+  // Adicione outras propriedades conforme necessário
+}
+
+// Interface para as props do componente
+interface HeaderProps {
+  setIsDarkMode: (isDark: boolean) => void;
+  isDarkMode: boolean;
+}
+
+// Extendendo a interface Window para incluir propriedades personalizadas
+declare global {
+  interface Window {
+    db?: {
+      syncQueue: {
+        where: (field: string) => {
+          equals: (value: string) => {
+            count: () => Promise<number>;
+          };
+          anyOf: (values: string[]) => {
+            count: () => Promise<number>;
+          };
+        };
+        // Adicione outras propriedades conforme necessário
+      };
+      // Adicione outras tabelas conforme necessário
+    };
+  }
+}
+
+const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
+  const { logout, user } = useAuth() as AuthContextType;
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ pending: 0, errors: 0 });
 
   useEffect(() => {
     // ✅ Inicializar sistema de sincronização
@@ -50,25 +96,27 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
   const verificarStatusSincronizacao = async () => {
     try {
       // Verificar itens pendentes na fila de sync
-      const syncQueue = await db.syncQueue.where('status').equals('pending').count();
-      const syncErrors = await db.syncQueue.where('status').equals('failed').count();
-      
-      setSyncStatus({
-        pending: syncQueue,
-        errors: syncErrors
-      });
+      if (window.db?.syncQueue) {
+        const syncQueue = await window.db.syncQueue.where('status').equals('pending').count();
+        const syncErrors = await window.db.syncQueue.where('status').equals('failed').count();
+        
+        setSyncStatus({
+          pending: syncQueue,
+          errors: syncErrors
+        });
 
-      // Se estiver online e houver pendências, tentar sincronizar
-      if (isOnline && syncQueue > 0) {
-        console.log(`🔄 ${syncQueue} itens pendentes para sincronizar`);
-        setSaveStatus('saving');
+        // Se estiver online e houver pendências, tentar sincronizar
+        if (isOnline && syncQueue > 0) {
+          console.log(`🔄 ${syncQueue} itens pendentes para sincronizar`);
+          setSaveStatus('saving');
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar status de sincronização:', error);
     }
   };
 
-  const getStatusColor = () => {
+  const getStatusColor = (): string => {
     if (!isOnline) return 'text-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-400';
     
     switch (saveStatus) {
@@ -90,6 +138,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
       // Quando voltar a ficar online, tentar sincronizar
       setTimeout(verificarStatusSincronizacao, 2000);
     };
+    
     const handleOffline = () => {
       setIsOnline(false);
       setSaveStatus('saved'); // Reset status quando offline
@@ -104,7 +153,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
     };
   }, []);
 
-  const getStatusText = useCallback(() => {
+  const getStatusText = useCallback((): string => {
     if (!isOnline) return 'Modo Offline';
     
     if (syncStatus.pending > 0) {
@@ -131,7 +180,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    const handleChange = (e) => {
+    const handleChange = (e: MediaQueryListEvent) => {
       if (!localStorage.getItem('darkMode')) {
         setIsDarkMode(e.matches);
       }
@@ -141,10 +190,10 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [setIsDarkMode]);
 
-  const toggleDarkMode = () => {
+  const toggleDarkMode = (): void => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    localStorage.setItem('darkMode', newMode);
+    localStorage.setItem('darkMode', String(newMode));
     
     // Notificação de mudança de tema
     notificacaoService.criarNotificacaoSistema({
@@ -154,7 +203,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
     });
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     try {
       // Criar notificação de logout
       await notificacaoService.criarNotificacaoSistema({
@@ -173,7 +222,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
     }
   };
 
-  const handleSearch = async (e) => {
+  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>): Promise<void> => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       // Criar notificação de busca
       await notificacaoService.criarNotificacaoSistema({
@@ -185,7 +234,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
     }
   };
 
-  const getUserInitials = () => {
+  const getUserInitials = (): string => {
     if (!user?.name) return 'U';
     return user.name
       .split(' ')
@@ -195,7 +244,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
       .substring(0, 2);
   };
 
-  const handleSyncClick = async () => {
+  const handleSyncClick = async (): Promise<void> => {
     if (isOnline && syncStatus.pending > 0) {
       setSaveStatus('saving');
       try {
@@ -233,7 +282,7 @@ const Header = ({ setIsDarkMode, isDarkMode }) => {
               type="text"
               placeholder="Buscar alunos, turmas, relatórios..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             />

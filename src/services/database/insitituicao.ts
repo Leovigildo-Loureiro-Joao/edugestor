@@ -6,7 +6,7 @@ export const instituicaoService = {
   async getConfig(): Promise<Instituicao> {
     try {
       // Sempre usar ID fixo '1' para a instituição principal
-      const instituicao = await db.instituicao.get('1');
+      const instituicao = await db.instituicao.get(1);
       
       if (!instituicao || instituicao.deleted) {
         // Se não existir, criar configuração padrão minimalista
@@ -87,7 +87,9 @@ export const instituicaoService = {
         valor_confirmacao: 1000,
         valor_matricula: 2500,
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        id: "",
+        sync_status: "pending"
       };
 
       console.log('🏫 Criando configuração padrão da instituição');
