@@ -11,3 +11,60 @@ html{
     font-size: 90%;
     background: linear-gradient(white,rgb(208, 228, 241)) ;
 }
+
+  .timeline-container {
+    transition: all 0.3s ease;
+  }
+  
+  .sticky-timeline {
+    position: fixed !important;
+    top: 80px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 95% !important;
+    max-width: 1400px !important;
+    z-index: 100 !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    animation: slideDown 0.3s ease;
+  }
+  
+  @keyframes slideDown {
+    from {
+      transform: translateX(-50%) translateY(-10px);
+      opacity: 0.9;
+    }
+    to {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-track {
+    background: #374151;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #6b7280;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }

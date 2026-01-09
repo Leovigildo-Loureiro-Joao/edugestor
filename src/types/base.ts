@@ -53,7 +53,7 @@ export interface EduGestorDatabase {
   system_config: Dexie.Table<SystemConfig, string>;
   instituicao: Dexie.Table<Instituicao, string>;
   notificacao: Dexie.Table<Notificacao, string>;
-  avaliacao: Dexie.Table<Avaliacao, string>;
+  avaliacoes: Dexie.Table<Avaliacao, string>;
 }
 
 // Helper para tipar o banco

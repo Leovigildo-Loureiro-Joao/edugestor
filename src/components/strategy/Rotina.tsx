@@ -205,12 +205,12 @@ const RotinasComponent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
+    <div className="min-h-screen  p-4 md:p-6">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 flex items-center">
               <FiClock className="mr-3" />
               Rotinas Diárias
             </h1>
@@ -644,7 +644,7 @@ const RotinasComponent = () => {
 
       {/* Rodapé com resumo */}
       {rotinasFiltradas.length > 0 && (
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+        <div className="mt-8 bg-white  p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
               <h4 className="font-semibold text-gray-800">Resumo</h4>

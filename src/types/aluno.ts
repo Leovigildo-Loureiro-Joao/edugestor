@@ -21,7 +21,7 @@ export interface Student extends BaseEntity {
   classe_escolar: string;
 
   turma_id: string;
-  estado: 'ativo' | 'transferido' | 'desistente';
+  estado: 'ativo' | 'transferido' | 'desistente'|'inativo';
 
   tipo_matricula: 'regular' | 'reforco_personalizado';
   modalidade_atendimento: 'individual' | 'grupo' | 'ambos';

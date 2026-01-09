@@ -6,8 +6,8 @@ import {  Student } from '../../types/aluno';
 import { frequenciaService } from '../../services/database/frequenciaService';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { FrequenciaData } from '../../types/frequencia';
-import { NotaData } from '../../types/avaliacao';
-import { av } from '../../services/database/avaliacao';
+import { Avaliacao, NotaData } from '../../types/avaliacao';
+import { av, avaliacaoService } from '../../services/database/avaliacao';
 import { Bar, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const StudentPage: React.FC = () => {
@@ -17,7 +17,7 @@ const StudentPage: React.FC = () => {
   const [aluno, setAluno] = useState<Student | undefined>(undefined);
   const [propinas, setPropinas] = useState<Propina[]>([]);
   const [frequencias, setFrequencias] = useState<FrequenciaData[]>([]);
-  const [notas, setNotas] = useState<NotaData[]>([]);
+  const [notas, setNotas] = useState<any>();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const StudentPage: React.FC = () => {
       setFrequencias(frequenciasData);
 
       // Carregar notas
-      const notasData = await notasService.getByAluno(id!);
+      const notasData = await avaliacaoService.getAvaliacoesByAluno(id!);
       setNotas(notasData);
 
     } catch (error) {
@@ -63,9 +63,7 @@ const StudentPage: React.FC = () => {
     const presencas = frequencias.filter(f => f.presente).length;
     const frequenciaPercent = totalFrequencias > 0 ? (presencas / totalFrequencias) * 100 : 0;
     
-    const mediaNotas = notas.length > 0 
-      ? notas.reduce((sum, n) => sum + n.nota, 0) / notas.length 
-      : 0;
+    const mediaNotas = notas?notas.estatisticas.mediaGeral:0
 
     return {
       totalPropinas,
@@ -134,7 +132,7 @@ const StudentPage: React.FC = () => {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <button 
-                onClick={() => navigate('/alunos')}
+                onClick={() => navigate(localStorage.getItem("last_rota")||"/alunos")}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +200,7 @@ const StudentPage: React.FC = () => {
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
                     <div className="text-3xl font-bold text-blue-800">{stats.mediaNotas.toFixed(1)}</div>
                     <div className="text-blue-700 font-medium mt-2">Média Geral</div>
-                    <div className="text-blue-600 text-sm mt-1">{notas.length} avaliações</div>
+                    <div className="text-blue-600 text-sm mt-1">{notas?notas.avaliacoes.length:0} avaliações</div>
                   </div>
                   
                   <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
@@ -218,15 +216,10 @@ const StudentPage: React.FC = () => {
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={[
-                        { mes: 'Set', nota: 12.5, frequencia: 85 },
-                        { mes: 'Out', nota: 13.2, frequencia: 78 },
-                        { mes: 'Nov', nota: 14.5, frequencia: 92 },
-                        { mes: 'Dez', nota: 15.1, frequencia: 88 },
-                        { mes: 'Jan', nota: 16.2, frequencia: 95 },
-                        { mes: 'Fev', nota: 15.8, frequencia: 90 }
+                        ...notas.estatisticas.evolucao
                       ]}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis dataKey="mes" />
+                        <XAxis dataKey="data" />
                         <YAxis yAxisId="left" domain={[0, 20]} />
                         <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
                         <Tooltip />
@@ -234,7 +227,7 @@ const StudentPage: React.FC = () => {
                         <Line 
                           yAxisId="left"
                           type="monotone" 
-                          dataKey="nota" 
+                          dataKey="media" 
                           stroke="#3B82F6" 
                           strokeWidth={3}
                           name="Nota Média"
@@ -375,7 +368,7 @@ const StudentPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {notas.map((nota) => (
+                    {notas.avaliacoes.map((nota:Avaliacao) => (
                       <tr key={nota.id} className="hover:bg-white">
                         <td className="px-4 py-3 text-sm text-gray-900">{nota.disciplina}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{nota.tipo_avaliacao}</td>

@@ -12,10 +12,9 @@ import { AulasPage } from './pages/Grades/AulaPage.tsx';
 import Turmas from './pages/Turmas/Turmas.tsx';
 import StudentPage from './pages/Students/StudentPage';
 import PagamentosPage from './pages/Finance/Pagamento.tsx';
-import {FinanceiroPage} from './pages/Finance/Financeiro.jsx';
+import {FinanceiroPage} from './pages/Finance/Financeiro.tsx';
 import RegistroPagamentoPage from './pages/Finance/RegistroPagamentoPage.tsx';
 import { ConfiguracoesPage } from './pages/Settings/ConfigPage.jsx';
-import { NotasPage } from './pages/Grades/NotasPage.tsx';
 import Courses from './pages/Courses/Curso.tsx';
 import { CursoNew } from './pages/Courses/CursoNew.jsx';
 import { CursoEdit } from './pages/Courses/CursoEdit.jsx';
@@ -35,6 +34,7 @@ import PromoteToAdmin from './pages/admin/PromoteToAdmin.tsx';
 import AdminDashboard from './pages/admin/AdminDashboard.tsx';
 import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
 import ProfilePage from './pages/User/ProfilePage.tsx';
+import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -246,10 +246,10 @@ useEffect(() => {
                   <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
                   <Route path="/cursos/:id" element={<CourseDetails/>} />
                   <Route path="/financeiro/pagamentos" element={<PagamentosPage/>} />
+                  <Route path="/financeiro/transacoes" element={<TransacoesPage/>} />
                   <Route path="/financeiro/Pagamento/:alunoId" element={<RegistroPagamentoPage/>} />
                   <Route path="/financeiro/matricula/:alunoId" element={<CompletarMatricula/>} />
                   <Route path="/aulas" element={<AulasPage/>} />
-                  <Route path="/notas" element={<NotasPage/>} />
                   <Route path="/turmas" element={<Turmas />} />
                   <Route path="/turmas/:id" element={<TurmaDetails />} />
                   <Route path="/turmas/nova" element={<TurmaForm />} />

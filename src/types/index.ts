@@ -60,6 +60,20 @@ export interface Instituicao extends BaseEntity{
   updated_at: string;
 }
 
+export interface Instituicao extends BaseEntity{
+  nome_escola?:string,
+  endereco?:string,
+  email?:string,
+  numero_telefone?:string,
+  whatsapp?:string,
+  ano_lectivo?:string,
+  valor_cartao?:number,
+  valor_confirmacao?:number
+  valor_matricula?:number
+  created_at: string;
+  updated_at: string;
+}
+
 
 
 export interface DashboardStats {
@@ -75,8 +89,11 @@ export interface DashboardStats {
   propinaPendentes: number;
   propinaPendentesAnterior: number;
   frequencias: number; // Percentual
+  frequenciasP:number;
   totalMensal?: number; // ← ADICIONAR
   saldoAtual?: number; // ← ADICIONAR
+  aulasMinistradas:number,
+  aulasMinistradasP:number  
 }
 
 export interface EstrategiaStats {

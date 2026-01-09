@@ -72,7 +72,6 @@ const Sidebar: React.FC = () => {
     { name: 'Aulas', href: '/aulas', icon: FiBookOpen },
     { name: 'Financeiro', href: '/financeiro', icon: FiDollarSign },
     { name: 'Frequência', href: '/frequencia', icon: FiCalendar },
-    { name: 'Notas', href: '/notas', icon: FiBook },
     { name: 'Configurações', href: '/configuracoes', icon: FiSettings },
   ];
 

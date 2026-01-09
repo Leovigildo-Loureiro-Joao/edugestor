@@ -4,7 +4,7 @@ import { BaseEntity } from "./base";
 export interface Avaliacao extends BaseEntity{
   id: string;
   aluno_id: string;
-  turma_id: string;
+  turma_id?: string;
   disciplina: string;
   tipo_avaliacao: string;
   nota: number;
@@ -16,7 +16,7 @@ export interface Avaliacao extends BaseEntity{
 
 
 export type AvaliacaoFormData=Omit<Avaliacao,
-'id'|'deleted'|'sync_status'|'updated_at'
+'id'|'deleted'|'sync_status'|'updated_at'|'created_at'
 >
 
 

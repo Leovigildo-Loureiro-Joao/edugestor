@@ -3,6 +3,8 @@ import { supabase } from '../database/db';
 import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
 import { syncManager } from './syncManager';
+import { Turma } from '../../types/turma';
+import { turmaService } from '.';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -351,11 +353,20 @@ export const aulaService = {
       // Agrupar por turma
       const porTurma: Record<string, number> = {};
       const porMes: Record<string, number> = {};
-      
+      const statusV=['planeada', 'ministrada' , 'cancelada' , 'adiada']
+      const porStatus: Record<string, number> = {}
+      statusV.forEach(v=> {
+        porStatus[v]=0;
+      })
+      const topTurmas: Record<string, Turma> = {};
+      const turmas= await turmaService.getTurmas()
       todasAulas.forEach(aula => {
         // Por turma
         const turmaKey = aula.turma_id || 'sem_turma';
         porTurma[turmaKey] = (porTurma[turmaKey] || 0) + 1;
+
+        const statusKey = aula.status || 'sem_status'
+        porStatus[statusKey] = (porStatus[statusKey] || 0) + 1;
         
         // Por mês
         const data = new Date(aula.data_aula);
@@ -367,6 +378,8 @@ export const aulaService = {
         total: todasAulas.length,
         porTurma,
         porMes,
+        porStatus,
+        topTurmas,
         ultimaAtualizacao: new Date().toISOString()
       };
     } catch (error) {
@@ -375,6 +388,8 @@ export const aulaService = {
         total: 0,
         porTurma: {},
         porMes: {},
+        porStatus:{},
+        topTurmas:[],
         ultimaAtualizacao: new Date().toISOString()
       };
     }

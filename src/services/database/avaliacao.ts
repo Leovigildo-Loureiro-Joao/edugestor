@@ -1,309 +1,699 @@
 import { supabase } from '../database/db';
 import db from './db';
-import { Avaliacao, AvaliacaoFormData } from '../../types/avaliacao';
-import { syncManager } from './syncManager';
+import { BaseEntity } from "./base";
 import { alunosService } from './alunosService';
-import { AlunoDesempenho } from '../../pages/Turmas/TurmasPage';
+import { syncManager } from './syncManager';
+import { toast } from 'react-hot-toast';
 
+export interface Avaliacao extends BaseEntity {
+  id: string;
+  aluno_id: string;
+  turma_id?: string;
+  disciplina: string;
+  tipo_avaliacao: string;
+  nota: number;
+  data_avaliacao: string;
+  observacoes?: string;
+  periodo: '1º trimestre' | '2º trimestre' | '3º trimestre';
+  peso?: number; // Peso da avaliação (1-5)
+  professor_id?: string;
+  created_at: string;
+}
 
-const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export interface AvaliacaoWithAluno extends Avaliacao {
+  aluno?: {
+    nome_completo: string;
+    numero_estudante: string;
+    turma_nome?: string;
+  };
+}
+
+export interface AvaliacaoStats {
+  totalAvaliacoes: number;
+  mediaGeral: number;
+  aprovados: number;
+  reprovados: number;
+  distribuicaoNotas: Record<number, number>;
+  melhorMedia: number;
+  piorMedia: number;
+}
+
+export interface DisciplinaStats {
+  nome: string;
+  media: number;
+  totalAvaliacoes: number;
+  aprovados: number;
+  reprovados: number;
+  melhorNota: number;
+  piorNota: number;
+  historico: Array<{ data: string; nota: number }>;
+}
+
+export type AvaliacaoFormData = Omit<
+  Avaliacao,
+  'id' | 'deleted' | 'sync_status' | 'updated_at' | 'created_at' | 'aluno'
+>;
+
+const generateUniqueId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const avaliacaoService = {
-  // ✅ Criar avaliacao localmente
+  // ✅ Criar avaliação com validação avançada
   async criarAvaliacao(avaliacaoData: AvaliacaoFormData): Promise<string> {
     try {
+      // Validações
+      if (!avaliacaoData.aluno_id) {
+        throw new Error('ID do aluno é obrigatório');
+      }
+      
+      if (avaliacaoData.nota < 0 || avaliacaoData.nota > 20) {
+        throw new Error('Nota deve estar entre 0 e 20');
+      }
+
       const id = generateUniqueId();
       const now = new Date().toISOString();
       
-      const avaliacao = {
+      const avaliacao: Avaliacao = {
         ...avaliacaoData,
         id,
         created_at: now,
         updated_at: now,
         sync_status: 'pending',
         deleted: false,
-      } as Avaliacao;
+        peso: avaliacaoData.peso || 1,
+      };
 
-      console.log('💾 Salvando avaliacao:', avaliacao.tipo_avaliacao || `Avaliacao ${avaliacao.data_avaliacao}`);
-      
-      await db.avaliacao.put(avaliacao);
+      console.log('💾 Salvando avaliação:', {
+        aluno: avaliacaoData.aluno_id,
+        disciplina: avaliacaoData.disciplina,
+        nota: avaliacaoData.nota
+      });
+
+      await db.avaliacoes.put(avaliacao);
       
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'avaliacao',
         record_id: id,
         operation: 'upsert',
+        data: JSON.stringify(avaliacao),
         status: 'pending',
-        created_at: now
+        created_at: now,
+        retry_count: 0
       });
 
-      console.log('✅ Avaliacao salva com ID:', id);
+      console.log('✅ Avaliação salva com ID:', id);
+      
+      // Tentar sincronizar imediatamente se online
+      if (navigator.onLine) {
+        setTimeout(() => this.tryImmediateSync(id), 1000);
+      }
+
       return id;
       
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar avaliação:', error);
+      throw new Error(`Falha ao salvar avaliação: ${error.message}`);
+    }
+  },
+
+  // ✅ Sincronização imediata
+  async tryImmediateSync(id: string) {
+    try {
+      const avaliacao = await db.avaliacoes.get(id);
+      if (!avaliacao || avaliacao.sync_status === 'synced') return;
+
+      await syncManager.downloadTableBatch('avaliacoes');
+      toast.success('Avaliação sincronizada com sucesso!');
     } catch (error) {
-      console.error('❌ Erro ao salvar avaliacao:', error);
+      console.log('⚠️ Sincronização imediata falhou, mantendo em fila');
+    }
+  },
+
+  // ✅ Buscar todas as avaliações com joins otimizados
+  async getAllAvaliacoes(options?: {
+    includeDeleted?: boolean;
+    limit?: number;
+    offset?: number;
+    orderBy?: keyof Avaliacao;
+    orderDirection?: 'asc' | 'desc';
+  }): Promise<AvaliacaoWithAluno[]> {
+    try {
+      const {
+        includeDeleted = false,
+        limit = 100,
+        offset = 0,
+        orderBy = 'data_avaliacao',
+        orderDirection = 'desc'
+      } = options || {};
+
+      console.log('📋 Buscando avaliações...');
+
+      // Construir query base
+      let query = db.avaliacoes;
+      
+      // Filtrar deletadas
+      if (!includeDeleted) {
+        query = query.where('deleted').equals(false);
+      }
+
+      // Executar query
+      const avaliacoes = await query.toArray();
+
+      // Ordenar manualmente (IndexedDB não suporta sorting complexo diretamente)
+      avaliacoes.sort((a, b) => {
+        const aVal = a[orderBy];
+        const bVal = b[orderBy];
+        
+        if (orderDirection === 'desc') {
+          return new Date(bVal as string).getTime() - new Date(aVal as string).getTime();
+        }
+        return new Date(aVal as string).getTime() - new Date(bVal as string).getTime();
+      });
+
+      // Aplicar limite e offset
+      const paginated = avaliacoes.slice(offset, offset + limit);
+
+      // Buscar informações dos alunos em batch
+      const alunoIds = [...new Set(paginated.map(a => a.aluno_id))];
+      const alunos = await db.alunos
+        .where('id')
+        .anyOf(alunoIds)
+        .and(aluno => !aluno.deleted)
+        .toArray();
+
+      const alunoMap = new Map(alunos.map(aluno => [aluno.id, aluno]));
+
+      // Combinar dados
+      const resultado: AvaliacaoWithAluno[] = paginated.map(avaliacao => ({
+        ...avaliacao,
+        aluno: alunoMap.get(avaliacao.aluno_id) ? {
+          nome_completo: alunoMap.get(avaliacao.aluno_id)!.nome_completo,
+          numero_estudante: alunoMap.get(avaliacao.aluno_id)!.numero_estudante,
+          turma_nome: alunoMap.get(avaliacao.aluno_id)!.turma_nome
+        } : undefined
+      }));
+
+      console.log(`✅ Encontradas ${resultado.length} avaliações`);
+      return resultado;
+
+    } catch (error) {
+      console.error('❌ Erro ao buscar avaliações:', error);
       throw error;
     }
   },
 
-  // ✅ Buscar todas as avaliacao
-  async getAllAvaliacaos(): Promise<Avaliacao[]> {
+  // ✅ Sincronizar avaliações
+  async syncAvaliacoes(lastSync?: Date) {
     try {
-      console.log('📋 Buscando avaliacao...');
+      const syncDate = lastSync || new Date(0);
+      console.log('🔄 Sincronizando avaliações desde:', syncDate.toISOString());
       
-      const todasAvaliacaos = await db.avaliacao.toArray();
-      const todosAlunos = await db.alunos.toArray();
+      await syncManager.downloadTableBatch('avaliacao', syncDate);
       
-      // Filtrar as não deletadas
-      const avaliacaoAtivas = todasAvaliacaos.filter(avaliacao => !avaliacao.deleted);
-      const alunosAtivos = todosAlunos.filter(aluno => !aluno.deleted);
-        const alunoMap = new Map(alunosAtivos.map(t => [t.id, t]));
+      // Limpar cache local antigo se necessário
+      await this.cleanupOldData();
+      
+      return { success: true, timestamp: new Date() };
+    } catch (error) {
+      console.error('❌ Erro ao sincronizar avaliações:', error);
+      throw error;
+    }
+  },
 
-      // Ordenar por data (mais recente primeiro)
-      avaliacaoAtivas.sort((a, b) => 
+  // ✅ Limpar dados antigos
+  async cleanupOldData(daysToKeep = 90) {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+      const avaliacoesAntigas = await db.avaliacoes
+        .where('created_at')
+        .below(cutoffDate.toISOString())
+        .and(av => av.sync_status === 'synced')
+        .toArray();
+
+      for (const avaliacao of avaliacoesAntigas) {
+        await db.avaliacoes.delete(avaliacao.id);
+      }
+
+      console.log(`🧹 Limpas ${avaliacoesAntigas.length} avaliações antigas`);
+    } catch (error) {
+      console.error('❌ Erro ao limpar dados antigos:', error);
+    }
+  },
+
+  // ✅ Buscar avaliações por aluno com estatísticas
+  async getAvaliacoesByAluno(
+    alunoId: string,
+    options?: {
+      disciplina?: string;
+      periodo?: string;
+      tipoAvaliacao?: string;
+      dataInicio?: string;
+      dataFim?: string;
+    }
+  ): Promise<{
+    avaliacoes: Avaliacao[];
+    estatisticas: {
+      mediaGeral: number;
+      totalAvaliacoes: number;
+      aprovados: number;
+      reprovados: number;
+      mediaPorDisciplina: Record<string, number>;
+      evolucao: Array<{ data: string; media: number }>;
+      estado:string
+    };
+  }> {
+    try {
+      let query = db.avaliacoes
+        .where('aluno_id')
+        .equals(alunoId)
+        .and(av => !av.deleted);
+
+      // Aplicar filtros
+      if (options?.disciplina) {
+        query = query.filter(av => av.disciplina === options.disciplina);
+      }
+      if (options?.periodo) {
+        query = query.filter(av => av.periodo === options.periodo);
+      }
+      if (options?.tipoAvaliacao) {
+        query = query.filter(av => av.tipo_avaliacao === options.tipoAvaliacao);
+      }
+      if (options?.dataInicio && options?.dataFim) {
+        query = query.filter(av => 
+          av.data_avaliacao >= options.dataInicio! && 
+          av.data_avaliacao <= options.dataFim!
+        );
+      }
+
+      const avaliacoes = await query.toArray();
+      
+      // Ordenar por data
+      avaliacoes.sort((a, b) => 
         new Date(b.data_avaliacao).getTime() - new Date(a.data_avaliacao).getTime()
       );
-      
-      console.log(`✅ Encontradas ${avaliacaoAtivas.length} avaliacao ativas`);
-      return avaliacaoAtivas.map((avaliacao)=>{
-        const aluno=alunoMap.get(avaliacao.aluno_id)
-          return {
-            ...avaliacao,
-            aluno:aluno
+
+      // Calcular estatísticas
+      if (avaliacoes.length === 0) {
+        return {
+          avaliacoes: [],
+          estatisticas: {
+            mediaGeral: 0,
+            totalAvaliacoes: 0,
+            aprovados: 0,
+            reprovados: 0,
+            mediaPorDisciplina: {},
+            evolucao: [],
+            estado:"pendemte"
           }
-        });
+        };
+      }
+
+      // Calcular médias por disciplina
+      const mediaPorDisciplina: Record<string, { soma: number; count: number }> = {};
+      const evolucaoMap = new Map<string, { soma: number; count: number }>();
+      let totalSoma = 0;
+      let aprovados = 0;
+      let reprovados = 0;
+
+      avaliacoes.forEach(av => {
+        // Média por disciplina
+        if (!mediaPorDisciplina[av.disciplina]) {
+          mediaPorDisciplina[av.disciplina] = { soma: 0, count: 0 };
+        }
+        mediaPorDisciplina[av.disciplina].soma += av.nota;
+        mediaPorDisciplina[av.disciplina].count += 1;
+
+        // Estatísticas gerais
+        totalSoma += av.nota;
+        if (av.nota >= 10) aprovados++;
+        else reprovados++;
+
+        // Evolução por mês
+        const data = new Date(av.data_avaliacao);
+        const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
+        if (!evolucaoMap.has(mesKey)) {
+          evolucaoMap.set(mesKey, { soma: 0, count: 0 });
+        }
+        const evol = evolucaoMap.get(mesKey)!;
+        evol.soma += av.nota;
+        evol.count += 1;
+      });
+
+      // Preparar resultado
+      const mediaGeral = totalSoma / avaliacoes.length;
+      const evolucao = Array.from(evolucaoMap.entries())
+        .map(([mes, dados]) => ({
+          data: mes,
+          media: dados.soma / dados.count
+        }))
+        .sort((a, b) => a.data.localeCompare(b.data));
+
+      return {
+        avaliacoes,
+        estatisticas: {
+          mediaGeral,
+          totalAvaliacoes: avaliacoes.length,
+          aprovados,
+          reprovados,
+          mediaPorDisciplina: Object.fromEntries(
+            Object.entries(mediaPorDisciplina).map(([disciplina, dados]) => [
+              disciplina,
+              dados.soma / dados.count
+            ])
+          ),
+          evolucao,
+          estado:mediaGeral>=14?"aprovado":mediaGeral>=10?"recuperacao":mediaGeral<10&&mediaGeral>-1?"reprovado":"pendente"
+        }
+      };
+
     } catch (error) {
-      console.error('❌ Erro ao buscar avaliacao:', error);
-      return [];
+      console.error('❌ Erro ao buscar avaliações do aluno:', error);
+      throw error;
     }
   },
 
-    async syncAvaliacaos() {
-      return syncManager.downloadTableBatch('avaliacao', new Date(0));
-    },
-  
-  // ✅ Função auxiliar para marcar como pendente
-   async markForSync(recordId: string, operation: 'upsert' | 'delete') {
-    await db.syncQueue.add({
-      table: 'avaliacao',
-      record_id: recordId,
-      operation,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    });
-  },
-
-
-
-  // ✅ Buscar avaliacao recentes (com suporte offline)
-  async getAvaliacaosRecentes(limite = 50): Promise<Avaliacao[]> {
+  // ✅ Estatísticas avançadas
+  async getEstatisticasAvancadas(options?: {
+    turmaId?: string;
+    periodo?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<{
+    geral: AvaliacaoStats;
+    porDisciplina: DisciplinaStats[];
+    topAlunos: Array<{ alunoId: string; nome: string; media: number }>;
+    evolucaoTemporal: Array<{ periodo: string; media: number }>;
+  }> {
     try {
-      const todasAvaliacaos = await this.getAllAvaliacaos();
-      
-      // Ordenar por data (mais recente primeiro) e limitar
-      return todasAvaliacaos
-        .sort((a, b) => new Date(b.data_avaliacao).getTime() - new Date(a.data_avaliacao).getTime())
-        .slice(0, limite);
+      let avaliacoes = await this.getAllAvaliacoes({ includeDeleted: false });
+
+      // Aplicar filtros
+      if (options?.turmaId) {
+        // Filtrar por turma (precisaria de join com alunos)
+        const alunosTurma = await db.alunos
+          .where('turma_id')
+          .equals(options.turmaId)
+          .and(aluno => !aluno.deleted)
+          .toArray();
+        
+        const alunoIds = new Set(alunosTurma.map(a => a.id));
+        avaliacoes = avaliacoes.filter(av => alunoIds.has(av.aluno_id));
+      }
+
+      if (options?.dataInicio && options?.dataFim) {
+        avaliacoes = avaliacoes.filter(av => 
+          av.data_avaliacao >= options.dataInicio! && 
+          av.data_avaliacao <= options.dataFim!
+        );
+      }
+
+      // Calcular estatísticas gerais
+      const totalNotas = avaliacoes.length;
+      const somaNotas = avaliacoes.reduce((sum, av) => sum + av.nota, 0);
+      const mediaGeral = totalNotas > 0 ? somaNotas / totalNotas : 0;
+      const aprovados = avaliacoes.filter(av => av.nota >= 10).length;
+      const reprovados = totalNotas - aprovados;
+
+      // Distribuição de notas (0-20)
+      const distribuicaoNotas: Record<number, number> = {};
+      for (let i = 0; i <= 20; i++) {
+        distribuicaoNotas[i] = avaliacoes.filter(av => Math.round(av.nota) === i).length;
+      }
+
+      // Estatísticas por disciplina
+      const disciplinasMap = new Map<string, DisciplinaStats>();
+      avaliacoes.forEach(av => {
+        if (!disciplinasMap.has(av.disciplina)) {
+          disciplinasMap.set(av.disciplina, {
+            nome: av.disciplina,
+            media: 0,
+            totalAvaliacoes: 0,
+            aprovados: 0,
+            reprovados: 0,
+            melhorNota: 0,
+            piorNota: 20,
+            historico: []
+          });
+        }
+
+        const stats = disciplinasMap.get(av.disciplina)!;
+        stats.totalAvaliacoes += 1;
+        stats.media += av.nota;
+        if (av.nota >= 10) stats.aprovados += 1;
+        else stats.reprovados += 1;
+        stats.melhorNota = Math.max(stats.melhorNota, av.nota);
+        stats.piorNota = Math.min(stats.piorNota, av.nota);
+        stats.historico.push({
+          data: av.data_avaliacao,
+          nota: av.nota
+        });
+      });
+
+      // Calcular médias finais
+      const porDisciplina = Array.from(disciplinasMap.values()).map(stats => ({
+        ...stats,
+        media: stats.media / stats.totalAvaliacoes,
+        historico: stats.historico.sort((a, b) => a.data.localeCompare(b.data))
+      }));
+
+      // Top alunos (média geral)
+      const alunoStats = new Map<string, { soma: number; count: number; nome: string }>();
+      avaliacoes.forEach(av => {
+        const aluno = alunoStats.get(av.aluno_id) || { soma: 0, count: 0, nome: '' };
+        aluno.soma += av.nota;
+        aluno.count += 1;
+        // Buscar nome do aluno se necessário
+        alunoStats.set(av.aluno_id, aluno);
+      });
+
+      const topAlunos = Array.from(alunoStats.entries())
+        .map(([alunoId, stats]) => ({
+          alunoId,
+          nome: stats.nome || alunoId,
+          media: stats.soma / stats.count
+        }))
+        .sort((a, b) => b.media - a.media)
+        .slice(0, 10);
+
+      // Evolução temporal
+      const evolucaoMap = new Map<string, { soma: number; count: number }>();
+      avaliacoes.forEach(av => {
+        const periodo = av.periodo;
+        if (!evolucaoMap.has(periodo)) {
+          evolucaoMap.set(periodo, { soma: 0, count: 0 });
+        }
+        const evol = evolucaoMap.get(periodo)!;
+        evol.soma += av.nota;
+        evol.count += 1;
+      });
+
+      const evolucaoTemporal = Array.from(evolucaoMap.entries())
+        .map(([periodo, dados]) => ({
+          periodo,
+          media: dados.soma / dados.count
+        }))
+        .sort((a, b) => a.periodo.localeCompare(b.periodo));
+
+      return {
+        geral: {
+          totalAvaliacoes: totalNotas,
+          mediaGeral,
+          aprovados,
+          reprovados,
+          distribuicaoNotas,
+          melhorMedia: porDisciplina.length > 0 
+            ? Math.max(...porDisciplina.map(d => d.media))
+            : 0,
+          piorMedia: porDisciplina.length > 0 
+            ? Math.min(...porDisciplina.map(d => d.media))
+            : 0
+        },
+        porDisciplina,
+        topAlunos,
+        evolucaoTemporal
+      };
 
     } catch (error) {
-      console.error('❌ Erro ao buscar avaliacao recentes:', error);
-      return [];
+      console.error('❌ Erro ao calcular estatísticas:', error);
+      throw error;
     }
   },
 
-  // ✅ Atualizar avaliacao localmente e marcar para sincronização
-  async atualizarAvaliacao(id: string, updates: Partial<AvaliacaoFormData>){
+  // ✅ Exportar dados
+  async exportData(format: 'csv' | 'json' | 'pdf', options?: {
+    alunoIds?: string[];
+    turmaId?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<string> {
+    try {
+      let avaliacoes = await this.getAllAvaliacoes({ includeDeleted: false });
+
+      // Aplicar filtros
+      if (options?.alunoIds) {
+        const alunoIdsSet = new Set(options.alunoIds);
+        avaliacoes = avaliacoes.filter(av => alunoIdsSet.has(av.aluno_id));
+      }
+
+      if (options?.turmaId) {
+        // Implementar filtro por turma
+      }
+
+      if (options?.dataInicio && options?.dataFim) {
+        avaliacoes = avaliacoes.filter(av => 
+          av.data_avaliacao >= options.dataInicio! && 
+          av.data_avaliacao <= options.dataFim!
+        );
+      }
+
+      switch (format) {
+        case 'csv':
+          return this.exportToCSV(avaliacoes);
+        case 'json':
+          return JSON.stringify(avaliacoes, null, 2);
+        case 'pdf':
+          // Implementar geração de PDF
+          throw new Error('Exportação PDF ainda não implementada');
+        default:
+          throw new Error('Formato de exportação não suportado');
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao exportar dados:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Exportar para CSV
+   async exportToCSV(avaliacoes: AvaliacaoWithAluno[]): Promise<string> {
+    const headers = [
+      'Aluno',
+      'Número',
+      'Turma',
+      'Disciplina',
+      'Tipo Avaliação',
+      'Nota',
+      'Data',
+      'Período',
+      'Observações'
+    ];
+
+    const rows = avaliacoes.map(av => [
+      av.aluno?.nome_completo || '',
+      av.aluno?.numero_estudante || '',
+      av.aluno?.turma_nome || '',
+      av.disciplina,
+      av.tipo_avaliacao,
+      av.nota.toString(),
+      av.data_avaliacao,
+      av.periodo,
+      av.observacoes || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    return csvContent;
+  },
+
+  // ✅ Métodos CRUD básicos (mantidos para compatibilidade)
+  async atualizarAvaliacao(id: string, updates: Partial<AvaliacaoFormData>) {
     try {
       const updated_at = new Date().toISOString();
      
-      await db.avaliacao.update(id, {
+      await db.avaliacoes.update(id, {
         ...updates,
         updated_at,
         sync_status: 'pending',
       });
 
-      // Adicionar/atualizar na fila
       await db.syncQueue.add({
         table: 'avaliacao',
         record_id: id,
         operation: 'upsert',
         status: 'pending',
-        created_at: updated_at
+        created_at: updated_at,
       });
       
-      console.log(`✏️ Avaliacao ${id} marcada para atualização`);
+      console.log(`✏️ Avaliação ${id} marcada para atualização`);
       
-      // Retornar a avaliacao atualizada
-      return await db.avaliacao.get(id);
+      return await db.avaliacoes.get(id);
       
     } catch (error) {
-      console.error('Erro ao atualizar avaliacao:', error);
+      console.error('Erro ao atualizar avaliação:', error);
       throw error;
     }
   },
 
-  // ✅ Deletar avaliacao (soft delete)
   async deletarAvaliacao(id: string) {
     try {
-      const avaliacao = await db.avaliacao.get(id);
+      const avaliacao = await db.avaliacoes.get(id);
       if (!avaliacao) return;
 
-      if (avaliacao.sync_status === 'synced' && !avaliacao.id.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
-        await db.avaliacao.update(id, { 
-          deleted: true, 
-          sync_status: 'pending_delete' as const,
-          updated_at: new Date().toISOString()
-        });
-        
-        await db.syncQueue.add({
-          table: 'avaliacao',
-          record_id: id,
-          operation: 'delete',
-          status: 'pending',
-          created_at: new Date().toISOString()
-        });
-        
-        console.log(`🗑️ Avaliacao ${id} marcada para deleção remota`);
-      } else {
-        // Se nunca sincronizado, deletar completamente
-        await db.avaliacao.delete(id);
-        
-        // Remover da fila se existir
-        await db.syncQueue
-          .where('record_id')
-          .equals(id)
-          .delete();
-          
-        console.log(`🗑️ Avaliacao ${id} deletada localmente`);
-      }
+      await db.avaliacoes.update(id, { 
+        deleted: true, 
+        sync_status: 'pending_delete',
+        updated_at: new Date().toISOString()
+      });
+      
+      await db.syncQueue.add({
+        table: 'avaliacao',
+        record_id: id,
+        operation: 'delete',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+      
+      console.log(`🗑️ Avaliação ${id} marcada para deleção`);
       
     } catch (error) {
-      console.error('Erro ao deletar avaliacao:', error);
+      console.error('Erro ao deletar avaliação:', error);
       throw error;
     }
   },
 
-  // ✅ Buscar avaliacao por turma (com suporte offline)
-  async getAvaliacaosPorTurma(turmaId: string): Promise<Avaliacao[]> {
-    try {
-      const avaliacao = await db.avaliacao
-        .where('turma_id')
-        .equals(turmaId)
-        .and(avaliacao => !avaliacao.deleted)
-        .toArray();
-      
-      // Ordenar por data (mais recente primeiro)
-      return avaliacao.sort((a, b) => 
-        new Date(b.data_avaliacao).getTime() - new Date(a.data_avaliacao).getTime()
-      );
-
-    } catch (error) {
-      console.error('❌ Erro ao buscar avaliacao por turma:', error);
-      return [];
-    }
-  },
-
-  // ✅ Buscar avaliacao por ID
   async getAvaliacaoById(id: string): Promise<Avaliacao | undefined> {
     try {
-      const avaliacao = await db.avaliacao.get(id);
+      const avaliacao = await db.avaliacoes.get(id);
       return avaliacao && !avaliacao.deleted ? avaliacao : undefined;
     } catch (error) {
-      console.error('Erro ao buscar avaliacao por ID:', error);
-      return undefined;
-    }
-  },
-    // ✅ Buscar avaliacao por ID
-  async getAvaliacaoByIdAluno(id: string): Promise<Avaliacao[] | undefined> {
-    try {
-      const avaliacao = await db.avaliacao.where('aluno_id').equals(id).and(ava=>!ava.deleted).toArray();
-      return avaliacao && !avaliacao ? avaliacao : undefined;
-    } catch (error) {
-      console.error('Erro ao buscar avaliacao por ID:', error);
+      console.error('Erro ao buscar avaliação por ID:', error);
       return undefined;
     }
   },
 
-
-  async getMediaAluno(id: string){
+  // ✅ Monitoramento de performance
+  async getPerformanceMetrics() {
     try {
-      const avaliacao = await this.getAvaliacaoByIdAluno(id)
-      var medias=[];
-      avaliacao?.map((nota)=>{
-        nota.nota
-      })
-
-      return avaliacao && !avaliacao ? avaliacao : undefined;
-    } catch (error) {
-      console.error('Erro ao buscar avaliacao por ID:', error);
-      return undefined;
-    }
-  },
-
-
-
-  // ✅ Verificar saúde do banco de avaliacao
-  async checkDatabaseHealth() {
-    try {
-      const avaliacaoCount = await db.avaliacao.count();
-      const queueCount = await db.syncQueue
+      const avaliacoes = await db.avaliacoes.toArray();
+      const ativas = avaliacoes.filter(a => !a.deleted);
+      const pendentes = await db.syncQueue
         .where('table')
         .equals('avaliacao')
         .and(item => item.status === 'pending')
         .count();
-      
-      const avaliacaoAtivas = (await this.getAllAvaliacaos()).length;
-      
-      return {
-        avaliacaoTotal: avaliacaoCount,
-        avaliacaoAtivas: avaliacaoAtivas,
-        pendentes: queueCount,
-        online: navigator.onLine,
-        bancoAberto: db.isOpen(),
-        conflitos: avaliacaoCount - avaliacaoAtivas // Avaliacaos deletadas (soft delete)
-      };
-    } catch (error: any) {
-      return {
-        error: error.message,
-        bancoAberto: false
-      };
-    }
-  },
 
-  // ✅ Estatísticas de avaliacao
-  async getEstatisticas() {
-    try {
-      const todasAvaliacaos = await this.getAllAvaliacaos();
-      
-      // Agrupar por turma
-      const porTurma: Record<string, number> = {};
-      const porMes: Record<string, number> = {};
-      
-      todasAvaliacaos.forEach(avaliacao => {
-        // Por turma
-        const turmaKey = avaliacao.turma_id || 'sem_turma';
-        porTurma[turmaKey] = (porTurma[turmaKey] || 0) + 1;
-        
-        // Por mês
-        const data = new Date(avaliacao.data_avaliacao);
-        const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
-        porMes[mesKey] = (porMes[mesKey] || 0) + 1;
-      });
-      
       return {
-        total: todasAvaliacaos.length,
-        porTurma,
-        porMes,
-        ultimaAtualizacao: new Date().toISOString()
+        totalRegistros: avaliacoes.length,
+        registrosAtivos: ativas.length,
+        sincronizacoesPendentes: pendentes,
+        taxaDisponibilidade: (ativas.length / Math.max(avaliacoes.length, 1)) * 100,
+        tempoMedioResposta: 'OK',
+        ultimaSincronizacao: new Date().toISOString()
       };
     } catch (error) {
-      console.error('❌ Erro ao gerar estatísticas:', error);
+      console.error('❌ Erro ao coletar métricas:', error);
       return {
-        total: 0,
-        porTurma: {},
-        porMes: {},
-        ultimaAtualizacao: new Date().toISOString()
+        totalRegistros: 0,
+        registrosAtivos: 0,
+        sincronizacoesPendentes: 0,
+        taxaDisponibilidade: 0,
+        tempoMedioResposta: 'ERROR',
+        ultimaSincronizacao: new Date().toISOString()
       };
     }
   }

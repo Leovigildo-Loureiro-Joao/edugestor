@@ -1,6 +1,8 @@
 // services/database/turmaService.ts
 import { HorarioAula, HorarioAulaForm, Turma, TurmaFormData } from '../../types/turma';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { supabase } from '../database/db';
+import { alunosService } from './alunosService';
 import db from './db';
 import { syncManager } from './syncManager';
 
@@ -48,28 +50,39 @@ export const turmaService = {
   async getTurmas(): Promise<Turma[]> {
     try {
       console.log('📋 Buscando turmas...');
-      
-      const todasTurmas = await db.turmas.toArray();
-      const todosCursos = await db.cursos.toArray();
-
+      const todosCursos = await db.cursos
+                          .where("instituicao_id")
+                          .equals(instituicaoIdValue()||"")
+                          .and(curso=>!curso.deleted)
+                          .toArray();
+          
+      const todasTurmas:Turma[] = []
+      for (const curso of todosCursos) {
+          const value =await this.getTurmasPorCurso(curso.id)
+          todasTurmas.push(...value)
+      }
       
       // Filtrar as não deletadas
-      const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
-      const cursosActivos = todosCursos.filter(curso => !curso.deleted);
-      const cursosMap = new Map(cursosActivos.map(c => [c.id, c]));
+      const turmasAtivas = todasTurmas.filter(turma =>  !turma.deleted);
+      const alunos=await db.alunos.toArray();
+      const cursosMap = new Map(todosCursos.map(c => [c.id, c]));
       // Ordenar por nome
       turmasAtivas.sort((a, b) => 
         (a.nome_turma || '').localeCompare(b.nome_turma || '')
       );
       
       console.log(`✅ Encontradas ${turmasAtivas.length} turmas ativas`);
-      return turmasAtivas.map(turma=>{
+      return  (turmasAtivas.map(  turma=>{
          const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
+         const aluno= alunos.filter((aluno)=> aluno.turma_id==turma.id&&!aluno.deleted).length
+         
          return {
           ...turma,
-          curso_nome:curso?.nome
+          curso_nome:curso?.nome,
+          qtd:aluno
+         
          }
-      })
+      }))
     } catch (error) {
       console.error('❌ Erro ao buscar turmas:', error);
       return [];
@@ -349,7 +362,7 @@ export const turmaService = {
   },
 
   // ✅ Verificar saúde do banco de turmas
-  async checkDatabaseHealth() {
+  async checkDatabaseHealth(instituicao_id:string) {
     try {
       const turmaCount = await db.turmas.count();
       const queueCount = await db.syncQueue
@@ -394,7 +407,7 @@ export const turmaService = {
   },
 
   // ✅ Obter estatísticas
-  async getEstatisticas() {
+  async getEstatisticas(instituicao_id:string) {
     try {
       const turmas = await this.getTurmas();
       
@@ -408,7 +421,7 @@ export const turmaService = {
         porCurso[cursoKey] = (porCurso[cursoKey] || 0) + 1;
         
         // Por ano letivo
-        const anoKey = turma.ano_letivo || 'sem_ano';
+        const anoKey = turma.ano_lectivo || 'sem_ano';
         porAno[anoKey] = (porAno[anoKey] || 0) + 1;
       });
       

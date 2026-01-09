@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FiSave, FiArrowLeft, FiUsers, FiBook, FiClock, FiUser, FiFileText } from 'react-icons/fi';
+import { FiSave, FiArrowLeft, FiUsers, FiBook, FiClock, FiUser, FiFileText, FiPaperclip } from 'react-icons/fi';
 import { turmaService } from '../../services/database/turmas.ts';
-import { Select } from '../ui/Select.jsx';
-import turmaImg from "../../assets/Choose-rafiki.svg";
 import { Turma, TurmaFormData } from '../../types/turma.ts';
 import { useAutoSave } from '../../hooks/useAutoSave.js';
 import { Course } from '../../types/curso.ts';
 import { cursosService } from '../../services/database/curso.ts';
+import { SelectTyped } from '../students/StudentForm.tsx';
+import { motion } from 'framer-motion';
 
 // Definição de tipo para opções do Select
 interface SelectOption {
@@ -17,6 +17,7 @@ interface SelectOption {
 
 const TurmaForm = () => {
   const [cursos, setCursos] = useState<Course[]>([]);
+  const [cursoSel, setCursoSel] = useState<Course>();
   const navigate = useNavigate();
   const { id } = useParams<string>();
   const isEditing = Boolean(id);
@@ -33,8 +34,10 @@ const TurmaForm = () => {
     ano_lectivo: new Date().getFullYear().toString(),
     curso_id: '',
     professor: '',
-    capacidade_maxima: 30,
-    turno: 'manhã'
+    capacidade_maxima: 0,
+    turno: 'manhã',
+    estado:"ativa",
+    descricao:""
   };
 
   const { 
@@ -63,7 +66,7 @@ const TurmaForm = () => {
   const loadTurma = async () => {
     try {
       if (!id) return;
-      const turma = await turmaService.findBy(id);
+      const turma = await turmaService.findById(id||"");
       if (turma) {
         // Extrair apenas os dados do formulário
         const turmaFormData: TurmaFormData = {
@@ -86,10 +89,15 @@ const TurmaForm = () => {
   // Função para mudar valores normais
   const handleChange = (field: keyof TurmaFormData, value: string | number) => {
     setFormData((prev: TurmaFormData) => ({ ...prev, [field]: value }));
+    
   };
 
   // Função específica para o Select - mantém a mesma estrutura que seu Select espera
   const handleSelectChange = (field: keyof TurmaFormData) => (value: string) => {
+    if(field==="curso_id")
+    {
+      setCursoSel(cursos.find((curso)=> curso.id==formData.curso_id))
+    }
     setFormData((prev: TurmaFormData) => ({ 
       ...prev, 
       [field]: value 
@@ -99,19 +107,23 @@ const TurmaForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
+   
+      if (cursoSel&&cursoSel.vagas-(cursoSel.alunos||0)<0) {
+          return
+      }
       // Garantir que os dados estão no formato correto
       const turmaData: TurmaFormData = {
         nome_turma: formData.nome_turma || '',
         ano_lectivo: formData.ano_lectivo || '',
         curso_id: formData.curso_id || '',
         professor: formData.professor || '',
-        capacidade_maxima: formData.capacidade_maxima || 30,
+        capacidade_maxima: formData.capacidade_maxima || (cursoSel?cursoSel.vagas-(cursoSel.alunos||0):0),
         turno: formData.turno || 'manhã',
         estado: formData.estado || 'ativa',
         descricao: formData.descricao || ''
       };
+     
 
       if (isEditing && id) {
         await turmaService.editTurma(id, turmaData);
@@ -177,125 +189,171 @@ const TurmaForm = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="">
           {/* Formulário */}
           <div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex flex-col gap-6">
-                {/* Nome da Turma */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Nome da Turma *
-                  </label>
-                  <div className="relative">
-                    <FiBook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.nome_turma || ''}
-                      onChange={(e) => handleChange('nome_turma', e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Ex: Turma A, 1º Ano A"
+            <form onSubmit={handleSubmit} className="space-y-6 ">
+             <div className='flex w-full gap-10'>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}  className="flex w-full flex-col gap-6">
+                  {/* Nome da Turma */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Nome da Turma *
+                    </label>
+                    <div className="relative">
+                      <FiBook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        required
+                        value={formData.nome_turma || ''}
+                        onChange={(e) => handleChange('nome_turma', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="Ex: Turma A, 1º Ano A"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ano Lectivo */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Ano Lectivo *
+                    </label>
+                    <div className="relative">
+                      <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        required
+                        value={formData.ano_lectivo || ''}
+                        onChange={(e) => handleChange('ano_lectivo', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="Ex: 2024"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Curso */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Curso *
+                    </label>
+                    <SelectTyped
+                      vect={cursoOptions}
+                      icon={FiFileText}
+                      onChange={handleSelectChange('curso_id')}
+                      value={selectedCursoValue}
+                      placeholder="Selecione o curso"
                     />
                   </div>
-                </div>
 
-                {/* Ano Lectivo */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Ano Lectivo *
-                  </label>
-                  <div className="relative">
-                    <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.ano_lectivo || ''}
-                      onChange={(e) => handleChange('ano_lectivo', e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Ex: 2024"
+                  {/* Turno */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Turno *
+                    </label>
+                    <SelectTyped
+                      vect={turnoOptions}
+                      icon={FiClock}
+                      onChange={handleSelectChange('turno')}
+                      value={selectedTurnoValue}
                     />
                   </div>
-                </div>
 
-                {/* Curso */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Curso *
-                  </label>
-                  <Select
-                    vect={cursoOptions}
-                    icon={FiFileText}
-                    onChange={handleSelectChange('curso_id')}
-                    value={selectedCursoValue}
-                    placeholder="Selecione o curso"
-                  />
-                </div>
+                  {/* Professor */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Professor *
+                    </label>
+                    <div className="relative">
+                      <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        required
+                        value={formData.professor || ''}
+                        onChange={(e) => handleChange('professor', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="Nome do professor"
+                      />
+                    </div>
+                  </div>
 
-                {/* Turno */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Turno *
-                  </label>
-                  <Select
-                    vect={turnoOptions}
-                    icon={FiClock}
-                    onChange={handleSelectChange('turno')}
-                    value={selectedTurnoValue}
-                  />
-                </div>
+                 
+                </motion.div>
+                 <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}  className="flex w-full flex-col gap-6">
 
-                {/* Professor */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Professor *
-                  </label>
-                  <div className="relative">
-                    <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.professor || ''}
-                      onChange={(e) => handleChange('professor', e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Nome do professor"
+                  {/* Turno */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Estado *
+                    </label>
+                    <SelectTyped
+                      vect={["ativa","inativa","concluida"]}
+                      icon={FiClock}
+                      onChange={handleSelectChange('estado')}
+                      value={selectedTurnoValue}
                     />
                   </div>
-                </div>
 
-                {/* Capacidade Máxima */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Capacidade Máxima *
-                  </label>
-                  <div className="relative">
-                    <FiUsers className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      max="50"
-                      value={formData.capacidade_maxima || 30}
-                      onChange={(e) => handleChange('capacidade_maxima', parseInt(e.target.value) || 30)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    />
+                   {/* Capacidade Máxima */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Capacidade Máxima *
+                    </label>
+                    <div className="relative">
+                      <FiUsers className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        max={`${(cursoSel?.vagas||0)-(cursoSel?.alunos||0)}`}
+                        disabled={!cursoSel}
+                        value={formData.capacidade_maxima || 0}
+                        onChange={(e) => handleChange('capacidade_maxima', parseInt(e.target.value))}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
+
+                  {/* Professor */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Descricao *
+                    </label>
+                    <div className="relative">
+                      <FiPaperclip className="absolute left-3 top-1/4 transform -translate-y-1/2 text-gray-400" />
+                      <textarea
+                        required
+                        value={formData.descricao || ''}
+                        rows={3}
+                        onChange={(e) => handleChange('descricao', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="A descrição da turma"
+                      />
+                    </div>
+                  </div>
+
+                 
+                </motion.div>
+             </div>
 
               {/* Botões */}
-              <div className="flex space-x-4 pt-6 border-t border-gray-200">
+              <div className="justify-end  flex space-x-4 pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-6 py-3 w-full border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 font-medium"
+                  className="px-6 py-3 w-min border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-gradient-to-r w-full justify-center from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center space-x-2 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                  className="bg-gradient-to-r text-nowrap  w-min justify-center from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center space-x-2 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                 >
                   <FiSave size={18} />
                   <span>{loading ? 'Salvando...' : isEditing ? 'Atualizar Turma' : 'Criar Turma'}</span>
@@ -304,13 +362,7 @@ const TurmaForm = () => {
             </form>
           </div>
 
-          {/* Ilustração e Informações */}
-          <div className="flex flex-col space-y-8">
-            <img src={turmaImg} alt="Ilustração de gestão de turmas" />
-            <p className="text-gray-600 text-sm text-center relative -top-10 px-10">
-              {isEditing ? 'Atualize os dados da turma' : 'Cadastre uma nova turma na instituição de modo a ter uma gestão mais flexível'}
-            </p>
-          </div>
+      
         </div>
       </div>
     </div>

@@ -30,18 +30,35 @@ export const dashboardService = {
 
     // Execute todas as queries em paralelo
     const [
+      aulasPromise,
+      aulasPromiseA,
       totalAlunosPromise,
       alunosAnteriorPromise,
       alunosAtivosPromise,
       propinaPromiseComparativo,
-      frequenciasPromise
+      frequenciasPromise,
+      frequenciasPromiseP
     ] = await Promise.all([
+      (await db.aulas.toArray())
+      .filter(
+        (aula)=> !aula.deleted && 
+        new Date(aula.data_aula).getMonth()==new Date().getMonth() &&
+        new Date(aula.data_aula).getFullYear()==new Date().getFullYear()
+      ).length,
+      (await db.aulas.toArray())
+      .filter(
+        (aula)=> !aula.deleted && 
+        new Date(aula.data_aula).setMonth(new Date(aula.data_aula).getMonth()-1)==new Date().getMonth()-1 &&
+        new Date(aula.data_aula).getFullYear()==new Date().getFullYear()
+      ).length
+      ,
       // Total de alunos do ano atual
       this.get_alunos_ano_lectivo_actual(),
       
       // Alunos do ano anterior
      this.alunos_ano_lectivo_anterior(),
       
+
       // Alunos ativos
 
       (await db.alunos
@@ -54,7 +71,18 @@ export const dashboardService = {
         return (await db.frequencias
         .toArray())
         .filter(
-          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true
+          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true &&
+         new Date(frequencia.data_aula).getMonth()==new Date().getMonth() &&
+        new Date(frequencia.data_aula).getFullYear()==new Date().getFullYear()
+        )
+      }(),
+        async function frequenciasP() {
+        return (await db.frequencias
+        .toArray())
+        .filter(
+          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true &&
+         new Date(frequencia.data_aula).getMonth()==new Date().getMonth() &&
+        new Date(frequencia.data_aula).getFullYear()==new Date().getFullYear()
         )
       }()
       
@@ -79,9 +107,12 @@ export const dashboardService = {
 
     // ✅ Calcular frequência média
     let frequenciaMedia: number = 0;
+    let frequenciaMediaP: number = 0;
     if (frequenciasPromise && frequenciasPromise.length > 0) {
       const totalPresentes: number = frequenciasPromise.filter(f => f.presente).length;
+      const totalPresentesP: number = frequenciasPromiseP.filter(f => f.presente).length;
       frequenciaMedia = (totalPresentes / frequenciasPromise.length) * 100;
+      frequenciaMediaP = (totalPresentesP / frequenciasPromiseP.length) * 100;
     }
 
   
@@ -107,7 +138,11 @@ export const dashboardService = {
       propinaPendentesCountAnterior: comparativo.mes_anterior.pendentes.count,
       
       // Frequência
-      frequencias: parseFloat(frequenciaMedia.toFixed(1))
+      frequencias: parseFloat(frequenciaMedia.toFixed(1)),
+      frequenciasP: parseFloat(frequenciaMediaP.toFixed(1)),
+
+      aulasMinistradas:aulasPromise,
+      aulasMinistradasP:aulasPromiseA
     };
 
     console.log('📊 Estatísticas finais:', stats);
@@ -156,7 +191,7 @@ export const dashboardService = {
   ,async get_alunos_ano_lectivo_actual(){
      const alunos= await db.alunos.toArray() 
      const instituicao=(await db.instituicao.toArray()).at(0) 
-     const totalAlunos=alunos.filter((aluno)=> !aluno.deleted&&aluno.ano_lectivo==instituicao.ano_lectivo)
+     const totalAlunos=alunos.filter((aluno)=> !aluno.deleted&&aluno.ano_lectivo==instituicao?.ano_lectivo)
      return totalAlunos.length
   },
 

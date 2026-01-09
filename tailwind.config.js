@@ -13,6 +13,16 @@ export default {
     'bg-gray-50',
     'dark:bg-gray-900',
 
+    // Cores para bordas
+    'border-red-500', 'border-blue-500', 'border-green-500', 'border-yellow-500', 'border-purple-500',
+    // Cores para background
+    'bg-red-50', 'bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-purple-50',
+    'dark:bg-red-900/30', 'dark:bg-blue-900/30', 'dark:bg-green-900/30', 'dark:bg-yellow-900/30', 'dark:bg-purple-900/30',
+    // Cores para texto
+    'text-red-600', 'text-blue-600', 'text-green-600', 'text-yellow-600', 'text-purple-600',
+    'dark:text-red-400', 'dark:text-blue-400', 'dark:text-green-400', 'dark:text-yellow-400', 'dark:text-purple-400',
+    // Sombras
+    'shadow-red-500/20', 'shadow-blue-500/20', 'shadow-green-500/20', 'shadow-yellow-500/20', 'shadow-purple-500/20'
   ],
   
   theme: {

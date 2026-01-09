@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPlus, FiEdit, FiTrash2, FiUser, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiUser, FiSearch, FiLayers } from 'react-icons/fi';
 import { alunosService } from '../../services/database/alunosService'; // ← Import correto
 import { FaBookAtlas, FaGraduationCap, FaPeopleGroup } from 'react-icons/fa6';
 import { RxPerson } from 'react-icons/rx';
 import { StatCard } from '../../components/students/StatCard';
 import { Student } from '../../types';
 import { SelectTyped } from '../../components/students/StudentForm';
+import { FaBook, FaLevelDownAlt, FaPrescription } from 'react-icons/fa';
 
 
 
@@ -17,20 +18,24 @@ const Students = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroProfessor, setFiltroProfessor] = useState('Todos Professores');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
+  const [filtroEstado, setFiltroEstado] = useState('Todos estados');
+  const [isCartao,setCartao]=useState(false)
+  const [filtroAnoLectivo,setFiltroAnoLectivo] = useState('Todos ano lectivos');
   const nav = useNavigate();
-
   
   const abrirAluno = (alunoId: string) => {
     console.log('Abrir aluno com ID:', alunoId);
     nav(`/alunos/${alunoId}`);
   };
-
+  const estadoSet = ["Todos estados","ativo","inativo","transferido","desistente"];
+  const anoLectivoSet = ["Todos ano lectivos","2024-2025","2025-2026","2027-2028","2028-2029","2030-2031"];;
+    
   // Extrair professores e turmas únicos
   const { professores, turmas } = useMemo(() => {
     // Extrai valores únicos, lidando com undefined
     const profsSet = new Set<string>();
     const turmsSet = new Set<string>();
-    
+   
     students.forEach(student => {
       if (student.professor) {
         profsSet.add(student.professor);
@@ -38,6 +43,7 @@ const Students = () => {
       if (student.turma_nome) {
         turmsSet.add(student.turma_nome);
       }
+
     });
     
     return {
@@ -47,6 +53,7 @@ const Students = () => {
   }, [students]);
 
   useEffect(() => {
+    localStorage.setItem("last_rota","/alunos")
     Reload();
   }, []);
 
@@ -130,10 +137,14 @@ const Students = () => {
       
       const matchesTurma = filtroTurma === 'Todas Turmas' || 
                           student.turma_nome=== filtroTurma;
-
-      return matchesSearch && matchesProfessor && matchesTurma;
+      const matchesEstado = filtroEstado === 'Todos estados' || 
+                        student.estado== filtroEstado 
+      const matchesAnoLectivo = filtroAnoLectivo === 'Todos ano lectivos' || 
+                        student.ano_lectivo== filtroAnoLectivo             
+      const matchesCartap = isCartao && student.cartao_pago==true
+      return matchesSearch && matchesProfessor && matchesTurma &&matchesAnoLectivo&&matchesEstado &&(isCartao?matchesCartap:true);
     });
-  }, [students, searchTerm, filtroProfessor, filtroTurma]);
+  }, [students, searchTerm, filtroProfessor, filtroTurma,filtroAnoLectivo,filtroEstado,isCartao]);
 
   // Função para deletar aluno com confirmação
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
@@ -186,7 +197,7 @@ const Students = () => {
           {/* Botão Novo Aluno */}
           <Link
             to="/alunos/novo"
-            className="bg-blue-600 text-white px-4 py-2.5 transition-colors rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
+            className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
           >
             <FiPlus size={18} />
             <span>Novo Aluno</span>
@@ -198,7 +209,7 @@ const Students = () => {
       <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Professor</label>
+
             <SelectTyped 
               vect={professores} 
               icon={RxPerson} 
@@ -207,12 +218,30 @@ const Students = () => {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Turma</label>
+
             <SelectTyped 
               vect={turmas} 
-              icon={FaBookAtlas} 
+              icon={FiLayers} 
               onChange={setFiltroTurma}
               value={filtroTurma}
+            />
+          </div>
+           <div className="flex-1">
+
+            <SelectTyped 
+              vect={estadoSet} 
+              icon={FaPeopleGroup} 
+              onChange={setFiltroEstado}
+              value={filtroEstado}
+            />
+          </div>
+           <div className="flex-1">
+
+            <SelectTyped 
+              vect={anoLectivoSet} 
+              icon={FaGraduationCap} 
+              onChange={setFiltroAnoLectivo}
+              value={filtroAnoLectivo}
             />
           </div>
         </div>
@@ -227,6 +256,7 @@ const Students = () => {
           icon={FaPeopleGroup}
           color="blue"
           trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
+           funcion={null}
         />
         
         <StatCard 
@@ -236,6 +266,7 @@ const Students = () => {
           icon={FaGraduationCap}
           color="green"
           trend={estatisticas.ativos > 0 ? 'positive' : 'neutral'}
+           funcion={null}
         />
         
         <StatCard 
@@ -251,6 +282,7 @@ const Students = () => {
           icon={FiUser}
           color="red"
           trend="neutral"
+          funcion={null}
         />
         
         <StatCard 
@@ -258,8 +290,9 @@ const Students = () => {
           value={estatisticas.cartaoPago}
           subtitle={estatisticas.total > 0 ? `${estatisticas.percentualCartao.toFixed(1)}% dos filtrados` : 'Sem dados'}
           icon={FaBookAtlas}
-          color="purple"
+          color={"purple"}
           trend={estatisticas.percentualCartao > 50 ? 'positive' : 'neutral'}
+           funcion={()=>setCartao(!isCartao)}
         />
       </div>
 
@@ -338,6 +371,9 @@ const Students = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Estado
                 </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                  Cartão
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Ações
                 </th>
@@ -367,6 +403,9 @@ const Students = () => {
                         <div className="text-sm text-gray-500 dark:text-gray-300">
                           {student.contacto_principal}
                         </div>
+                         <div className="text-sm  text-red-800  dark:text-red-300'">
+                          {student.pagamento_em_dia?"":"Pagamentos em atrazo"}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -388,6 +427,15 @@ const Students = () => {
                         : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                     }`}>
                       {student.estado}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      student.cartao_pago
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                    }`}>
+                      {student.cartao_pago?"possui":'ñ possui'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">

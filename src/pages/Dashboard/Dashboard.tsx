@@ -162,7 +162,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Frequência Média",
       value: stats.frequencias,
-      change: calcularVariacaoPercentualDireta(stats.frequencias, 0), // TODO: Adicionar valor anterior
+      change: calcularVariacaoPercentualDireta(stats.frequencias, stats.frequenciasP), // TODO: Adicionar valor anterior
       color: "purple",
       icon: FiActivity,
       aux: "%",
@@ -170,8 +170,8 @@ const Dashboard: React.FC = () => {
     },
     {
       title: "Aulas Ministradas",
-      value: 45, // TODO: Buscar do serviço
-      change: "+8%", // TODO: Calcular com dados reais
+      value: stats.aulasMinistradas, // TODO: Buscar do serviço
+      change:calcularVariacaoPercentualDireta(stats.aulasMinistradas, stats.aulasMinistradasP), // TODO: Calcular com dados reais
       color: "indigo",
       icon: FiBookOpen,
       aux: "",

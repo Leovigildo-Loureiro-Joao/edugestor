@@ -31,12 +31,15 @@ export const profileService = {
       // 1. Tentar localStorage primeiro
       const localProfile = localStorage.getItem('user_profile');
       if (localProfile) {
+        const profile =JSON.parse(localProfile);
+        localStorage.setItem("active_instituicao_id",profile.instituicao_id)
         return JSON.parse(localProfile);
       }
       
       // 2. Tentar Dexie
       const profiles = await db.table('profiles')?.toArray();
       if (profiles && profiles.length > 0) {
+        localStorage.setItem("active_instituicao_id",profiles[0].instituicao_id)
         return profiles[0];
       }
       

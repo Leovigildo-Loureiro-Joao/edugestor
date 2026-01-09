@@ -14,6 +14,7 @@ import { cursosService } from '../../services/database/curso';
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    localStorage.setItem("last_rota","/cursos/"+id)
     loadCourseDetails();
   }, [id]);
 

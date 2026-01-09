@@ -422,7 +422,7 @@ export const syncManager: SyncManager = {
       const tables = [
         'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
-        'evento', 'profiles', 'system_config', 'instituicao', 'notificacao','avaliacao'
+        'evento', 'profiles', 'system_config', 'instituicao', 'notificacao','avaliacoes'
       ];
       
       for (const tableName of tables) {

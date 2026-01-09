@@ -6,6 +6,8 @@ import { syncManager } from "./syncManager";
 import { SyncQueueItem } from "../../types/base";
 import { avaliacaoService } from "./avaliacao";
 import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
+import { profileService } from "./profileService";
+import { turmaService } from "./turmas";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -59,17 +61,16 @@ export const alunosService = {
     // ✅ Buscar todos os alunos - CORRIGIDO
   async getAllStudents() {
     const alunosAll = await db.alunos.toArray()
-    const alunos = alunosAll.filter(aluno => !aluno.deleted);
+    const todasTurmas = await turmaService.getTurmas();
+    const turmaMap = new Map(todasTurmas.map(t => [t.id, t]));
+    const alunos = alunosAll.filter(aluno => !aluno.deleted&&turmaMap.get(aluno.turma_id));
     alunos.sort((a,b)=>(a.nome_completo.localeCompare(b.nome_completo)))
     console.log(alunos)
-    const todasTurmas = await db.turmas.toArray();
-    const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
-    const turmaMap = new Map(turmasAtivas.map(t => [t.id, t]));
   
-  return alunos.map(aluno => {
+  return  alunos.map( aluno => {
     const turma = aluno.turma_id ? turmaMap.get(aluno.turma_id) : null;
     
-    return {
+    return  {
       ...aluno,  // ✅ Mantém todas as propriedades originais do aluno
       turma_nome: turma ? turma.nome_turma : 'Sem turma',
       professor: turma ? turma.professor : 'Sem professor',
@@ -104,7 +105,8 @@ export const alunosService = {
       return {
         ...aluno,
         turma_nome: aluno.turma_id ? (await db.turmas.get(aluno.turma_id))?.nome_turma : 'Sem turma',
-        professor: aluno.turma_id ? (await db.turmas.get(aluno.turma_id))?.professor : 'Sem professor'
+        professor: aluno.turma_id ? (await db.turmas.get(aluno.turma_id))?.professor : 'Sem professor',
+        avaliacao:(await avaliacaoService.getAvaliacoesByAluno(aluno.id)).avaliacoes
       } as Student;
     } catch (error) {
       console.error('Erro ao buscar aluno:', error);
@@ -211,13 +213,13 @@ export const alunosService = {
     },
    async getDesempemhoAluno(id:string):Promise<AlunoDesempenho|null>{
       const alunos=await this.getStudentById(id)
-      const avaliacao=await avaliacaoService.getAvaliacaoByIdAluno(alunos!.id||'')
+      const avaliacao=await avaliacaoService.getAvaliacoesByAluno(alunos!.id||'')
       
       return alunos?{
         ...alunos,
-        media:0,
+        media:avaliacao.estatisticas.mediaGeral,
         presenca:10,
-        ultimaAvaliacao:0
+        ultimaAvaliacao:avaliacao.avaliacoes[avaliacao.avaliacoes.length-1]?.nota,
       }:null
     },
   // ✅ Gerar próximo número de estudante

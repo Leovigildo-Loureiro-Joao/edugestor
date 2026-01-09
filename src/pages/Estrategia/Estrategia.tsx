@@ -98,7 +98,7 @@ const EstrategiaPage = () => {
   }
 
   return (
-    <div className="min-h-screen rounded-md bg-gradient-to-br dark:from-gray-800 from-gray-50 to-blue-50 p-4 md:p-6">
+    <div className="min-h-screen rounded-md dark:bg-gray-900  p-4 md:p-6">
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}

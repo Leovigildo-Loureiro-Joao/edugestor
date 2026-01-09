@@ -21,7 +21,8 @@ import {
   FaMedal, 
   FaAward as FaAwardSolid,
   FaChalkboardTeacher,
-  FaMoneyBill
+  FaMoneyBill,
+  FaRegWindowMinimize
 } from 'react-icons/fa';
 import { 
   RxPerson 
@@ -31,6 +32,11 @@ import { alunosService } from '../../services/database/alunosService';
 import { HorarioAula, HorarioAulaForm, Turma } from '../../types/turma';
 import { Student } from '../../types';
 import HorarioModal from '../../components/turmas/HorarioModal';
+import { StudentModal } from '../../components/students/StudentModal';
+import { AulaCardMin } from '../../components/aulas/AulaCard';
+import { aulaService } from '../../services/database';
+import { Aula } from '../../types/aula';
+
 
 // Definição dos cursos e suas disciplinas - atualizado para corresponder ao StudentForm
 const CURSOS_DISCIPLINAS = {
@@ -66,14 +72,16 @@ const TurmaDetails = () => {
   const navigate = useNavigate();
   const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'>('overview');
+  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'| 'aulas'>('overview');
   const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
   const [filtroTipoMatricula, setFiltroTipoMatricula] = useState<'todos' | 'regular' | 'reforco_personalizado'>('todos');
   const [filtroGrupoAprendizado, setFiltroGrupoAprendizado] = useState<string>('todos');
   const [filtroNivelConhecimento, setFiltroNivelConhecimento] = useState<string>('todos');
   const [horarioEditando, setHorarioEditando] = useState<HorarioAula | null>(null);
   const [isHorarioModalOpen, setIsHorarioModalOpen] = useState(false);
-
+  const [aulas, setAulas] = useState<Aula[]>([]);
+  const [toqgle,setToggle]=useState(false)
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoDesempenho|null>(null);
 
   // Grupos de aprendizado - alinhado com StudentForm
   const gruposAprendizado = [
@@ -166,11 +174,11 @@ const handleExcluirHorario = async (horarioId: string) => {
       }
 
       // Carregar alunos desta turma
-      const alunosDaTurma = await alunosService.getAlunosPorTurma(turmaData.id);
       const horario = await turmaService.getHorarios(turmaData.id);
       // Transformar alunos com dados de desempenho simulados
       const alunosDes=[]
       const alunosComDesempenho: Promise<AlunoDesempenho>[] = await alunosService.getDesempemhoTurma(turmaData.id)
+      setAulas(await aulaService.getAulasPorTurma(turmaData.id))
       for (const element of alunosComDesempenho) {
         alunosDes.push(await element)
       }
@@ -331,7 +339,8 @@ const handleExcluirHorario = async (horarioId: string) => {
           <nav className="flex space-x-8">
             {[
               { id: 'overview', label: 'Visão Geral', icon: FiBarChart2 },
-              { id: 'alunos', label: 'Alunos', icon: FiUsers }
+              { id: 'alunos', label: 'Alunos', icon: FiUsers },
+              { id: 'aulas', label: 'Aulas', icon: FiBook }
             ].map(aba => (
               <button
                 key={aba.id}
@@ -350,9 +359,9 @@ const handleExcluirHorario = async (horarioId: string) => {
         </div>
 
         {/* Conteúdo das Abas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={" "+(toqgle?"flex flex-col-reverse":"grid grid-cols-1 lg:grid-cols-3")+" gap-6"}>
           {/* Coluna Principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className={" "+(toqgle?"lg:col-span-1":"lg:col-span-2 space-y-6")+" "}>
             {/* ABA: VISÃO GERAL */}
             {abaAtiva === 'overview' && (
               <>
@@ -372,11 +381,13 @@ const handleExcluirHorario = async (horarioId: string) => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {top3Alunos.map((aluno, index) => (
                       <motion.div
+                        onClick={()=> navigate("/alunos/"+aluno.id)}
                         key={aluno.id}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{scale:1.05,transition:{duration:0.3},boxShadow: '0 8px 15px rgba(0, 0, 0, 0.1)'}}
                         transition={{ delay: index * 0.1 }}
-                        className={`p-4 rounded-lg border-2 ${
+                        className={`p-4 rounded-lg border-2 cursor-pointer ${
                           index === 0 
                             ? 'bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-700'
                             : index === 1
@@ -568,6 +579,9 @@ const handleExcluirHorario = async (horarioId: string) => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Nível
                         </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Qtd Notas
+                        </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Média
                         </th>
@@ -581,11 +595,13 @@ const handleExcluirHorario = async (horarioId: string) => {
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                       {alunosFiltrados.map((aluno) => (
-                        <tr key={aluno.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <tr  key={aluno.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                <RxPerson className="text-blue-600 dark:text-blue-400" size={14} />
+                              <div onClick={()=>{
+                                setAlunoSelecionado(aluno)
+                              }}  className="w-8 h-8 bg-blue-100 text-blue-600  dark:text-blue-400 hover:bg-blue-400 hover:text-blue-100 transition-all cursor-pointer dark:bg-blue-900 rounded-full flex items-center justify-center">
+                                <RxPerson className="" size={14} />
                               </div>
                               <div>
                                 <div className="font-medium text-gray-900 dark:text-white">
@@ -609,13 +625,17 @@ const handleExcluirHorario = async (horarioId: string) => {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                           <td className="px-4 py-3 whitespace-nowrap">
                             {aluno.nivel_conhecimento && (
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColorNivel(aluno.nivel_conhecimento)}`}>
                                 {getNivelConhecimentoLabel(aluno.nivel_conhecimento)}
                               </span>
                             )}
                           </td>
+                          <td className="px-4 py-3  whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {aluno.avaliacao?.length}
+                          </td>
+                         
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               aluno.media >= 17 
@@ -627,7 +647,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                               {aluno.media.toFixed(1)}
                             </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <td className="px-4 py-3  whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             {aluno.presenca}%
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -646,17 +666,49 @@ const handleExcluirHorario = async (horarioId: string) => {
                 </div>
               </motion.div>
             )}
+
+            {abaAtiva === 'aulas' && (
+               <div className="flex flex-wrap gap-4">
+                  {aulas.length>0?aulas.map((aula, index) => (
+                    <AulaCardMin
+                      key={aula.id}
+                      aula={aula}
+                      onEditar={() => null}
+                      onDeletar={() => null}
+                      onExpandir={() => {
+                        // Abrir modal com detalhes completos
+                       
+                      }}
+                      index={index}
+                    />
+                  )):
+                  <div className="text-center py-12">
+                    <FiBook className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-4 text-lg font-medium text-gray-900">Nenhuma aula encontrada</h3>
+                    <p className="text-gray-500 mt-2">
+                          Sem turmas
+                    </p>
+                  </div>
+                  }
+                </div>
+            )}
           </div>
 
           {/* Sidebar - Informações da Turma */}
           <div className="space-y-6">
+           <span onClick={()=> setToggle(!toqgle)}  className='-mt-5 -mb-10 hover:text-white float-right text-center rounded-md duration-150 cursor-pointer hover:bg-primary-500 transition-all p-2 flex items-center justify-center'>
+                    Minimizar
+                    <FaRegWindowMinimize className='-mt-2'/>
+                </span>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+              className={"bg-white "+(toqgle?"hidden":"block")+" dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"}
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+               
+             <div>
+                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Informações da Turma
               </h3>
               
@@ -723,6 +775,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                   <p className="text-gray-900 dark:text-white text-sm">{turma.descricao}</p>
                 </div>
               )}
+             </div>
             </motion.div>
 
             {/* Próximas Aulas */}
@@ -730,7 +783,7 @@ const handleExcluirHorario = async (horarioId: string) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+              className={"bg-white "+(toqgle?"hidden":"block") +" transition-all dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"}
             >
              <div className="flex items-center justify-between">
                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -759,6 +812,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                 turmaId={turma.id}
                 title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
               />
+              
               <div className="space-y-3">
                 {turma.horarios.map((horario, index) => (
                   <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -787,6 +841,7 @@ const handleExcluirHorario = async (horarioId: string) => {
           </div>
         </div>
       </div>
+      <StudentModal loadTurmaDetails={loadTurmaDetails} alunoSelecionado={alunoSelecionado} setAlunoSelecionado={setAlunoSelecionado} />
     </div>
   );
 };

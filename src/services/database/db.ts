@@ -62,7 +62,7 @@ class EduGestorDatabase extends Dexie {
   syncQueue!: Table<SyncQueueItem, number>;
   instituicao!: Table<Instituicao, string>;
   notificacao!: Table<Notificacao, string>;
-  avaliacao!: Table<Avaliacao,string>
+  avaliacoes!: Table<Avaliacao,string>
   profiles!: Table<UserProfile, string>;
 
   constructor() {
@@ -71,9 +71,9 @@ class EduGestorDatabase extends Dexie {
     this.version(3).stores({
       // 🔥 Agora sua IDE vai entender ESTA estrutura
       alunos: '++id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted',
-      avaliacao:'++id,aluno_id,turma_id,disciplina, tipo_avaliacao, periodo, deleted, sync_status',
+      avaliacoes:'++id,aluno_id,turma_id,disciplina, tipo_avaliacao, periodo, deleted, sync_status',
       turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
-      cursos: '++id, nome,ativo,vagas, sync_status, deleted, [sync_status+deleted]',
+      cursos: '++id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted, [sync_status+deleted]',
       turma_horarios: '++id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana]',
       transacoes: '++id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
       propina: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
@@ -182,7 +182,7 @@ export const syncDatabase = {
   // Estimar tamanho do banco
   async getDatabaseSize() {
     try {
-      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacao'];
+      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacoes'];
       let total = 0;
       
       for (const tableName of tables) {

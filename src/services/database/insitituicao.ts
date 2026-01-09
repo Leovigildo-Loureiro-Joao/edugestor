@@ -1,12 +1,14 @@
 import db from "./db";
 import { Instituicao } from "../../types";
+import { profileService } from "./profileService";
 
 export const instituicaoService = {
   // ============ OBTER CONFIGURAÇÃO ============
   async getConfig(): Promise<Instituicao> {
     try {
       // Sempre usar ID fixo '1' para a instituição principal
-      const instituicao = await db.instituicao.get(1);
+      const profile=await profileService.getLocalProfile()
+      const instituicao = await db.instituicao.get(profile.instituicao_id);
       
       if (!instituicao || instituicao.deleted) {
         // Se não existir, criar configuração padrão minimalista
@@ -39,6 +41,7 @@ export const instituicaoService = {
         valor_cartao: existingConfig?.valor_cartao || 0,
         valor_confirmacao: existingConfig?.valor_confirmacao || 0,
         valor_matricula: existingConfig?.valor_matricula || 0,
+        
         
         // Aplicar atualizações
         ...config,

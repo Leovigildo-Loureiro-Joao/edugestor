@@ -1,18 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from 'framer-motion';
 
-  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
-
+  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend,funcion}) => {
     const colorClasses = {
-        blue: { bg: 'bg-white dark:bg-gray-800', iconBg: 'bg-blue-100', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
-        green: { bg: 'bg-white dark:bg-gray-800', iconBg: 'bg-green-100', text: 'text-green-600', value: 'text-green-600' },
-        red: { bg: 'bg-white dark:bg-gray-800', iconBg: 'bg-red-100', text: 'text-red-600', value: 'text-red-600' },
-        purple: { bg: 'bg-white dark:bg-gray-800', iconBg: 'bg-purple-100', text: 'text-purple-600', value: 'text-purple-600' }
+        blue: { bg: 'bg-white dark:bg-gray-800',bordBg:'bg-blue-500', iconBg: 'bg-blue-100', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
+        green: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-green-500',iconBg: 'bg-green-100', text: 'text-green-600', value: 'text-green-600' },
+        red: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-red-500',iconBg: 'bg-red-100', text: 'text-red-600', value: 'text-red-600' },
+        purple: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-purple-300',iconBg: 'bg-purple-100', text: 'text-purple-600', value: 'text-purple-600' },
     };
 
-    const colors = colorClasses[color] || colorClasses.blue;
-
+    const colors= colorClasses[color] || colorClasses.blue;
+    const [borda,setBorda] =useState(false)
     return (
-        <div className={`${colors.bg}  rounded-xl  p-5 shadow-md transition-shadow`}>
+        <motion.div 
+        onClick={()=>{funcion();setBorda(!borda);}}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.05, boxShadow: '0 8px 15px rgba(0, 0, 0, 0.1)',transition: { duration: 0.3 } }}
+        className={`${colors.bg}  rounded-xl cursor-pointer  shadow-md transition-shadow flex `}>
+            <div className={`w-2 ${borda?colors.bordBg:colors.bg} transition-colors rounded-l-md h-full`}>
+
+            </div>
+        <motion.div 
+
+        className={`${colors.bg}  p-5 w-full`}>
+       
         <div className="flex items-center justify-between">
             <div className="flex-1">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-50">{title}</p>
@@ -25,7 +37,8 @@ import { useEffect, useRef, useState } from "react";
             <Icon className={`${colors.text} text-lg`} />
             </div>
         </div>
-        </div>
+       </motion.div>
+        </motion.div>
     );
 };
 

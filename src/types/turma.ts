@@ -11,8 +11,8 @@ export interface Turma extends BaseEntity{
   turno: 'manhã' | 'tarde' | 'noite';
   estado: 'ativa' | 'inativa' | 'concluida';
   descricao?: string;
-  vagas_disponiveis?: number;
   curso_nome?:string;
+  qtd?:number
 }
 
 export interface TurmaCompleta extends Turma {
@@ -35,7 +35,7 @@ export interface HorarioAula {
 }
 
 export type TurmaFormData = Omit<Turma, 
-  'id' | 'created_at'|'cursos'
+  'id' | 'created_at'|'cursos'|'sync_status'
 >;
 
 export interface AlunoDesempenho {

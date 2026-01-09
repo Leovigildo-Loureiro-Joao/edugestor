@@ -1,8 +1,13 @@
 // services/database/cursoService.ts
+import { alunosService } from ".";
 import { Course, CourseFormData } from "../../types/curso";
+import { UserProfile } from "../../types/profile";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { supabase } from "../database/db";
 import db from "./db";
+import { profileService } from "./profileService";
 import { syncManager } from "./syncManager";
+import { turmaService } from "./turmas";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -48,10 +53,15 @@ export const cursosService = {
   async getCourse(): Promise<Course[]> {
     try {
       console.log('📋 Buscando cursos...');
-      
-      const todosCursos = await db.cursos.toArray();
-      const todasTurmas = await db.turmas.toArray();
-      const todosAlunos = await db.alunos.toArray();
+
+
+      const todosCursos = await db.cursos
+                          .where("instituicao_id")
+                          .equals(instituicaoIdValue()||"")
+                          .and(curso=> !curso.deleted)
+                          .toArray();
+      const todasTurmas = await turmaService.getTurmas();
+      const todosAlunos = await alunosService.getAllStudents();
       // Filtrar os não deletados
       const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
       const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);

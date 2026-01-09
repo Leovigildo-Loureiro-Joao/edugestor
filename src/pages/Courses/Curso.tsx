@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPlus, FiEdit, FiTrash2, FiBook, FiSearch, FiClock, FiUsers } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiBook, FiSearch, FiClock, FiUsers, FiBookOpen } from 'react-icons/fi';
 import { Select } from '../../components/ui/Select';
 import { FaMoneyBillWave, FaChalkboardUser } from 'react-icons/fa6';
 import { StatCard } from '../../components/students/StatCard';
@@ -17,8 +17,8 @@ export const Courses = () => {
   const [cursos, setCursos] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroProfessor, setFiltroProfessor] = useState('Todos Professores');
   const [filtroStatus, setFiltroStatus] = useState('Todos Status');
+  const [filtroDisciplina, setFiltroDisciplina] = useState<string>('Todas disciplinas');
   const nav = useNavigate();
 
   const abrirCurso = (cursoId: string) => {
@@ -26,13 +26,20 @@ export const Courses = () => {
     nav(`/cursos/${cursoId}`);
   };
 
-  const { status } = useMemo(() => {
+const { status, disciplinas } = useMemo(() => {
     const stats = ['Todos Status', 'Ativos', 'Inativos'];
     
+    const todasDisciplinas = cursos.flatMap(curso => 
+        curso.disciplinas.filter(disciplina => disciplina && disciplina.trim() !== "")
+    );
+    
+    const disciplinasUnicas = ['Todas disciplinas', ...new Set(todasDisciplinas)];
+    
     return {
-      status: stats
+        status: stats,
+        disciplinas: disciplinasUnicas
     };
-  }, [cursos]);
+}, [cursos]); 
 
 
   useEffect(() => {
@@ -40,12 +47,12 @@ export const Courses = () => {
   }, []);
 
   function Reload(){
-
+  localStorage.setItem("last_rota","/cursos")
   const loadCursos = async () => {
     try {
       setLoading(true);
       const cursosData = await cursosService.getCourse();
-        setCursos(cursosData||[]);
+      setCursos(cursosData||[]);
        
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
@@ -65,8 +72,10 @@ export const Courses = () => {
       const matchesStatus = filtroStatus === 'Todos Status' || 
                           (filtroStatus === 'Ativos' && curso.ativo) ||
                           (filtroStatus === 'Inativos' && !curso.ativo);
-
-      return matchesSearch  && matchesStatus;
+      const matchesDisciplinas = filtroDisciplina === 'Todas disciplinas' || curso.disciplinas.includes(filtroDisciplina)
+      
+      
+      return matchesSearch  && matchesStatus && matchesDisciplinas;
     });
 
     const total = cursosFiltrados.length;
@@ -86,7 +95,7 @@ export const Courses = () => {
       taxaOcupacao,
       receitaPotencial
     };
-  }, [cursos, searchTerm, filtroProfessor, filtroStatus]);
+  }, [cursos, searchTerm, filtroDisciplina, filtroStatus]);
 
   const filteredCourses = cursos.filter(curso => {
     const matchesSearch = curso.nome?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -96,7 +105,9 @@ export const Courses = () => {
                         (filtroStatus === 'Ativos' && curso.ativo) ||
                         (filtroStatus === 'Inativos' && !curso.ativo);
 
-    return matchesSearch  && matchesStatus;
+  const matchesDisciplinas = filtroDisciplina === 'Todas disciplinas' || curso.disciplinas.includes(filtroDisciplina)
+
+    return matchesSearch  && matchesStatus && matchesDisciplinas;
   });
 
   const deleteCurso = (cursoId: string) => {
@@ -114,7 +125,7 @@ export const Courses = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Cabeçalho com Busca Integrada */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -129,7 +140,7 @@ export const Courses = () => {
           {/* Botão Novo Curso */}
           <Link
             to="/cursos/novo"
-            className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-md hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
+            className=" bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-4 py-2.5 transition-all rounded-md hover:bg-primary-700 flex items-center justify-center space-x-2 whitespace-nowrap"
           >
             <FiPlus size={18} />
             <span>Novo Curso</span>
@@ -158,6 +169,14 @@ export const Courses = () => {
               value={filtroStatus}
             />
           </div>
+           <div className="flex-1">
+            <SelectTyped 
+              vect={disciplinas} 
+              icon={FiBookOpen} 
+              onChange={setFiltroDisciplina}
+              value={filtroDisciplina}
+            />
+          </div>
         </div>
       </div>
 
@@ -170,6 +189,7 @@ export const Courses = () => {
           icon={FiBook}
           color="blue"
           trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
+          funcion={()=>null}
         />
         
         <StatCard 
@@ -179,6 +199,7 @@ export const Courses = () => {
           icon={FiUsers}
           color="green"
           trend={estatisticas.totalInscritos > 0 ? 'positive' : 'neutral'}
+          funcion={()=>null}
         />
         
         <StatCard 
@@ -188,6 +209,7 @@ export const Courses = () => {
           icon={FaChalkboardTeacher}
           color="purple"
           trend={estatisticas.ativos > 0 ? 'positive' : 'neutral'}
+          funcion={()=>null}
         />
         
         <StatCard 
@@ -197,11 +219,12 @@ export const Courses = () => {
           icon={FaMoneyBillWave}
           color="green"
           trend={estatisticas.receitaPotencial > 0 ? 'positive' : 'neutral'}
+          funcion={()=>null}
         />
       </div>
 
       {/* Indicador de Filtros Ativos */}
-      {(searchTerm || filtroProfessor !== 'Todos Professores' || filtroStatus !== 'Todos Status') && (
+      {(searchTerm || filtroDisciplina !== 'Todas disciplinas' || filtroStatus !== 'Todos Status') && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900/20 dark:border-blue-800">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center flex-wrap gap-2">
@@ -217,11 +240,12 @@ export const Courses = () => {
                   </button>
                 </span>
               )}
-              {filtroProfessor !== 'Todos Professores' && (
+              {filtroDisciplina !== 'Todas disciplinas' && (
                 <span className="inline-flex items-center bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-sm">
-                  👨‍🏫 {filtroProfessor}
+                  <FiBookOpen className='mr-2'/> 
+                  { filtroDisciplina}
                   <button 
-                    onClick={() => setFiltroProfessor('Todos Professores')}
+                    onClick={() => setFiltroDisciplina('Todas disciplinas')}
                     className="ml-2 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
                   >
                     ×
@@ -243,7 +267,7 @@ export const Courses = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
-                setFiltroProfessor('Todos Professores');
+                setFiltroDisciplina('Todas disciplinas');
                 setFiltroStatus('Todos Status');
               }}
               className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium whitespace-nowrap"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiPlus, FiEdit, FiTrash2, FiUsers, FiBook, FiClock, FiSearch } from 'react-icons/fi';
@@ -6,6 +6,10 @@ import { turmaService } from '../../services/database';
 import { Select } from '../../components/ui/Select';
 import {Turma} from "../../types/turma"
 import { SelectTyped } from '../../components/students/StudentForm';
+import { FaGraduationCap } from 'react-icons/fa';
+import { profileService } from '../../services/database/profileService';
+import { UserProfile } from '../../types/profile';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 // Definição das interfaces
 
@@ -16,10 +20,6 @@ interface Estatisticas {
   noite: number;
 }
 
-interface TurmasFiltros {
-  turno: string;
-  curso: string;
-}
 
 const Turmas: React.FC = () => {
   const [turmas, setTurmas] = useState<Turma[]>([]);
@@ -27,6 +27,9 @@ const Turmas: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filtroTurno, setFiltroTurno] = useState<string>('Todos Turnos');
   const [filtroCurso, setFiltroCurso] = useState<string>('Todos Cursos');
+  const [filtroAnoLectivo,setFiltroAnoLectivo] = useState('Todos ano lectivos');
+  const anoLectivo = ["Todos ano lectivos","2024-2025","2025-2026","2027-2028","2028-2029","2030-2031"];;
+
   const nav = useNavigate();
 
   useEffect(() => {
@@ -39,7 +42,8 @@ const Turmas: React.FC = () => {
       const loadTurmas = async (): Promise<void> => {
         try {
           setLoading(true);
-          const turmasData: Turma [] = await turmaService.getTurmas();
+          const turmasData: Turma [] = await turmaService.getTurmas(instituicaoIdValue()||"");
+          
           setTurmas(turmasData);
         } catch (error) {
           console.error('Erro ao carregar turmas:', error);
@@ -50,6 +54,21 @@ const Turmas: React.FC = () => {
       loadTurmas();
     }
  
+
+    const {cursosInst}  = useMemo(() => {
+        // Extrai valores únicos, lidando com undefined
+        const cursosSet = new Set<string>();
+        turmas.forEach(curso => {
+          if (curso.curso_nome) {
+            cursosSet.add(curso.curso_nome);
+          }
+        });
+        
+        return {
+          cursosInst: ['Todos Cursos', ...Array.from(cursosSet)],
+
+        };
+      }, [turmas]);
 
  
 
@@ -74,8 +93,9 @@ const Turmas: React.FC = () => {
     const matchesSearch = turma.nome_turma?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTurno = filtroTurno === 'Todos Turnos' || turma.turno === filtroTurno;
     const matchesCurso = filtroCurso === 'Todos Cursos' || turma.curso_nome === filtroCurso;
+    const matchesAnoLectivo = filtroAnoLectivo === 'Todos ano lectivos' || turma.ano_lectivo === filtroAnoLectivo;
 
-    return matchesSearch && matchesTurno && matchesCurso;
+    return matchesSearch && matchesTurno && matchesCurso&&matchesAnoLectivo;
   });
 
   const estatisticas: Estatisticas = {
@@ -94,7 +114,7 @@ const Turmas: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 dark:bg-gray-900 min-h-screen p-4">
+    <div className="space-y-6 p-4 dark:bg-gray-900 min-h-screen ">
       {/* Cabeçalho */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -103,34 +123,33 @@ const Turmas: React.FC = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Busca */}
-          <div className="relative flex-1 min-w-[250px]">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Buscar por nome da turma..."
-              value={searchTerm}
-              onChange={(e:any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-            />
-          </div>
-          
-          {/* Botão Nova Turma */}
-          <Link
-            to="/turmas/nova"
-            className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 dark:bg-primary-500 text-white px-4 py-2.5 rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 flex items-center justify-center space-x-2 whitespace-nowrap transition-colors"
-          >
-            <FiPlus size={18} />
-            <span>Nova Turma</span>
-          </Link>
+            {/* Busca */}
+            <div className="relative flex-1 min-w-[300px]">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+              />
+            </div>
+            
+
+            <Link
+              to="/turmas/nova"
+              className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
+            >
+              <FiPlus size={18} />
+              <span>Nova Turma</span>
+            </Link>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/50">
+      <div className="flex flex-col sm:flex-row gap-4 p-4  rounded-lg">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Turno</label>
             <SelectTyped 
               vect={['Todos Turnos', 'Manhã', 'Tarde', 'Noite']} 
               icon={FiClock} 
@@ -139,19 +158,28 @@ const Turmas: React.FC = () => {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Curso</label>
             <SelectTyped 
-              vect={['Todos Cursos', 'Alfabetização', 'Reforço', 'Iniciação', 'Inglês', 'Caligrafia']} 
+              vect={[...cursosInst]} 
               icon={FiBook} 
               onChange={setFiltroCurso}
               darkMode
             />
           </div>
+           <div className="flex-1">
+
+            <SelectTyped 
+              vect={anoLectivo} 
+              icon={FaGraduationCap} 
+              onChange={setFiltroAnoLectivo}
+              value={filtroAnoLectivo}
+            />
+          </div>
+           
         </div>
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm dark:shadow-gray-900/50">
           <div className="flex items-center justify-between">
             <div>
@@ -222,7 +250,10 @@ const Turmas: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                   Capacidade
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                 <th className="px-6 py-3 whitespace-nowrap text-left text-xs font-medium text-white uppercase tracking-wider">
+                  Qtd Alunos
+                </th>
+                <th className="px-6 py-3 whitespace-nowrap text-left text-xs font-medium text-white uppercase tracking-wider">
                   Ano Lectivo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
@@ -272,6 +303,12 @@ const Turmas: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <FiUsers className="text-gray-400 dark:text-gray-500" />
                       <span>{turma.capacidade_maxima} alunos</span>
+                    </div>
+                  </td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    <div className="flex items-center space-x-2">
+                      <FiUsers className="text-gray-400 dark:text-gray-500" />
+                      <span>{turma.qtd} alunos</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">

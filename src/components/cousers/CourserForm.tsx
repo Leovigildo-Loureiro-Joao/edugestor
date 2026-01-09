@@ -6,6 +6,8 @@ import { FiSave, FiArrowLeft, FiPlus, FiX, FiBook, FiClock, FiDollarSign, FiUser
 import { Select } from '../../components/ui/Select';
 import { CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
+import { SelectTyped } from '../students/StudentForm';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 
 
@@ -23,7 +25,8 @@ export const CourseForm = () => {
     disciplinas: [],
     vagas: 20,
     descricao: '',
-    ativo: true
+    ativo: true,
+    instituicao_id:instituicaoIdValue()||""
   });
 
   // Disciplinas pré-definidas disponíveis
@@ -44,8 +47,8 @@ export const CourseForm = () => {
   const loadCourseData = async () => {
     try {
 
-      const courseData = await cursosService.getCourseId(id);
-      setFormData(courseData);  
+      const courseData = await cursosService.getCourseId(id||"");
+      setFormData(courseData as CourseFormData);  
        console.log(courseData)
     } catch (error) {
       console.error('Erro ao carregar curso:', error);
@@ -55,14 +58,14 @@ export const CourseForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    
     try {
-      if (isEditing) {
-        // await cursosService.updateCourse(id, formData);
+      if (isEditing) {;
         console.log('Curso atualizado:', formData);
+        cursosService.updateCourse(id||"",formData)
       } else {
-        // await cursosService.createCourse(formData);
         console.log('Curso criado:', formData);
+        cursosService.create(formData)
       }
       
       navigate('/cursos');
@@ -174,7 +177,7 @@ export const CourseForm = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Duração *
                   </label>
-                  <Select
+                  <SelectTyped
                     vect={duracaoOptions}
                     value={formData.duracao}
                     onChange={(value: string) => setFormData(prev => ({ ...prev, duracao: value }))}
@@ -326,7 +329,7 @@ export const CourseForm = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading || !formData.nome || !formData.professor || formData.disciplinas.length === 0}
+                disabled={loading || !formData.nome || !formData.preco || formData.vagas<0 ||formData.disciplinas.length === 0}
                 className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiSave size={18} />

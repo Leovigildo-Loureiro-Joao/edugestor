@@ -133,6 +133,7 @@ export const AlunosTurmaChart = () => {
               data={data}
               cx="50%"
               cy="50%"
+              paddingAngle={2}
               labelLine={false}
               label={({ name, percent }) => 
                 percent > 0.05 ? `${name}\n${(percent * 100).toFixed(0)}%` : ''

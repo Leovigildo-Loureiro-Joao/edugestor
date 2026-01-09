@@ -12,14 +12,17 @@ import {
 } from "../../types/config";
 import { instituicaoService } from "./insitituicao";
 import { generateUniqueId } from "../../utils/idGenarator";
+import { profileService } from "./profileService";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 
 export const configService = {
   // ============ BUSCAR TODAS AS CONFIGURAÇÕES ============
   async getAllConfigOnly(): Promise<SystemConfig[]> {
     try {
       const configs = await db.system_config
-        .where('deleted')
-        .equals(false)
+        .where('instituicao_id')
+        .equals(instituicaoIdValue()||"")
+        .and(config=> !config.deleted)
         .toArray();
       
       return configs || [];
@@ -85,8 +88,9 @@ export const configService = {
   async getConfigByCategory(category: string): Promise<SystemConfig[]> {
     try {
       const configs = await db.system_config
-        .where('[category+deleted]')
-        .equals([category, false])
+        .where('category')
+        .equals(category)
+        .and(config=> !config.deleted && instituicaoIdValue()==config.instituicao_id)
         .toArray();
       
       return configs || [];
@@ -240,7 +244,8 @@ export const configService = {
           value: academicConfig.tiposAvaliacao,
           data_type: 'array',
           description: 'Tipos de avaliação disponíveis',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'academic',
@@ -248,7 +253,8 @@ export const configService = {
           value: academicConfig.maxFaltasPermitidas,
           data_type: 'number',
           description: 'Máximo de faltas permitidas por aluno',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'academic',
@@ -256,7 +262,8 @@ export const configService = {
           value: academicConfig.horario,
           data_type: 'object',
           description: 'Horário de funcionamento da instituição',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'academic',
@@ -264,7 +271,8 @@ export const configService = {
           value: academicConfig.permitirMatriculas,
           data_type: 'boolean',
           description: 'Permitir novas matrículas',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'academic',
@@ -272,7 +280,8 @@ export const configService = {
           value: academicConfig.sistemaAvaliacao,
           data_type: 'object',
           description: 'Sistema de avaliação',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'academic',
@@ -280,7 +289,8 @@ export const configService = {
           value: academicConfig.maxAlunosTurma,
           data_type: 'number',
           description: 'Número máximo de estudantes por turma',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         })
       ];
 
@@ -360,7 +370,8 @@ export const configService = {
           value: config.valorPropina,
           data_type: 'number',
           description: 'Valor da propina padrão',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -368,7 +379,8 @@ export const configService = {
           value: config.diaVencimento,
           data_type: 'number',
           description: 'Dia de vencimento dos pagamentos',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -376,7 +388,8 @@ export const configService = {
           value: config.pagamentoPrepago,
           data_type: 'boolean',
           description: 'O pagamento é prepago',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -384,7 +397,8 @@ export const configService = {
           value: config.mesesPagamento,
           data_type: 'array',
           description: 'Meses que requerem pagamento',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -392,7 +406,8 @@ export const configService = {
           value: config.permitePagamentoAntecipado,
           data_type: 'boolean',
           description: 'Permitir pagamento antecipado',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -400,7 +415,8 @@ export const configService = {
           value: config.multaPagamento,
           data_type: 'boolean',
           description: 'Aplicar multa automaticamente',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -408,7 +424,8 @@ export const configService = {
           value: config.multaAtraso,
           data_type: 'number',
           description: 'Valor da multa por atraso',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         }),
         this.setConfig({
           category: 'finance',
@@ -416,7 +433,8 @@ export const configService = {
           value: config.diasParaMulta,
           data_type: 'number',
           description: 'Dias após vencimento para aplicar multa',
-          updated_by: 'user'
+          updated_by: 'user',
+          instituicao_id:instituicaoIdValue()||""
         })
       ];
 
@@ -440,9 +458,9 @@ export const configService = {
         console.log('✅ Configurações já existem, pulando inicialização...');
         return;
       }
-
       const defaultConfigs = [
         // Configurações Acadêmicas
+        
         {
           category: 'academic',
           key_name: 'assessment_types',
@@ -453,7 +471,8 @@ export const configService = {
           ],
           data_type: 'array',
           description: 'Tipos de avaliação disponíveis',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -461,7 +480,8 @@ export const configService = {
           value: 200,
           data_type: 'number',
           description: 'Máximo de faltas permitidas por aluno',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -469,7 +489,8 @@ export const configService = {
           value: { hora_inicial: "08:00", hora_final: "17:00" },
           data_type: 'object',
           description: 'Horário de funcionamento da instituição',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -477,7 +498,8 @@ export const configService = {
           value: true,
           data_type: 'boolean',
           description: 'Permitir novas matrículas',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -485,7 +507,8 @@ export const configService = {
           value: ['Manhã', 'Tarde', 'Noite'],
           data_type: 'array',
           description: 'Período Letivo Padrão',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -493,7 +516,8 @@ export const configService = {
           value: 45,
           data_type: 'number',
           description: 'Número máximo de estudantes por turma',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -501,7 +525,8 @@ export const configService = {
           value: { min_approval: 10, scale: 20 },
           data_type: 'object',
           description: 'Sistema de avaliação',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -509,7 +534,8 @@ export const configService = {
           value: ['1º Trimestre', '2º Trimestre', '3º Trimestre'],
           data_type: 'array',
           description: 'Períodos académicos',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'academic',
@@ -517,7 +543,8 @@ export const configService = {
           value: new Date().getFullYear().toString(),
           data_type: 'string',
           description: 'Ano letivo atual',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         // Configurações Financeiras
         {
@@ -526,7 +553,8 @@ export const configService = {
           value: 2500,
           data_type: 'number',
           description: 'Valor padrão da propina mensal',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -534,7 +562,8 @@ export const configService = {
           value: false,
           data_type: 'boolean',
           description: 'O pagamento é prepago',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -542,7 +571,8 @@ export const configService = {
           value: 10,
           data_type: 'number',
           description: 'Dia de vencimento dos pagamentos (1-31)',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -553,7 +583,8 @@ export const configService = {
           ],
           data_type: 'array',
           description: 'Meses que requerem pagamento',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -561,7 +592,8 @@ export const configService = {
           value: true,
           data_type: 'boolean',
           description: 'Permitir pagamento antecipado',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -569,7 +601,8 @@ export const configService = {
           value: false,
           data_type: 'boolean',
           description: 'Aplicar multa automaticamente',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -577,7 +610,8 @@ export const configService = {
           value: 500,
           data_type: 'number',
           description: 'Valor da multa por atraso',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'finance',
@@ -585,7 +619,8 @@ export const configService = {
           value: 5,
           data_type: 'number',
           description: 'Dias após vencimento para aplicar multa',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         // Configurações Gerais
         {
@@ -594,7 +629,8 @@ export const configService = {
           value: 'CETE - Centro de Explicacao Tia Esperanca',
           data_type: 'string',
           description: 'Nome da instituição',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'general',
@@ -602,7 +638,8 @@ export const configService = {
           value: 'AOA',
           data_type: 'string',
           description: 'Moeda padrão',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'general',
@@ -610,7 +647,8 @@ export const configService = {
           value: '',
           data_type: 'string',
           description: 'Telefone da escola',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'general',
@@ -618,7 +656,8 @@ export const configService = {
           value: '',
           data_type: 'string',
           description: 'Email da escola',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         },
         {
           category: 'general',
@@ -626,7 +665,8 @@ export const configService = {
           value: '',
           data_type: 'string',
           description: 'Endereço da escola',
-          updated_by: 'system'
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
         }
       ];
 

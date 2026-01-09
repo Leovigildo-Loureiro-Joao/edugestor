@@ -3,18 +3,17 @@ import { FaChevronDown } from "react-icons/fa6"
 import { RxPerson } from "react-icons/rx"
 
 export const Select = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
+    value==""?vect[0]:value
     return <SelectChevron vect={vect} icon={Icon} onChange={onChange} value={value}/>
 }
 
 const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
     const dropdownRef = useRef(null)
     
-    // 🔄 Converte strings para objetos se necessário
     const normalizedVect = vect.map(item => 
         typeof item === 'string' ? { value: item, label: item } : item
     )
-    
-    // 🔄 Encontra o item selecionado baseado no value
+
     const findSelectedItem = (val) => {
         return normalizedVect.find(item => item.value === val) || normalizedVect[0]
     }
@@ -70,7 +69,7 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) =>
 
     return (
         <div 
-            className="flex flex-col max-w-sm relative min-w-[200px]" 
+            className="flex flex-col relative min-w-[200px] w-full" 
             ref={dropdownRef}
             onClick={blockEvent}
             onMouseDown={blockEvent}
