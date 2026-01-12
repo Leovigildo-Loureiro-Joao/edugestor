@@ -4,7 +4,7 @@ import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
 import { syncManager } from './syncManager';
 import { Turma } from '../../types/turma';
-import { turmaService } from '.';
+import { frequenciaService, turmaService } from '.';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -63,13 +63,14 @@ export const aulaService = {
       aulasAtivas.sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
-      
+      const frequencia=await frequenciaService.getAllFrequencias()
       console.log(`✅ Encontradas ${aulasAtivas.length} aulas ativas`);
       return aulasAtivas.map((aulas)=>{
         const turma=turmaMap.get(aulas.turma_id)
         return {
           ...aulas,
-          turmas:turma
+          turmas:turma,
+          registro:frequencia.filter((f)=>f.aula_id==aulas.id)
         }
       });
     } catch (error) {
@@ -117,7 +118,7 @@ export const aulaService = {
       await db.aulas.update(id, {
         ...updates,
         updated_at,
-        sync_status: 'pending' as const
+        sync_status: 'pending' as const,
       });
 
       // Adicionar/atualizar na fila
@@ -132,7 +133,9 @@ export const aulaService = {
       console.log(`✏️ Aula ${id} marcada para atualização`);
       
       // Retornar a aula atualizada
-      return await db.aulas.get(id);
+      const aula=await db.aulas.get(id)
+      const turmas = await turmaService.getTurmaById(aula?aula.turma_id:"")
+      return {...aula,turmas};
       
     } catch (error) {
       console.error('Erro ao atualizar aula:', error);
@@ -192,9 +195,17 @@ export const aulaService = {
         .toArray();
       
       // Ordenar por data (mais recente primeiro)
-      return aulas.sort((a, b) => 
+      const turmas=await turmaService.getTurmaById(turmaId)
+
+      return (aulas.sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
-      );
+      )).map((a)=> {
+          return {
+            ...a,
+            turmas:turmas
+          }
+      })
+      ;
 
     } catch (error) {
       console.error('❌ Erro ao buscar aulas por turma:', error);
@@ -358,8 +369,8 @@ export const aulaService = {
       statusV.forEach(v=> {
         porStatus[v]=0;
       })
-      const topTurmas: Record<string, Turma> = {};
-      const turmas= await turmaService.getTurmas()
+      const topTurmas: Turma[] = [];
+      let turmas= await turmaService.getTurmas()
       todasAulas.forEach(aula => {
         // Por turma
         const turmaKey = aula.turma_id || 'sem_turma';
@@ -373,13 +384,13 @@ export const aulaService = {
         const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         porMes[mesKey] = (porMes[mesKey] || 0) + 1;
       });
-      
+      turmas= turmas.sort((a,b)=> a.aulas?.length>b.aulas?.length);
       return {
         total: todasAulas.length,
         porTurma,
         porMes,
         porStatus,
-        topTurmas,
+        topTurmas:turmas,
         ultimaAtualizacao: new Date().toISOString()
       };
     } catch (error) {

@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react';
 import { FiCalendar, FiClock, FiUsers, FiSave, FiEdit, FiCheck, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { Aula } from '../../types/aula';
+import { Student } from '../../types';
 
-export const AulaFrequenciaItem = ({ aula, alunos, onRegistrarFrequencia, isExpandida, onToggleExpandir }) => {
+export const ModalFrequecia = (
+  { aula, alunos, onRegistrarFrequencia, isExpandida, onToggleExpandir }:{
+    aula:Aula, 
+    alunos:Student[], 
+    onRegistrarFrequencia:any, 
+    isExpandida:boolean, 
+    onToggleExpandir:()=>void
+  }) => {
   const [registros, setRegistros] = useState({});
   const [enviando, setEnviando] = useState(false);
 
@@ -14,7 +23,7 @@ export const AulaFrequenciaItem = ({ aula, alunos, onRegistrarFrequencia, isExpa
     setRegistros(registrosIniciais);
   }, [alunos]);
 
-  const togglePresenca = (alunoId) => {
+  const togglePresenca = (alunoId:string) => {
     setRegistros(prev => ({
       ...prev,
       [alunoId]: !prev[alunoId]
@@ -41,6 +50,7 @@ const handleRegistrar = async () => {
   const totalAlunos = alunos.length;
 
   return (
+    
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Cabeçalho da Aula */}
       <div className="p-4 border-b border-gray-200">

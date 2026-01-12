@@ -37,7 +37,7 @@ export const AulaForm = ({ aula, turmas, onSubmit, onCancel, loading = false }: 
   const [disciplinas, setDisciplinas] = useState<string[]>(['Selecione uma disciplina']);
   const [novoObjetivo, setNovoObjetivo] = useState('');
   const [novoRecurso, setNovoRecurso] = useState('');
-  const [turmaSelecionada, setTurmaSelecionada] = useState<any>(null);
+  const [turmaSelecionada, setTurmaSelecionada] = useState<any>(aula?aula.turmas:[]);
 
   // Inicializar formData quando aula muda
   useEffect(() => {
@@ -56,9 +56,10 @@ export const AulaForm = ({ aula, turmas, onSubmit, onCancel, loading = false }: 
         nivel_dificuldade: aula.nivel_dificuldade || 'medio',
         observacoes_professor: aula.observacoes_professor || ''
       });
-
       // Carregar disciplinas se já houver turma
+      
       if (aula.turma_id) {
+       
         carregarDisciplinas(aula.turma_id);
       }
     } else {

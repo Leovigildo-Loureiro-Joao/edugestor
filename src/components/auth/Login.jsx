@@ -231,7 +231,7 @@ const Login = () => {
           className="lg:w-1/2 p-6 lg:p-8 flex flex-col justify-center"
         >
           <div className='flex flex-col items-center justify-center mb-6'>
-            <img src={logo} className='w-16 h-16 lg:w-20 lg:h-20 mb-4' alt="EduGestor Logo" />
+            <img src={logo} className='w-24 h-24 lg:w-32 lg:h-32 mb-4' alt="EduGestor Logo" />
             <div className="text-center">
               <h1 className="text-2xl lg:text-3xl font-bold text-primary-600">EduGestor</h1>
               <p className="text-gray-600 mt-2 text-sm lg:text-base">

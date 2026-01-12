@@ -66,7 +66,8 @@ export const turmaService = {
       const turmasAtivas = todasTurmas.filter(turma =>  !turma.deleted);
       const alunos=await db.alunos.toArray();
       const cursosMap = new Map(todosCursos.map(c => [c.id, c]));
-      // Ordenar por nome
+      const aulasDb=await db.aulas.toArray()
+                        // Ordenar por nome
       turmasAtivas.sort((a, b) => 
         (a.nome_turma || '').localeCompare(b.nome_turma || '')
       );
@@ -75,11 +76,12 @@ export const turmaService = {
       return  (turmasAtivas.map(  turma=>{
          const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
          const aluno= alunos.filter((aluno)=> aluno.turma_id==turma.id&&!aluno.deleted).length
-         
+         const aulas=aulasDb.filter(aula=> !aula.deleted && aula.turma_id==turma.id)
          return {
           ...turma,
           curso_nome:curso?.nome,
-          qtd:aluno
+          qtd:aluno,
+          aulas
          
          }
       }))
@@ -89,7 +91,6 @@ export const turmaService = {
     }
   },
 
-  // ✅ Buscar turma por ID
   async getTurmaById(id: string): Promise<Turma | undefined> {
     try {
       const turma = await db.turmas.get(id);
@@ -108,7 +109,6 @@ export const turmaService = {
     }
   },
 
-  // ✅ Buscar turma por nome
   async getTurmaByNome(nome: string): Promise<Turma | undefined> {
     try {
       const turmas = await db.turmas
@@ -124,16 +124,13 @@ export const turmaService = {
     }
   },
 
-  // ✅ Obter ID da turma (busca local + remota)
   async getId(nome: string): Promise<string | null> {
     try {
-      // Primeiro busca localmente
       const turmaLocal = await this.getTurmaByNome(nome);
       if (turmaLocal) {
         return turmaLocal.id;
       }
       
-      // Se não encontrou localmente e está online, busca no Supabase
       if (navigator.onLine) {
         const { data } = await supabase
           .from("turmas")
@@ -153,7 +150,6 @@ export const turmaService = {
     }
   },
 
-  // ✅ Buscar turma por ID (com suporte offline)
   async findById(id: string): Promise<Turma | null> {
     try {
       const turma = await this.getTurmaById(id);
@@ -161,7 +157,6 @@ export const turmaService = {
         return turma;
       }
       
-      // Se não encontrou localmente e está online, busca no Supabase
       if (navigator.onLine) {
         const { data, error } = await supabase
           .from("turmas")
@@ -198,7 +193,8 @@ export const turmaService = {
         await db.turmas.update(id, { 
           deleted: true, 
           sync_status: 'pending_delete',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          
         });
         
         await db.syncQueue.add({

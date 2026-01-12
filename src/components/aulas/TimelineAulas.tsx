@@ -20,27 +20,13 @@ import {
 } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek, isSameWeek, parseISO, eachWeekOfInterval, subWeeks, addWeeks } from 'date-fns';
 import { pt } from 'date-fns/locale';
-
-interface Aula {
-  id: string | number;
-  disciplina: string;
-  data_aula: string;
-  hora_inicio?: string;
-  hora_fim?: string;
-  tema_aula?: string;
-  turma_id: string;
-  turma_nome?: string;
-  professor?: string;
-  sala?: string;
-  status: 'ministrada' | 'planeada' | 'cancelada' | 'adiada';
-  cor?: string;
-}
+import { Aula } from '../../types/aula';
 
 interface TimelineWindowsProps {
   aulas: Aula[];
   onAulaClick?: (aula: Aula) => void;
   onEditClick?: (aula: Aula) => void;
-  onDeleteClick?: (aulaId: string | number) => void;
+  onDeleteClick?: (aulaId: string) => void;
   showActions?: boolean;
 }
 
@@ -220,7 +206,7 @@ export const TimelineWindows = ({
   }, [onEditClick]);
 
   // Função para lidar com exclusão
-  const handleDeleteClick = useCallback((aulaId: string | number, e: React.MouseEvent) => {
+  const handleDeleteClick = useCallback((aulaId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDeleteClick) {
       onDeleteClick(aulaId);

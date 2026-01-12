@@ -1,4 +1,5 @@
 import { Student } from "./aluno";
+import { Aula } from "./aula";
 import { BaseEntity } from "./base";
 
 export interface Turma extends BaseEntity{
@@ -12,7 +13,8 @@ export interface Turma extends BaseEntity{
   estado: 'ativa' | 'inativa' | 'concluida';
   descricao?: string;
   curso_nome?:string;
-  qtd?:number
+  qtd?:number,
+  aulas?:Aula[]
 }
 
 export interface TurmaCompleta extends Turma {

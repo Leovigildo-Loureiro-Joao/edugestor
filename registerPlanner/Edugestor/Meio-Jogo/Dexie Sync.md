@@ -115,12 +115,12 @@ Actualmente as diferenças são pequenas onde
 ## 📅 Próximas Jogadas
 ### Curto Prazo (Esta semana):
 - [x] Join Tables
-- [ ] View Results of the *Offline-First*
-- [ ] Fix Configs
+- [x] View Results of the *Offline-First*
+- [x] Fix Configs
 
 ### Médio Prazo (Este mês):
-- [ ] Update Database
-- [ ] Teste Alpha
+- [x] Update Database
+- [x] Teste Alpha
 
 ## 🚦 Indicadores de Progresso
 - **Indicador 1:** 70% / Coesão dos dados

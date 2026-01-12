@@ -8,6 +8,7 @@ import { avaliacaoService } from "./avaliacao";
 import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
 import { profileService } from "./profileService";
 import { turmaService } from "./turmas";
+import { frequenciaService } from "./frequenciaService";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -214,11 +215,11 @@ export const alunosService = {
    async getDesempemhoAluno(id:string):Promise<AlunoDesempenho|null>{
       const alunos=await this.getStudentById(id)
       const avaliacao=await avaliacaoService.getAvaliacoesByAluno(alunos!.id||'')
-      
+      const frenquencia=await frequenciaService.getFrequenciaAluno(alunos!.id||'')
       return alunos?{
         ...alunos,
         media:avaliacao.estatisticas.mediaGeral,
-        presenca:10,
+        presenca:frenquencia.total>0?(frenquencia.presentes*100)/frenquencia.total:0,
         ultimaAvaliacao:avaliacao.avaliacoes[avaliacao.avaliacoes.length-1]?.nota,
       }:null
     },

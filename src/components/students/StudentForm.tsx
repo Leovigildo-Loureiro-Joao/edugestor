@@ -148,6 +148,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           ...prev, 
           turma_id: primeiraTurmaId 
         }));
+       
         console.log(`🏫 Turma inicial definida: ${primeiraTurmaId} para curso ${formData.curso}`);
       }
     }
@@ -230,6 +231,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
       
       return newFormData;
     });
+    if(!formData.propina)
+    setFormData((prev:any)=> ({
+      ...prev,
+      propina:cursos.find((curs)=>curs.nome==cursoValue)?.preco
+    }))
   };
 
   // ✅ Limpar rascunho após submit bem-sucedido

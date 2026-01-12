@@ -14,13 +14,15 @@ import {
 } from 'react-icons/fi';
 import { FaChalkboardTeacher } from 'react-icons/fa';
 import { Aula } from '../../types/aula';
+import { aulaService } from '../../services/database';
 
-type AulaStatus = 'planeada' | 'ministrada' | 'cancelada' | 'adiada';
+export type AulaStatus = 'planeada' | 'ministrada' | 'cancelada' | 'adiada';
 
 interface AulaCardTurmaProps {
   aula: Aula;
   onEditar: () => void;
   onDeletar: () => void;
+  onActualizar:(status:AulaStatus)=>void;
   index: number;
   onExpandir: () => void;
   showExpandButton?: boolean; // Nova prop para controlar se mostra o botão de expandir
@@ -29,6 +31,7 @@ interface AulaCardTurmaProps {
 export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({ 
   aula, 
   onEditar, 
+  onActualizar,
   onDeletar, 
   index, 
   onExpandir,
@@ -101,6 +104,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
 
   const StatusIcon = getStatusIcon(aula.status);
 
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -151,10 +155,10 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
               </div>
               
               {/* Professor */}
-              {aula.professor_id && (
+              {aula.turmas?.professor && (
                 <div className="flex items-center gap-1 mt-2 text-sm text-gray-600">
                   <FaChalkboardTeacher className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{aula.professor_id}</span>
+                  <span className="truncate">{aula.turmas?.professor}</span>
                 </div>
               )}
               
@@ -231,18 +235,30 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
         
         {/* Badge de ações rápidas */}
         {aula.status === 'planeada' && (
-          <div className="mt-3">
+          <div className="mt-3 flex gap-5">
             <button
-              onClick={() => {
-                if (window.confirm('Marcar esta aula como ministrada?')) {
-                  // Esta função será passada do componente pai
-                  // Aqui apenas temos a confirmação
-                }
-              }}
+              onClick={()=>onActualizar("ministrada")}
               className="w-full text-center py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
             >
               Concluir Aula
             </button>
+            <button
+              onClick={()=>onActualizar("adiada")}
+              className="w-full text-center py-1.5 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
+            >
+              Adiar Aula
+            </button>
+          </div>
+        )}
+        {aula.status === 'ministrada' && aula?.registro && aula?.registro.length == 0 && (
+          <div className="mt-3 flex gap-5">
+            <button
+              onClick={()=>onActualizar("ministrada")}
+              className="w-full text-center py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium"
+            >
+              Registrar Frequencia
+            </button>
+           
           </div>
         )}
       </div>

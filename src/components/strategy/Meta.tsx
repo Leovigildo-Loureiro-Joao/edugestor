@@ -79,50 +79,57 @@ const MetaComponent = ({ metas, setMetas }: { metas: Meta[] ,setMetas:React.Disp
 
                 {expandedMeta === meta.id && (
                     <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: 'auto' }}
-                    className="border-t border-gray-100 p-4 bg-gray-50"
-                    >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                        <h4 className="font-semibold text-sm text-gray-600 mb-2">
-                            Indicadores
-                        </h4>
-                        <ul className="space-y-1">
-                            {meta.kpis && meta.kpis.length > 0 ? (
-                            meta.kpis.map((kpi, index) => (
-                                <li key={index} className="flex justify-between text-sm">
-                                <span>{kpi.nome} ({kpi.unidade})</span>
+                        initial={{ height: 0 }}
+                        animate={{ height: 'auto' }}
+                        
+                        className="border-t border-gray-100 p-4 bg-gray-50 transition-all"
+                        >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                            <h4 className="font-semibold text-sm text-gray-600 mb-2">
+                                Indicadores
+                            </h4>
+                            <ul className="space-y-1">
+                                {meta.kpis && meta.kpis.length > 0 ? (
+                                meta.kpis.map((kpi, index) => (
+                                    <li key={index} className="flex justify-between text-sm">
+                                    <span>{kpi.nome} ({kpi.unidade})</span>
+                                    <span className="font-medium">
+                                        {kpi.valor_atual} / {kpi.valor_meta}
+                                    </span>
+                                    </li>
+                                ))
+                                ) : (
+                                <li className="text-sm text-gray-500">Nenhum indicador definido.</li>
+                                )}
+                            </ul>
+                            </div>
+                            <div>
+                            <h4 className="font-semibold text-sm text-gray-600 mb-2">
+                                Prazos
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                <span>Início:</span>
                                 <span className="font-medium">
-                                    {kpi.valor_atual} / {kpi.valor_meta}
+                                    {new Date(meta.data_inicio).toLocaleDateString()}
                                 </span>
-                                </li>
-                            ))
-                            ) : (
-                            <li className="text-sm text-gray-500">Nenhum indicador definido.</li>
-                            )}
-                        </ul>
-                        </div>
-                        <div>
-                        <h4 className="font-semibold text-sm text-gray-600 mb-2">
-                            Prazos
-                        </h4>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                            <span>Início:</span>
-                            <span className="font-medium">
-                                {new Date(meta.data_inicio).toLocaleDateString()}
-                            </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                <span>Fim:</span>
+                                <span className="font-medium">
+                                    {new Date(meta.data_fim).toLocaleDateString()}
+                                </span>
+                                </div>
                             </div>
-                            <div className="flex justify-between text-sm">
-                            <span>Fim:</span>
-                            <span className="font-medium">
-                                {new Date(meta.data_fim).toLocaleDateString()}
-                            </span>
                             </div>
                         </div>
+                        <div className="flex gap-5">
+                            <button
+                             onClick={() => navigate("/estrategia/metas/editar/"+ meta.id)}
+                             className="bg-blue-100 text-sm p-1 px-5 text-blue-700 rounded hover:bg-blue-200 transition-colors">Editar</button>
+                            <button className="bg-red-100 text-sm p-1 px-5 text-red-700 rounded hover:bg-red-200 transition-colors">Apagar</button>
                         </div>
-                    </div>
                     </motion.div>
                 )}
                 </motion.div>

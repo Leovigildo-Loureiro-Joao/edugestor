@@ -1,3 +1,4 @@
+import { Meta } from "../../types/eventos";
 import { generateUniqueId } from "../../utils/idGenarator";
 import db, { supabase } from "./db";
 // Você pode criar este utilitário
@@ -105,6 +106,20 @@ export const estrategiaService = {
         .toArray();
       
       return metas || [];
+    } catch (error) {
+      console.error('Erro ao buscar metas:', error);
+      throw error;
+    }
+  },
+
+    async getMetasID(id:string) {
+    try {
+      const metas = await db.metas
+        .orderBy('created_at')
+        .and(a=>a.id===id)
+        .toArray();
+      
+      return metas[0] || [];
     } catch (error) {
       console.error('Erro ao buscar metas:', error);
       throw error;
@@ -291,7 +306,7 @@ export const estrategiaService = {
   },
 
   // ============ UPDATE PARA METAS ============
-  async updateMeta(metaId: string, metaData: Partial<any>) {
+  async updateMeta(metaId: string, metaData: Partial<Meta>) {
     try {
       const updated_at = new Date().toISOString();
       

@@ -2,7 +2,7 @@ import Dexie from "dexie";
 import { Student } from "./aluno";
 import { Turma } from "./turma";
 import { Course } from "./curso";
-import { Transacao } from "./transacao";
+import { AlocacaoRecurso, Transacao } from "./transacao";
 import { Aula } from "./aula";
 import { Propina } from "./propina";
 import { Frequencia } from "./frequencia";
@@ -25,7 +25,7 @@ export interface BaseEntity {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'alunos' | 'turmas' | 'cursos' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacao';
+  table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacao';
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
@@ -53,6 +53,7 @@ export interface EduGestorDatabase {
   system_config: Dexie.Table<SystemConfig, string>;
   instituicao: Dexie.Table<Instituicao, string>;
   notificacao: Dexie.Table<Notificacao, string>;
+  alocacao:Dexie.Table<AlocacaoRecurso,string>;
   avaliacoes: Dexie.Table<Avaliacao, string>;
 }
 

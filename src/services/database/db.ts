@@ -8,7 +8,7 @@ import {
 import {  Frequencia, Instituicao, Student } from '../../types';
 import { Turma } from '../../types/turma';
 import { Course } from '../../types/curso';
-import { Transacao } from '../../types/transacao';
+import { AlocacaoRecurso, Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
 import { syncManager } from './syncManager';
@@ -63,6 +63,7 @@ class EduGestorDatabase extends Dexie {
   instituicao!: Table<Instituicao, string>;
   notificacao!: Table<Notificacao, string>;
   avaliacoes!: Table<Avaliacao,string>
+  alocacao!:Table<AlocacaoRecurso,string>
   profiles!: Table<UserProfile, string>;
 
   constructor() {
@@ -80,7 +81,8 @@ class EduGestorDatabase extends Dexie {
       frequencias: '++id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: '++id, turma_id, data_aula, sync_status, deleted, updated_at',
       tarefas: '++id, concluida, status, sync_status, deleted, created_at',
-      metas: '++id, status, sync_status, deleted, created_at',
+      metas: '++id, tipo,status, sync_status, deleted, created_at',
+      alocacao:"++id,meta_id, sync_status, deleted, created_at",
       rotinas: '++id, status, sync_status, deleted, created_at',
       syncQueue: '++id, table, record_id, operation, status, created_at',
       profiles: '++id, role, sync_status, deleted',
@@ -182,7 +184,7 @@ export const syncDatabase = {
   // Estimar tamanho do banco
   async getDatabaseSize() {
     try {
-      const tables = ['alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacoes'];
+      const tables = ['alunos', 'turmas','alocacao', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacoes'];
       let total = 0;
       
       for (const tableName of tables) {

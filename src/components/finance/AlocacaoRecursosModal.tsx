@@ -10,15 +10,8 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { Meta } from '../../types/eventos';
+import { AlocacaoRecurso } from '../../types/transacao';
 
-interface AlocacaoRecurso {
-  meta_id: string;
-  valor: number;
-  percentual?: number;
-  data_alocacao: string;
-  motivo: string;
-  tipo_alocacao: 'complementar' | 'completo' | 'parcial';
-}
 
 interface AlocacaoRecursosModalProps {
   isOpen: boolean;
@@ -828,7 +821,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                   <Icon className="text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div className="flex-1">
-                                  <div className="flex items-start justify-between">
+                                  <div className="flex items-start gap-5 justify-between">
                                     <div>
                                       <h5 className="font-bold text-gray-900 dark:text-white">
                                         {item.meta.titulo}
@@ -837,7 +830,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                         {item.meta.descricao}
                                       </p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right mr-2">
                                       <div className="text-lg font-bold text-green-600 dark:text-green-400">
                                         {formatarMoeda(item.valor)}
                                       </div>

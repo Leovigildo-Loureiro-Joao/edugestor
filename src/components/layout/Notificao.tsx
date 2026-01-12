@@ -105,7 +105,8 @@ export const NotificacoesBell: React.FC = () => {
           borderRadius: '12px',
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           border: '1px solid #e2e8f0',
-          zIndex: 1000
+          zIndex: 4000,
+          perspective:40
         }}>
           <div style={{
             padding: '16px',

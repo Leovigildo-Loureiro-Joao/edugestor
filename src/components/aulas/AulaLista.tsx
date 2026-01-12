@@ -93,7 +93,7 @@ export const ViewModeNavbar: React.FC<ViewModeNavbarProps> = ({
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                  className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
                 >
                   <div className="py-1">
                     {sortOptions.map((option) => (
@@ -245,6 +245,7 @@ export const ListaView: React.FC<ListaViewProps> = ({ aulas, onEditar, onDeletar
                    aula.status === 'cancelada' ? 'Cancelada' : 'Adiada'}
                 </span>
               </td>
+              
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button

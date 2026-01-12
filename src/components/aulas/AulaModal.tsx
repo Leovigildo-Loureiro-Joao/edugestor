@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiCalendar, FiCheckCircle, FiClock, FiEdit2, FiMessageSquare, FiTarget, FiTrash2, FiUsers, FiX } from "react-icons/fi";
+import { FiAlertCircle, FiCalendar, FiCheckCircle, FiClock, FiEdit2, FiMessageSquare, FiTarget, FiTrash2, FiTrendingDown, FiUsers, FiX } from "react-icons/fi";
 import { Aula, AulaFormData } from "../../types/aula";
 import { useState } from "react";
 import { FaChalkboardTeacher } from "react-icons/fa";
@@ -118,38 +118,14 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                       <FiUsers className="h-5 w-5" />
                       <div>
                         <p className="font-medium">{aulaExpandida.turmas?.nome_turma || 'Não especificada'}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Código da Turma</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{aulaExpandida.turmas?.professor || 'Não especificado'}</p>
                       </div>
                     </div>
                   </div>
-                  
-                 
-                </div>
-
-                <div className="space-y-6">
+                   <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Tema da Aula</h4>
-                    <p className="text-gray-900 dark:text-white text-lg font-medium">
-                      {aulaExpandida.tema_aula || 'Não definido'}
-                    </p>
-                  </div>
-                  
-                  {aulaExpandida.conteudo_ministrado && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Conteúdo Ministrado</h4>
-                      <p className="text-gray-900 dark:text-white">
-                        {aulaExpandida.conteudo_ministrado}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Métricas */}
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Status</h4>
                     <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg ${getStatusColor(aulaExpandida.status)}`}>
-                      <StatusIcon className="h-5 w-5" />
+                      <StatusIcon className="h-4 w-4" />
                       <span className="font-medium">
                         {aulaExpandida.status === 'ministrada' ? 'Ministrada' :
                          aulaExpandida.status === 'planeada' ? 'Planeada' :
@@ -184,6 +160,68 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                     </div>
                   )}
                 </div>
+                 
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Tema da Aula</h4>
+                    <p className="text-gray-900 dark:text-white text-lg font-medium">
+                      {aulaExpandida.tema_aula || 'Não definido'}
+                    </p>
+                  </div>
+                  
+                  {aulaExpandida.conteudo_ministrado && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Conteúdo Ministrado</h4>
+                      <p className="text-gray-900 dark:text-white">
+                        {aulaExpandida.conteudo_ministrado}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                  <div>
+                    {aulaExpandida.status === 'planeada' && (
+                    <div
+                    className="flex gap-2">
+                       <button
+                        onClick={() => {
+                        
+                          // Chamar API para atualizar status
+                          handleEditarAula({
+                            ...aulaExpandida,
+                            status: 'adiada'
+                          } as AulaFormData);
+                          setAulaExpandida(null);
+                        
+                        }}
+                        className="flex-1 px-3 py-3 w-min text-nowrap bg-transparent bg-red-700 text-red-200 rounded-xl hover:bg-red-800 font-medium flex items-center justify-center gap-3 transition-all"
+                      >
+                        <FiClock className="h-5 w-5" />
+                        Adiar aula
+                      </button>
+                      <button
+                        onClick={() => {
+                        
+                          // Chamar API para atualizar status
+                          handleEditarAula({
+                            ...aulaExpandida,
+                            status: 'ministrada'
+                          } as AulaFormData);
+                          setAulaExpandida(null);
+                        
+                        }}
+                        className="flex-1 w-min px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium flex items-center justify-center gap-3 transition-all"
+                      >
+                        <FiCheckCircle className="h-5 w-5" />
+                        Concluir
+                      </button>
+                    </div>
+                  )}
+                  
+                  </div>
+                  
               </div>
 
               {/* Objetivos de Aprendizagem */}
@@ -213,7 +251,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
               )}
 
               {/* Observações */}
-              {aulaExpandida.observacoes && (
+              {aulaExpandida.observacoes_professor && (
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
                     <FiMessageSquare className="h-6 w-6 text-amber-600" />
@@ -221,7 +259,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                   </h4>
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5">
                     <p className="text-gray-900 dark:text-white whitespace-pre-line leading-relaxed">
-                      {aulaExpandida.observacoes}
+                      {aulaExpandida.observacoes_professor}
                     </p>
                   </div>
                 </div>
@@ -229,7 +267,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
               {/* Ações */}
               <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col justify-end sm:flex-row gap-3">
                   <button
                     onClick={() => {
                       setAulaEditando(aulaExpandida);
@@ -241,25 +279,6 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                     <FiEdit2 className="h-5 w-5" />
                     Editar Aula
                   </button>
-                  
-                  {aulaExpandida.status === 'planeada' && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm('Marcar esta aula como ministrada?')) {
-                          // Chamar API para atualizar status
-                          handleEditarAula({
-                            ...aulaExpandida,
-                            status: 'ministrada'
-                          } as AulaFormData);
-                          setAulaExpandida(null);
-                        }
-                      }}
-                      className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium flex items-center justify-center gap-3 transition-all"
-                    >
-                      <FiCheckCircle className="h-5 w-5" />
-                      Marcar como Ministrada
-                    </button>
-                  )}
                   
                   <button
                     onClick={() => handleDeletarAula(aulaExpandida.id)}

@@ -1,4 +1,5 @@
 import { BaseEntity } from "./base";
+import { Frequencia } from "./frequencia";
 import { Turma } from "./turma";
 
 export interface Aula extends BaseEntity{
@@ -11,10 +12,11 @@ export interface Aula extends BaseEntity{
   conteudo_ministrado?: string;
   objetivos_aprendizagem?: string[];
   recursos_utilizados?: string;
-  observacoes?: string;
+  observacoes_professor?: string;
   taxa_participacao?: number;
   tema_aula: string;
-  turmas?: Turma
+  turmas?: Turma,
+  registro?:Frequencia[]
 }
 
 export type AulaFormData = Omit<Aula, 

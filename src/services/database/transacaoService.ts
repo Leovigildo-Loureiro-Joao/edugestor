@@ -2,9 +2,11 @@
 import { supabase } from '../database/db';
 import { propinaService } from './propinas';
 import db from './db';
-import { DadosPagamentoCash, Transacao, TransacaoFormData } from '../../types/transacao';
+import { AlocacaoRecurso, AlocacaoRecursoFormData, DadosPagamentoCash, Transacao, TransacaoFormData } from '../../types/transacao';
 import { syncManager } from './syncManager';
 import { configService } from './config';
+import { estrategiaService } from './estrategiaService';
+import { progress } from 'framer-motion';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -45,6 +47,60 @@ export const transacaoService = {
       throw error;
     }
   },
+
+  async createAlocacao(alocacaoData: AlocacaoRecursoFormData): Promise<string> {
+    try {
+      const id = generateUniqueId();
+      const now = new Date().toISOString();
+      
+      const alocacao = {
+        ...alocacaoData,
+        id,
+        created_at: now,
+        updated_at: now,
+        sync_status: 'pending',
+        deleted: false,
+      } as AlocacaoRecurso;
+
+      console.log('💾 Salvando alocacao:', alocacao.motivo);
+      
+      await db.alocacao.put(alocacao);
+      
+      // Adicionar à fila de sincronização
+      await db.syncQueue.add({
+        table: 'alocacao',
+        record_id: id,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: now
+      });
+
+       transacaoService.createTransacao({
+        categoria:"investimento",
+        data: new Date().toISOString(),
+        descricao:alocacao.motivo,
+        tipo:'saida',
+        valor:alocacao.valor
+      })
+      const meta= await estrategiaService.getMetasID(alocacao.meta_id)
+      const progresso:number=meta&&meta.orcamento_previsto?((100*alocacao.valor)/meta.orcamento_previsto):0
+      estrategiaService.updateMeta(alocacao.meta_id,{
+        progresso: Math.round(progresso)+meta.progresso
+
+      })
+
+
+      console.log('✅ Transação salva com ID:', id);
+      return id;
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar transação:', error);
+      throw error;
+    }
+  },
+
+
+  
 
   // ✅ Processar pagamento com cartão (inclui sincronização)
   async processarPagamento(dados: TransacaoFormData): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {

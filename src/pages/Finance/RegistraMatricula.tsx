@@ -82,10 +82,10 @@ export const CompletarMatricula = () => {
         return matricula + cartao + propina;
     };
 
-const calcularTotalPropina = (): number => {
-    if (!dadosMatricula.incluirPropina) return 0;
-    return (parseFloat(dadosMatricula.valorPropina) || 0) * dadosMatricula.mesesPropina.length;
-};
+    const calcularTotalPropina = (): number => {
+        if (!dadosMatricula.incluirPropina) return 0;
+        return (parseFloat(dadosMatricula.valorPropina) || 0) * dadosMatricula.mesesPropina.length;
+    };
 
     const handleRegistrarMatricula = async () => {
         if (!aluno || !configInstituicao) return;
@@ -174,11 +174,6 @@ const calcularTotalPropina = (): number => {
         return nomesMeses[mesAtual];
     };
 
-    const handlePular = () => {
-        if (aluno && window.confirm('Deseja ativar a matrícula sem registrar pagamentos?')) { 
-            navigate('/alunos'); 
-        }
-    };
 
     const formatarMoeda = (valor: number): string => {
         return new Intl.NumberFormat('pt-AO', { 
@@ -555,13 +550,7 @@ const calcularTotalPropina = (): number => {
 
                                 {/* Botões de Ação */}
                                 <div className="flex gap-4 pt-6">
-                                    <button
-                                        onClick={handlePular}
-                                        className="flex-1 px-6 py-4 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                                        disabled={processando}
-                                    >
-                                        Ativar sem Pagamentos
-                                    </button>
+                                   
                                     
                                     <button
                                         onClick={handleRegistrarMatricula}

@@ -22,6 +22,9 @@ import { CustomPieChart } from '../../components/finance/PieChartDespesa.tsx';
 import GraficoBarrasDuplas from '../../components/finance/BarraDupla.jsx';
 import GraficoBarrasLucro from '../../components/finance/BarraMensal.jsx';
 import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursosModal.tsx';
+import { Meta } from '../../types/eventos.ts';
+import db from '../../services/database/db.ts';
+import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.ts';
 
 // Interfaces/Types
 interface TabOption {
@@ -152,25 +155,24 @@ export const FinanceiroPage: React.FC = () => {
   const navigate = useNavigate();
   const [showDescontosModal, setShowDescontosModal] = useState<boolean>(false);
   const [showDivisaoLucrosModal, setShowDivisaoLucrosModal] = useState<boolean>(false);
-  const [descontos, setDescontos] = useState<Desconto[]>([]);
-  const [divisoesLucro, setDivisoesLucro] = useState<DivisaoLucro[]>([]);
+  const [alocacao, setAlocacao] = useState<AlocacaoRecurso[]>([]);
+  const [metas,setMetas]=useState<Meta[]>([])
 
-  // Funções para lidar com os modais:
-  const handleDescontoAplicado = (desconto: Desconto) => {
-    // Aqui você salvaria o desconto no banco de dados
-    setDescontos(prev => [...prev, { ...desconto, id: Date.now().toString() }]);
-    
-    // Também atualiza o valor da mensalidade do aluno
-    // Esta lógica depende da sua estrutura de dados
-  };
 
-  const handleDivisaoSalva = (divisao: Omit<DivisaoLucro, 'id' | 'data_divisao'>) => {
+  const handleAlocacao = async (divisao: {
+     metas: AlocacaoRecurso[],
+      totalAlocado:number,
+      mes: string,
+      ano: string,
+      descricao: string
+  }) => {
     // Salvar divisão no banco de dados
-    setDivisoesLucro(prev => [...prev, { 
-      ...divisao, 
-      id: Date.now().toString(),
-      data_divisao: new Date().toISOString()
-    }]);
+    for (const element of divisao.metas) {
+       await transacaoService.createAlocacao(element)
+    }
+   
+    setAlocacao(await db.alocacao.filter(a=>!a.deleted).toArray());
+   
   };
 
   useEffect(() => {
@@ -194,7 +196,17 @@ export const FinanceiroPage: React.FC = () => {
 
       const dadosMensais = calcularDadosMensais(pagamentos, despesas);
       const dadosCategoriasDespesas = calcularCategoriasDespesas(despesas);
-
+      const transacoes=await transacaoService.getAllTransactions();
+    const totalEntradas = transacoes
+      .filter(t => t.tipo === 'entrada')
+      .reduce((sum, t) => sum + t.valor, 0);
+    
+    const totalSaidas = transacoes
+      .filter(t => t.tipo === 'saida')
+      .reduce((sum, t) => sum + t.valor, 0);
+    
+    const saldo = totalEntradas - totalSaidas;
+    
       setDadosFinanceiros({
         metricas: {
           totalRecebido,
@@ -203,7 +215,7 @@ export const FinanceiroPage: React.FC = () => {
           taxaPagamento,
           alunosPagaram,
           totalAlunos: alunos.length,
-          saldoAtual: totalRecebido - totalDespesas
+          saldoAtual: saldo
         },
         graficos: {
           mensal: dadosMensais,
@@ -214,6 +226,9 @@ export const FinanceiroPage: React.FC = () => {
         alunos
       });
 
+        setMetas(await db.metas.filter(a=> a.tipo==="infraestrutura"||a.tipo=='financeira'||a.tipo=='marketing')
+                      .and(a=>!a.deleted && a.progresso<100)
+                      .toArray())
     } catch (error) {
       console.error('❌ Erro ao carregar dados financeiros:', error);
     } finally {
@@ -369,9 +384,9 @@ export const FinanceiroPage: React.FC = () => {
             <AlocacaoRecursosModal
               isOpen={showDivisaoLucrosModal}
               onClose={() => setShowDivisaoLucrosModal(false)}
-              fundosDisponiveis={dadosFinanceiros?.metricas?.lucro || 0}
-              metas={[]}
-              onAlocacaoSalva={handleDivisaoSalva}
+              fundosDisponiveis={dadosFinanceiros?.metricas?.saldoAtual || 0}
+              metas={metas}
+              onAlocacaoSalva={handleAlocacao}
               historicoAlocacoes={[]}
             />
             

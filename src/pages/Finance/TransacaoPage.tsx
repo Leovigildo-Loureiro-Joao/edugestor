@@ -7,7 +7,8 @@ import {
   FiCreditCard, FiBriefcase, FiShoppingBag, FiTruck,
   FiCoffee, FiHome, FiBarChart,
   FiShield,
-  FiCheckCircle
+  FiCheckCircle,
+  FiArrowLeft
 } from 'react-icons/fi';
 import { transacaoService } from '../../services/database/transacaoService';
 import { Transacao } from '../../types/transacao';
@@ -180,6 +181,12 @@ export const TransacoesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+       <button
+          onClick={() => navigate("/financeiro")}
+          className="flex items-center gap-2 mb-4 text-blue-600 hover:text-blue-800"
+        >
+          <FiArrowLeft /> Voltar ao Dashboard
+        </button>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div

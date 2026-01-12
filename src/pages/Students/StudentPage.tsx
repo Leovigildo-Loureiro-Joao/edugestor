@@ -7,8 +7,9 @@ import { frequenciaService } from '../../services/database/frequenciaService';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { FrequenciaData } from '../../types/frequencia';
 import { Avaliacao, NotaData } from '../../types/avaliacao';
-import { av, avaliacaoService } from '../../services/database/avaliacao';
+import {  avaliacaoService } from '../../services/database/avaliacao';
 import { Bar, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { motion } from 'framer-motion';
 
 const StudentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -191,27 +192,41 @@ const StudentPage: React.FC = () => {
               <div className="space-y-8">
                 {/* STATS CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                  <motion.div
+                    initial={{y:-20,opacity:0}}
+                    animate={{y:0,opacity:1}}
+                    transition={{delay:0.1}}
+                    className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
                     <div className="text-3xl font-bold text-green-800">{stats.frequenciaPercent}%</div>
                     <div className="text-green-700 font-medium mt-2">Frequência</div>
                     <div className="text-green-600 text-sm mt-1">Últimos 30 dias</div>
-                  </div>
+                  </motion.div>
                   
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                  <motion.div
+                   initial={{y:-20,opacity:0}}
+                    animate={{y:0,opacity:1}}
+                    transition={{delay:0.2}}
+                     className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
                     <div className="text-3xl font-bold text-blue-800">{stats.mediaNotas.toFixed(1)}</div>
                     <div className="text-blue-700 font-medium mt-2">Média Geral</div>
                     <div className="text-blue-600 text-sm mt-1">{notas?notas.avaliacoes.length:0} avaliações</div>
-                  </div>
+                  </motion.div>
                   
-                  <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                  <motion.div
+                   initial={{y:-20,opacity:0}}
+                    animate={{y:0,opacity:1}}
+                    transition={{delay:0.3}} className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
                     <div className="text-3xl font-bold text-red-800">${stats.totalFalta.toLocaleString('pt-BR')}</div>
                     <div className="text-red-700 font-medium mt-2">Pendente</div>
                     <div className="text-red-600 text-sm mt-1">Em atraso</div>
-                  </div>
+                  </motion.div>
                 </div>
 
                 {/* GRÁFICO DE EVOLUÇÃO */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200">
+                <motion.div
+                    initial={{y:-20,opacity:0}}
+                    animate={{y:0,opacity:1}}
+                    transition={{delay:0.3}} className="bg-white p-6 rounded-xl border border-gray-200">
                   <h3 className="text-xl font-semibold text-gray-800 mb-6">Evolução do Desempenho</h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
@@ -245,7 +260,7 @@ const StudentPage: React.FC = () => {
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* PROPINAS RECENTES */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200">

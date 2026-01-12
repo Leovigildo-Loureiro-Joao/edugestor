@@ -8,42 +8,37 @@ import {
 } from 'react-icons/fi';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { AulaForm } from '../../components/aulas/AulaForm.tsx';
-import { AulaCardTurma } from '../../components/aulas/AulaCard-min.tsx';
-import { Select } from '../../components/ui/Select.jsx';
+import { AulaCardTurma, AulaStatus } from '../../components/aulas/AulaCard-min.tsx';
 import { turmaService } from '../../services/database/turmas.ts';
 import { Aula, AulaFormData } from '../../types/aula.ts';
 import { Turma } from '../../types/turma.ts';
-import { FaChalkboardTeacher, FaChartPie, FaUserCheck } from 'react-icons/fa';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 import { toast } from 'react-hot-toast';
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { FaBookAtlas } from 'react-icons/fa6';
 import { ModalDetalhesAula } from '../../components/aulas/AulaModal.tsx';
-import { TimelineWindows } from '../../components/aulas/TimelineAulas.tsx';
-import { profileService } from '../../services/database/profileService.ts';
 import { ListaView, ViewModeNavbar } from '../../components/aulas/AulaLista.tsx';
+import { TimelineWindows } from '../../components/aulas/TimelineAulas.tsx';
+import { ModalFrequecia } from '../../components/attendance/FrequeciaModal.tsx';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [aulaExpandida, setAulaExpandida] = useState<Aula | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aulaSelect, setAulaSelect] = useState<Aula | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddTurma, setQuickAddTurma] = useState('');
+  const [quickAddData, setQuickAddData] = useState(new Date().toISOString().split('T')[0]);
   const [aulaEditando, setAulaEditando] = useState<Aula | null>(null);
   const [filtroData, setFiltroData] = useState('');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
-  const [filtroDisciplina, setFiltroDisciplina] = useState('Todas Disciplinas');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [disciplinas, setDisciplinas] = useState<string[]>([]);
   const [estatisticas, setEstatisticas] = useState<any>(null);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickAddTurma, setQuickAddTurma] = useState('');
-  const [quickAddData, setQuickAddData] = useState(new Date().toISOString().split('T')[0]);
-  const [disciplina, setDisciplina] = useState(["Selecione uma disciplina"]);
-
   const [viewMode, setViewMode] = useState<'cards' | 'timeline' | 'list'>('cards');
   const [sortBy, setSortBy] = useState('data_desc');
   const [showFilters, setShowFilters] = useState(false);
@@ -81,7 +76,7 @@ export const AulasPage = () => {
     </div>
   };
 
-  const CustomTooltip = ({ active, payload }) => {
+  const CustomTooltip = ({ active, payload }:{active:any,payload:any}) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -228,10 +223,10 @@ export const AulasPage = () => {
   useEffect(() => {
     switch (sortBy) {
       case 'data_desc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(b.data_aula) - new Date(a.data_aula));
+        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
         break;
       case 'data_asc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(a.data_aula) - new Date(b.data_aula));
+        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
         break;
       case 'disciplina_asc':
         aulasFiltradas.sort((a:Aula, b:Aula) => a.disciplina.localeCompare(b.disciplina));
@@ -302,7 +297,8 @@ export const AulasPage = () => {
         hora_inicio: '08:00',
         hora_fim: '09:30',
         tema_aula: 'Aula do dia',
-        status: 'planeada'
+        status: 'planeada',
+        turmas: turmas.find(t => t.id === quickAddTurma)
       });
       
       setShowQuickAdd(false);
@@ -375,6 +371,15 @@ export const AulasPage = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
+  }
+
+  async function handelActualizar(status: AulaStatus,aulaSelect:Aula) {
+    if(aulaSelect){
+      const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
+      setAulas(prev => prev.map(e => aula&&e.id === aula.id ? aula : e));
+      console.log(aula)
+    }
+    
   }
 
   return (
@@ -585,6 +590,7 @@ export const AulasPage = () => {
                       setAulaEditando(aula);
                       setShowForm(true);
                     }}
+                   
                     onDeletar={handleDeletarAula}
                     onExpandir={(aula) => setAulaExpandida(aula)}
                   />
@@ -601,6 +607,9 @@ export const AulasPage = () => {
                           onEditar={() => {
                             setAulaEditando(aula);
                             setShowForm(true);
+                          }}
+                          onActualizar={(status)=>{
+                            handelActualizar(status,aula)
                           }}
                           onDeletar={() => handleDeletarAula(aula.id)}
                           index={index}
@@ -736,8 +745,8 @@ export const AulasPage = () => {
                       <div className="space-y-3">
                         {estatisticas.topTurmas?.slice(0, 5).map((turma: any) => (
                           <div key={turma.id} className="flex justify-between items-center">
-                            <span className="text-gray-700 dark:text-gray-300 truncate">{turma.nome}</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">{turma.aulas} aulas</span>
+                            <span className="text-gray-700 dark:text-gray-300 truncate">{turma.nome_turma}</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">{turma.aulas.length} aulas</span>
                           </div>
                         ))}
                       </div>
@@ -914,6 +923,11 @@ export const AulasPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+          <ModalFrequecia
+          aula={aula}/>
+      </AnimatePresence>
+      
 
       {/* Modal Quick Add */}
       <AnimatePresence>
@@ -940,7 +954,7 @@ export const AulasPage = () => {
                     Turma
                   </label>
                   <SelectTyped
-                    vect={turmas.map(t => t.nome_turma)}
+                    vect={turmas.map(t => ({value:t.id,label:t.nome_turma}))}
                     value={quickAddTurma}
                     onChange={(value:any) => setQuickAddTurma(value)}
                     placeholder="Selecione a turma"

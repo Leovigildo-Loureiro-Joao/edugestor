@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaGraduationCap } from 'react-icons/fa';
 import { initializeSyncSystem } from '../../services/database/syncManager';
+import { logo } from '../auth/Login';
 
 // Definindo tipos
 interface NavigationItem {
@@ -186,10 +187,13 @@ const Sidebar: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className={`flex-1`}
+                className={`flex-1 flex`}
               >
-                <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">EduGestor</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Gestão Académica</p>
+               
+                <div>
+                  <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">EduGestor</h1>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Gestão Académica</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

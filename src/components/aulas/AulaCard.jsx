@@ -14,7 +14,7 @@ import {
 import { FaChalkboardTeacher } from 'react-icons/fa';
 import { useState } from 'react';
 
-export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onExpandir }) => {
+export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) => {
   const [expanded, setExpanded] = useState(false);
   
   const formatarData = (dataString) => {
@@ -130,10 +130,10 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onExpandir }) =>
                   </span>
                 </div>
                 
-                {aula.professor_id && (
+                {aula.turmas?.professor && (
                   <div className="flex items-center gap-1">
                     <FaChalkboardTeacher className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate max-w-[120px]">{aula.professor_id}</span>
+                    <span className="truncate max-w-[120px]">{aula.turmas?.professor}</span>
                   </div>
                 )}
               </div>
@@ -229,7 +229,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onExpandir }) =>
             )}
 
             {/* Métricas (apenas para aulas ministradas) */}
-            {aula.status === 'ministrada' && (
+            {aula.status === 'ministrada' (
               <div className="grid grid-cols-2 gap-3">
                 {aula.taxa_participacao !== undefined && (
                   <div className="bg-blue-50 p-3 rounded-lg">
@@ -269,16 +269,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onExpandir }) =>
               </div>
             )}
 
-            {/* Botão para ver detalhes completos */}
-            <div className="pt-2">
-              <button
-                onClick={onExpandir}
-                className="w-full py-2 text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center justify-center gap-2"
-              >
-                Ver detalhes completos
-                <FiTrendingUp className="h-3 w-3" />
-              </button>
-            </div>
+           
           </motion.div>
         )}
 
@@ -297,17 +288,20 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onExpandir }) =>
             </div>
             
             {aula.status === 'planeada' && (
-              <button
-                onClick={() => {
-                  // Aqui poderia implementar marcar como ministrada
-                  if (window.confirm('Marcar esta aula como ministrada?')) {
-                    // Chamada para API
-                  }
-                }}
-                className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-              >
-                Concluir
-              </button>
+              <div className="mt-3 flex gap-5">
+            <button
+              onClick={()=>onActualizar("ministrada")}
+              className="w-full p-2 text-nowrap text-center py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
+            >
+              Concluir Aula
+            </button>
+            <button
+              onClick={()=>onActualizar("adiada")}
+              className="w-full p-2 rounded-sm text-nowrap text-center py-1.5 text-xs bg-red-100 text-red-700 hover:bg-red-200 transition-colors font-medium"
+            >
+              Adiar Aula
+            </button>
+          </div>
             )}
           </div>
         </div>

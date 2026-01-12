@@ -29,3 +29,19 @@ export interface DadosPagamentoCash {
   descricao?:string;
   mesReferencia?: string[];
 }
+
+export interface AlocacaoRecurso extends BaseEntity{
+  meta_id: string;
+  valor: number;
+  percentual?: number;
+  data_alocacao: string;
+  motivo: string;
+  tipo_alocacao: 'complementar' | 'completo' | 'parcial';
+  orcamento_total:number
+  orcamento_actual:number
+}
+
+export type AlocacaoRecursoFormData=Omit<AlocacaoRecurso,
+'id' | 'created_at' | 'updated_at' |'sync_status'
+>
+  

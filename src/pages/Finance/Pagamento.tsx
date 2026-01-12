@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FiSearch, FiFilter, FiDollarSign, FiUser, FiCreditCard, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw, FiArrowLeft, FiCalendar } from 'react-icons/fi';
+import { useState, useEffect, useMemo } from 'react';
+import { FiSearch, FiFilter, FiDollarSign, FiUser, FiCreditCard, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw, FiArrowLeft, FiCalendar, FiTrendingDown, FiBarChart2 } from 'react-icons/fi';
 import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
 import { Student } from '../../types/aluno.ts';
@@ -10,6 +10,8 @@ import { HistoricoPagamentos } from '../../components/finance/historicoPagamento
 import { useNavigate } from 'react-router-dom';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 import { configService } from '../../services/database/config.ts';
+import { motion } from 'framer-motion';
+import { RxPerson } from 'react-icons/rx';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -28,7 +30,6 @@ export const PagamentosPage = () => {
   const navigate = useNavigate();
 
   const abrirAluno = (alunoId: string) => {
-    console.log('Abrir aluno com ID:', alunoId);
     navigate(`/alunos/${alunoId}`);
   };
   
@@ -47,6 +48,8 @@ export const PagamentosPage = () => {
       setHistoricoPagamentos([]);
     }
   };
+
+
 
   // ✅ Função corrigida para extrair mês abreviado
   const extrairMesAbreviado = (mesCompleto: string): string => {
@@ -256,6 +259,20 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
     return matchBusca && matchTurma && matchStatus && matchMes;
   });
 
+    const estatistica = useMemo(() => {
+    const alunos=alunosFiltrados
+    const totalEstudantes=alunos.length
+    const totalPendentes=alunos.filter(a => !a.pagamento_em_dia).length
+    const totalEmDia=alunos.filter(a => a.pagamento_em_dia).length
+    const totalMesePagos=Object.values(mesesPagamentos).flat().length
+     return {
+      totalEstudantes,
+      totalPendentes,
+      totalEmDia,
+      totalMesePagos
+    };
+  },[alunosFiltrados,mesesPagamentos])
+
   const handleSelecionarAluno = (aluno: Student) => {
     setAlunoSelecionado(aluno);
     navigate("/financeiro/pagamento/" + aluno.id);
@@ -275,7 +292,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
   };
 
   return (
-    <div>
+    <div className='p-4 md:p-6'>
       <button
         onClick={() => navigate("/financeiro")}
         className="flex items-center gap-2 mb-4 text-blue-600 hover:text-blue-800"
@@ -283,7 +300,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
         <FiArrowLeft /> Voltar ao Dashboard
       </button>
 
-      <div className="min-h-screen p-6">
+      <div className="min-h-screen ">
         <div className="max-w-7xl mx-auto">
 
           {/* Header */}
@@ -296,32 +313,103 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
                   <p className="text-gray-600">Gerencie os pagamentos dos estudantes por mês</p>
                 </div>
               </div>
-              <div className="relative ">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Nome ou número de estudante..."
-                  className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className='flex gap-2'>
+                <div className="relative ">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Nome ou número de estudante..."
+                    className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={carregarDados}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <FiRefreshCw size={16} />
+                  Atualizar
+                </button>
               </div>
-              <button
-                onClick={carregarDados}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <FiRefreshCw size={16} />
-                Atualizar
-              </button>
             </div>
           </div>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <motion.div 
+              initial={{opacity:0,y:20}}
+              animate={{opacity:1,y:0}}
+              className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-blue-500"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm dark:text-white">Estudantes Filtrados</p>
+                  <h3 className="text-2xl dark:text-white font-bold">{estatistica.totalEstudantes}</h3>
+                </div>
+                <RxPerson className="text-3xl text-blue-500" />
+              </div>
+            </motion.div>
+    
+            <motion.div 
+              initial={{opacity:0,y:20}}
+              animate={{opacity:1,y:0}}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-green-500"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 dark:text-white text-sm">Em Dia</p>
+                  <h3 className="text-2xl dark:text-white font-bold">
+                    {estatistica.totalEmDia}
+                  </h3>
+                </div>
+                <FiCheckCircle className="text-3xl text-green-500" />
+              </div>
+            </motion.div>
+    
+            <motion.div 
+                initial={{opacity:0,y:20}}
+              animate={{opacity:1,y:0}}
+              transition={{ delay: 0.2 }}
+              className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-red-500"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm dark:text-white">Pendentes</p>
+                  <h3 className="text-2xl dark:text-white font-bold">{estatistica.totalPendentes}</h3>
+                </div>
+                <FiTrendingDown className="text-3xl text-red-500" />
+              </div>
+            </motion.div>
+    
+            <motion.div 
+              initial={{opacity:0,y:20}}
+              animate={{opacity:1,y:0}}
+              transition={{ delay: 0.3 }}
+              className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-orange-500"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm dark:text-white">Meses Pagos</p>
+                  <h3 className="text-2xl font-bold dark:text-white">{estatistica.totalMesePagos}</h3>
+                </div>
+                <FiBarChart2 className="text-3xl text-orange-500" />
+              </div>
+            </motion.div>
+          </div>
+        
 
           {/* Filtros e Busca */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-            <div className="flex flex-wrap gap-4">
+          <motion.div 
+          initial={{opacity:0,y:20}}
+          animate={{opacity:1,y:0}}
+           transition={{ delay: 0.5 }}
+         
+          className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+            <div className="flex flex-row gap-4 justify-around">
 
               {/* Filtro Turma */}
-              <div>
+              <div className='w-full'>
                 <SelectTyped
                   vect={prepararDadosSelect.turmas}
                   icon={FaBookAtlas}
@@ -331,7 +419,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
               </div>
 
               {/* Filtro Status */}
-              <div>
+              <div className='w-full'>
                 <SelectTyped
                   vect={prepararDadosSelect.status}
                   onChange={setFiltroStatus}
@@ -340,7 +428,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
               </div>
 
               {/* Filtro Mês */}
-              <div>
+               <div className='w-full'>
                 <SelectTyped
                   vect={prepararDadosSelect.meses}
                   icon={FiCalendar}
@@ -350,17 +438,17 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
               </div>
 
               {/* Botão Limpar Filtros */}
-              <div className="">
+               <div className='w-full'>
                 <button
                   onClick={limparFiltros}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   <FiFilter size={16} />
                   Limpar Filtros
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Resumo de Filtros Ativos */}
           {(filtroTurma !== 'Todas Turmas' || filtroStatus !== 'Todos' || filtroMes !== 'Todos os Meses' || busca) && (
@@ -393,143 +481,123 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
               </div>
             </div>
           )}
-
-          {/* Lista de Estudantes */}
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              {/* Cabeçalho da Tabela */}
-              <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">
-                <div className="col-span-3">Estudante</div>
-                <div className="col-span-2">Turma</div>
-                <div className="col-span-3">Meses Pagos</div>
-                <div className="col-span-2">Status Geral</div>
-                <div className="col-span-2 text-center">Ação</div>
-              </div>
-
-              {/* Lista de Estudantes */}
-              <div className="divide-y divide-gray-200">
-                {alunosFiltrados.map((aluno: Student) => (
-                  <div key={aluno.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                    <div className="col-span-3">
-                      <div className="flex items-center gap-3">
-                        <div onClick={() => abrirAluno(aluno.id)} className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-colors">
-                          <FiUser className="text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{aluno.nome_completo}</div>
-                          <div className="text-sm text-gray-500">#{aluno.numero_estudante}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-span-2 text-gray-700">
-                      { aluno.turma_nome || 'N/A'}
-                    </div>
-                    <div className="col-span-3">
-                      {/* Sempre mostra meses pagos E pendentes */}
-                      <div className="space-y-1">
-                        {/* Meses Pagos */}
-                        <div className={filtroStatus === "Pendente" ? "hidden" : "block text-sm"}>
-                          <span className="text-green-600 font-medium">Pagou:</span>{' '}
-                          {getMesesPagosFormatados(aluno, filtroMes)}
-                        </div>
-
-                        {/* Meses Pendentes */}
-                        <div className={filtroStatus === "Pago" ? "hidden" : "block text-sm"}>
-                          <span className="text-red-600 font-medium">Pendente:</span>{' '}
-                          {getMesesPendentesFormatados(aluno, filtroMes)}
-                        </div>
-                      </div>
-
-                      {/* Contadores totais */}
-                      <div className="text-xs text-gray-500 mt-1 flex gap-2">
-                        <span className={filtroStatus === "Pendente" ? "hidden" : "block"}>✓ {getMesesPagosAluno(aluno).length}</span>
-                        <span className={filtroStatus === "Pago" ? "hidden" : "block"}>✗ {getMesesPendentesAluno(aluno).length}</span>
-                      </div>
-                    </div>
-
-                    <div className="col-span-2">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                        aluno.pagamento_em_dia
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                        }`}>
-                        {aluno.pagamento_em_dia ? (
-                          <>
-                            <FiCheckCircle size={14} />
-                            Em Dia
-                          </>
-                        ) : (
-                          <>
-                            <FiClock size={14} />
-                            Pendente
-                          </>
-                        )}
-                      </span>
-                    </div>
-
-                   <div className="col-span-2 text-center justify-center flex items-center">
-                      <button
-                        onClick={() => handleSelecionarAluno(aluno)}
-                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
-                        title="Realizar pagamento (mês atual ou adiantado)"
-                      >
-                        <FiDollarSign size={16} />
-                        <span>Pagar</span>
-                      </button>
-                    </div>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}>
+             {/* Lista de Estudantes */}
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div  className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  {/* Cabeçalho da Tabela */}
+                  <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">
+                    <div className="col-span-3">Estudante</div>
+                    <div className="col-span-2">Turma</div>
+                    <div className="col-span-3">Meses Pagos</div>
+                    <div className="col-span-2">Status Geral</div>
+                    <div className="col-span-2 text-center">Ação</div>
                   </div>
-                ))}
-              </div>
 
-              {/* Mensagem quando não há resultados */}
-              {alunosFiltrados.length === 0 && (
-                <div className="text-center py-12">
-                  <FiUser className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">
-                    Nenhum estudante encontrado
-                  </h3>
-                  <p className="text-gray-500 mt-2">
-                    {busca || filtroTurma !== 'Todas Turmas' || filtroStatus !== 'Todos' || filtroMes !== 'Todos os Meses'
-                      ? 'Tente ajustar os filtros de busca'
-                      : 'Nenhum estudante cadastrado'
-                    }
-                  </p>
+                  {/* Lista de Estudantes */}
+                  <div className="divide-y divide-gray-200">
+                    {alunosFiltrados.map((aluno: Student) => (
+                      <div key={aluno.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
+                        <div className="col-span-3">
+                          <div className="flex items-center gap-3">
+                            <div onClick={() => abrirAluno(aluno.id)} className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-colors">
+                              <FiUser className="text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{aluno.nome_completo}</div>
+                              <div className="text-sm text-gray-500">#{aluno.numero_estudante}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="col-span-2 text-gray-700">
+                          { aluno.turma_nome || 'N/A'}
+                        </div>
+                        <div className="col-span-3">
+                          {/* Sempre mostra meses pagos E pendentes */}
+                          <div className="space-y-1">
+                            {/* Meses Pagos */}
+                            <div className={filtroStatus === "Pendente" ? "hidden" : "block text-sm"}>
+                              <span className="text-green-600 font-medium">Pagou:</span>{' '}
+                              {getMesesPagosFormatados(aluno, filtroMes)}
+                            </div>
+
+                            {/* Meses Pendentes */}
+                            <div className={filtroStatus === "Pago" ? "hidden" : "block text-sm"}>
+                              <span className="text-red-600 font-medium">Pendente:</span>{' '}
+                              {getMesesPendentesFormatados(aluno, filtroMes)}
+                            </div>
+                          </div>
+
+                          {/* Contadores totais */}
+                          <div className="text-xs text-gray-500 mt-1 flex gap-2">
+                            <span className={filtroStatus === "Pendente" ? "hidden" : "block"}>✓ {getMesesPagosAluno(aluno).length}</span>
+                            <span className={filtroStatus === "Pago" ? "hidden" : "block"}>✗ {getMesesPendentesAluno(aluno).length}</span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-2">
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                            aluno.pagamento_em_dia
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                            }`}>
+                            {aluno.pagamento_em_dia ? (
+                              <>
+                                <FiCheckCircle size={14} />
+                                Em Dia
+                              </>
+                            ) : (
+                              <>
+                                <FiClock size={14} />
+                                Pendente
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                      <div className="col-span-2 text-center justify-center flex items-center">
+                          <button
+                            onClick={() => handleSelecionarAluno(aluno)}
+                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
+                            title="Realizar pagamento (mês atual ou adiantado)"
+                          >
+                            <FiDollarSign size={16} />
+                            <span>Pagar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mensagem quando não há resultados */}
+                  {alunosFiltrados.length === 0 && (
+                    <div className="text-center py-12">
+                      <FiUser className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-4 text-lg font-medium text-gray-900">
+                        Nenhum estudante encontrado
+                      </h3>
+                      <p className="text-gray-500 mt-2">
+                        {busca || filtroTurma !== 'Todas Turmas' || filtroStatus !== 'Todos' || filtroMes !== 'Todos os Meses'
+                          ? 'Tente ajustar os filtros de busca'
+                          : 'Nenhum estudante cadastrado'
+                        }
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
+          </motion.div>
+         
 
-          {/* Estatísticas Rápidas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-2xl font-bold text-gray-900">{alunosFiltrados.length}</div>
-              <div className="text-sm text-gray-600">Estudantes Filtrados</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-2xl font-bold text-green-600">
-                {alunosFiltrados.filter(a => a.pagamento_em_dia).length}
-              </div>
-              <div className="text-sm text-gray-600">Em Dia</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-2xl font-bold text-red-600">
-                {alunosFiltrados.filter(a => !a.pagamento_em_dia).length}
-              </div>
-              <div className="text-sm text-gray-600">Pendentes</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-2xl font-bold text-blue-600">
-                {Object.values(mesesPagamentos).flat().length}
-              </div>
-              <div className="text-sm text-gray-600">Meses Pagos</div>
-            </div>
-          </div>
-
+         
           {/* Histórico de Pagamentos */}
           <div className="mt-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Histórico Recente de Pagamentos</h2>

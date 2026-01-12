@@ -18,7 +18,7 @@ export interface FrequenciaData {
 }
 export interface RegistroFrequenciaLote {
   aula_id: string;
-    data_aula: string;
+  data_aula: string;
   registros: {
     aluno_id: string;
     presente: boolean;

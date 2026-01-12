@@ -234,12 +234,12 @@ export const FrequenciaPage = () => {
     }
   };
 
-  const registrarFrequencia = async (aulaId, registros) => {
+  const registrarFrequencia = async (registros) => {
     try {
-      console.log('📝 Registrando frequência para aula:', aulaId, registros);
-      await frequenciaService.registrarFrequenciaLote(aulaId, registros);
+      console.log('📝 Registrando frequência para aula:', registros);
+      await frequenciaService.registrarFrequenciaLote(registros);
       
-      setAulas(prev => prev.filter(aula => aula.id !== aulaId));
+      setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
       console.log('✅ Frequência registrada e aula removida da lista');
       
       setTimeout(() => {

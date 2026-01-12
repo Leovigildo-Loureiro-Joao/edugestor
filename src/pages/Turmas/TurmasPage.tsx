@@ -1,7 +1,7 @@
 // src/pages/Turmas/TurmaDetails.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion,AnimatePresence } from 'framer-motion';
 import { 
   FiArrowLeft, 
   FiEdit, 
@@ -35,24 +35,12 @@ import HorarioModal from '../../components/turmas/HorarioModal';
 import { StudentModal } from '../../components/students/StudentModal';
 import { AulaCardMin } from '../../components/aulas/AulaCard';
 import { aulaService } from '../../services/database';
-import { Aula } from '../../types/aula';
+import { Aula, AulaFormData } from '../../types/aula';
+import { SelectTyped } from '../../components/students/StudentForm';
+import { AulaForm } from '../../components/aulas/AulaForm';
+import toast from 'react-hot-toast';
+import { AulaStatus } from '../../components/aulas/AulaCard-min';
 
-
-// Definição dos cursos e suas disciplinas - atualizado para corresponder ao StudentForm
-const CURSOS_DISCIPLINAS = {
-  "Matemática": ["Álgebra", "Geometria", "Aritmética", "Cálculo", "Estatística"],
-  "Português": ["Gramática", "Leitura", "Escrita", "Interpretação", "Literatura"],
-  "Física": ["Mecânica", "Termodinâmica", "Óptica", "Eletromagnetismo"],
-  "Química": ["Química Geral", "Orgânica", "Inorgânica", "Físico-Química"],
-  "Biologia": ["Biologia Celular", "Genética", "Ecologia", "Anatomia"],
-  "História": ["História Geral", "História de Angola", "História Africana"],
-  "Geografia": ["Geografia Física", "Geografia Humana", "Geografia Econômica"],
-  "Inglês": ["Gramática", "Conversação", "Leitura", "Escrita"],
-  "Francês": ["Gramática", "Conversação", "Leitura", "Escrita"],
-  "Filosofia": ["Filosofia Antiga", "Filosofia Moderna", "Ética", "Lógica"],
-  "Educação Visual": ["Desenho", "Pintura", "Escultura", "História da Arte"],
-  "Educação Física": ["Esportes", "Ginástica", "Atletismo", "Saúde"]
-};
 
 // Tipos atualizados para refletir o StudentForm
 export interface AlunoDesempenho extends Student {
@@ -82,6 +70,11 @@ const TurmaDetails = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [toqgle,setToggle]=useState(false)
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoDesempenho|null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddTurma, setQuickAddTurma] = useState('');
+  const [quickAddData, setQuickAddData] = useState(new Date().toISOString().split('T')[0]);
+  const [aulaEditando, setAulaEditando] = useState<Aula | null>(null);
 
   // Grupos de aprendizado - alinhado com StudentForm
   const gruposAprendizado = [
@@ -244,6 +237,82 @@ const handleExcluirHorario = async (horarioId: string) => {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
+
+    const handleCriarAula = async (aulaData: AulaFormData) => {
+      try {
+        await aulaService.criarAula(aulaData);
+        setShowForm(false);
+        await loadData();
+        toast.success('Aula criada com sucesso!');
+      } catch (error: any) {
+        console.error('Erro ao criar aula:', error);
+        toast.error(error.message || 'Erro ao criar aula');
+      }
+    };
+
+    async function handelActualizar(status: AulaStatus,aulaSelect:Aula) {
+      if(aulaSelect){
+        const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
+        setAulas(prev => prev.map(e => aula&&e.id === aula.id ? aula : e));
+        console.log(aula)
+      }
+      
+    }
+
+    const handleEditarAula = async (aulaData: AulaFormData) => {
+      if (!aulaEditando) return;
+      
+      try {
+        await aulaService.atualizarAula(aulaEditando.id, aulaData);
+        setShowForm(false);
+        setAulaEditando(null);
+        await loadData();
+        toast.success('Aula atualizada com sucesso!');
+      } catch (error: any) {
+        console.error('Erro ao atualizar aula:', error);
+        toast.error(error.message || 'Erro ao atualizar aula');
+      }
+    };
+  
+    const handleDeletarAula = async (id: string) => {
+      if (window.confirm('Tem certeza que deseja excluir esta aula?')) {
+        try {
+          await aulaService.deletarAula(id);
+          await loadData();
+          toast.success('Aula excluída com sucesso!');
+        } catch (error) {
+          console.error('Erro ao excluir aula:', error);
+          toast.error('Erro ao excluir aula');
+        }
+      }
+    };
+  
+    const handleQuickAdd = async () => {
+      if (!quickAddTurma) {
+        toast.error('Selecione uma turma');
+        return;
+      }
+  
+      try {
+        await aulaService.criarAula({
+          turma_id: quickAddTurma,
+          data_aula: quickAddData,
+          disciplina: turmas.find(t => t.id === quickAddTurma)?.curso_nome || '',
+          hora_inicio: '08:00',
+          hora_fim: '09:30',
+          tema_aula: 'Aula do dia',
+          status: 'planeada',
+          turmas: turma as Turma
+        });
+        
+        setShowQuickAdd(false);
+        setQuickAddTurma('');
+        await loadData();
+        toast.success('Aula adicionada rapidamente!');
+      } catch (error) {
+        toast.error('Erro ao adicionar aula rápida');
+      }
+    };
 
   const top3Alunos = turma?.alunos
     .sort((a, b) => b.media - a.media)
@@ -669,17 +738,49 @@ const handleExcluirHorario = async (horarioId: string) => {
 
             {abaAtiva === 'aulas' && (
                <div className="flex flex-wrap gap-4">
+                 
+                     <div className="flex w-full items-center justify-between gap-4">
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+                            <FiBook className="mr-2" />
+                            Lista de Aulas
+                          </h2>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                            Gerencie e visualize suas aulas
+                          </p>
+                        </div>
+                        <div className='gap-5 flex'>
+                          <button 
+                            onClick={() => setShowForm(true)}
+                            className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors"
+                          >
+                            <FiPlus className="inline mr-2" />
+                            Nova Aula
+                          </button>
+                           <button 
+                            onClick={() => setShowQuickAdd(true)}
+                            className="px-4 py-2 bg-violet-100 text-violet-700 dark:bg-violet-800 dark:text-violet-300 rounded-lg hover:bg-violet-200 dark:hover:bg-violet-700 transition-colors"
+                          >
+                            <FiPlus className="inline mr-2" />
+                            Aula Rapida
+                          </button>
+                        </div>
+                            
+                      
+                  </div>
                   {aulas.length>0?aulas.map((aula, index) => (
                     <AulaCardMin
                       key={aula.id}
                       aula={aula}
-                      onEditar={() => null}
-                      onDeletar={() => null}
-                      onExpandir={() => {
-                        // Abrir modal com detalhes completos
-                       
+                      onEditar={()=>{
+                        setAulaEditando(aula)
+                        setShowForm(true)
                       }}
+                      onDeletar={handleDeletarAula}
                       index={index}
+                      onActualizar={(status)=>{
+                        handelActualizar(status,aula)
+                      }}
                     />
                   )):
                   <div className="text-center py-12">
@@ -696,9 +797,8 @@ const handleExcluirHorario = async (horarioId: string) => {
 
           {/* Sidebar - Informações da Turma */}
           <div className="space-y-6">
-           <span onClick={()=> setToggle(!toqgle)}  className='-mt-5 -mb-10 hover:text-white float-right text-center rounded-md duration-150 cursor-pointer hover:bg-primary-500 transition-all p-2 flex items-center justify-center'>
-                    Minimizar
-                    <FaRegWindowMinimize className='-mt-2'/>
+           <span onClick={()=> setToggle(!toqgle)}  className=' -mt-5 -mb-10  text-sm gap-2 float-right text-center rounded-md duration-150 cursor-pointer hover:text-primary-500 transition-all p-2 flex items-center flex-row-reverse justify-center'>
+                    {!toqgle?"Ocultar":"Mostrar"} informações
                 </span>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -842,6 +942,130 @@ const handleExcluirHorario = async (horarioId: string) => {
         </div>
       </div>
       <StudentModal loadTurmaDetails={loadTurmaDetails} alunoSelecionado={alunoSelecionado} setAlunoSelecionado={setAlunoSelecionado} />
+       {/* Quick Actions */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-8 bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6"
+            >
+              <h3 className="font-semibold dark:text-white text-gray-800 mb-4">Ações Rápidas</h3>
+              <div className="flex flex-wrap gap-3">
+                <button 
+                  onClick={() => {
+                    setShowForm(true)
+                  }}
+                  className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors"
+                >
+                  <FiPlus className="inline mr-2" />
+                  Nova Aula
+                </button>
+                <button className="px-4 py-2 bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-700 transition-colors">
+                  <FiCalendar className="inline mr-2" />
+                  Agendar Múltiplas Aulas
+                </button>
+                <button className="px-4 py-2 bg-purple-100 text-purple-700 dark:bg-purple-800 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-700 transition-colors">
+                  <FiUsers className="inline mr-2" />
+                  Relatório de Participação
+                </button>
+              </div>
+            </motion.div>
+      
+            {/* Modal Form */}
+            <AnimatePresence>
+              {showForm && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  onClick={() => {
+                    setShowForm(false);
+                    setAulaEditando(null);
+                  }}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <AulaForm
+                      aula={aulaEditando}
+                      turmas={[{ value: turma.id, label: turma.nome_turma }]}
+                      onSubmit={aulaEditando ? handleEditarAula : handleCriarAula}
+                      onCancel={() => {
+                        setShowForm(false);
+                        setAulaEditando(null);
+                      }}
+                      loading={loading}
+                    />
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+      
+            {/* Modal Quick Add */}
+            <AnimatePresence>
+              {showQuickAdd && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  onClick={() => setShowQuickAdd(false)}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Adicionar Aula Rápida</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Turma
+                          <p className='p-4 mt-1 border-gray-400 border rounded-sm'>{turma.nome_turma}</p>
+                        </label>
+                        
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Data
+                        </label>
+                        <input
+                          type="date"
+                          value={quickAddData}
+                          onChange={(e) => setQuickAddData(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 mt-6">
+                      <button
+                        onClick={() =>{ setShowQuickAdd(false);setQuickAddTurma(turma.id)}}
+                        className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleQuickAdd}
+                        className="flex-1 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
     </div>
   );
 };
