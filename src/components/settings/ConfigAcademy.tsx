@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FiSave, FiCalendar, FiFileText, FiPlus, FiEdit, FiTrash, FiX } from "react-icons/fi";
 import { AcademyConfig } from "../../types/config";
 import { configService } from "../../services/database/config";
+import { motion } from "framer-motion";
 
 export const ConfiguracoesAcademicas = () => {
   const [abaAtiva, setAbaAtiva] = useState<'avaliacoes' | 'geral'>('avaliacoes');
@@ -90,7 +91,9 @@ export const ConfiguracoesAcademicas = () => {
   };
 
   return (
-    <>
+    <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}>
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
         {/* Cabeçalho com Abas */}
         <div className="border-b border-gray-200 dark:border-gray-700">
@@ -349,6 +352,6 @@ export const ConfiguracoesAcademicas = () => {
           </div>
         </div>
       )}
-    </>
+    </motion.div>
   );
 };

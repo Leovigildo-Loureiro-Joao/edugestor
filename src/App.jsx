@@ -15,6 +15,7 @@ import PagamentosPage from './pages/Finance/Pagamento.tsx';
 import {FinanceiroPage} from './pages/Finance/Financeiro.tsx';
 import RegistroPagamentoPage from './pages/Finance/RegistroPagamentoPage.tsx';
 import { ConfiguracoesPage } from './pages/Settings/ConfigPage.jsx';
+import { MetaDetailsPage } from './pages/Estrategia/MetasDetails.tsx';
 import Courses from './pages/Courses/Curso.tsx';
 import { CursoNew } from './pages/Courses/CursoNew.jsx';
 import { CursoEdit } from './pages/Courses/CursoEdit.jsx';
@@ -35,6 +36,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.tsx';
 import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
 import ProfilePage from './pages/User/ProfilePage.tsx';
 import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
+import { backgroundService } from './services/database/backgroundService.ts';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -90,6 +92,8 @@ function AppContent() {
     };
     sincronizar()
   }, []);
+
+  backgroundService.inicializar();
 
   // 🔥 TODOS OS HOOKS DEVEM SER CHAMADOS SEMPRE
   useEffect(() => {
@@ -242,6 +246,7 @@ useEffect(() => {
                   <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
                   <Route path="/estrategia/:seccao" element={<EstrategiaPage/>} />
                   <Route path="/estrategia" element={<EstrategiaPage/>} />
+                  <Route path="/estrategia/metas/:id" element={<MetaDetailsPage />} />
                   <Route path="/cursos/novo" element={<CursoNew/>} />
                   <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
                   <Route path="/cursos/:id" element={<CourseDetails/>} />

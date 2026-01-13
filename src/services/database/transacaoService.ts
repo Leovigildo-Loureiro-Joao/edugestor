@@ -48,6 +48,8 @@ export const transacaoService = {
     }
   },
 
+
+
   async createAlocacao(alocacaoData: AlocacaoRecursoFormData): Promise<string> {
     try {
       const id = generateUniqueId();
@@ -99,7 +101,22 @@ export const transacaoService = {
     }
   },
 
-
+  getTransacoesPeriodo: async (inicio: string, fim: string): Promise<Transacao[]> => {
+    try {
+      const transacoes = await db.transacoes
+        .where('data')
+        .between(inicio, fim, true, true)
+        .and(t => !t.deleted)
+        .toArray();
+      
+      return transacoes.sort((a, b) => 
+        new Date(a.data).getTime() - new Date(b.data).getTime()
+      );
+    } catch (error) {
+      console.error('Erro ao buscar transações por período:', error);
+      return [];
+    }
+  },
   
 
   // ✅ Processar pagamento com cartão (inclui sincronização)

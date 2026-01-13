@@ -176,10 +176,14 @@ const Students = () => {
     <div className="space-y-6 p-5">
       {/* Cabeçalho com Busca Integrada */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Alunos</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Gerencie os alunos da instituição</p>
-        </div>
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Alunos</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">Gerencie os alunos da instituição</p>
+          </motion.div>
+         
+
         
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Busca */}
@@ -206,7 +210,7 @@ const Students = () => {
       </div>
 
       {/* Filtros Rápidos */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg">
+      <div className="flex flex-col sm:flex-row gap-4 p-4 px-0 rounded-lg">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
 

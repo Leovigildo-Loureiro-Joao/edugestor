@@ -125,13 +125,15 @@ const { status, disciplinas } = useMemo(() => {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4  dark:bg-gray-900 min-h-screen">
       {/* Cabeçalho com Busca Integrada */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Cursos</h1>
           <p className="text-gray-600 dark:text-gray-100 mt-1">Gerencie os cursos da instituição</p>
-        </div>
+        </motion.div>
         
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Busca */}
@@ -149,7 +151,7 @@ const { status, disciplinas } = useMemo(() => {
       </div>
 
       {/* Filtros Rápidos */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4">
+      <div className="flex flex-col sm:flex-row gap-4 p-4 px-0">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
            <div className="relative flex-1 min-w-[300px]">
             <FiSearch className="absolute left-3 top-5 transform -translate-y-1/2 text-gray-400" />
@@ -189,7 +191,7 @@ const { status, disciplinas } = useMemo(() => {
           icon={FiBook}
           color="blue"
           trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
-          funcion={()=>null}
+          funcion={null}
         />
         
         <StatCard 
@@ -197,9 +199,9 @@ const { status, disciplinas } = useMemo(() => {
           value={estatisticas.totalInscritos}
           subtitle={`${estatisticas.taxaOcupacao.toFixed(1)}% das vagas ocupadas`}
           icon={FiUsers}
-          color="green"
+          color="red"
           trend={estatisticas.totalInscritos > 0 ? 'positive' : 'neutral'}
-          funcion={()=>null}
+          funcion={null}
         />
         
         <StatCard 
@@ -209,7 +211,7 @@ const { status, disciplinas } = useMemo(() => {
           icon={FaChalkboardTeacher}
           color="purple"
           trend={estatisticas.ativos > 0 ? 'positive' : 'neutral'}
-          funcion={()=>null}
+          funcion={null}
         />
         
         <StatCard 

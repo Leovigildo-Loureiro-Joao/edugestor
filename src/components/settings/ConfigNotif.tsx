@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { FaQuestion } from 'react-icons/fa6';
 import { FiMail, FiPhone, FiMessageSquare, FiSave } from 'react-icons/fi';
@@ -123,7 +124,9 @@ export const ConfiguracoesNotificacoes = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 dark:border-gray-700 rounded-lg border border-gray-200 shadow-sm p-6">
+   <motion.div 
+    initial={{ opacity: 0, y: -20 }}
+    animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 dark:border-gray-700 rounded-lg border border-gray-200 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Notificações</h2>
       
       <div className="space-y-8">
@@ -502,7 +505,7 @@ export const ConfiguracoesNotificacoes = () => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

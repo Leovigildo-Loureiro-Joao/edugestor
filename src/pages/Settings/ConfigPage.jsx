@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FiSettings, FiSave, FiRefreshCw, FiDatabase, FiUser, FiDollarSign, FiBell, FiShield, FiHome } from 'react-icons/fi';
 import { ConfiguracoesGerais } from '../../components/settings/ConfigGeral';
+import { motion } from 'framer-motion';
 import { ConfiguracoesFinanceiras } from '../../components/settings/ConfigFinance';
 import { ConfiguracoesAcademicas } from '../../components/settings/ConfigAcademy';
 import { ConfiguracoesSeguranca } from '../../components/settings/ConfigSecure';
 import { ConfiguracoesBackup } from '../../components/settings/ConfigBackup';
+
 import ConfiguracoesNotificacoes from '../../components/settings/ConfigNotif';
 
 export const ConfiguracoesPage = () => {
@@ -16,18 +18,25 @@ export const ConfiguracoesPage = () => {
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <div className="mb-8">
+         <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+           transition={{delay:0.1}}
+              className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <FiSettings className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold dark:text-white text-gray-900">Configurações do Sistema</h1>
           </div>
           <p className="text-gray-600 dark:text-gray-100">Gerencie as configurações da sua escola</p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
           {/* Sidebar de Navegação */}
-          <div className="lg:col-span-1">
+           <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{delay:0.2}} className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 dark:border-gray-600 rounded-lg border border-gray-200 shadow-sm p-4">
               <nav className="space-y-2">
                 <button
@@ -91,7 +100,7 @@ export const ConfiguracoesPage = () => {
                 </button>
               </nav>
             </div>
-          </div>
+          </motion.div>
 
           {/* Conteúdo Principal */}
           <div className="lg:col-span-3">

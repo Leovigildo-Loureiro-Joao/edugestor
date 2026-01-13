@@ -250,7 +250,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
             </button>
           </div>
         )}
-        {aula.status === 'ministrada' && aula?.registro && aula?.registro.length == 0 && (
+        {aula.status === 'ministrada' && (aula?.registro && aula?.registro.length == 0) && (
           <div className="mt-3 flex gap-5">
             <button
               onClick={()=>onActualizar("ministrada")}

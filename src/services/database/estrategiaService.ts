@@ -1,6 +1,7 @@
 import { Meta } from "../../types/eventos";
 import { generateUniqueId } from "../../utils/idGenarator";
 import db, { supabase } from "./db";
+import { transacaoService } from "./transacaoService";
 // Você pode criar este utilitário
 
 export const estrategiaService = {
@@ -403,7 +404,380 @@ export const estrategiaService = {
       console.error(`Erro ao deletar ${table}:`, error);
       throw error;
     }
-  }
+  },
+
+   async updateKPI(metaId: string, kpiId: string, valorAtual: number): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta || !meta.kpis) return;
+
+      const kpiIndex = meta.kpis.findIndex(k => k.id === kpiId);
+      if (kpiIndex >= 0) {
+        meta.kpis[kpiIndex].valor_atual = valorAtual;
+        meta.kpis[kpiIndex].ultima_atualizacao = new Date().toISOString();
+
+        // Recalcular progresso da meta
+        await this.calcularProgressoMeta(meta);
+        
+        // Salvar alterações
+        await this.updateMeta(metaId, {
+          kpis: meta.kpis,
+          progresso: meta.progresso
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar KPI:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Adicionar um novo KPI à meta
+   */
+  async addKPI(metaId: string, kpiData: Omit<Meta['kpis'][0], 'id' | 'ultima_atualizacao'>): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta) return;
+
+      const novoKPI: Meta['kpis'][0] = {
+        id: generateUniqueId(),
+        ...kpiData,
+        ultima_atualizacao: new Date().toISOString()
+      };
+
+      const kpisAtualizados = meta.kpis ? [...meta.kpis, novoKPI] : [novoKPI];
+      
+      await this.updateMeta(metaId, { kpis: kpisAtualizados });
+    } catch (error) {
+      console.error('Erro ao adicionar KPI:', error);
+      throw error;
+    }
+  },
+
+  // ============ MÉTODOS PARA SUB-METAS ============
+  
+  /**
+   * Adicionar uma sub-meta (mini-meta/ ação)
+   */
+  async addSubMeta(metaId: string, subMetaData: Omit<Meta['submetas'][0], 'id'>): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta) return;
+
+      const novaSubMeta: Meta['submetas'][0] = {
+        id: generateUniqueId(),
+        ...subMetaData,
+        status: 'pendente'
+      };
+
+      const subMetasAtualizadas = meta.submetas 
+        ? [...meta.submetas, novaSubMeta] 
+        : [novaSubMeta];
+      
+      await this.updateMeta(metaId, { submetas: subMetasAtualizadas });
+    } catch (error) {
+      console.error('Erro ao adicionar sub-meta:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Atualizar status de uma sub-meta
+   */
+  async updateSubMetaStatus(metaId: string, subMetaId: string, status: Meta['submetas'][0]['status']): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta || !meta.submetas) return;
+
+      const subMetaIndex = meta.submetas.findIndex(sm => sm.id === subMetaId);
+      if (subMetaIndex >= 0) {
+        meta.submetas[subMetaIndex].status = status;
+        
+        // Se sub-meta foi concluída, podemos atualizar KPIs relacionados
+        if (status === 'concluida' && meta.submetas[subMetaIndex].kpis_afetados) {
+          // Aqui você poderia adicionar lógica para atualizar KPIs automaticamente
+          console.log(`Sub-meta ${subMetaId} concluída - KPIs afetados:`, meta.submetas[subMetaIndex].kpis_afetados);
+        }
+
+        await this.updateMeta(metaId, { submetas: meta.submetas });
+        await this.calcularProgressoMeta(meta);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar sub-meta:', error);
+      throw error;
+    }
+  },
+
+  // ============ CÁLCULO DE PROGRESSO ============
+  
+  /**
+   * Calcular progresso da meta baseado em:
+   * 1. KPIs (50% do peso)
+   * 2. Sub-metas (30% do peso) 
+   * 3. Orçamento (20% do peso)
+   */
+  async calcularProgressoMeta(meta: Meta): Promise<number> {
+    let progressoTotal = 0;
+    let componentesAtivos = 0;
+
+    // 1. Progresso baseado em KPIs (50%)
+    if (meta.kpis && meta.kpis.length > 0) {
+      let progressoKPIs = 0;
+      let pesoTotal = 0;
+
+      meta.kpis.forEach(kpi => {
+        const peso = kpi.peso || 1;
+        const progressoKPI = kpi.valor_meta > 0 
+          ? Math.min((kpi.valor_atual / kpi.valor_meta) * 100, 100)
+          : 0;
+        
+        progressoKPIs += progressoKPI * peso;
+        pesoTotal += peso;
+      });
+
+      const mediaKPIs = pesoTotal > 0 ? progressoKPIs / pesoTotal : 0;
+      progressoTotal += mediaKPIs * 0.5;
+      componentesAtivos++;
+    }
+
+    // 2. Progresso baseado em sub-metas (30%)
+    if (meta.submetas && meta.submetas.length > 0) {
+      const concluidas = meta.submetas.filter(sm => sm.status === 'concluida').length;
+      const progressoSubMetas = (concluidas / meta.submetas.length) * 100;
+      progressoTotal += progressoSubMetas * 0.3;
+      componentesAtivos++;
+    }
+
+    // 3. Progresso baseado em orçamento (20%)
+    if (meta.orcamento_previsto && meta.orcamento_previsto > 0) {
+      const orcamentoAlocado = meta.orcamento_alocado || 0;
+      const progressoOrcamento = Math.min((orcamentoAlocado / meta.orcamento_previsto) * 100, 100);
+      progressoTotal += progressoOrcamento * 0.2;
+      componentesAtivos++;
+    }
+
+    // Se não tem nenhum componente, usar 0
+    if (componentesAtivos === 0) return 0;
+
+    // Ajustar se não tem todos os componentes
+    const fatorAjuste = 3 / componentesAtivos; // 3 = total de componentes possíveis
+    const progressoFinal = Math.min(progressoTotal * fatorAjuste, 100);
+
+    return Number(progressoFinal.toFixed(1));
+  },
+
+  // ============ ALOCAÇÃO DE RECURSOS ============
+  
+  /**
+   * Alocar recursos (dinheiro) para uma meta
+   */
+  async alocarRecursos(metaId: string, alocacaoData: {
+    valor: number;
+    motivo: string;
+    tipo: 'complementar' | 'completo' | 'parcial';
+    responsavel: string;
+  }): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta) throw new Error('Meta não encontrada');
+
+      const alocacao = {
+        id: generateUniqueId(),
+        data: new Date().toISOString(),
+        ...alocacaoData
+      };
+
+      // Atualizar orçamento alocado
+      const novoOrcamentoAlocado = (meta.orcamento_alocado || 0) + alocacaoData.valor;
+      
+      // Adicionar ao histórico de alocações
+      const alocacoesAtualizadas = meta.alocacoes 
+        ? [...meta.alocacoes, alocacao] 
+        : [alocacao];
+
+      // Atualizar meta
+      await this.updateMeta(metaId, {
+        orcamento_alocado: novoOrcamentoAlocado,
+        alocacoes: alocacoesAtualizadas
+      });
+
+      // Criar transação financeira
+      await transacaoService.createTransacao({
+        categoria: "investimento",
+        data: new Date().toISOString(),
+        descricao: `Alocação para meta: ${meta.titulo} - ${alocacaoData.motivo}`,
+        tipo: 'saida',
+        valor: alocacaoData.valor
+      });
+
+      // Recalcular progresso
+      await this.calcularProgressoMeta(await this.getMetasID(metaId));
+
+      console.log(`💰 ${alocacaoData.valor} AOA alocados para meta ${meta.titulo}`);
+    } catch (error) {
+      console.error('Erro ao alocar recursos:', error);
+      throw error;
+    }
+  },
+
+  // ============ COLETA AUTOMÁTICA DE DADOS PARA KPIs ============
+  
+  /**
+   * Coletar dados automaticamente para KPIs comuns
+   */
+  async coletarDadosKPIs(): Promise<void> {
+    try {
+      console.log('📊 Coletando dados para KPIs...');
+      
+      const metas = await this.getMetas();
+      const hoje = new Date();
+
+      for (const meta of metas) {
+        if (!meta.kpis || meta.status === 'concluida' || meta.status === 'suspensa') continue;
+
+        let metaAtualizada = false;
+        const kpisAtualizados = [...(meta.kpis || [])];
+
+        for (let i = 0; i < kpisAtualizados.length; i++) {
+          const kpi = kpisAtualizados[i];
+          
+          // Verificar se precisa atualizar baseado na frequência
+          const precisaAtualizar = this.verificarNecessidadeAtualizacao(
+            kpi.frequencia,
+            kpi.ultima_atualizacao
+          );
+
+          if (precisaAtualizar && kpi.fonte_dados) {
+            const novoValor = await this.calcularValorKPI(kpi.fonte_dados);
+            if (novoValor !== null && novoValor !== kpi.valor_atual) {
+              kpisAtualizados[i] = {
+                ...kpi,
+                valor_atual: novoValor,
+                ultima_atualizacao: hoje.toISOString()
+              };
+              metaAtualizada = true;
+            }
+          }
+        }
+
+        if (metaAtualizada) {
+          await this.updateMeta(meta.id, { kpis: kpisAtualizados });
+          await this.calcularProgressoMeta(meta);
+        }
+      }
+
+      console.log('✅ Dados de KPIs atualizados');
+    } catch (error) {
+      console.error('❌ Erro ao coletar dados de KPIs:', error);
+    }
+  },
+
+  /**
+   * Calcular valor para um KPI baseado na fonte de dados
+   */
+   async calcularValorKPI(fonte: string): Promise<number | null> {
+    switch (fonte) {
+      case 'matriculas':
+        const alunos = await db.alunos.toArray();
+        return alunos.filter(a => a.status === 'ativo').length;
+        
+      case 'frequencia':
+        const frequencias = await db.frequencias.toArray();
+        if (frequencias.length === 0) return 0;
+        const presentes = frequencias.filter(f => f.presente).length;
+        return (presentes / frequencias.length) * 100;
+        
+      // Adicione mais fontes conforme necessário
+      default:
+        return null;
+    }
+  },
+
+  /**
+   * Verificar se um KPI precisa ser atualizado
+   */
+   verificarNecessidadeAtualizacao(frequencia: string, ultimaAtualizacao?: string): boolean {
+    if (!ultimaAtualizacao) return true;
+    
+    const agora = new Date();
+    const ultima = new Date(ultimaAtualizacao);
+    const diffHoras = (agora.getTime() - ultima.getTime()) / (1000 * 60 * 60);
+    
+    switch (frequencia) {
+      case 'diaria': return diffHoras >= 24;
+      case 'semanal': return diffHoras >= 168; // 7 dias
+      case 'mensal': return diffHoras >= 720; // 30 dias
+      case 'trimestral': return diffHoras >= 2160; // 90 dias
+      default: return false;
+    }
+  },
+
+  // ============ MÉTODOS ÚTEIS ADICIONAIS ============
+  
+  async getMetasAtivas(): Promise<Meta[]> {
+    try {
+      const metas = await db.metas
+        .where('status')
+        .anyOf(['nao_iniciada', 'em_andamento'])
+        .toArray();
+      
+      return metas || [];
+    } catch (error) {
+      console.error('Erro ao buscar metas ativas:', error);
+      return [];
+    }
+  },
+
+  async getMetasPorTipo(tipo: Meta['tipo']): Promise<Meta[]> {
+    try {
+      const metas = await db.metas
+        .where('tipo')
+        .equals(tipo)
+        .toArray();
+      
+      return metas || [];
+    } catch (error) {
+      console.error('Erro ao buscar metas por tipo:', error);
+      return [];
+    }
+  },
+
+  async getMetasPorPrioridade(prioridade: Meta['prioridade']): Promise<Meta[]> {
+    try {
+      const metas = await db.metas
+        .where('prioridade')
+        .equals(prioridade)
+        .toArray();
+      
+      return metas || [];
+    } catch (error) {
+      console.error('Erro ao buscar metas por prioridade:', error);
+      return [];
+    }
+  },
+
+  async verificarPrazosMetas(): Promise<void> {
+    try {
+      const metas = await this.getMetasAtivas();
+      const hoje = new Date();
+
+      for (const meta of metas) {
+        const dataFim = new Date(meta.data_fim);
+        
+        if (hoje > dataFim && meta.status === 'em_andamento') {
+          // Meta atrasada
+          await this.updateMeta(meta.id, { status: 'atrasada' });
+          console.log(`⚠️ Meta "${meta.titulo}" marcada como atrasada`);
+        } else if (hoje >= new Date(meta.data_inicio) && meta.status === 'nao_iniciada') {
+          // Meta deve iniciar
+          await this.updateMeta(meta.id, { status: 'em_andamento' });
+          console.log(`▶️ Meta "${meta.titulo}" iniciada automaticamente`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar prazos:', error);
+    }
+  },
 
 
 };

@@ -25,6 +25,7 @@ import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursos
 import { Meta } from '../../types/eventos.ts';
 import db from '../../services/database/db.ts';
 import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.ts';
+import { motion } from 'framer-motion';
 
 // Interfaces/Types
 interface TabOption {
@@ -172,7 +173,7 @@ export const FinanceiroPage: React.FC = () => {
     }
    
     setAlocacao(await db.alocacao.filter(a=>!a.deleted).toArray());
-   
+    setShowDivisaoLucrosModal(false);
   };
 
   useEffect(() => {
@@ -285,7 +286,9 @@ export const FinanceiroPage: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
-            <div className="flex items-center gap-3">
+             <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
               <div className="p-3 bg-green-100 rounded-xl">
                 <FiDollarSign className="h-8 w-8 text-green-600" />
               </div>
@@ -293,7 +296,8 @@ export const FinanceiroPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Dashboard Financeiro</h1>
                 <p className="text-gray-600">Visão geral das finanças da escola</p>
               </div>
-            </div>
+            </motion.div>
+     
 
             {/* Seletor de Ano */}
             <div className="flex items-center gap-4">
@@ -392,38 +396,69 @@ export const FinanceiroPage: React.FC = () => {
             
             {/* Cards de Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <MetricCard
-                titulo="Total Recebido"
-                valor={dadosFinanceiros.metricas.totalRecebido}
-                icone={<FiTrendingUp className="text-green-600" />}
-                cor="green"
-                formato="currency"
-              />
-              
-              <MetricCard
-                titulo="Total Despesas"
-                valor={dadosFinanceiros.metricas.totalDespesas}
-                icone={<FiTrendingDown className="text-red-600" />}
-                cor="red"
-                formato="currency"
-              />
-              
-              <MetricCard
-                titulo="Lucro Líquido"
-                valor={dadosFinanceiros.metricas.lucro}
-                icone={<FiDollarSign className={dadosFinanceiros.metricas.lucro >= 0 ? "text-blue-600" : "text-red-600"} />}
-                cor={dadosFinanceiros.metricas.lucro >= 0 ? "blue" : "red"}
-                formato="currency"
-              />
-              
-              <MetricCard
-                titulo="Taxa de Pagamento"
-                valor={dadosFinanceiros.metricas.taxaPagamento}
-                icone={<FiUsers className="text-purple-600" />}
-                cor="purple"
-                formato="percent"
-                subtitulo={`${dadosFinanceiros.metricas.alunosPagaram}/${dadosFinanceiros.metricas.totalAlunos} alunos`}
-              />
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{delay:0.3}}
+                >
+                   <MetricCard
+                    titulo="Total Recebido"
+                    valor={dadosFinanceiros.metricas.totalRecebido}
+                    icone={<FiTrendingUp className="text-green-600" />}
+                    cor="green"
+                    formato="currency"
+                    subtitulo={`${dadosFinanceiros.metricas.totalRecebido<dadosFinanceiros.metricas.totalDespesas?"Elimine suas dividas":"Estavél"}`}
+                  />
+              </motion.div>
+
+
+               <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{delay:0.2}}
+                >
+                    <MetricCard
+                      titulo="Total Despesas"
+                      valor={dadosFinanceiros.metricas.totalDespesas}
+                      icone={<FiTrendingDown className="text-red-600" />}
+                      cor="red"
+                      formato="currency"
+                      subtitulo={`${dadosFinanceiros.metricas.totalRecebido<dadosFinanceiros.metricas.totalDespesas?"Instavel evite gastos":"Estavél"}`}
+
+                    />
+              </motion.div>
+
+
+               <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{delay:0.1}}
+                >    
+                  <MetricCard
+                    titulo="Lucro Líquido"
+                    valor={dadosFinanceiros.metricas.lucro}
+                    icone={<FiDollarSign className={dadosFinanceiros.metricas.lucro >= 0 ? "text-blue-600" : "text-red-600"} />}
+                    cor={dadosFinanceiros.metricas.lucro >= 0 ? "blue" : "red"}
+                    formato="currency"
+                    subtitulo={`${dadosFinanceiros.metricas.totalRecebido<dadosFinanceiros.metricas.totalDespesas?"Pessimo":"Estavél"}`}
+                  />
+              </motion.div>
+
+
+               <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className='h-full'
+                >
+                   <MetricCard
+                    titulo="Taxa de Pagamento"
+                    valor={dadosFinanceiros.metricas.taxaPagamento}
+                    icone={<FiUsers className="text-purple-600" />}
+                    cor="purple"
+                    formato="percent"
+                    subtitulo={`${dadosFinanceiros.metricas.alunosPagaram}/${dadosFinanceiros.metricas.totalAlunos} alunos`}
+                  />
+              </motion.div>
             </div>
 
             {/* Seletor de Visualização */}

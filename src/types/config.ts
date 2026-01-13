@@ -9,9 +9,7 @@ export interface SystemConfig extends BaseEntity{
   data_type: string;
   description?: string;
   instituicao_id:string
-  updated_at: string;
   updated_by?: string;
-
 }
 
 export type SystemConfigFormData = Omit<SystemConfig

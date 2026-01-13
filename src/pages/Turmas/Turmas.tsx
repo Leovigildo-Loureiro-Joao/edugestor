@@ -10,6 +10,7 @@ import { FaGraduationCap } from 'react-icons/fa';
 import { profileService } from '../../services/database/profileService';
 import { UserProfile } from '../../types/profile';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { StatCard } from '../../components/students/StatCard';
 
 // Definição das interfaces
 
@@ -117,10 +118,12 @@ const Turmas: React.FC = () => {
     <div className="space-y-6 p-4 dark:bg-gray-900 min-h-screen ">
       {/* Cabeçalho */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Turmas</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie as turmas da instituição</p>
-        </div>
+         <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Turmas</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie as turmas da instituição</p>
+          </motion.div>
         
         <div className="flex flex-col sm:flex-row gap-3">
             {/* Busca */}
@@ -180,53 +183,49 @@ const Turmas: React.FC = () => {
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm dark:shadow-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Turmas Filtradas</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{estatisticas.total}</p>
-            </div>
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-              <FiBook className="text-blue-600 dark:text-blue-400 text-lg" />
-            </div>
-          </div>
-        </div>
+        <StatCard 
+          color={"blue"}
+          icon={FiBook}
+          title={"Turmas Filtradas"}
+          subtitle={estatisticas.total === turmas.length ? 'Todas turmas' : `${((estatisticas.total / turmas.length) * 100).toFixed(1)}% do total`}
+          value={estatisticas.total}
+          trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
+          funcion={null}
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm dark:shadow-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Manhã</p>
-              <p className="text-2xl font-bold text-orange-600 dark:text-orange-500 mt-1">{estatisticas.manha}</p>
-            </div>
-            <div className="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-xl">
-              <FiClock className="text-orange-600 dark:text-orange-400 text-lg" />
-            </div>
-          </div>
-        </div>
+        />
+       <StatCard 
+          color={"orange"}
+          icon={FiClock}
+          title={"Manhã"}
+          subtitle={estatisticas.manha === turmasFiltradas.length ? 'Manhã' : `${((estatisticas.manha / turmasFiltradas.length) * 100).toFixed(1)}% do total`}
+          value={estatisticas.manha}
+          trend={estatisticas.manha > 0 ? 'positive' : 'neutral'}
+          funcion={null}
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm dark:shadow-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tarde</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-500 mt-1">{estatisticas.tarde}</p>
-            </div>
-            <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-xl">
-              <FiClock className="text-green-600 dark:text-green-400 text-lg" />
-            </div>
-          </div>
-        </div>
+        />
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm dark:shadow-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Noite</p>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-500 mt-1">{estatisticas.noite}</p>
-            </div>
-            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
-              <FiClock className="text-purple-600 dark:text-purple-400 text-lg" />
-            </div>
-          </div>
-        </div>
+        <StatCard 
+          color={"green"}
+          icon={FiClock}
+          title={"Tarde"}
+          subtitle={estatisticas.tarde === turmasFiltradas.length ? 'Tarde' : `${((estatisticas.tarde / turmasFiltradas.length) * 100).toFixed(1)}% do total`}
+          value={estatisticas.tarde}
+          trend={estatisticas.tarde > 0 ? 'positive' : 'neutral'}
+          funcion={null}
+
+        />
+
+         <StatCard 
+          color={"purple"}
+          icon={FiClock}
+          title={"Noite"}
+          subtitle={estatisticas.noite === turmasFiltradas.length ? 'Noite' : `${((estatisticas.noite / turmasFiltradas.length) * 100).toFixed(1)}% do total`}
+          value={estatisticas.noite}
+          trend={estatisticas.noite > 0 ? 'positive' : 'neutral'}
+          funcion={null}
+        />
+
+  
       </div>
 
       {/* Lista de Turmas */}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FiActivity, FiSave, FiShield } from "react-icons/fi";
 import { SelectTyped } from "../students/StudentForm";
+import { motion } from "framer-motion";
 
 export const ConfiguracoesBackup = () => {
   const [config, setConfig] = useState({
@@ -38,7 +39,9 @@ export const ConfiguracoesBackup = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+     <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Backup e Restauração</h2>
       
       <div className="space-y-8">
@@ -210,6 +213,6 @@ export const ConfiguracoesBackup = () => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

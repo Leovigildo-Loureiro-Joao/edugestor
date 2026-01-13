@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { FiSave } from "react-icons/fi";
 
@@ -26,7 +27,9 @@ export const ConfiguracoesSeguranca = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Configurações de Segurança</h2>
       
       <div className="space-y-8">
@@ -228,6 +231,6 @@ export const ConfiguracoesSeguranca = () => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

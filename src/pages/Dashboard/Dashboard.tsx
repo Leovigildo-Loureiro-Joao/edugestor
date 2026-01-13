@@ -16,6 +16,7 @@ import { DashboardStats, EstrategiaStats, StatCard } from '../../types/index.ts'
 import { ErrorSection } from '../../components/ui/ErrorSection.tsx';
 import { GraficoDesempenho } from '../../components/dashboad/Strategic.tsx';
 import { CardsMetricas } from '../../components/dashboad/CardsMetricas.tsx';
+import { motion } from 'framer-motion';
 
 // Tipos
 
@@ -191,9 +192,14 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6  dark:bg-gray-900 min-h-screen p-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>      
+          </motion.div>
+        
         <div className="text-sm text-gray-500 dark:text-white">
           Última atualização: {new Date().toLocaleString('pt-AO')}
         </div>

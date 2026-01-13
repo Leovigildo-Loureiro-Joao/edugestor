@@ -4,6 +4,7 @@ import { Instituicao } from "../../types";
 import { instituicaoService } from "../../services/database/insitituicao";
 import { PaymentConfig } from "../../types/config";
 import { configService } from "../../services/database/config";
+import { motion } from "framer-motion";
 
 export const ConfiguracoesFinanceiras = () => {
   const [config, setConfig] = useState<PaymentConfig>({
@@ -87,7 +88,9 @@ export const ConfiguracoesFinanceiras = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
         Configurações Financeiras
       </h2>
@@ -316,7 +319,7 @@ export const ConfiguracoesFinanceiras = () => {
           </button>
         </div>
       </form>
-    </div>
+    </motion.div>
   );
 };
 

@@ -187,10 +187,8 @@ export const syncManager: SyncManager = {
         const recordWithRLS = {
           ...cleanRecord,
           // Campos para RLS
-          created_by: authData.userId || record.created_by,
           updated_by: authData.userId,
           instituicao_id: record.instituicao_id || localStorage.getItem('active_instituicao_id'),
-          user_role: authData.userRole,
           // Timestamps no formato do Supabase
           created_at: record.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -229,7 +227,6 @@ export const syncManager: SyncManager = {
             ...records[0],
             // Ocultar dados sensíveis para log
             nome: records[0].nome_completo?.substring(0, 10) + '...',
-            hasCreatedBy: !!records[0].created_by,
             hasInstituicaoId: !!records[0].instituicao_id
           } : null
         });
@@ -274,8 +271,11 @@ export const syncManager: SyncManager = {
       const recordWithRLS = {
         ...cleanRecord,
         updated_by: authData.userId || record.updated_by,
-        updated_at: new Date().toISOString()
-      };
+        updated_at: new Date().toISOString(),
+        instituicao_id: record.instituicao_id || localStorage.getItem('active_instituicao_id'),
+
+        created_at: createdAt || record.created_at || new Date().toISOString(),
+         };
       
       const { error } = await supabase
         .from(tableName)

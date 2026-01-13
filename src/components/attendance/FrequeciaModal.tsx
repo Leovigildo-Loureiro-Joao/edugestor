@@ -1,119 +1,203 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiClock, FiUsers, FiSave, FiEdit, FiCheck, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiUsers, FiSave, FiX, FiCheck, FiXCircle } from 'react-icons/fi';
 import { Aula } from '../../types/aula';
 import { Student } from '../../types';
+import { alunosService } from '../../services/database';
+import { FaCalendarWeek } from 'react-icons/fa6';
+import { RegistroFrequenciaLote } from '../../types/frequencia';
 
-export const ModalFrequecia = (
-  { aula, alunos, onRegistrarFrequencia, isExpandida, onToggleExpandir }:{
-    aula:Aula, 
-    alunos:Student[], 
-    onRegistrarFrequencia:any, 
-    isExpandida:boolean, 
-    onToggleExpandir:()=>void
-  }) => {
-  const [registros, setRegistros] = useState({});
+export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{aula:Aula,onRegistrarFrequencia:(registro:RegistroFrequenciaLote) => Promise<void>,setAulaSelect:(aula:Aula) => void}) => {
+  const [alunos, setAlunos] = useState<Student[]>([]);
+  const [registros, setRegistros] = useState<Record<string, {presente: boolean, participou: boolean}>>({});
   const [enviando, setEnviando] = useState(false);
 
-  // Inicializar registros como presente por padrão
   useEffect(() => {
-    const registrosIniciais = {};
-    alunos.forEach(aluno => {
-      registrosIniciais[aluno.id] = true; // Presente por padrão
+    loadData();
+  }, [aula]);
+
+  async function loadData() {
+    const alunosTurma = await alunosService.getAlunosPorTurma(aula.turma_id);
+    setAlunos(alunosTurma);
+    
+    // Inicializar todos como presentes e participantes
+    const registrosIniciais: Record<string, {presente: boolean, participou: boolean}> = {};
+    alunosTurma.forEach(aluno => {
+      registrosIniciais[aluno.id] = { presente: true, participou: true };
     });
     setRegistros(registrosIniciais);
-  }, [alunos]);
+  }
 
-  const togglePresenca = (alunoId:string) => {
+  const togglePresenca = (alunoId: string) => {
     setRegistros(prev => ({
       ...prev,
-      [alunoId]: !prev[alunoId]
+      [alunoId]: {
+        ...prev[alunoId],
+        presente: !prev[alunoId].presente,
+        participou: prev[alunoId].presente ? false : true // Se estava ausente e vai para presente, marca como participou
+      }
     }));
   };
 
-const handleRegistrar = async () => {
-  // Converter objeto para array para a API
-  const registrosArray = Object.entries(registros).map(([aluno_id, presente]) => ({
-    aluno_id,
-    presente,
-    justificativa: '' // ou outra lógica
-  }));
+  const toggleParticipacao = (alunoId: string) => {
+    setRegistros(prev => ({
+      ...prev,
+      [alunoId]: {
+        ...prev[alunoId],
+        participou: !prev[alunoId].participou
+      }
+    }));
+  };
 
-  await onRegistrarFrequencia({
-      aula_id:  aula.id,
-      data_aula: aula.data_aula,
-      registros: registrosArray,
-  }
-);
-};
+  const handleRegistrar = async () => {
+    setEnviando(true);
+    try {
+      const registrosArray = Object.entries(registros).map(([aluno_id, dados]) => ({
+        aluno_id,
+        presente: dados.presente,
+        participacao: dados.participou,
+        justificativa: ''
+      }));
 
-  const alunosPresentes = Object.values(registros).filter(presente => presente).length;
-  const totalAlunos = alunos.length;
+      await onRegistrarFrequencia({
+        aula_id: aula.id,
+        data_aula: aula.data_aula,
+        registros: registrosArray,
+      });
+      
+    } catch (error) {
+      console.error('Erro ao registrar:', error);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const alunosPresentes = Object.values(registros).filter(r => r.presente).length;
+  const alunosParticiparam = Object.values(registros).filter(r => r.participou).length;
 
   return (
-    
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Cabeçalho da Aula */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex justify-between items-center">
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{aula.disciplina}</h3>
-            <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-              <span className="flex items-center gap-1">
-                <FiCalendar size={14} />
-                {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
-              </span>
-              <span className="flex items-center gap-1">
-                <FiUsers size={14} />
-                {aula.turmas?.nome_turma || 'Turma'}
-              </span>
-              <span>{alunosPresentes}/{totalAlunos} presentes</span>
+    <div className="bg-white rounded-lg">
+      {/* Header */}
+      <div className="sticky top-0 bg-white border-b p-6">
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+              <FaCalendarWeek className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-primary-700 text-xl">{aula.tema_aula}</h2>
+              <h3 className="text-lg font-bold text-gray-900">
+                {aula.disciplina || 'Aula Sem Disciplina'}
+              </h3>
+              <div className="flex items-center gap-4 mt-2 text-gray-600">
+                <div className="flex items-center gap-2">
+                  <FiCalendar className="h-5 w-5" />
+                  <span className="font-medium">
+                    {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiClock className="h-5 w-5" />
+                  <span>
+                    {aula.hora_inicio?.slice(0, 5)} - {aula.hora_fim?.slice(0, 5)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiUsers className="h-5 w-5" />
+                  <span>{aula.turmas?.nome_turma || 'Turma'}</span>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onToggleExpandir}
-              className="p-2 text-gray-500 hover:text-gray-700"
-            >
-              {isExpandida ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
-            </button>
+          <button
+            onClick={() => setAulaSelect(null)}
+            className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+        
+        {/* Status */}
+        <div className="flex gap-4 mt-4">
+          <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+            <FiCheck />
+            {alunosPresentes} presentes
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+            <FiUsers />
+            {alunosParticiparam} participaram
           </div>
         </div>
       </div>
 
-      {/* Lista de Alunos (Expandível) */}
-      {isExpandida && (
-        <div className="p-4 bg-white">
-          <div className="mb-4">
-            <h4 className="font-medium text-gray-900 mb-3">Lista de Alunos</h4>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {alunos.map(aluno => (
-                <div key={aluno.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                  <span className="text-sm">{aluno.nome_completo}</span>
-                  <button
-                    onClick={() => togglePresenca(aluno.id)}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      registros[aluno.id] 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {registros[aluno.id] ? 'Presente' : 'Ausente'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Lista de Alunos */}
+      <div className="p-6">
+        <div className="mb-6">
+          <h4 className="font-medium text-gray-900 mb-4">Registro de Frequência</h4>
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+            {alunos.map(aluno => {
+              const registro = registros[aluno.id];
+              return (
+                <div key={aluno.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-medium">
+                        {aluno.nome_completo.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900">{aluno.nome_completo}</span>
+                      <p className="text-sm text-gray-500">{aluno.numero_estudante}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => togglePresenca(aluno.id)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        registro?.presente
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}
+                    >
+                      {registro?.presente ? 'Presente' : 'Ausente'}
+                    </button>
 
+                    {registro?.presente && (
+                      <button
+                        onClick={() => toggleParticipacao(aluno.id)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          registro?.participou
+                            ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                        }`}
+                      >
+                        {registro?.participou ? 'Participou' : 'Não Participou'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setAulaSelect(null)}
+            className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+          >
+            Cancelar
+          </button>
           <button
             onClick={handleRegistrar}
             disabled={enviando}
-            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
             {enviando ? 'Registrando...' : 'Confirmar Frequência'}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { supabase } from '../database/db';
 import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
 import { syncManager } from './syncManager';
+import { alunosService } from './alunosService';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -302,7 +303,6 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Calcular frequência por aluno
   async getFrequenciaAluno(alunoId: string, periodoDias?: number) {
     try {
       const frequencias = await this.getByAluno(alunoId, periodoDias);
@@ -321,20 +321,21 @@ export const frequenciaService = {
         ? (stats.presentes / stats.total) * 100 
         : 0;
 
-      // Encontrar última presença
+      // Encontrar última presença (mais recente)
       const presencas = frequencias.filter(f => f.presente);
       if (presencas.length > 0) {
+        // Ordenar por data mais recente primeiro
+        presencas.sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
         stats.ultimaPresenca = presencas[0].data_aula;
       }
 
-      // Calcular dias consecutivos ausentes
+      // Calcular dias consecutivos ausentes (SÓ PARA ALUNO)
       let diasAusentesConsecutivos = 0;
-      const hoje = new Date();
       const frequenciasOrdenadas = [...frequencias].sort((a, b) => 
-        new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime()
+        new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
       
-      for (let i = frequenciasOrdenadas.length - 1; i >= 0; i--) {
+      for (let i = 0; i < frequenciasOrdenadas.length; i++) {
         if (frequenciasOrdenadas[i].presente) break;
         diasAusentesConsecutivos++;
       }
@@ -356,6 +357,98 @@ export const frequenciaService = {
       };
     }
   },
+
+  // ✅ Calcular frequência por turma (VERSÃO CORRIGIDA)
+  async getFrequenciaPorTurma(turma_id: string, periodoDias?: number) {
+    try {
+      // 1. Buscar alunos da turma
+      const alunos = await alunosService.getAlunosPorTurma(turma_id);
+      
+      // 2. Buscar todas as frequências de uma vez
+      const todasFrequencias = await this.getAllFrequencias();
+      
+      // 3. Filtrar frequências dos alunos da turma
+      const frequenciasTurma: Frequencia[] = [];
+      const alunosIds = alunos.map(a => a.id);
+      
+      for (const freq of todasFrequencias) {
+        if (alunosIds.includes(freq.aluno_id)) {
+          // Se períodoDias foi especificado, filtrar por data
+          if (periodoDias) {
+            const dataFrequencia = new Date(freq.data_aula);
+            const hoje = new Date();
+            const limite = new Date(hoje);
+            limite.setDate(limite.getDate() - periodoDias);
+            
+            if (dataFrequencia >= limite) {
+              frequenciasTurma.push(freq);
+            }
+          } else {
+            frequenciasTurma.push(freq);
+          }
+        }
+      }
+
+      // 4. Calcular estatísticas gerais da turma
+      const stats = {
+        total: frequenciasTurma.length,
+        presentes: frequenciasTurma.filter(f => f.presente).length,
+        ausentes: frequenciasTurma.filter(f => !f.presente).length,
+        taxa_presenca: 0,
+        // Estatísticas adicionais para turma:
+        totalAlunos: alunos.length,
+        alunosComFrequencia: new Set(frequenciasTurma.map(f => f.aluno_id)).size,
+        ultimaAtualizacao: '',
+        mediaPresencaPorAluno: 0,
+        alunosCriticos: 0,
+        historicoTurma: frequenciasTurma.slice(0, 20) // Últimos 20 registros
+      };
+
+      stats.taxa_presenca = stats.total > 0 
+        ? (stats.presentes / stats.total) * 100 
+        : 0;
+
+      // Encontrar data da última frequência registrada na turma
+      if (frequenciasTurma.length > 0) {
+        frequenciasTurma.sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
+        stats.ultimaAtualizacao = frequenciasTurma[0].data_aula;
+      }
+
+      // Calcular média de presença por aluno
+      if (stats.alunosComFrequencia > 0) {
+        stats.mediaPresencaPorAluno = stats.presentes / stats.alunosComFrequencia;
+      }
+
+      // Identificar alunos críticos (baixa frequência)
+      // Para isso, precisamos calcular por aluno
+      const estatisticasPorAluno = await Promise.all(
+        alunos.map(async aluno => {
+          const statsAluno = await this.getFrequenciaAluno(aluno.id, periodoDias);
+          return { alunoId: aluno.id, taxa: statsAluno.taxa_presenca };
+        })
+      );
+      
+      stats.alunosCriticos = estatisticasPorAluno.filter(a => a.taxa < 70).length;
+
+      return stats;
+
+    } catch (error) {
+      console.error('❌ Erro ao calcular frequência da turma:', error);
+      return {
+        total: 0,
+        presentes: 0,
+        ausentes: 0,
+        taxa_presenca: 0,
+        totalAlunos: 0,
+        alunosComFrequencia: 0,
+        ultimaAtualizacao: '',
+        mediaPresencaPorAluno: 0,
+        alunosCriticos: 0,
+        historicoTurma: []
+      };
+    }
+  },
+
 
   // ✅ Verificar se frequência já foi registrada para a aula
   async verificarFrequenciaRegistrada(aulaId: string): Promise<boolean> {

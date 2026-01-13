@@ -21,7 +21,10 @@ import {
 import { ModalDetalhesAula } from '../../components/aulas/AulaModal.tsx';
 import { ListaView, ViewModeNavbar } from '../../components/aulas/AulaLista.tsx';
 import { TimelineWindows } from '../../components/aulas/TimelineAulas.tsx';
-import { ModalFrequecia } from '../../components/attendance/FrequeciaModal.tsx';
+import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx';
+import { Student } from '../../types/aluno.ts';
+import { frequenciaService } from '../../services/database/frequenciaService.ts';
+import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -43,7 +46,7 @@ export const AulasPage = () => {
   const [sortBy, setSortBy] = useState('data_desc');
   const [showFilters, setShowFilters] = useState(false);
   const [filterCount, setFilterCount] = useState(0);
- 
+  const [alunos,setAlunos]=useState<Student[]>([])
     // Atualizar contador de filtros
   useEffect(() => {
     let count = 0;
@@ -54,6 +57,32 @@ export const AulasPage = () => {
 
   }, [filtroData, filtroTurma, filtroStatus]);
 
+    const registrarFrequencia = async (registros:RegistroFrequenciaLote) => {
+      try {
+        
+        let p=0
+        for (const element of registros.registros) {
+          if(element.participacao)
+            p++
+        }
+        const participacao=(p*100)/registros.registros.length
+        aulaService.atualizarAula(registros.aula_id,{
+          taxa_participacao:participacao
+        })
+        console.log('📝 Registrando frequência para aula:', registros);
+        await frequenciaService.registrarFrequenciaLote(registros);
+        
+        setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
+        console.log('✅ Frequência registrada e aula removida da lista');
+        
+        setTimeout(() => {
+          loadData();
+        }, 500);
+        
+      } catch (error) {
+        console.error('❌ Erro ao registrar frequência:', error);
+      }
+    };
 
 
   const CustomLegend = ({ payload }:{payload:any}) => {
@@ -373,7 +402,12 @@ export const AulasPage = () => {
     );
   }
 
-  async function handelActualizar(status: AulaStatus,aulaSelect:Aula) {
+  async function handleActualizar(status: AulaStatus,aulaSelect:Aula) {
+   
+    if(aulaSelect.status=="ministrada"){
+       setAulaSelect(aulaSelect)
+       return ""
+    }
     if(aulaSelect){
       const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
       setAulas(prev => prev.map(e => aula&&e.id === aula.id ? aula : e));
@@ -388,7 +422,7 @@ export const AulasPage = () => {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-4 flex  justify-between items-center flex-wrap gap-4"
       >
         <div className="flex items-center gap-4 mb-4">
       
@@ -609,7 +643,7 @@ export const AulasPage = () => {
                             setShowForm(true);
                           }}
                           onActualizar={(status)=>{
-                            handelActualizar(status,aula)
+                            handleActualizar(status,aula)
                           }}
                           onDeletar={() => handleDeletarAula(aula.id)}
                           index={index}
@@ -924,8 +958,32 @@ export const AulasPage = () => {
         )}
       </AnimatePresence>
       <AnimatePresence>
-          <ModalFrequecia
-          aula={aula}/>
+          {aulaSelect&&<motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowForm(false);
+              setAulaEditando(null);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+
+            <ModalFrequencia
+              aula={aulaSelect}
+              setAulaSelect={setAulaSelect}
+              onRegistrarFrequencia={registrarFrequencia}
+            />
+            </motion.div>
+        </motion.div>}        
       </AnimatePresence>
       
 

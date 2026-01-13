@@ -1,26 +1,60 @@
-// components/NotificacoesBell.tsx
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, Settings } from 'lucide-react';
-import { notificacaoService } from '../../services/database/notificacaoService';
+import { Bell, Check, Trash2, Settings, AlertCircle, Info, Clock, DollarSign, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
 
-export const NotificacoesBell: React.FC = () => {
-  const [notificacao, setNotificacoes] = useState<any[]>([]);
+interface NotificacoesBellProps {
+  userRole: 'aluno' | 'professor' | 'admin' | 'responsavel';
+  userId?: string;
+  alunoId?: string;
+}
+
+export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({ 
+  userRole, 
+  userId, 
+  alunoId 
+}) => {
+  const [notificacoes, setNotificacoes] = useState<any[]>([]);
   const [countNaoLidas, setCountNaoLidas] = useState(0);
   const [aberto, setAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
     carregarNotificacoes();
-    // Atualizar a cada 30 segundos
-    const intervalo = setInterval(carregarNotificacoes, 30000);
-    return () => clearInterval(intervalo);
-  }, []);
+    
+    const handleNovaNotificacao = (event: any) => {
+      if (event.detail) {
+        carregarNotificacoes();
+        if (event.detail.prioridade === PrioridadeNotificacao.URGENTE) {
+          mostrarToast(event.detail);
+        }
+      }
+    };
+
+    window.addEventListener('nova-notificacao', handleNovaNotificacao);
+    
+    const intervalo = setInterval(() => {
+      if (aberto) {
+        carregarNotificacoes();
+      }
+    }, 60000);
+    
+    return () => {
+      clearInterval(intervalo);
+      window.removeEventListener('nova-notificacao', handleNovaNotificacao);
+    };
+  }, [userRole, userId, alunoId, aberto]);
+
+  const mostrarToast = (notif: any) => {
+    // Implemente seu sistema de toast aqui
+    console.log(`🔔 ${notif.titulo}: ${notif.corpo}`);
+  };
 
   const carregarNotificacoes = async () => {
     try {
       const [lista, count] = await Promise.all([
-        notificacaoService.listarNotificacoes(),
-        notificacaoService.contarNotificacoesNaoLidas()
+        notificacaoService.listarNotificacoesUsuario(userRole, userId, alunoId),
+        notificacaoService.contarNotificacoesUsuario(userRole, userId, alunoId)
       ]);
       setNotificacoes(lista);
       setCountNaoLidas(count);
@@ -41,7 +75,7 @@ export const NotificacoesBell: React.FC = () => {
   const marcarTodasComoLidas = async () => {
     setCarregando(true);
     try {
-      await notificacaoService.marcarTodasComoLidas();
+      await notificacaoService.marcarTodasComoLidas(userRole, userId);
       await carregarNotificacoes();
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);
@@ -50,7 +84,8 @@ export const NotificacoesBell: React.FC = () => {
     }
   };
 
-  const deletarNotificacao = async (id: string) => {
+  const deletarNotificacao = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await notificacaoService.deletarNotificacao(id);
       await carregarNotificacoes();
@@ -59,234 +94,271 @@ export const NotificacoesBell: React.FC = () => {
     }
   };
 
+  const getIconePorTipo = (tipo: TipoNotificacao) => {
+    switch (tipo) {
+      case TipoNotificacao.ALERTA:
+      case TipoNotificacao.ERRO:
+        return <AlertCircle className="w-3.5 h-3.5" />;
+      case TipoNotificacao.ALUNO_AVALIACAO:
+      case TipoNotificacao.PROF_AVALIACAO:
+        return <Clock className="w-3.5 h-3.5" />;
+      case TipoNotificacao.ALUNO_FINANCEIRO:
+      case TipoNotificacao.ADMIN_FINANCEIRO:
+        return <DollarSign className="w-3.5 h-3.5" />;
+      default:
+        return <Info className="w-3.5 h-3.5" />;
+    }
+  };
+
+  const getCorClassesPorPrioridade = (prioridade: PrioridadeNotificacao) => {
+    switch (prioridade) {
+      case PrioridadeNotificacao.URGENTE:
+        return 'text-red-600 bg-red-50 border-red-100';
+      case PrioridadeNotificacao.ALTA:
+        return 'text-amber-600 bg-amber-50 border-amber-100';
+      case PrioridadeNotificacao.MEDIA:
+        return 'text-blue-600 bg-blue-50 border-blue-100';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-100';
+    }
+  };
+
+  const getBadgeClassesPorPrioridade = (prioridade: PrioridadeNotificacao) => {
+    switch (prioridade) {
+      case PrioridadeNotificacao.URGENTE:
+        return 'bg-red-100 text-red-800';
+      case PrioridadeNotificacao.ALTA:
+        return 'bg-amber-100 text-amber-800';
+      case PrioridadeNotificacao.MEDIA:
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
-    <div style={{ position: 'relative' }}>
-      <button
+    <div className="relative">
+      {/* Botão do sino */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setAberto(!aberto)}
-        style={{
-          position: 'relative',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '8px',
-          borderRadius: '8px',
-          backgroundColor: aberto ? '#f1f5f9' : 'transparent'
-        }}
+        className={`relative p-2 rounded-lg transition-colors ${
+          aberto ? 'bg-gray-100' : 'hover:bg-gray-50'
+        }`}
+        title={`${countNaoLidas} notificação(ões) não lida(s)`}
       >
-        <Bell size={20} color="#64748B" />
+        <Bell className={`w-5 h-5 ${countNaoLidas > 0 ? 'text-blue-500' : 'text-gray-400'}`} />
+        
+        {/* Badge de contagem */}
         {countNaoLidas > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '-2px',
-            right: '-2px',
-            backgroundColor: '#EF4444',
-            color: 'white',
-            borderRadius: '50%',
-            width: '16px',
-            height: '16px',
-            fontSize: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: '600'
-          }}>
-            {countNaoLidas}
-          </span>
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1 -right-1 min-w-4 h-4 flex items-center justify-center text-xs font-semibold text-white rounded-full px-1"
+            style={{
+              backgroundColor: countNaoLidas > 5 ? '#EF4444' : '#3B82F6'
+            }}
+          >
+            {countNaoLidas > 9 ? '9+' : countNaoLidas}
+          </motion.span>
         )}
-      </button>
+      </motion.button>
 
-      {aberto && (
-        <div style={{
-          position: 'absolute',
-          right: 0,
-          top: '40px',
-          width: '350px',
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e2e8f0',
-          zIndex: 4000,
-          perspective:40
-        }}>
-          <div style={{
-            padding: '16px',
-            borderBottom: '1px solid #e2e8f0',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-              Notificações
-              {countNaoLidas > 0 && (
-                <span style={{
-                  backgroundColor: '#3B82F6',
-                  color: 'white',
-                  borderRadius: '8px',
-                  padding: '2px 8px',
-                  fontSize: '12px',
-                  marginLeft: '8px'
-                }}>
-                  {countNaoLidas} nova(s)
-                </span>
-              )}
-            </h3>
+      {/* Dropdown de notificações */}
+      <AnimatePresence>
+        {aberto && (
+          <>
+            {/* Overlay de fundo */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAberto(false)}
+              className="fixed inset-0 bg-black/20 z-30"
+            />
             
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={marcarTodasComoLidas}
-                disabled={carregando || countNaoLidas === 0}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: carregando || countNaoLidas === 0 ? 'not-allowed' : 'pointer',
-                  padding: '4px',
-                  opacity: carregando || countNaoLidas === 0 ? 0.5 : 1
-                }}
-                title="Marcar todas como lidas"
-              >
-                <Check size={16} color="#10B981" />
-              </button>
-              
-              <button
-                onClick={() => console.log('Configurações')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-                title="Configurações"
-              >
-                <Settings size={16} color="#64748B" />
-              </button>
-            </div>
-          </div>
-
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {notificacao.length === 0 ? (
-              <div style={{
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: '#64748B'
-              }}>
-                Nenhuma notificação
-              </div>
-            ) : (
-              notificacao.slice(0, 10).map((notif) => (
-                <div
-                  key={notif.id}
-                  style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #f1f5f9',
-                    backgroundColor: !notif.lida ? '#f0f9ff' : 'transparent',
-                    position: 'relative'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: !notif.lida ? '600' : '400',
-                        color: !notif.lida ? '#1E293B' : '#64748B',
-                        marginBottom: '4px'
-                      }}>
-                        {notif.titulo}
-                      </div>
-                      <div style={{ 
-                        fontSize: '13px', 
-                        color: '#64748B',
-                        marginBottom: '4px'
-                      }}>
-                        {notif.corpo}
-                      </div>
-                      <div style={{ 
-                        fontSize: '11px', 
-                        color: '#94A3B8',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span>
-                          {new Date(notif.data_envio).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <span style={{
-                          backgroundColor: notif.tipo === 'alerta' ? '#FEF3C7' : 
-                                         notif.tipo === 'erro' ? '#FEE2E2' : '#E0F2FE',
-                          color: notif.tipo === 'alerta' ? '#92400E' : 
-                                notif.tipo === 'erro' ? '#991B1B' : '#0C4A6E',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          fontWeight: '500'
-                        }}>
-                          {notif.tipo}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '8px' }}>
-                      {!notif.lida && (
-                        <button
-                          onClick={() => marcarComoLida(notif.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px'
-                          }}
-                          title="Marcar como lida"
-                        >
-                          <Check size={14} color="#10B981" />
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => deletarNotificacao(notif.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '4px'
-                        }}
-                        title="Deletar"
+            {/* Painel de notificações */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-40 max-h-[500px] flex flex-col"
+            >
+              {/* Cabeçalho */}
+              <div className="px-4 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Notificações
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {countNaoLidas > 0 && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={marcarTodasComoLidas}
+                        disabled={carregando}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium ${
+                          carregando 
+                            ? 'bg-green-400 cursor-not-allowed' 
+                            : 'bg-green-500 hover:bg-green-600'
+                        } text-white transition-colors`}
                       >
-                        <Trash2 size={14} color="#EF4444" />
-                      </button>
-                    </div>
+                        <Check className="w-3.5 h-3.5" />
+                        {carregando ? 'Processando...' : 'Marcar todas'}
+                      </motion.button>
+                    )}
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => notificacaoService.verificarNotificacoesAutomaticas()}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                      title="Verificar agora"
+                    >
+                      <Settings className="w-4 h-4 text-gray-500" />
+                    </motion.button>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setAberto(false)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </motion.button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </div>
 
-          {notificacao.length > 10 && (
-            <div style={{
-              padding: '12px 16px',
-              borderTop: '1px solid #e2e8f0',
-              textAlign: 'center'
-            }}>
-              <button
-                onClick={() => console.log('Ver todas')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3B82F6',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Ver todas as notificações
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+              {/* Lista de notificações */}
+              <div className="flex-1 overflow-y-auto max-h-[350px]">
+                {notificacoes.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="px-6 py-16 text-center"
+                  >
+                    <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">
+                      Nenhuma notificação no momento
+                    </p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      As notificações importantes aparecerão aqui
+                    </p>
+                  </motion.div>
+                ) : (
+                  <AnimatePresence initial={false}>
+                    {notificacoes.slice(0, 15).map((notif, index) => (
+                      <motion.div
+                        key={notif.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => marcarComoLida(notif.id)}
+                        className={`px-4 py-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                          !notif.lida ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex gap-3">
+                          {/* Ícone */}
+                          <div className={`flex-shrink-0 mt-1 p-2 rounded-lg ${getCorClassesPorPrioridade(notif.prioridade)}`}>
+                            {getIconePorTipo(notif.tipo)}
+                          </div>
+                          
+                          {/* Conteúdo */}
+                          <div className="flex-1 min-w-0">
+                            <div className={`font-medium mb-2 line-clamp-2 ${
+                              !notif.lida ? 'text-gray-900' : 'text-gray-600'
+                            }`}>
+                              {notif.titulo}
+                            </div>
+                            
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                              {notif.corpo}
+                            </p>
+                            
+                            {/* Meta informações */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-400">
+                                  {new Date(notif.data_envio).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                
+                                <span className={`text-xs px-2 py-1 rounded-full ${getBadgeClassesPorPrioridade(notif.prioridade)}`}>
+                                  {notif.prioridade}
+                                </span>
+                              </div>
+                              
+                              {/* Botões de ação */}
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                whileHover={{ opacity: 1 }}
+                                className="flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => deletarNotificacao(notif.id, e)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                  title="Deletar"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </motion.button>
+                              </motion.div>
+                            </div>
+                          </div>
+                          
+                          {/* Indicador de não lida */}
+                          {!notif.lida && (
+                            <div className="absolute right-3 top-3 w-2 h-2 bg-blue-500 rounded-full" />
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
+              </div>
+
+              {/* Rodapé */}
+              {notificacoes.length > 0 && (
+                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Mostrando {Math.min(notificacoes.length, 15)} de {notificacoes.length}
+                    </span>
+                    
+                    {notificacoes.length > 15 && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => console.log('Ver todas')}
+                        className="text-sm text-blue-500 hover:text-blue-600 font-medium underline transition-colors"
+                      >
+                        Ver todas
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

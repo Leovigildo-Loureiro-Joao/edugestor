@@ -33,13 +33,15 @@ import { HorarioAula, HorarioAulaForm, Turma } from '../../types/turma';
 import { Student } from '../../types';
 import HorarioModal from '../../components/turmas/HorarioModal';
 import { StudentModal } from '../../components/students/StudentModal';
-import { AulaCardMin } from '../../components/aulas/AulaCard';
-import { aulaService } from '../../services/database';
+import { AulaCardMin } from '../../components/aulas/AulaCard.tsx';
+import { aulaService, frequenciaService } from '../../services/database';
 import { Aula, AulaFormData } from '../../types/aula';
 import { SelectTyped } from '../../components/students/StudentForm';
 import { AulaForm } from '../../components/aulas/AulaForm';
 import toast from 'react-hot-toast';
 import { AulaStatus } from '../../components/aulas/AulaCard-min';
+import { ModalFrequencia } from '../../components/attendance/FrequeciaModal';
+import { RegistroFrequenciaLote } from '../../types/frequencia';
 
 
 // Tipos atualizados para refletir o StudentForm
@@ -59,6 +61,7 @@ const TurmaDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
+  const [aulaSelect, setAulaSelect] = useState<Aula | null>(null);
   const [loading, setLoading] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'| 'aulas'>('overview');
   const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
@@ -94,6 +97,22 @@ const TurmaDetails = () => {
   setHorarioEditando(horario);
   setIsHorarioModalOpen(true);
 };
+const registrarFrequencia = async (registros:RegistroFrequenciaLote) => {
+    try {
+      console.log('📝 Registrando frequência para aula:', registros);
+      await frequenciaService.registrarFrequenciaLote(registros);
+      
+      setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
+      console.log('✅ Frequência registrada e aula removida da lista');
+      
+      setTimeout(() => {
+        loadTurmaDetails();
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Erro ao registrar frequência:', error);
+    }
+  };
 
 // Função para salvar horário
 const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): Promise<void> => {
@@ -175,7 +194,7 @@ const handleExcluirHorario = async (horarioId: string) => {
       for (const element of alunosComDesempenho) {
         alunosDes.push(await element)
       }
-      
+   
       // Dados completos da turma
       const turmaCompleta: TurmaDetailsData = {
         ...turmaData,
@@ -242,7 +261,7 @@ const handleExcluirHorario = async (horarioId: string) => {
       try {
         await aulaService.criarAula(aulaData);
         setShowForm(false);
-        await loadData();
+        await loadTurmaDetails();
         toast.success('Aula criada com sucesso!');
       } catch (error: any) {
         console.error('Erro ao criar aula:', error);
@@ -251,10 +270,15 @@ const handleExcluirHorario = async (horarioId: string) => {
     };
 
     async function handelActualizar(status: AulaStatus,aulaSelect:Aula) {
+       
+      if(aulaSelect.status=="ministrada"){
+        setAulaSelect(aulaSelect)
+        return ""
+      }
+        
       if(aulaSelect){
         const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
         setAulas(prev => prev.map(e => aula&&e.id === aula.id ? aula : e));
-        console.log(aula)
       }
       
     }
@@ -266,7 +290,7 @@ const handleExcluirHorario = async (horarioId: string) => {
         await aulaService.atualizarAula(aulaEditando.id, aulaData);
         setShowForm(false);
         setAulaEditando(null);
-        await loadData();
+        await loadTurmaDetails();
         toast.success('Aula atualizada com sucesso!');
       } catch (error: any) {
         console.error('Erro ao atualizar aula:', error);
@@ -278,7 +302,7 @@ const handleExcluirHorario = async (horarioId: string) => {
       if (window.confirm('Tem certeza que deseja excluir esta aula?')) {
         try {
           await aulaService.deletarAula(id);
-          await loadData();
+          await loadTurmaDetails();
           toast.success('Aula excluída com sucesso!');
         } catch (error) {
           console.error('Erro ao excluir aula:', error);
@@ -307,7 +331,7 @@ const handleExcluirHorario = async (horarioId: string) => {
         
         setShowQuickAdd(false);
         setQuickAddTurma('');
-        await loadData();
+        await loadTurmaDetails();
         toast.success('Aula adicionada rapidamente!');
       } catch (error) {
         toast.error('Erro ao adicionar aula rápida');
@@ -768,6 +792,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                             
                       
                   </div>
+                 
                   {aulas.length>0?aulas.map((aula, index) => (
                     <AulaCardMin
                       key={aula.id}
@@ -778,7 +803,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                       }}
                       onDeletar={handleDeletarAula}
                       index={index}
-                      onActualizar={(status)=>{
+                      onActualizar={(status:AulaStatus)=>{
                         handelActualizar(status,aula)
                       }}
                     />
@@ -1066,6 +1091,36 @@ const handleExcluirHorario = async (horarioId: string) => {
                 </motion.div>
               )}
             </AnimatePresence>
+            <AnimatePresence>
+              {aulaSelect&&<motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                onClick={() => {
+                  setShowForm(false);
+                  setAulaEditando(null);
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+                  onClick={e => e.stopPropagation()}
+                >
+    
+                <ModalFrequencia
+                  aula={aulaSelect}
+                  setAulaSelect={setAulaSelect}
+                  isExpandida={true}
+                  onRegistrarFrequencia={registrarFrequencia}
+                />
+                </motion.div>
+            </motion.div>}        
+          </AnimatePresence>
+                  
     </div>
   );
 };

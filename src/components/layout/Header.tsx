@@ -13,7 +13,7 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { initializeSyncSystem } from '../../services/database/syncManager';
-import { NotificacoesBell } from './Notificao';
+import { NotificacoesBellInteligente } from './Notificao';
 import { notificacaoService } from '../../services/database/notificacaoService';
 
 // Interface para o status de sincronização
@@ -344,7 +344,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
 
           {/* Componente de Notificações */}
           <div className="relative">
-            <NotificacoesBell />
+            <NotificacoesBellInteligente userRole={localStorage.getItem("user_role")||"admin"} />
           </div>
 
          

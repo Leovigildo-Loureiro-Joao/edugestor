@@ -6,6 +6,7 @@ export interface Frequencia extends BaseEntity{
   aula_id: string;
   data_aula: string;
   presente: boolean;
+  participacao?:boolean;
   justificativa?: string;
   created_at: string;
   aluno_nome?: string;
@@ -23,5 +24,6 @@ export interface RegistroFrequenciaLote {
     aluno_id: string;
     presente: boolean;
     justificativa?: string;
+    participacao?:boolean;
   }[];
 }

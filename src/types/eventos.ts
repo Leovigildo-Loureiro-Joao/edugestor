@@ -33,10 +33,9 @@ export interface VisaoEstrategica extends BaseEntity {
   status: 'ativa' | 'concluida' | 'arquivada';
 }
 
-// Nível 2: METAS (Médio Prazo - Trimestral/Anual)
 export interface Meta extends BaseEntity {
   id: string;
-  visao_id: string; // Relaciona com a Visão
+  visao_id: string;
   titulo: string;
   descricao: string;
   tipo: 'academica' | 'financeira' | 'operacional' | 'marketing' | 'infraestrutura' | 'qualidade';
@@ -61,22 +60,53 @@ export interface Meta extends BaseEntity {
   responsavel_principal: string;
   responsaveis_secundarios?: string[];
   
-  // Indicadores
+  // Indicadores (KPIs - MEDIDORES)
   kpis?: Array<{
+    id: string;
     nome: string;
+    descricao?: string;
     valor_atual: number;
     valor_meta: number;
     unidade: string;
     frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral';
-  }>| undefined;
+    peso?: number; // 1-100, importância no cálculo do progresso
+    fonte_dados?: 'matriculas' | 'notas' | 'frequencia' | 'financeiro' | 'manual';
+    ultima_atualizacao?: string;
+  }>;
+  
+  // Sub-metas (MINI-METAS / AÇÕES)
+  submetas?: Array<{
+    id: string;
+    titulo: string;
+    descricao: string;
+    data_inicio: string;
+    data_fim: string;
+    status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
+    responsavel: string;
+    custo_estimado?: number;
+    custo_real?: number;
+    kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
+    notas?: string;
+  }>;
   
   // Recursos
   orcamento_previsto?: number;
+  orcamento_alocado?: number; // Dinheiro já alocado
   recursos_necessarios?: string[];
   
   // Dependências
   dependencias?: string[]; // IDs de outras metas
   tarefas_relacionadas?: string[]; // IDs de tarefas
+  
+  // Histórico de alocações
+  alocacoes?: Array<{
+    id: string;
+    data: string;
+    valor: number;
+    motivo: string;
+    tipo: 'complementar' | 'completo' | 'parcial';
+    responsavel: string;
+  }>;
   
   created_at: string;
   updated_at: string;

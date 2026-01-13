@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiFilter, FiCheckCircle, FiRefreshCw, FiX, FiChevronDown, FiChevronUp, FiUsers, FiBarChart2, FiClock, FiCheckSquare } from 'react-icons/fi';
-import { frequenciaService } from '../../services/database/frequenciaService.ts';
+import { 
+  FiCalendar, 
+  FiFilter, 
+  FiCheckCircle, 
+  FiRefreshCw, 
+  FiUsers, 
+  FiBarChart2, 
+  FiClock, 
+  FiCheckSquare,
+  FiChevronRight,
+  FiBook,
+  FiTarget
+} from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { alunosService } from '../../services/database/alunosService.ts';
 import { turmaService } from '../../services/database/turmas.ts';
 import { Select } from '../../components/ui/Select.jsx';
-import { FaBookAtlas } from 'react-icons/fa6';
-import { AulaFrequenciaItem } from '../../components/attendance/aulaFrequenciaCard.jsx';
+import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx';
 import { EstatisticasView } from '../../components/attendance/EstatisticasView.jsx';
 import { FrequenciasRegistradasView } from '../../components/attendance/FrequenciasRegistradasView.jsx';
-
 
 export const FrequenciaPage = () => {
   const [aulas, setAulas] = useState([]);
@@ -18,48 +28,37 @@ export const FrequenciaPage = () => {
   const [loading, setLoading] = useState(false);
   const [filtroData, setFiltroData] = useState('');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
-  const [aulasExpandidas, setAulasExpandidas] = useState({});
   const [view, setView] = useState('pendentes');
   const [estatisticas, setEstatisticas] = useState(null);
   const [frequenciasRegistradas, setFrequenciasRegistradas] = useState([]);
-
-
+  const [modalAberta, setModalAberta] = useState(false);
+  const [aulaSelecionada, setAulaSelecionada] = useState(null);
 
   useEffect(() => {
     carregarDados();
     carregarTurmas();
   }, []);
 
-  // Recalcular estatísticas quando filtros ou dados mudarem
-  useEffect(() => {
-    if (aulas.length > 0 || frequenciasRegistradas.length > 0) {
-      console.log('🔄 Recalculando estatísticas devido a mudança nos dados ou filtros');
-      carregarEstatisticas();
-    }
-  }, [filtroData, filtroTurma, aulas, frequenciasRegistradas]); // Adicione os filtros aqui
-
   const carregarDados = async () => {
     try {
       setLoading(true);
-      
       console.log('🔄 Carregando dados...');
       
-      // Buscar aulas recentes
       const aulasRecentes = await aulaService.getAulasRecentes(30);
-      console.log('📚 Aulas recebidas:', aulasRecentes);
-      
-      // Buscar alunos
       const alunosData = await alunosService.getAllStudents();
-      console.log('👥 Alunos recebidos:', alunosData);
       setAlunos(alunosData);
 
-      // Filtrar apenas aulas sem frequência registrada
-      const aulasSemFrequencia = await filtrarAulasSemFrequencia(aulasRecentes);
-      console.log('✅ Aulas sem frequência:', aulasSemFrequencia);
+      // Filtrar apenas aulas ministradas sem frequência
+      const aulasSemFrequencia = aulasRecentes.filter(aula => 
+        aula.status === 'ministrada' && (!aula.registro || aula.registro.length === 0)
+      );
       setAulas(aulasSemFrequencia);
 
-      // Carregar frequências registradas
-      await carregarFrequenciasRegistradas(aulasRecentes);
+      // Filtrar aulas com frequência já registrada
+      const aulasComFrequencia = aulasRecentes.filter(aula => 
+        aula.status === 'ministrada' && aula.registro && aula.registro.length > 0
+      );
+      setFrequenciasRegistradas(aulasComFrequencia);
 
     } catch (error) {
       console.error('❌ Erro ao carregar dados:', error);
@@ -68,389 +67,404 @@ export const FrequenciaPage = () => {
     }
   };
 
-  const carregarFrequenciasRegistradas = async (aulasRecentes) => {
-    try {
-      const frequenciasComAulas = [];
-      
-      console.log('🔄 Carregando frequências registradas para', aulasRecentes?.length, 'aulas');
-      
-      for (const aula of aulasRecentes) {
-        try {
-          console.log(`📖 Verificando frequência da aula ${aula.id}: ${aula.disciplina}`);
-          const frequencia = await frequenciaService.getFrequenciaPorAula(aula.id);
-          console.log(`📊 Frequência encontrada para aula ${aula.id}:`, frequencia?.length || 0, 'registros');
-          
-          if (frequencia && frequencia.length > 0) {
-            const presentes = frequencia.filter(f => f.presente).length;
-            console.log(`✅ Aula ${aula.id} tem ${presentes}/${frequencia.length} presentes`);
-            
-            frequenciasComAulas.push({
-              aula,
-              frequencia,
-              totalAlunos: frequencia.length,
-              presentes: presentes
-            });
-          } else {
-            console.log(`❌ Aula ${aula.id} sem frequência registrada`);
-          }
-        } catch (error) {
-          console.error(`⚠️ Erro ao carregar frequência da aula ${aula.id}:`, error);
-        }
-      }
-      
-      console.log('🎯 Total de frequências registradas encontradas:', frequenciasComAulas.length);
-      setFrequenciasRegistradas(frequenciasComAulas);
-      
-      return frequenciasComAulas;
-      
-    } catch (error) {
-      console.error('❌ Erro geral ao carregar frequências registradas:', error);
-      setFrequenciasRegistradas([]);
-      return [];
-    }
-  };
-
-  const carregarEstatisticas = async () => {
-    try {
-      console.log('📊 Calculando estatísticas com filtros:', { filtroData, filtroTurma });
-      
-      // Usar os dados FILTRADOS para calcular estatísticas
-      const totalAulasFiltradas = aulasFiltradas.length + frequenciasFiltradas.length;
-      
-      // Taxa de registro baseada nos dados filtrados
-      const taxaRegistro = totalAulasFiltradas > 0 
-        ? (frequenciasFiltradas.length / totalAulasFiltradas) * 100 
-        : 0;
-      
-      // Calcular taxa de presença apenas das frequências FILTRADAS
-      let totalRegistrosFilter = 0;
-      let totalPresencaFilter = 0;
-      
-      frequenciasFiltradas.forEach(item => {
-        totalRegistrosFilter += item.totalAlunos;
-        totalPresencaFilter += item.presentes;
-      });
-      
-      const taxaPresenca = totalRegistrosFilter > 0 
-        ? (totalPresencaFilter / totalRegistrosFilter) * 100 
-        : 0;
-
-      // Estatísticas gerais (sem filtro) para referência
-      const totalAulasGeral = aulas.length + frequenciasRegistradas.length;
-      const taxaRegistroGeral = totalAulasGeral > 0 
-        ? (frequenciasRegistradas.length / totalAulasGeral) * 100 
-        : 0;
-
-      let totalRegistrosGeral = 0;
-      let totalPresencaGeral = 0;
-      
-      frequenciasRegistradas.forEach(item => {
-        totalRegistrosGeral += item.totalAlunos;
-        totalPresencaGeral += item.presentes;
-      });
-      
-      const taxaPresencaGeral = totalRegistrosGeral > 0 
-        ? (totalPresencaGeral / totalRegistrosGeral) * 100 
-        : 0;
-
-      const novasEstatisticas = {
-        // Estatísticas COM filtro
-        totalAulas: totalAulasFiltradas,
-        aulasPendentes: aulasFiltradas.length,
-        aulasRegistradas: frequenciasFiltradas.length,
-        taxaRegistro,
-        taxaPresenca,
-        totalPresencas: totalPresencaFilter,
-        totalRegistros: totalRegistrosFilter,
-        
-        // Estatísticas SEM filtro (para referência)
-        totalAulasGeral,
-        aulasPendentesGeral: aulas.length,
-        aulasRegistradasGeral: frequenciasRegistradas.length,
-        taxaRegistroGeral,
-        taxaPresencaGeral,
-        totalPresencasGeral: totalPresencaGeral,
-        totalRegistrosGeral: totalRegistrosGeral,
-        
-        // Dados básicos
-        totalAlunos: alunos.length,
-        turmasAtivas: turmas.length,
-        
-        // Informações do filtro atual
-        filtroAtivo: !!(filtroData || filtroTurma !== 'Todas Turmas'),
-        filtroData,
-        filtroTurma
-      };
-      
-      console.log('📈 Estatísticas calculadas:', novasEstatisticas);
-      setEstatisticas(novasEstatisticas);
-      
-    } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas:', error);
-    }
-  };
-
-  // Resto do código permanece igual...
-  const filtrarAulasSemFrequencia = async (aulas) => {
-    if (!aulas || aulas.length === 0) {
-      console.log('📭 Nenhuma aula recebida para filtrar');
-      return [];
-    }
-
-    const aulasFiltradas = [];
-    
-    console.log(`🔍 Verificando ${aulas.length} aulas por frequência...`);
-    
-    for (const aula of aulas) {
-      try {
-        console.log(`📖 Verificando aula ${aula.id}: ${aula.disciplina || aula.materia} - ${aula.data_aula}`);
-        
-        const frequencia = await frequenciaService.getFrequenciaPorAula(aula.id);
-        console.log(`📊 Frequência para aula ${aula.id}:`, frequencia);
-        
-        if (!frequencia || frequencia.length === 0) {
-          console.log(`✅ Aula ${aula.id} SEM frequência - ADICIONANDO`);
-          aulasFiltradas.push(aula);
-        } else {
-          console.log(`❌ Aula ${aula.id} COM frequência - IGNORANDO`);
-        }
-      } catch (error) {
-        console.error(`⚠️ Erro ao verificar aula ${aula.id}:`, error);
-        aulasFiltradas.push(aula);
-      }
-    }
-    
-    console.log(`🎯 Total de aulas sem frequência: ${aulasFiltradas.length}`);
-    return aulasFiltradas;
-  };
-
   const carregarTurmas = async () => {
     try {
       const turmasData = await turmaService.getTurmas();
-      console.log('🏫 Turmas carregadas:', turmasData);
-      setTurmas(turmasData?turmasData:[]);
+      setTurmas(turmasData || []);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
   };
 
-  const registrarFrequencia = async (registros) => {
+  const handleRegistrarFrequencia = async (registros) => {
     try {
-      console.log('📝 Registrando frequência para aula:', registros);
+      console.log('📝 Registrando frequência:', registros);
       await frequenciaService.registrarFrequenciaLote(registros);
-      
-      setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
-      console.log('✅ Frequência registrada e aula removida da lista');
-      
-      setTimeout(() => {
-        carregarDados();
-      }, 500);
+      setAulas(prev => prev.filter(a => a.id !== registros.aula_id));
+      setModalAberta(false);
+      carregarDados();
       
     } catch (error) {
-      console.error('❌ Erro ao registrar frequência:', error);
+      console.error('❌ Erro ao registrar:', error);
     }
   };
 
-  const toggleExpandirAula = (aulaId) => {
-    setAulasExpandidas(prev => ({
-      ...prev,
-      [aulaId]: !prev[aulaId]
-    }));
+  const abrirModalRegistro = (aula) => {
+    setAulaSelecionada(aula);
+    setModalAberta(true);
   };
-
-  // Preparar dados para os selects
-  const turmasSelect = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
 
   // Filtrar aulas
   const aulasFiltradas = aulas.filter(aula => {
     const matchData = filtroData ? aula.data_aula === filtroData : true;
-    
-    let matchTurma = true;
-    if (filtroTurma !== 'Todas Turmas') {
-      matchTurma = 
-        aula.turmas?.nome_turma === filtroTurma ||
-        aula.turma_nome === filtroTurma || 
-        aula.turma_id === filtroTurma;
-    }
-    
+    const matchTurma = filtroTurma !== 'Todas Turmas' 
+      ? aula.turmas?.nome_turma === filtroTurma
+      : true;
     return matchData && matchTurma;
   });
 
   // Filtrar frequências registradas
-  const frequenciasFiltradas = frequenciasRegistradas.filter(item => {
-    const matchData = filtroData ? item.aula.data_aula === filtroData : true;
-    
-    let matchTurma = true;
-    if (filtroTurma !== 'Todas Turmas') {
-      matchTurma = 
-        item.aula.turmas?.nome_turma === filtroTurma ||
-        item.aula.turma_nome === filtroTurma || 
-        item.aula.turma_id === filtroTurma;
-    }
-    
+  const frequenciasFiltradas = frequenciasRegistradas.filter(aula => {
+    const matchData = filtroData ? aula.data_aula === filtroData : true;
+    const matchTurma = filtroTurma !== 'Todas Turmas' 
+      ? aula.turmas?.nome_turma === filtroTurma
+      : true;
     return matchData && matchTurma;
   });
 
-  const recarregarTudo = () => {
-    console.log('🔄 Recarregando dados manualmente...');
-    carregarDados();
-    carregarTurmas();
+  const turmasSelect = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
+
+  // Animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
+  const cardHoverVariants = {
+    hover: {
+      y: -4,
+      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+      transition: {
+        type: "spring",
+        stiffness: 400,
+        damping: 25
+      }
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen p-4 md:p-6"
+    >
       <div className="max-w-6xl mx-auto">
-        {/* Header com Navegação */}
-        <div className="mb-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <FiCheckCircle className="h-8 w-8 text-green-600" />
+            <div className="flex items-center gap-3 px-4">
+             
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Controle de Frequência</h1>
-                <p className="text-gray-600">Gerencie a presença dos alunos</p>
+                <h1 className="text-3xl font-bold text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
+                  Controle de Frequência
+                </h1>
+                <p className="text-gray-600">Gerencie a presença dos alunos de forma eficiente</p>
               </div>
             </div>
           </div>
 
-          {/* Navegação em Carrossel */}
-          <div className="p-2">
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setView('pendentes')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-colors ${
-                  view === 'pendentes' 
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <FiClock size={18} />
-                Pendentes
-                {aulasFiltradas.length > 0 && (
-                  <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-                    {aulasFiltradas.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setView('registradas')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-colors ${
-                  view === 'registradas' 
-                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <FiCheckSquare size={18} />
-                Registradas
-                {frequenciasFiltradas.length > 0 && (
-                  <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                    {frequenciasFiltradas.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setView('estatisticas')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-colors ${
-                  view === 'estatisticas' 
-                    ? 'bg-purple-100 text-purple-700 border border-purple-200' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <FiBarChart2 size={18} />
-                Estatísticas
-              </button>
+          {/* Navegação */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="p-2"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: 'pendentes', icon: FiClock, label: 'Pendentes', count: aulasFiltradas.length, color: 'blue' },
+                { id: 'registradas', icon: FiCheckSquare, label: 'Registradas', count: frequenciasFiltradas.length, color: 'green' },
+                { id: 'estatisticas', icon: FiBarChart2, label: 'Estatísticas', count: null, color: 'purple' }
+              ].map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setView(tab.id)}
+                  className={`relative flex items-center justify-between p-4 rounded-xl font-medium transition-all duration-300 ${
+                    view === tab.id 
+                      ? `bg-${tab.color}-100 text-${tab.color}-700 border-2 border-${tab.color}-300 shadow-md` 
+                      : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      view === tab.id 
+                        ? `bg-${tab.color}-200` 
+                        : 'bg-gray-100'
+                    }`}>
+                      <tab.icon size={20} />
+                    </div>
+                    <span className="font-semibold">{tab.label}</span>
+                  </div>
+                  
+                  {tab.count !== null && tab.count > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className={`px-2 py-1 text-xs font-bold text-white rounded-full ${
+                        view === tab.id 
+                          ? `bg-${tab.color}-600` 
+                          : `bg-${tab.color}-500`
+                      }`}
+                    >
+                      {tab.count}
+                    </motion.span>
+                  )}
+                  
+                  <motion.div
+                    animate={{ x: view === tab.id ? 0 : -5, opacity: view === tab.id ? 1 : 0 }}
+                    className="text-gray-400"
+                  >
+                    <FiChevronRight size={18} />
+                  </motion.div>
+                </motion.button>
+              ))}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Filtros */}
-        <div className="bg-white  p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white p-6 rounded-2xl shadow-lg mb-8 border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FiFilter className="text-blue-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-lg">Filtros</h3>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Data
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="flex items-center gap-2">
+                    <FiCalendar size={14} />
+                    Data Específica
+                  </span>
                 </label>
-                <input
+                <motion.input
+                  whileFocus={{ scale: 1.01 }}
                   type="date"
                   value={filtroData}
                   onChange={(e) => setFiltroData(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Turma
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="flex items-center gap-2">
+                    <FiUsers size={14} />
+                    Turma
+                  </span>
                 </label>
                 <Select 
                   vect={turmasSelect} 
                   onChange={setFiltroTurma}
+                  value={filtroTurma}
+                  className="p-3 border border-gray-300 rounded-xl"
                 />
               </div>
-               <div className="flex items-end">
-                <button
-                onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
-                className="px-4 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-white"
-              >
-                <span className="flex items-center gap-2">
+              
+              <div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
+                  className="w-full p-3 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-300 rounded-xl hover:from-gray-200 hover:to-gray-100 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                >
                   <FiRefreshCw size={16} />
                   Limpar Filtros
-                </span>
-  
-               
-              </button>
-               </div>
+                </motion.button>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Conteúdo Dinâmico */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <div>
-            {view === 'pendentes' && (
-              <div className="space-y-4">
-                {aulasFiltradas.map((aula) => (
-                  <AulaFrequenciaItem
-                    key={aula.id}
-                    aula={aula}
-                    alunos={alunos.filter(aluno => {
-                      return aluno.turma_id === aula.turma_id || 
-                             aluno.turma_nome === aula.turmas?.nome_turma;
-                    })}
-                    onRegistrarFrequencia={registrarFrequencia}
-                    isExpandida={aulasExpandidas[aula.id]}
-                    onToggleExpandir={() => toggleExpandirAula(aula.id)}
+        {/* Conteúdo Principal */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full mb-4"
+                />
+                <p className="text-gray-600 font-medium">Carregando dados...</p>
+              </div>
+            ) : (
+              <div>
+                {view === 'pendentes' && (
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="space-y-4"
+                  >
+                    {aulasFiltradas.map((aula, index) => (
+                      <motion.div
+                        key={aula.id}
+                        variants={itemVariants}
+                        whileHover="hover"
+                        custom={index}
+                        variants={{ ...itemVariants, hover: cardHoverVariants.hover }}
+                        className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
+                      >
+                        <div className="p-6">
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl">
+                                  <FiBook className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <h3 className="font-bold text-gray-900 text-lg">
+                                  {aula.disciplina || 'Aula Sem Disciplina'}
+                                </h3>
+                                <motion.span
+                                  initial={{ scale: 0.8 }}
+                                  animate={{ scale: 1 }}
+                                  className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full"
+                                >
+                                  Pendente
+                                </motion.span>
+                              </div>
+                              
+                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 ml-11">
+                                <span className="flex items-center gap-2">
+                                  <FiCalendar size={14} className="text-gray-400" />
+                                  <span className="font-medium">
+                                    {new Date(aula.data_aula).toLocaleDateString('pt-AO', {
+                                      weekday: 'short',
+                                      day: 'numeric',
+                                      month: 'short'
+                                    })}
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  <FiUsers size={14} className="text-gray-400" />
+                                  <span>{aula.turmas?.nome_turma || 'Turma'}</span>
+                                </span>
+                                {aula.tema_aula && (
+                                  <span className="flex items-center gap-2">
+                                    <FiTarget size={14} className="text-gray-400" />
+                                    <span className="text-gray-500 truncate max-w-xs">{aula.tema_aula}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => abrirModalRegistro(aula)}
+                              className="ml-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-semibold shadow-md"
+                            >
+                              Registrar
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+
+                    {aulasFiltradas.length === 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center py-16 bg-white rounded-2xl border border-gray-200 shadow-sm"
+                      >
+                        <div className="inline-flex p-4 bg-green-100 rounded-full mb-4">
+                          <FiCheckCircle className="h-12 w-12 text-green-600" />
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-900">
+                          Nenhuma frequência pendente!
+                        </h3>
+                        <p className="text-gray-600 mt-2 max-w-md mx-auto">
+                          Todas as frequências estão em dia. Continue o bom trabalho! 🎉
+                        </p>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+
+                {view === 'registradas' && (
+                  <FrequenciasRegistradasView 
+                    frequenciasFiltradas={frequenciasFiltradas}
+                    filtroData={filtroData}
+                    filtroTurma={filtroTurma}
                   />
-                ))}
+                )}
 
-                {aulasFiltradas.length === 0 && (
-                  <div className="text-center py-12">
-                    <FiCalendar className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-4 text-lg font-medium text-gray-900">
-                      {filtroData || filtroTurma !== 'Todas Turmas' 
-                        ? 'Nenhuma aula pendente encontrada' 
-                        : 'Nenhuma aula pendente para registrar frequência'
-                      }
-                    </h3>
-                    <p className="text-gray-500 mt-2">
-                      Todas as frequências estão em dia! 🎉
-                    </p>
-                  </div>
+                {view === 'estatisticas' && (
+                  <EstatisticasView 
+                    estatisticas={estatisticas}
+                    aulasFiltradas={aulasFiltradas}
+                    frequenciasFiltradas={frequenciasFiltradas}
+                  />
                 )}
               </div>
             )}
-
-            {view === 'registradas' && <FrequenciasRegistradasView filtroData={filtroData} filtroTurma={filtroTurma} frequenciasFiltradas={frequenciasFiltradas} />}
-            {view === 'estatisticas' && <EstatisticasView estatisticas={estatisticas} aulasFiltradas={aulasFiltradas} frequenciasFiltradas={frequenciasFiltradas}/>}
-          </div>
-        )}
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </div>
+
+      {/* Modal de Registro */}
+      <AnimatePresence>
+        {modalAberta && aulaSelecionada && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModalAberta(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25 }}
+              className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            >
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+                <ModalFrequencia
+                  aula={aulaSelecionada}
+                  onRegistrarFrequencia={handleRegistrarFrequencia}
+                  isExpandida={true}
+                  setAulaSelect={setAulaSelecionada}
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };

@@ -135,7 +135,8 @@ export const aulaService = {
       // Retornar a aula atualizada
       const aula=await db.aulas.get(id)
       const turmas = await turmaService.getTurmaById(aula?aula.turma_id:"")
-      return {...aula,turmas};
+      const registro=await frequenciaService.getFrequenciaPorAula(id)
+      return {...aula,turmas,registro};
       
     } catch (error) {
       console.error('Erro ao atualizar aula:', error);
@@ -143,14 +144,12 @@ export const aulaService = {
     }
   },
 
-  // ✅ Deletar aula (soft delete)
   async deletarAula(id: string) {
     try {
       const aula = await db.aulas.get(id);
       if (!aula) return;
 
       if (aula.sync_status === 'synced' && !aula.id.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
         await db.aulas.update(id, { 
           deleted: true, 
           sync_status: 'pending_delete' as const,
@@ -167,10 +166,8 @@ export const aulaService = {
         
         console.log(`🗑️ Aula ${id} marcada para deleção remota`);
       } else {
-        // Se nunca sincronizado, deletar completamente
         await db.aulas.delete(id);
         
-        // Remover da fila se existir
         await db.syncQueue
           .where('record_id')
           .equals(id)
@@ -185,33 +182,37 @@ export const aulaService = {
     }
   },
 
-  // ✅ Buscar aulas por turma (com suporte offline)
-  async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
-    try {
-      const aulas = await db.aulas
-        .where('turma_id')
-        .equals(turmaId)
-        .and(aula => !aula.deleted)
-        .toArray();
-      
-      // Ordenar por data (mais recente primeiro)
-      const turmas=await turmaService.getTurmaById(turmaId)
+async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
+  try {
+    const aulas = await db.aulas
+      .where('turma_id')
+      .equals(turmaId)
+      .and(aula => !aula.deleted)
+      .toArray();
+    
+    if (aulas.length === 0) return [];
 
-      return (aulas.sort((a, b) => 
-        new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
-      )).map((a)=> {
-          return {
-            ...a,
-            turmas:turmas
-          }
-      })
-      ;
+    const turma = await turmaService.getTurmaById(turmaId);
+    
+    const todasFrequencias = await frequenciaService.getAllFrequencias();
+    const aulasCompletas = aulas.map((aula): Aula => {
+      const frequenciasAula = todasFrequencias.filter(freq => freq.aula_id === aula.id);
+            return {
+        ...aula,
+        turmas: turma, 
+        registro: frequenciasAula,
+      };
+    });
 
-    } catch (error) {
-      console.error('❌ Erro ao buscar aulas por turma:', error);
-      return [];
-    }
-  },
+    return aulasCompletas.sort((a, b) => 
+      new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
+    );
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar aulas por turma:', error);
+    return [];
+  }
+},
 
   // ✅ Buscar aula por ID
   async getAulaById(id: string): Promise<Aula | undefined> {

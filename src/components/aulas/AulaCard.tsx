@@ -12,12 +12,42 @@ import {
   FiTrendingUp
 } from 'react-icons/fi';
 import { FaChalkboardTeacher } from 'react-icons/fa';
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
+import { Aula } from '../../types/aula';
 
-export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) => {
+export type AulaStatus = 'planeada' | 'ministrada' | 'cancelada' | 'adiada';
+
+interface AulaCardMinProps {
+  aula: Aula & {
+    registro?: any[];
+    objetivos_aprendizagem?: string[];
+    taxa_participacao?: number;
+    meta_concluida?: boolean;
+    observacoes_professor?: string;
+  };
+  onEditar: () => void;
+  onDeletar: () => void;
+  onActualizar: (status: AulaStatus) => void;
+  index: number;
+}
+
+interface AulaCardMiniProps {
+  aula: Aula;
+  onEditar: () => void;
+  onDeletar: () => void;
+  index: number;
+}
+
+export const AulaCardMin: React.FC<AulaCardMinProps> = ({ 
+  aula, 
+  onEditar, 
+  onDeletar, 
+  index, 
+  onActualizar 
+}) => {
   const [expanded, setExpanded] = useState(false);
   
-  const formatarData = (dataString) => {
+  const formatarData = (dataString: string): string => {
     const data = new Date(dataString);
     const hoje = new Date();
     
@@ -38,11 +68,11 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
     });
   };
 
-  const formatarHora = (horaString) => {
+  const formatarHora = (horaString?: string): string => {
     return horaString?.slice(0, 5) || '';
   };
 
-  const calcularDuracao = () => {
+  const calcularDuracao = (): string => {
     if (!aula.hora_inicio || !aula.hora_fim) return '';
     const inicio = new Date(`2000-01-01T${aula.hora_inicio}`);
     const fim = new Date(`2000-01-01T${aula.hora_fim}`);
@@ -50,7 +80,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
     return `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: AulaStatus): string => {
     switch (status) {
       case 'planeada': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'ministrada': return 'bg-green-50 text-green-700 border-green-200';
@@ -60,7 +90,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: AulaStatus): React.ComponentType<{className?: string}> => {
     switch (status) {
       case 'planeada': return FiCalendar;
       case 'ministrada': return FiCheckCircle;
@@ -70,7 +100,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status: AulaStatus): string => {
     switch (status) {
       case 'planeada': return 'Planeada';
       case 'ministrada': return 'Ministrada';
@@ -80,7 +110,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
     }
   };
 
-  const StatusIcon = getStatusIcon(aula.status);
+  const StatusIcon = getStatusIcon(aula.status as AulaStatus);
 
   return (
     <motion.div
@@ -88,7 +118,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className="bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all  w-full duration-300"
+      className="bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all w-full duration-300"
     >
       {/* Header Compacto */}
       <div className="p-4">
@@ -96,7 +126,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
           {/* Lado Esquerdo - Informações Principais */}
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {/* Ícone de Status */}
-            <div className={`p-2 rounded-lg ${getStatusColor(aula.status)} border flex-shrink-0`}>
+            <div className={`p-2 rounded-lg ${getStatusColor(aula.status as AulaStatus)} border flex-shrink-0`}>
               <StatusIcon className="h-4 w-4" />
             </div>
             
@@ -106,8 +136,8 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
                 <h4 className="font-semibold text-gray-900 truncate">
                   {aula.disciplina || 'Sem disciplina'}
                 </h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(aula.status)}`}>
-                  {getStatusText(aula.status)}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(aula.status as AulaStatus)}`}>
+                  {getStatusText(aula.status as AulaStatus)}
                 </span>
               </div>
               
@@ -203,14 +233,14 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
             )}
 
             {/* Objetivos de Aprendizagem */}
-            {aula.objetivos_aprendizagem?.length > 0 && (
+            {aula.objetivos_aprendizagem && aula.objetivos_aprendizagem.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <FiTarget className="h-4 w-4 text-green-600" />
                   <h5 className="font-medium text-gray-900 text-sm">Objetivos</h5>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {aula.objetivos_aprendizagem.slice(0, 3).map((objetivo, idx) => (
+                  {aula.objetivos_aprendizagem.slice(0, 3).map((objetivo: string, idx: number) => (
                     <span 
                       key={idx} 
                       className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs"
@@ -229,7 +259,7 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
             )}
 
             {/* Métricas (apenas para aulas ministradas) */}
-            {aula.status === 'ministrada' (
+            {aula.status === 'ministrada' && (
               <div className="grid grid-cols-2 gap-3">
                 {aula.taxa_participacao !== undefined && (
                   <div className="bg-blue-50 p-3 rounded-lg">
@@ -268,8 +298,6 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
                 </p>
               </div>
             )}
-
-           
           </motion.div>
         )}
 
@@ -289,99 +317,32 @@ export const AulaCardMin = ({ aula, onEditar, onDeletar, index, onActualizar }) 
             
             {aula.status === 'planeada' && (
               <div className="mt-3 flex gap-5">
-            <button
-              onClick={()=>onActualizar("ministrada")}
-              className="w-full p-2 text-nowrap text-center py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
-            >
-              Concluir Aula
-            </button>
-            <button
-              onClick={()=>onActualizar("adiada")}
-              className="w-full p-2 rounded-sm text-nowrap text-center py-1.5 text-xs bg-red-100 text-red-700 hover:bg-red-200 transition-colors font-medium"
-            >
-              Adiar Aula
-            </button>
-          </div>
+                <button
+                  onClick={() => onActualizar("ministrada")}
+                  className="w-full p-2 text-nowrap text-center py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                >
+                  Concluir Aula
+                </button>
+                <button
+                  onClick={() => onActualizar("adiada")}
+                  className="w-full p-2 rounded-sm text-nowrap text-center py-1.5 text-xs bg-red-100 text-red-700 hover:bg-red-200 transition-colors font-medium"
+                >
+                  Adiar Aula
+                </button>
+              </div>
+            )}
+            
+            {aula.status === 'ministrada' && aula.registro && aula.registro.length === 0 && (
+              <div className="mt-3 flex gap-5">
+                <button
+                  onClick={() => onActualizar("ministrada")}
+                  className="w-full px-2 text-center py-1.5 text-xs bg-blue-100 text-blue-700 rounded-sm hover:bg-blue-200 transition-colors font-medium"
+                >
+                  Registrar Frequencia
+                </button>
+              </div>
             )}
           </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Versão ainda mais compacta para grids densos
-export const AulaCardMini = ({ aula, onEditar, onDeletar, index }) => {
-  const formatarData = (dataString) => {
-    const data = new Date(dataString);
-    return data.toLocaleDateString('pt-AO', { day: '2-digit', month: 'short' });
-  };
-
-  const formatarHora = (horaString) => {
-    return horaString?.slice(0, 5) || '';
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'planeada': return 'border-l-4 border-l-blue-500';
-      case 'ministrada': return 'border-l-4 border-l-green-500';
-      case 'cancelada': return 'border-l-4 border-l-red-500';
-      case 'adiada': return 'border-l-4 border-l-yellow-500';
-      default: return 'border-l-4 border-l-gray-500';
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.03 }}
-      whileHover={{ scale: 1.02 }}
-      className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow ${getStatusColor(aula.status)}`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <FiBook className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
-            <h4 className="font-medium text-gray-900 text-sm truncate">
-              {aula.disciplina}
-            </h4>
-          </div>
-          
-          <div className="flex items-center gap-3 text-xs text-gray-600">
-            <div className="flex items-center gap-1">
-              <FiCalendar className="h-3 w-3" />
-              <span>{formatarData(aula.data_aula)}</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <FiClock className="h-3 w-3" />
-              <span>{formatarHora(aula.hora_inicio)}</span>
-            </div>
-          </div>
-          
-          {aula.tema_aula && (
-            <p className="text-xs text-gray-700 mt-2 line-clamp-1">
-              {aula.tema_aula}
-            </p>
-          )}
-        </div>
-        
-        <div className="flex gap-1 ml-2">
-          <button
-            onClick={onEditar}
-            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-            title="Editar"
-          >
-            <FiEdit2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={onDeletar}
-            className="p-1 text-red-600 hover:bg-red-50 rounded"
-            title="Excluir"
-          >
-            <FiTrash2 className="h-3.5 w-3.5" />
-          </button>
         </div>
       </div>
     </motion.div>

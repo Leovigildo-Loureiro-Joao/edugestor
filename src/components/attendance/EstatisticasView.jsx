@@ -1,123 +1,220 @@
-import { FiBarChart2, FiCheckSquare, FiUsers } from "react-icons/fi";
+// EstatisticasView.tsx
+import { FiBarChart2, FiCheckSquare, FiUsers, FiTrendingUp, FiActivity, FiClock } from "react-icons/fi";
+import { motion } from "framer-motion";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-  // Componente de Estatísticas
-  export const EstatisticasView = ({estatisticas,aulasFiltradas,frequenciasFiltradas}) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Cartão de Resumo */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <FiBarChart2 className="text-blue-600 text-lg" />
-          </div>
-          <h3 className="font-semibold text-gray-900">Resumo Geral</h3>
-        </div>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total de Aulas:</span>
-            <span className="font-semibold">{estatisticas?.totalAulas || 0}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Aulas Registradas:</span>
-            <span className="font-semibold text-green-600">{estatisticas?.aulasRegistradas || 0}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Aulas Pendentes:</span>
-            <span className="font-semibold text-orange-600">{estatisticas?.aulasPendentes || 0}</span>
-          </div>
-        </div>
-      </div>
+export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltradas}) => {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
 
-      {/* Taxa de Registro */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <FiCheckSquare className="text-green-600 text-lg" />
-          </div>
-          <h3 className="font-semibold text-gray-900">Taxa de Registro</h3>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-green-600 mb-2">
-            {estatisticas?.taxaRegistro?.toFixed(1) || 0}%
-          </div>
-          <p className="text-gray-600 text-sm">das aulas têm frequência registrada</p>
-        </div>
-      </div>
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
 
-      {/* Taxa de Presença */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <FiUsers className="text-purple-600 text-lg" />
+  const statsCards = [
+    {
+      title: "Resumo Geral",
+      icon: FiBarChart2,
+      color: "blue",
+      items: [
+        { label: "Total de Aulas:", value: estatisticas?.totalAulas || 0 },
+        { label: "Aulas Registradas:", value: estatisticas?.aulasRegistradas || 0, highlight: true, color: "green" },
+        { label: "Aulas Pendentes:", value: estatisticas?.aulasPendentes || 0, highlight: true, color: "orange" }
+      ]
+    },
+    {
+      title: "Taxa de Registro",
+      icon: FiCheckSquare,
+      color: "green",
+      value: `${estatisticas?.taxaRegistro?.toFixed(1) || 0}%`,
+      description: "das aulas têm frequência registrada"
+    },
+    {
+      title: "Taxa de Presença",
+      icon: FiUsers,
+      color: "purple",
+      value: `${estatisticas?.taxaPresenca?.toFixed(1) || 0}%`,
+      description: "média de alunos presentes"
+    }
+  ];
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    >
+      {statsCards.map((card, index) => (
+        <motion.div
+          key={index}
+          variants={cardVariants}
+          whileHover={{ y: -4 }}
+          className={`bg-white rounded-2xl border border-gray-200 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ${
+            card.color === 'blue' ? 'border-l-4 border-l-blue-500' :
+            card.color === 'green' ? 'border-l-4 border-l-green-500' :
+            'border-l-4 border-l-purple-500'
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className={`p-3 rounded-xl bg-${card.color}-100`}>
+              <card.icon className={`text-${card.color}-600 text-xl`} />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">{card.title}</h3>
           </div>
-          <h3 className="font-semibold text-gray-900">Taxa de Presença</h3>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-purple-600 mb-2">
-            {estatisticas?.taxaPresenca?.toFixed(1) || 0}%
-          </div>
-          <p className="text-gray-600 text-sm">média de alunos presentes</p>
-        </div>
-      </div>
+          
+          {card.items ? (
+            <div className="space-y-4">
+              {card.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center">
+                  <span className="text-gray-600">{item.label}</span>
+                  <span className={`font-bold ${
+                    item.highlight 
+                      ? item.color === 'green' ? 'text-green-600' : 'text-orange-600'
+                      : 'text-gray-900'
+                  }`}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className={`text-4xl font-bold bg-gradient-to-r from-${card.color}-600 to-${card.color}-800 bg-clip-text text-transparent mb-3`}
+              >
+                {card.value}
+              </motion.div>
+              <p className="text-gray-600 text-sm">{card.description}</p>
+            </div>
+          )}
+        </motion.div>
+      ))}
 
       {/* Informações Adicionais */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm md:col-span-2 lg:col-span-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{estatisticas?.totalAlunos || 0}</div>
-            <div className="text-gray-600 text-sm">Total Alunos</div>
+      <motion.div
+        variants={cardVariants}
+        className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg md:col-span-2 lg:col-span-3"
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100">
+            <FiActivity className="text-indigo-600 text-xl" />
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{estatisticas?.turmasAtivas || 0}</div>
-            <div className="text-gray-600 text-sm">Turmas Ativas</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{aulasFiltradas.length}</div>
-            <div className="text-gray-600 text-sm">Pendentes (Filtro)</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{frequenciasFiltradas.length}</div>
-            <div className="text-gray-600 text-sm">Registradas (Filtro)</div>
-          </div>
+          <h3 className="font-bold text-gray-900 text-lg">Visão Geral do Sistema</h3>
         </div>
-        <div className="h-80 mt-6 border-t-2 pt-6 border-gray-200 flex flex-col justify-center items-center gap-5">
-          <h2 className="text-gray-600 font-semibold">Desempenho das presencas</h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          {[
+            { label: "Total Alunos", value: estatisticas?.totalAlunos || 0, color: "blue", icon: FiUsers },
+            { label: "Turmas Ativas", value: estatisticas?.turmasAtivas || 0, color: "green", icon: FiTrendingUp },
+            { label: "Pendentes (Filtro)", value: aulasFiltradas.length, color: "orange", icon: FiClock },
+            { label: "Registradas (Filtro)", value: frequenciasFiltradas.length, color: "purple", icon: FiCheckSquare }
+          ].map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+              className="text-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100"
+            >
+              <div className={`inline-flex p-2 bg-${stat.color}-100 rounded-lg mb-3`}>
+                <stat.icon className={`text-${stat.color}-600`} />
+              </div>
+              <div className={`text-3xl font-bold text-${stat.color}-600 mb-1`}>
+                {stat.value}
+              </div>
+              <div className="text-gray-600 text-sm font-medium">{stat.label}</div>
+            </motion.div>
+          ))}
+        </div>
+        
+        <div className="h-80 mt-6 border-t-2 pt-6 border-gray-200">
+          <div className="flex items-center justify-between mb-6">
+            <h4 className="text-gray-900 font-bold text-lg flex items-center gap-2">
+              <FiTrendingUp className="text-blue-500" />
+              Desempenho das Presenças
+            </h4>
+            <div className="flex gap-2">
+              <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                Presenças
+              </span>
+              <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                Ausências
+              </span>
+            </div>
+          </div>
+          
+          <motion.div
+           initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="h-full pb-10"
+          >
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[
+              <LineChart data={[
                 { mes: 'Set', ausencias: 12.5, presença: 85 },
                 { mes: 'Out', ausencias: 13.2, presença: 78 },
                 { mes: 'Nov', ausencias: 14.5, presença: 92 },
                 { mes: 'Dez', ausencias: 15.1, presença: 88 },
                 { mes: 'Jan', ausencias: 16.2, presença: 95 },
                 { mes: 'Fev', ausencias: 15.8, presença: 90 }
-                ]}>
+              ]}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="mes" />
-                <YAxis yAxisId="left" domain={[0, 20]} />
-                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
-                <Tooltip />
+                <XAxis dataKey="mes" stroke="#6b7280" />
+                <YAxis yAxisId="left" domain={[0, 20]} stroke="#6b7280" />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#6b7280" />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '10px', 
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                />
                 <Legend />
                 <Line 
-                    yAxisId="left"
-                    type="monotone" 
-                    dataKey="ausencias" 
-                    stroke="#f6573b" 
-                    strokeWidth={3}
-                    name="Ausencias %"
-                    dot={{ r: 4 }}
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="ausencias" 
+                  stroke="#f6573b" 
+                  strokeWidth={3}
+                  name="Ausências %"
+                  dot={{ r: 5, fill: "#f6573b" }}
+                  activeDot={{ r: 8 }}
                 />
                 <Line 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="presença" 
-                    stroke="#10B981" 
-                    strokeWidth={3}
-                    name="Presencas %"
-                    dot={{ r: 4 }}
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="presença" 
+                  stroke="#10B981" 
+                  strokeWidth={3}
+                  name="Presenças %"
+                  dot={{ r: 5, fill: "#10B981" }}
+                  activeDot={{ r: 8 }}
                 />
-                </LineChart>
+              </LineChart>
             </ResponsiveContainer>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
+};
