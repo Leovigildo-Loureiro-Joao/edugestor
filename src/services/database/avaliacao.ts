@@ -4,6 +4,8 @@ import { BaseEntity } from "./base";
 import { alunosService } from './alunosService';
 import { syncManager } from './syncManager';
 import { toast } from 'react-hot-toast';
+import { turmaService } from './turmas';
+import { cursosService } from '.';
 
 export interface Avaliacao extends BaseEntity {
   id: string;
@@ -259,8 +261,8 @@ export const avaliacaoService = {
       totalAvaliacoes: number;
       aprovados: number;
       reprovados: number;
-      mediaPorDisciplina: Record<string, number>;
-      evolucao: Array<{ data: string; media: number }>;
+      mediaPorDisciplinaFreque: Record<string, number>;
+      evolucao: Array<{ data: string; media: number ;frequencia:number}>;
       estado:string
     };
   }> {
@@ -269,10 +271,13 @@ export const avaliacaoService = {
         .where('aluno_id')
         .equals(alunoId)
         .and(av => !av.deleted);
+      let freque=await db.frequencias.filter(f=> !f.deleted).toArray()
+      let aulas= await db.aulas.filter(f=> !f.deleted&&f.status=="ministrada").toArray()
 
       // Aplicar filtros
       if (options?.disciplina) {
         query = query.filter(av => av.disciplina === options.disciplina);
+        aulas = aulas.filter(av => av.disciplina === options.disciplina);
       }
       if (options?.periodo) {
         query = query.filter(av => av.periodo === options.periodo);
@@ -303,7 +308,7 @@ export const avaliacaoService = {
             totalAvaliacoes: 0,
             aprovados: 0,
             reprovados: 0,
-            mediaPorDisciplina: {},
+            mediaPorDisciplinaFreque: {},
             evolucao: [],
             estado:"pendemte"
           }
@@ -311,20 +316,21 @@ export const avaliacaoService = {
       }
 
       // Calcular médias por disciplina
-      const mediaPorDisciplina: Record<string, { soma: number; count: number }> = {};
-      const evolucaoMap = new Map<string, { soma: number; count: number }>();
+      const mediaPorDisciplinaFreque: Record<string, { soma: number; count: number;all: number; presente: number }> = {};
+      const evolucaoMap = new Map<string, { soma: number; count: number ;all: number; presente: number}>();
       let totalSoma = 0;
       let aprovados = 0;
       let reprovados = 0;
 
       avaliacoes.forEach(av => {
         // Média por disciplina
-        if (!mediaPorDisciplina[av.disciplina]) {
-          mediaPorDisciplina[av.disciplina] = { soma: 0, count: 0 };
+        if (!mediaPorDisciplinaFreque[av.disciplina]) {
+          mediaPorDisciplinaFreque[av.disciplina] = { soma: 0, count: 0 ,all:0,presente:0};
         }
-        mediaPorDisciplina[av.disciplina].soma += av.nota;
-        mediaPorDisciplina[av.disciplina].count += 1;
-
+        let p =freque.filter(p=> p.aula_id==av.id)
+        mediaPorDisciplinaFreque[av.disciplina].soma += av.nota;
+        mediaPorDisciplinaFreque[av.disciplina].count += 1;
+       
         // Estatísticas gerais
         totalSoma += av.nota;
         if (av.nota >= 10) aprovados++;
@@ -334,22 +340,41 @@ export const avaliacaoService = {
         const data = new Date(av.data_avaliacao);
         const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         if (!evolucaoMap.has(mesKey)) {
-          evolucaoMap.set(mesKey, { soma: 0, count: 0 });
+          evolucaoMap.set(mesKey, { soma: 0, count: 0,all: 0, presente: 0 });
         }
         const evol = evolucaoMap.get(mesKey)!;
         evol.soma += av.nota;
         evol.count += 1;
       });
-
+      const turma=await turmaService.getTurmaById(aulas.at(0)?.turma_id||"")
+      const curso= await cursosService.getCourseById(turma?.curso_id||"")
+      freque.filter(f=> f.aluno_id==alunoId && 
+      aulas.find(f.aula_id)?.disciplina==av&&
+      f.presente).forEach(f=>{
+          curso?.disciplinas.forEach((av)=>{
+          mediaPorDisciplinaFreque[av].all += 1;
+          mediaPorDisciplinaFreque[av].presente+= f.presente?1:0;
+          const data = new Date(f.data_aula);
+          const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
+          if (!evolucaoMap.has(mesKey)) {
+            evolucaoMap.set(mesKey, { soma: 0, count: 0,all: 0, presente: 0 });
+          }
+          const evol = evolucaoMap.get(mesKey)!;
+          evol.all += 1;
+          evol.presente += 1;
+        })
+      })
+    
       // Preparar resultado
       const mediaGeral = totalSoma / avaliacoes.length;
       const evolucao = Array.from(evolucaoMap.entries())
         .map(([mes, dados]) => ({
           data: mes,
-          media: dados.soma / dados.count
+          media: dados.soma / dados.count,
+          frequencia:dados.all/dados.presente
         }))
         .sort((a, b) => a.data.localeCompare(b.data));
-
+        console.log(evolucao)
       return {
         avaliacoes,
         estatisticas: {
@@ -357,8 +382,8 @@ export const avaliacaoService = {
           totalAvaliacoes: avaliacoes.length,
           aprovados,
           reprovados,
-          mediaPorDisciplina: Object.fromEntries(
-            Object.entries(mediaPorDisciplina).map(([disciplina, dados]) => [
+          mediaPorDisciplinaFreque: Object.fromEntries(
+            Object.entries(mediaPorDisciplinaFreque).map(([disciplina, dados]) => [
               disciplina,
               dados.soma / dados.count
             ])

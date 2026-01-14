@@ -112,6 +112,8 @@ export const FrequenciaPage = () => {
     return matchData && matchTurma;
   });
 
+  
+
   const turmasSelect = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
 
   // Animations
@@ -185,58 +187,39 @@ export const FrequenciaPage = () => {
             animate="visible"
             className="p-2"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+           
+            <div className="flex space-x-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
               {[
                 { id: 'pendentes', icon: FiClock, label: 'Pendentes', count: aulasFiltradas.length, color: 'blue' },
                 { id: 'registradas', icon: FiCheckSquare, label: 'Registradas', count: frequenciasFiltradas.length, color: 'green' },
                 { id: 'estatisticas', icon: FiBarChart2, label: 'Estatísticas', count: null, color: 'purple' }
               ].map((tab) => (
-                <motion.button
+                <button
                   key={tab.id}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => setView(tab.id)}
-                  className={`relative flex items-center justify-between p-4 rounded-xl font-medium transition-all duration-300 ${
-                    view === tab.id 
-                      ? `bg-${tab.color}-100 text-${tab.color}-700 border-2 border-${tab.color}-300 shadow-md` 
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                  className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    view === tab.id
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      view === tab.id 
-                        ? `bg-${tab.color}-200` 
-                        : 'bg-gray-100'
+                  {tab.icon}
+                  <span className="font-medium">{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      view === tab.id
+                        ? 'bg-blue-600'
+                        : 'bg-gray-200 dark:bg-gray-500'
                     }`}>
-                      <tab.icon size={20} />
-                    </div>
-                    <span className="font-semibold">{tab.label}</span>
-                  </div>
-                  
-                  {tab.count !== null && tab.count > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className={`px-2 py-1 text-xs font-bold text-white rounded-full ${
-                        view === tab.id 
-                          ? `bg-${tab.color}-600` 
-                          : `bg-${tab.color}-500`
-                      }`}
-                    >
                       {tab.count}
-                    </motion.span>
+                    </span>
                   )}
-                  
-                  <motion.div
-                    animate={{ x: view === tab.id ? 0 : -5, opacity: view === tab.id ? 1 : 0 }}
-                    className="text-gray-400"
-                  >
-                    <FiChevronRight size={18} />
-                  </motion.div>
-                </motion.button>
+                </button>
               ))}
             </div>
+            
+          
           </motion.div>
         </motion.div>
 

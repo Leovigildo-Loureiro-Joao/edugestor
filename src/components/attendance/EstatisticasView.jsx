@@ -171,12 +171,7 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={[
-                { mes: 'Set', ausencias: 12.5, presença: 85 },
-                { mes: 'Out', ausencias: 13.2, presença: 78 },
-                { mes: 'Nov', ausencias: 14.5, presença: 92 },
-                { mes: 'Dez', ausencias: 15.1, presença: 88 },
-                { mes: 'Jan', ausencias: 16.2, presença: 95 },
-                { mes: 'Fev', ausencias: 15.8, presença: 90 }
+                estatisticas
               ]}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis dataKey="mes" stroke="#6b7280" />

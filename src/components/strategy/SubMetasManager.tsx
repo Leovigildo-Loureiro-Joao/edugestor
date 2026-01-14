@@ -52,7 +52,9 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
   };
 
   return (
-    <div className="space-y-6">
+     <motion.div
+              initial={{x:-20,opacity:0}}
+              animate={{x:0,opacity:1}} className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">
           Sub-metas / Ações
@@ -274,6 +276,6 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };

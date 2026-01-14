@@ -322,7 +322,10 @@ export const MetaDetailsPage: React.FC = () => {
 
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{delay:0.3}}   className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-blue-100 dark:bg-blue-800 rounded-lg">
                 <FiBarChart2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -336,9 +339,12 @@ export const MetaDetailsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{delay:0.2}} className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-green-100 dark:bg-green-800 rounded-lg">
                 <FiCheckSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -352,9 +358,12 @@ export const MetaDetailsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{delay:0.1}} className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-yellow-100 dark:bg-yellow-800 rounded-lg">
                 <FiDollarSign className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
@@ -368,9 +377,12 @@ export const MetaDetailsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+             className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-purple-100 dark:bg-purple-800 rounded-lg">
                 <FiClock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -384,7 +396,7 @@ export const MetaDetailsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Navegação por Tabs */}
@@ -424,7 +436,10 @@ export const MetaDetailsPage: React.FC = () => {
           <div className="p-6">
             {/* Visão Geral */}
             {activeTab === 'overview' && (
-              <div className="space-y-8">
+              <motion.div
+              initial={{x:-20,opacity:0}}
+              animate={{x:0,opacity:1}}
+              className="space-y-8">
                 {/* SMART Criteria */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -496,7 +511,7 @@ export const MetaDetailsPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {/* KPIs */}
@@ -511,7 +526,9 @@ export const MetaDetailsPage: React.FC = () => {
 
             {/* Finanças */}
             {activeTab === 'financas' && (
-              <div className="space-y-6">
+              <motion.div
+              initial={{x:-20,opacity:0}}
+              animate={{x:0,opacity:1}} className="space-y-6">
                 {/* Resumo */}
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-xl p-6">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -619,7 +636,7 @@ export const MetaDetailsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>

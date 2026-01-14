@@ -117,6 +117,9 @@ const EstrategiaPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <motion.div 
           whileHover={{ scale: 1.05 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{delay:0.3}}   
           className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-blue-500"
         >
           <div className="flex items-center justify-between">
@@ -130,6 +133,9 @@ const EstrategiaPage = () => {
 
         <motion.div 
           whileHover={{ scale: 1.05 }}
+            initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{delay:0.2}}  
           className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-green-500"
         >
           <div className="flex items-center justify-between">
@@ -145,6 +151,9 @@ const EstrategiaPage = () => {
 
         <motion.div 
           whileHover={{ scale: 1.05 }}
+            initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{delay:0.1}}  
           className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-purple-500"
         >
           <div className="flex items-center justify-between">
@@ -158,6 +167,8 @@ const EstrategiaPage = () => {
 
         <motion.div 
           whileHover={{ scale: 1.05 }}
+            initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-orange-500"
         >
           <div className="flex items-center justify-between">
