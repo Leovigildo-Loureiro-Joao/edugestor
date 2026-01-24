@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import logo from '../../assets/logo.png';
-import logoBlack from '../../assets/logoblack.png';
+import logoBlack from '../../assets/logoblack1.png';
 import bg from '../../assets/funcionario-que-trabalha-num-ambiente-de-comercializacao.jpg';
 import { FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';

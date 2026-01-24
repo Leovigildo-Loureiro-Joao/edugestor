@@ -16,6 +16,9 @@ export interface FrequenciaData {
   data_aula: string;
   presente: boolean;
   justificativa?: string;
+  participacao?:boolean;
+  disciplina?:string;
+  professor?:string
 }
 export interface RegistroFrequenciaLote {
   aula_id: string;

@@ -25,7 +25,7 @@ const gerarCor = (turma, index) => {
 
 export async function PieChartTurmaAlunosState() {
   try {
-    const alunos= await alunosService.getAllStudents()
+    const alunos= await alunosService.getAlunosForChart()
 
     // Agrupar alunos por turma
     const alunosPorTurma = alunos.reduce((acc, aluno) => {

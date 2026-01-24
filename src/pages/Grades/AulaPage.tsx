@@ -25,6 +25,7 @@ import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx'
 import { Student } from '../../types/aluno.ts';
 import { frequenciaService } from '../../services/database/frequenciaService.ts';
 import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
+import { estrategiaService } from '../../services/database/estrategiaService.ts';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -47,6 +48,15 @@ export const AulasPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filterCount, setFilterCount] = useState(0);
   const [alunos,setAlunos]=useState<Student[]>([])
+  const [metas,setMetas]=useState<{
+                      label:string,
+                      atual:number,
+                      meta:{
+                        label:string,
+                        atual:number,
+                        meta:number
+                      }[]|undefined
+                    }[]>([])
     // Atualizar contador de filtros
   useEffect(() => {
     let count = 0;
@@ -76,6 +86,7 @@ export const AulasPage = () => {
         console.log('✅ Frequência registrada e aula removida da lista');
         
         setTimeout(() => {
+          setAulaSelect(null)
           loadData();
         }, 500);
         
@@ -225,12 +236,14 @@ export const AulasPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      const [aulasData, turmasData, stats] = await Promise.all([
+    
+      const [aulasData, turmasData, stats,metasP] = await Promise.all([
         aulaService.getAulasRecentes(),
         turmaService.getTurmas(),
-        aulaService.getEstatisticas()
+        aulaService.getEstatisticas(),
+        estrategiaService.getMetasAdemicas()
       ]);
+      setMetas(metasP)
       setAulas(aulasData);
       setTurmas(turmasData || []);
       setEstatisticas(stats);
@@ -880,22 +893,34 @@ export const AulasPage = () => {
                     Metas do Mês
                   </h3>
                   <div className="space-y-4">
-                    {[
-                      { label: 'Aulas Ministradas', atual: aulas.filter(a => a.status === 'ministrada').length, meta: 20 },
-                      { label: 'Participação Estudantes', atual: 75, meta: 85 },
-                      { label: 'Conclusão Conteúdo', atual: 60, meta: 100 }
-                    ].map((meta, index) => (
+                    {metas.map((op, index) => (
                       <div key={index} className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-gray-900 dark:text-white">{meta.label}</span>
-                          <span className="text-gray-600 dark:text-gray-300">{meta.atual}/{meta.meta}</span>
-                        </div>
+                          <span className="font-medium text-gray-900 dark:text-white">{op.label}</span>
+                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                           <div 
                             className="bg-green-600 h-2 rounded-full" 
-                            style={{ width: `${Math.min((meta.atual / meta.meta) * 100, 100)}%` }}
+                            style={{ width: `${Math.min((op.atual / 100) * 100, 100)}%` }}
                           />
                         </div>
+                        {
+                          op.meta?.map((m,i)=>(
+                             <div key={index} className="ml-8 space-y-2">
+                             <div className="flex justify-between text-sm">
+                              <span className="font-medium text-gray-900 dark:text-white">{m.label}</span>
+                              
+                              <span className="text-gray-600 dark:text-gray-300">{m.atual}/{m.meta}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                              <div 
+                                className="bg-green-600 h-2 rounded-full" 
+                                style={{ width: `${Math.min((m.atual / m.meta) * 100, 100)}%` }}
+                              />
+                            </div>
+                            </div>
+                          ))
+                        }
                       </div>
                     ))}
                   </div>

@@ -119,7 +119,7 @@ export const CompletarMatricula = () => {
                     valor: parseFloat(dadosMatricula.valorCartao)
                 });
 
-                if (!resultadoCartao.sucesso) {
+                if (resultadoCartao.sucesso) {
                     // Atualizar status do cartão no aluno
                     await alunosService.updateStudent(aluno.id,{
                         cartao_pago: true

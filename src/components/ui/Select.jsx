@@ -69,7 +69,7 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) =>
 
     return (
         <div 
-            className="flex flex-col relative min-w-[200px] w-full" 
+            className="flex flex-col relative  w-full" 
             ref={dropdownRef}
             onClick={blockEvent}
             onMouseDown={blockEvent}

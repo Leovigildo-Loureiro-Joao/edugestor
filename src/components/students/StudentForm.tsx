@@ -4,8 +4,10 @@ import {
   FiActivity, FiCalendar, FiHome, FiMail, 
   FiPhone, FiUsers, FiFileText, FiSave, 
   FiUser, FiBook, FiTarget, FiAward, 
-  FiClock, FiBookOpen 
+  FiClock, FiBookOpen, 
+  FiArrowLeft
 } from "react-icons/fi";
+
 import { RxPerson } from "react-icons/rx";
 import { Student, StudentFormData, StudentFormProps } from "../../types";
 import { useState, useEffect } from "react";
@@ -16,6 +18,9 @@ import { Turma } from "../../types/turma";
 import { Course } from "../../types/curso";
 import { Select } from "../ui/Select.jsx";
 import { configService } from "../../services/database/config.ts";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { logoBlack } from "../auth/Login.jsx";
 
 // ✅ Chave para localStorage
 const getStorageKey = (studentId?: string) => 
@@ -27,6 +32,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const isEditing = !!student;
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [cursos, setCursos] = useState<Course[]>([]);
+  const navigate=useNavigate()
   const [turmasFiltradas, setTurmasFiltradas] = useState<Turma[]>([]);
   const [tipoMatricula, setTipoMatricula] = useState<'regular' | 'reforco_personalizado'>(
     student?.tipo_matricula || 'regular'
@@ -34,6 +40,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const [ano, setAno] = useState<string>("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const storageKey = getStorageKey(student?.id);
+  const [submit,setSubmit]=useState(true)
   
   // Estado interno do formulário
   const initialData: StudentFormData = student ? {
@@ -240,10 +247,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
-    console.log('📤 Submetendo formulário:', formData);
-    e.preventDefault();
+    if(submit){
+      console.log('📤 Submetendo formulário:', formData);
+      e.preventDefault();
+      onSubmit(formData);
+    }
     clearDraft();
-    onSubmit(formData);
+    setSubmit(true)
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -315,10 +325,15 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   ];
 
   return (
+
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6 bg-white rounded-lg shadow-sm">
+      <motion.form
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+         onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 bg-white rounded-lg shadow-sm">
         {/* Header com auto-save */}
-        <div className="flex justify-between items-start">
+        <div
+        className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
           </div>
@@ -339,24 +354,34 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               <FiSave />
               Salvar Rascunho
             </button>
+             <button
+              onClick={handleCancel}
+              className="flex py-2 mt-4 items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span className="font-medium">Voltar para Alunos</span>
+            </button>
           </div>
         </div>
         
         {/* SELEÇÃO DE TIPO DE MATRÍCULA */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+        <div className=" p-6 pt-0">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <FiTarget className="mr-2" />
             Tipo de Matrícula
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
+            <motion.button
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{y:-5, transition:{duration:0.3}}}
               type="button"
               onClick={() => {
                 setTipoMatricula('regular');
                 handleChangeSel('tipo_matricula', 'regular');
               }}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
+              className={`p-4 rounded-lg border-2 text-left transition-all hover:border-blue-200 ${
                 tipoMatricula === 'regular'
                   ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
                   : 'border-gray-200 hover:bg-gray-50'
@@ -379,15 +404,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <li>• Disciplinas padrão do curso</li>
                 <li>• Grupo ABC + Gama/Beta/Alfa</li>
               </ul>
-            </button>
+            </motion.button>
             
-            <button
+            <motion.button
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+               whileHover={{y:-5, transition:{duration:0.3}}}
               type="button"
               onClick={() => {
                 setTipoMatricula('reforco_personalizado');
                 handleChangeSel('tipo_matricula', 'reforco_personalizado');
               }}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
+              className={`p-4 rounded-lg border-2 text-left transition-all hover:border-purple-200 ${
                 tipoMatricula === 'reforco_personalizado'
                   ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
                   : 'border-gray-200 hover:bg-gray-50'
@@ -410,13 +439,35 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <li>• Foco em dificuldades pontuais</li>
                 <li>• Sessões personalizadas</li>
               </ul>
-            </button>
+            </motion.button>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className={tipoMatricula=="regular"&&(cursos.length==0||turmas.length==0)?"flex justify-center":"grid grid-cols-1 lg:grid-cols-2 gap-8"}>
           
-          {/* Coluna Esquerda - DADOS PESSOAIS */}
+          {
+          tipoMatricula=="regular"&&(cursos.length==0||turmas.length==0)?
+          <>
+             <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+
+            className='flex justify-center flex-col items-center w-full h-96'>
+                <div className='flex flex-col items-center w-96 text-center'>
+                    <img src={logoBlack} alt="" />
+                    
+                    <h3 className="mt-2 text-md font-medium text-gray-900 dark:text-white">Adicione um curso para adicionar alunos</h3>
+                    <p className="mt-1 text-wrap text-m text-gray-500 dark:text-gray-400">
+                      Adicione todos dados antes de adicionar um aluno regular pois todos cursos e todas turma estão neste sistema esta
+                      vinculados um ao outro, e cada aluno a uma turma excepto os alunos personalizados,
+                      caso deseje adicionar um personalisado troque o tipo de matricula
+                    </p>
+                      <button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium "
+                      onClick={()=> {setSubmit(false);navigate(cursos.length==0?"/cursos/novo":"/turmas/nova")}}>{cursos.length==0?"Adicionar um Curso":"Adicionar Turma"}</button>
+                </div>
+            </motion.div>
+          </>
+          :<>
           <div className="flex flex-col gap-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
               <RxPerson className="mr-2" />
@@ -556,286 +607,290 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 />
               </div>
             </div>
-          </div>
-
-          {/* Coluna Direita - INFORMAÇÕES ACADÊMICAS E CONTATO */}
-          <div className="flex flex-col gap-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
-              <FiBookOpen className="mr-2" />
-              Informações Acadêmicas e Contato
-            </h3>
-            
-            {/* Contacto Telefónico Principal */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700">
-                Contacto Telefónico Principal
-              </label>
-              <div className="relative">
-                <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
-                  type="text" 
-                  placeholder="+244 XXX XXX XXX" 
-                  name="contacto_principal" 
-                  value={formData.contacto_principal}
-                  onChange={handleChange}
-                  id="contacto_principal"
-                />
-              </div>
             </div>
 
-            {/* Contacto Telefónico Secundário */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="contacto_secundario" className="text-sm font-medium text-gray-700">
-                Contacto Telefónico Secundário
-              </label>
-              <div className="relative">
-                <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
-                  type="text" 
-                  placeholder="+244 XXX XXX XXX" 
-                  name="contacto_secundario" 
-                  value={formData.contacto_secundario}
-                  onChange={handleChange}
-                  id="contacto_secundario"
-                />
+            {/* Coluna Direita - INFORMAÇÕES ACADÊMICAS E CONTATO */}
+            <div className="flex flex-col gap-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                <FiBookOpen className="mr-2" />
+                Informações Acadêmicas e Contato
+              </h3>
+              
+              {/* Contacto Telefónico Principal */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700">
+                  Contacto Telefónico Principal
+                </label>
+                <div className="relative">
+                  <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                  <input 
+                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    type="text" 
+                    placeholder="XXX XXX XXX" 
+                    maxLength={9}
+                    name="contacto_principal" 
+                    value={formData.contacto_principal}
+                    onChange={handleChange}
+                    id="contacto_principal"
+                  />
+                </div>
               </div>
-            </div>
-            
-            {/* Email */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <div className="relative">
-                <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
-                  type="email" 
-                  placeholder="exemplo@email.com" 
-                  value={formData.email}
-                  name="email" 
-                  id="email"
-                  onChange={handleChange}
-                />
+
+              {/* Contacto Telefónico Secundário */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="contacto_secundario" className="text-sm font-medium text-gray-700">
+                  Contacto Telefónico Secundário
+                </label>
+                <div className="relative">
+                  <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                  <input 
+                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    type="text" 
+                    placeholder="XXX XXX XXX" 
+                    maxLength={9}
+                    name="contacto_secundario" 
+                    value={formData.contacto_secundario}
+                    onChange={handleChange}
+                    id="contacto_secundario"
+                  />
+                </div>
               </div>
-            </div>
-
-            {/* Propina */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="propina" className="text-sm font-medium text-gray-700">
-                Propina *
-              </label>
-              <div className="relative">
-                <FaMoneyBill className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
-                  type="number" 
-                  placeholder="Quanto pagará por propina" 
-                  name="propina" 
-                  id="propina"
-                  value={formData.propina}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  required
-                />
+              
+              {/* Email */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <div className="relative">
+                  <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                  <input 
+                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    type="email" 
+                    placeholder="exemplo@email.com" 
+                    value={formData.email}
+                    name="email" 
+                    id="email"
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* ✅ CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
-            {tipoMatricula === 'regular' ? (
-              <>
-                {/* CURSO */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Curso *
-                  </label>
-                  <SelectTyped 
-                    vect={cursos.map(curso => curso.nome)} 
-                    icon={FiFileText}
-                    onChange={(value: string) => handleChangeSel('curso', value)}
-                    value={formData.curso}
-                    placeholder="Selecione o curso"
-                    disabled={cursos.length === 0}
-                  />
-                  {cursos.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">Carregando cursos...</p>
-                  )}
-                </div>
-
-                {/* TURMA */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Turma *
-                  </label>
-                  <SelectTyped 
-                    vect={formData.curso 
-                      ? turmasFiltradas.map(turma => ({
-                          value: turma.id,
-                          label: turma.nome_turma
-                        }))
-                      : turmas.map(turma => ({
-                          value: turma.id,
-                          label: `${turma.nome_turma} - ${turma.curso_nome}`,
-                          disabled: true // Desabilita se não tiver curso selecionado
-                        }))
-                    } 
-                    icon={FiUsers}
-                    onChange={(value: string) => handleChangeSel('turma_id', value)}
-                    value={formData.turma_id}
-                    placeholder={formData.curso 
-                      ? 'Selecione uma turma disponível' 
-                      : '↖️ Selecione um curso primeiro'
-                    }
-                    disabled={!formData.curso}
-                  />
-                  {!formData.curso && (
-                    <p className="text-xs text-gray-500 mt-1">Selecione um curso para ver as turmas</p>
-                  )}
-                </div>
-
-                {/* GRUPO DE APRENDIZADO (Gama/Beta/Alfa) */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Grupo de Aprendizado *
-                  </label>
-                  <SelectTyped 
-                    vect={gruposAprendizado} 
-                    icon={FiAward}
-                    onChange={(value: string) => handleChangeSel('grupo_aprendizado', value)}
-                    value={formData.grupo_aprendizado}
-                    placeholder="Selecione o grupo"
+              {/* Propina */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="propina" className="text-sm font-medium text-gray-700">
+                  Propina *
+                </label>
+                <div className="relative">
+                  <FaMoneyBill className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                  <input 
+                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    type="number" 
+                    placeholder="Quanto pagará por propina" 
+                    name="propina" 
+                    id="propina"
+                    value={formData.propina}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    required
                   />
                 </div>
+              </div>
 
-                {/* NÍVEL DE CONHECIMENTO (A/B/C) */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nível de Conhecimento Atual *
-                  </label>
-                  <SelectTyped 
-                    vect={niveisConhecimento} 
-                    icon={FiActivity}
-                    onChange={(value: string) => handleChangeSel('nivel_conhecimento', value)}
-                    value={formData.nivel_conhecimento}
-                    placeholder="Selecione o nível"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                {/* DISCIPLINAS DE REFORÇO (multi-select) */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Disciplinas para Reforço *
-                  </label>
-                  <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
-                    {disciplinasDisponiveis.map(disciplina => (
-                      <div key={disciplina} className="flex items-center mb-2">
-                        <input
-                          type="checkbox"
-                          id={`disciplina-${disciplina}`}
-                          checked={formData.disciplinas_reforco?.includes(disciplina) || false}
-                          onChange={(e) => {
-                            const current = formData.disciplinas_reforco || [];
-                            const updated = e.target.checked
-                              ? [...current, disciplina]
-                              : current.filter((d:string) => d !== disciplina);
-                            handleMultiSelect('disciplinas_reforco', updated);
-                          }}
-                          className="mr-2"
-                        />
-                        <label htmlFor={`disciplina-${disciplina}`} className="text-sm">
-                          {disciplina}
-                        </label>
-                      </div>
-                    ))}
+              {/* ✅ CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
+              {tipoMatricula === 'regular' ? (
+                <>
+                  {/* CURSO */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Curso *
+                    </label>
+                    <SelectTyped 
+                      vect={cursos.map(curso => curso.nome)} 
+                      icon={FiFileText}
+                      onChange={(value: string) => handleChangeSel('curso', value)}
+                      value={formData.curso}
+                      placeholder="Selecione o curso"
+                      disabled={cursos.length === 0}
+                    />
+                    {cursos.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">Carregando cursos...</p>
+                    )}
                   </div>
-                </div>
 
-                {/* FREQUÊNCIA SEMANAL */}
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="frequencia_semanal" className="text-sm font-medium text-gray-700">
-                    Frequência Semanal (vezes)
-                  </label>
-                  <input
-                    type="number"
-                    name="frequencia_semanal"
-                    id="frequencia_semanal"
-                    value={formData.frequencia_semanal}
-                    onChange={handleChange}
-                    min="1"
-                    max="5"
-                    className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm"
-                  />
-                </div>
+                  {/* TURMA */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Turma *
+                    </label>
+                    <SelectTyped 
+                      vect={formData.curso 
+                        ? turmasFiltradas.map(turma => ({
+                            value: turma.id,
+                            label: turma.nome_turma
+                          }))
+                        : turmas.map(turma => ({
+                            value: turma.id,
+                            label: `${turma.nome_turma} - ${turma.curso_nome}`,
+                            disabled: true // Desabilita se não tiver curso selecionado
+                          }))
+                      } 
+                      icon={FiUsers}
+                      onChange={(value: string) => handleChangeSel('turma_id', value)}
+                      value={formData.turma_id}
+                      placeholder={formData.curso 
+                        ? 'Selecione uma turma disponível' 
+                        : '↖️ Selecione um curso primeiro'
+                      }
+                      disabled={!formData.curso}
+                    />
+                    {!formData.curso && (
+                      <p className="text-xs text-gray-500 mt-1">Selecione um curso para ver as turmas</p>
+                    )}
+                  </div>
 
-                {/* OBJETIVOS ACADÊMICOS */}
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="objetivos_academicos" className="text-sm font-medium text-gray-700">
-                    Objetivos Acadêmicos
-                  </label>
-                  <textarea
-                    name="objetivos_academicos"
-                    id="objetivos_academicos"
-                    value={formData.objetivos_academicos}
-                    onChange={handleChange}
-                    className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-24"
-                    placeholder="Ex: Melhorar notas em matemática, passar no exame..."
-                  />
-                </div>
-              </>
-            )}
+                  {/* GRUPO DE APRENDIZADO (Gama/Beta/Alfa) */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Grupo de Aprendizado *
+                    </label>
+                    <SelectTyped 
+                      vect={gruposAprendizado} 
+                      icon={FiAward}
+                      onChange={(value: string) => handleChangeSel('grupo_aprendizado', value)}
+                      value={formData.grupo_aprendizado}
+                      placeholder="Selecione o grupo"
+                    />
+                  </div>
 
-            {/* ✅ CLASSE ESCOLAR */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                Classe Escolar *
-              </label>
-              <SelectTyped 
-                vect={['Pré', '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª']} 
-                icon={FiBook}
-                onChange={(value: string) => handleChangeSel('classe_escolar', value)}
-                value={formData.classe_escolar}
-                placeholder="Selecione a classe"
-              />
+                  {/* NÍVEL DE CONHECIMENTO (A/B/C) */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Nível de Conhecimento Atual *
+                    </label>
+                    <SelectTyped 
+                      vect={niveisConhecimento} 
+                      icon={FiActivity}
+                      onChange={(value: string) => handleChangeSel('nivel_conhecimento', value)}
+                      value={formData.nivel_conhecimento}
+                      placeholder="Selecione o nível"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* DISCIPLINAS DE REFORÇO (multi-select) */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Disciplinas para Reforço *
+                    </label>
+                    <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                      {disciplinasDisponiveis.map(disciplina => (
+                        <div key={disciplina} className="flex items-center mb-2">
+                          <input
+                            type="checkbox"
+                            id={`disciplina-${disciplina}`}
+                            checked={formData.disciplinas_reforco?.includes(disciplina) || false}
+                            onChange={(e) => {
+                              const current = formData.disciplinas_reforco || [];
+                              const updated = e.target.checked
+                                ? [...current, disciplina]
+                                : current.filter((d:string) => d !== disciplina);
+                              handleMultiSelect('disciplinas_reforco', updated);
+                            }}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`disciplina-${disciplina}`} className="text-sm">
+                            {disciplina}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* FREQUÊNCIA SEMANAL */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="frequencia_semanal" className="text-sm font-medium text-gray-700">
+                      Frequência Semanal (vezes)
+                    </label>
+                    <input
+                      type="number"
+                      name="frequencia_semanal"
+                      id="frequencia_semanal"
+                      value={formData.frequencia_semanal}
+                      onChange={handleChange}
+                      min="1"
+                      max="5"
+                      className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm"
+                    />
+                  </div>
+
+                  {/* OBJETIVOS ACADÊMICOS */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="objetivos_academicos" className="text-sm font-medium text-gray-700">
+                      Objetivos Acadêmicos
+                    </label>
+                    <textarea
+                      name="objetivos_academicos"
+                      id="objetivos_academicos"
+                      value={formData.objetivos_academicos}
+                      onChange={handleChange}
+                      className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-24"
+                      placeholder="Ex: Melhorar notas em matemática, passar no exame..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* ✅ CLASSE ESCOLAR */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Classe Escolar *
+                </label>
+                <SelectTyped 
+                  vect={['Pré', '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª']} 
+                  icon={FiBook}
+                  onChange={(value: string) => handleChangeSel('classe_escolar', value)}
+                  value={formData.classe_escolar}
+                  placeholder="Selecione a classe"
+                />
+              </div>
+              
+              {/* ✅ ESTADO */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Estado *
+                </label>
+                <SelectTyped 
+                  vect={[
+                    { value: 'ativo', label: 'Ativo' },
+                    { value: 'transferido', label: 'Transferido' },
+                    { value: 'desistente', label: 'Desistente' }
+                  ]} 
+                  icon={FiActivity}
+                  onChange={(value: string) => handleChangeSel('estado', value)}
+                  value={formData.estado}
+                  placeholder="Selecione o estado"
+                />
+              </div>
+
+              {/* Observações Específicas */}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="observacoes_especificas" className="text-sm font-medium text-gray-700">
+                  Observações Específicas
+                </label>
+                <textarea
+                  name="observacoes_especificas"
+                  id="observacoes_especificas"
+                  value={formData.observacoes_especificas}
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-20"
+                  placeholder="Alergias, condições médicas, necessidades especiais..."
+                />
+              </div>
             </div>
-            
-            {/* ✅ ESTADO */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                Estado *
-              </label>
-              <SelectTyped 
-                vect={[
-                  { value: 'ativo', label: 'Ativo' },
-                  { value: 'transferido', label: 'Transferido' },
-                  { value: 'desistente', label: 'Desistente' }
-                ]} 
-                icon={FiActivity}
-                onChange={(value: string) => handleChangeSel('estado', value)}
-                value={formData.estado}
-                placeholder="Selecione o estado"
-              />
-            </div>
-
-            {/* Observações Específicas */}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="observacoes_especificas" className="text-sm font-medium text-gray-700">
-                Observações Específicas
-              </label>
-              <textarea
-                name="observacoes_especificas"
-                id="observacoes_especificas"
-                value={formData.observacoes_especificas}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-20"
-                placeholder="Alergias, condições médicas, necessidades especiais..."
-              />
-            </div>
-          </div>
+           </>
+          }
         </div>
 
         {/* Botões de Ação */}
@@ -856,7 +911,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             {loading ? 'Salvando...' : (isEditing ? 'Atualizar Aluno' : 'Salvar Aluno')}
           </button>
         </div>
-      </form>
+      </motion.form>
     </>
   );
 };

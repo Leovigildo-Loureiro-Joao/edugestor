@@ -1,9 +1,11 @@
 // services/database/cursoService.ts
 import { alunosService } from ".";
+import { Student } from "../../types";
 import { Course, CourseFormData } from "../../types/curso";
 import { UserProfile } from "../../types/profile";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { supabase } from "../database/db";
+import { cacheManager } from "./cacheManager";
 import db from "./db";
 import { profileService } from "./profileService";
 import { syncManager } from "./syncManager";
@@ -53,36 +55,44 @@ export const cursosService = {
   async getCourse(): Promise<Course[]> {
     try {
       console.log('📋 Buscando cursos...');
+      const CACHE_KEY = 'cursos_all';
+      const qtd= await db.cursos.count()
+      const cached = cacheManager.get(CACHE_KEY,qtd);
+      if (cached) {
+        return cached;
+      }
 
-
-      const todosCursos = await db.cursos
-                          .where("instituicao_id")
-                          .equals(instituicaoIdValue()||"")
-                          .and(curso=> !curso.deleted)
-                          .toArray();
-      const todasTurmas = await turmaService.getTurmas();
-      const todosAlunos = await alunosService.getAllStudents();
+      const [todosCursos,todasTurmas,todosAlunos]=await Promise.all([
+          db.cursos
+          .where("instituicao_id")
+          .equals(instituicaoIdValue()||"")
+          .and(curso=> !curso.deleted)
+          .toArray(),
+          turmaService.getTurmas(),
+          alunosService.getAllStudents(),
+      ])
+      
       // Filtrar os não deletados
       const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
       const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
-      const alunosAtivos = todosAlunos.filter(aluno => !aluno.deleted);
+      const alunosAtivos = todosAlunos.filter((aluno:Student) => !aluno.deleted);
       
       // Ordenar por nome
       cursosAtivos.sort((a, b) => 
         (a.nome || '').localeCompare(b.nome || '')
       );
-      
-      console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
-      return cursosAtivos.map(curso=>{
+      const cursos=cursosAtivos.map(curso=>{
         const turmas=turmasAtivas.filter(turma=> turma.curso_id==curso.id)
-         const alunosCount = alunosAtivos.filter(aluno => aluno.turma_id && turmasAtivas.some(turma => turma.id === aluno.turma_id && turma.curso_id === curso.id)).length;
+        const alunosCount = alunosAtivos.filter(aluno => aluno.turma_id && turmasAtivas.some(turma => turma.id === aluno.turma_id && turma.curso_id === curso.id)).length;
         return {
           ...curso,
           alunos: alunosCount,
           turmas: turmas
-          
         }
-      });
+      })
+      cacheManager.set(CACHE_KEY,cursos)
+      console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
+      return cursos;
     } catch (error) {
       console.error('❌ Erro ao buscar cursos:', error);
       return [];

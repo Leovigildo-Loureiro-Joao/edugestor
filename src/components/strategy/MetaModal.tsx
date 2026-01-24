@@ -377,10 +377,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Relevante</h4>
                               <p className="text-gray-900 dark:text-white">{meta.relevante}</p>
                             </div>
-                            <div className="col-span-2">
-                              <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Temporal</h4>
-                              <p className="text-gray-900 dark:text-white">{meta.temporal}</p>
-                            </div>
+                           
                           </div>
                         </div>
 

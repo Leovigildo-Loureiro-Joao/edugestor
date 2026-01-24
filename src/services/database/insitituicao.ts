@@ -1,6 +1,9 @@
 import db from "./db";
 import { Instituicao } from "../../types";
 import { profileService } from "./profileService";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { generateKey } from "crypto";
+import { generateUniqueId } from "../../utils/idGenarator";
 
 export const instituicaoService = {
   // ============ OBTER CONFIGURAÇÃO ============
@@ -28,7 +31,8 @@ export const instituicaoService = {
       const now = new Date().toISOString();
       
       // Buscar configuração atual
-      const existingConfig = await db.instituicao.get('1');
+      let id=instituicaoIdValue()
+      const existingConfig = await db.instituicao.get(id||"");
       
       const instituicaoAtualizada: Instituicao = {
         // Manter dados existentes ou usar padrão
@@ -45,7 +49,9 @@ export const instituicaoService = {
         
         // Aplicar atualizações
         ...config,
-        
+        id:existingConfig?.id||"",
+        sync_status:existingConfig?.sync_status||"pending",
+
         // Campos fixos
         created_at: existingConfig?.created_at || now,
         updated_at: now
@@ -78,7 +84,7 @@ export const instituicaoService = {
     try {
       const now = new Date().toISOString();
       const currentYear = new Date().getFullYear();
-      
+      const id=generateUniqueId();
       const defaultConfig: Instituicao = {
         nome_escola: 'CETE - Centro de Explicação Tia Esperança',
         endereco: '',
@@ -91,7 +97,7 @@ export const instituicaoService = {
         valor_matricula: 2500,
         created_at: now,
         updated_at: now,
-        id: "",
+        id: id,
         sync_status: "pending"
       };
 
@@ -102,7 +108,7 @@ export const instituicaoService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'instituicao',
-        record_id: '1',
+        record_id: id,
         operation: 'upsert',
         status: 'pending',
         created_at: now

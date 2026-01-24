@@ -4,6 +4,8 @@ import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
 import { syncManager } from './syncManager';
 import { alunosService } from './alunosService';
+import { aulaService } from './aulaService';
+import { Aula } from '../../types/aula';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -125,7 +127,12 @@ export const frequenciaService = {
         .equals(alunoId)
         .and(freq => !freq.deleted)
         .toArray();
-      
+
+      const aulasDisciplina:Aula[] = []
+      for (const freque of frequencias) {
+        let au:Aula=await aulaService.getAulaById(freque.aula_id);
+        aulasDisciplina.push(au)
+      }
       // Filtrar por período se especificado
       if (dias) {
         const dataLimite = new Date();
@@ -137,7 +144,15 @@ export const frequenciaService = {
       }
       
       // Ordenar por data (mais recente primeiro)
-      return frequencias.sort((a, b) => 
+      
+      return frequencias.map((p)=>{
+        let aula:Aula= aulasDisciplina.find((aula)=>p.aula_id==aula.id)
+        const disciplina=aula.disciplina
+        return {
+          ...p,
+          disciplina
+        }
+      }).sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
 

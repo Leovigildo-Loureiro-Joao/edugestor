@@ -1,9 +1,12 @@
 // services/database/turmaService.ts
+import { Student } from '../../types';
 import { HorarioAula, HorarioAulaForm, Turma, TurmaFormData } from '../../types/turma';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { supabase } from '../database/db';
 import { alunosService } from './alunosService';
+import { cacheManager } from './cacheManager';
 import db from './db';
+import { notificacaoService, PrioridadeNotificacao, TipoNotificacao } from './notificacaoService';
 import { syncManager } from './syncManager';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -38,6 +41,7 @@ export const turmaService = {
       });
 
       console.log('✅ Turma salva com ID:', id);
+    
       return id;
       
     } catch (error) {
@@ -50,41 +54,62 @@ export const turmaService = {
   async getTurmas(): Promise<Turma[]> {
     try {
       console.log('📋 Buscando turmas...');
-      const todosCursos = await db.cursos
-                          .where("instituicao_id")
-                          .equals(instituicaoIdValue()||"")
-                          .and(curso=>!curso.deleted)
-                          .toArray();
+      const CACHE_KEY = 'turmas_all';
+      const qtd= await db.turmas.count()
+      const cached = cacheManager.get(CACHE_KEY,qtd);
+      if (cached) {
+        return cached;
+      }
+
+      const [todosCursos,aulasDb,alunos]= await Promise.all([
+            db.cursos
+            .where("instituicao_id")
+            .equals(instituicaoIdValue()||"")
+            .and(curso=>!curso.deleted)
+            .toArray(),
+            db.aulas.filter(aula=>!aula.deleted ).toArray(),
+            db.alunos.filter(aluno=>!aluno.deleted).toArray(),
+      ])
+      
           
       const todasTurmas:Turma[] = []
+      const horarios:HorarioAula[]=[]
+
       for (const curso of todosCursos) {
           const value =await this.getTurmasPorCurso(curso.id)
           todasTurmas.push(...value)
       }
+      for (const turma of todasTurmas) {
+        const value =await this.getHorarios(turma.id)
+        horarios.push(...value)
+      }
       
       // Filtrar as não deletadas
       const turmasAtivas = todasTurmas.filter(turma =>  !turma.deleted);
-      const alunos=await db.alunos.toArray();
       const cursosMap = new Map(todosCursos.map(c => [c.id, c]));
-      const aulasDb=await db.aulas.toArray()
                         // Ordenar por nome
       turmasAtivas.sort((a, b) => 
         (a.nome_turma || '').localeCompare(b.nome_turma || '')
       );
-      
-      console.log(`✅ Encontradas ${turmasAtivas.length} turmas ativas`);
-      return  (turmasAtivas.map(  turma=>{
+
+     const turmas= (turmasAtivas.map( turma=>{
          const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
-         const aluno= alunos.filter((aluno)=> aluno.turma_id==turma.id&&!aluno.deleted).length
-         const aulas=aulasDb.filter(aula=> !aula.deleted && aula.turma_id==turma.id)
+         const aluno= alunos.filter((aluno:Student)=> aluno.turma_id==turma.id).length
+         const aulas=aulasDb.filter(aula=> aula.turma_id==turma.id)
+         const horario=horarios.filter(h=>h.turma_id==turma.id)
          return {
           ...turma,
           curso_nome:curso?.nome,
           qtd:aluno,
-          aulas
-         
+          aulas,
+          horarios:horario
          }
       }))
+      
+      cacheManager.set(CACHE_KEY, turmas);
+
+      console.log(`✅ Encontradas ${turmasAtivas.length} turmas ativas`);
+      return turmas
     } catch (error) {
       console.error('❌ Erro ao buscar turmas:', error);
       return [];
@@ -256,9 +281,9 @@ export const turmaService = {
   // ✅ Obter horários da turma
   async getHorarios(turmaId: string): Promise<HorarioAula[]> {
     try {
-      // Primeiro busca localmente
-      // Nota: Você precisaria adicionar uma tabela 'turma_horarios' no Dexie
-      // Por enquanto, busca direto do Supabase se online
+      const horarios=await db.turma_horarios.filter(f=>!f.deleted&&f.turma_id==turmaId)
+                    .toArray()
+
       
       if (navigator.onLine) {
         const { data, error } = await supabase
@@ -271,7 +296,7 @@ export const turmaService = {
         }
       }
       
-      return [];
+      return horarios;
       
     } catch (error) {
       console.error('Erro ao buscar horários:', error);
@@ -282,20 +307,35 @@ export const turmaService = {
   // ✅ Criar horário
   async createHorario(horario: HorarioAulaForm, turmaId: string) {
     try {
-      if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from('turma_horarios')
-          .insert([{
-            ...horario,
-            turma_id: turmaId
-          }])
-          .select();
-        
-        if (error) throw new Error(`Erro ao criar horário: ${error.message}`);
-        return data;
-      } else {
-        throw new Error('Offline - não é possível criar horário sem conexão');
-      }
+      const id = generateUniqueId();
+      const now = new Date().toISOString();
+      
+      const horarios = {
+        ...horario,
+        id,
+        turma_id:turmaId,
+        created_at: now,
+        updated_at: now,
+        sync_status: 'pending',
+        deleted: false,
+      } as HorarioAula;
+
+      console.log('💾 Salvando horario:', horarios.dia_semana);
+      
+      await db.turma_horarios.put(horarios);
+      
+      // Adicionar à fila de sincronização
+      await db.syncQueue.add({
+        table: 'turma_horarios',
+        record_id: id,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: now
+      });
+
+      console.log('✅ Turma salva com ID:', id);
+    
+      return id;
     } catch (error) {
       console.error('Erro ao criar horário:', error);
       throw error;

@@ -5,6 +5,8 @@ import { alunosService } from "./alunosService";
 import { turmaService } from "./turmas";
 import { Avaliacao } from "../../types/avaliacao";
 import { Propina } from "../../types/propina";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { profileService } from "./profileService";
 
 // Tipos
 export interface NotificacaoMeta {
@@ -51,7 +53,7 @@ export interface Notificacao {
   lida: boolean;
   data_envio: string;
   meta: NotificacaoMeta;
-  instituicao_id: number;
+  instituicao_id: string;
   aluno_id?: string;
   turma_id?: string;
   user_id?: string;
@@ -114,7 +116,7 @@ export const notificacaoService = {
         lida: false,
         data_envio: notificacaoData.data_envio || now,
         meta: notificacaoData.meta || {},
-        instituicao_id: notificacaoData.instituicao_id || 1,
+        instituicao_id: notificacaoData.instituicao_id || "",
         aluno_id: notificacaoData.aluno_id,
         turma_id: notificacaoData.turma_id,
         user_id: notificacaoData.user_id,
@@ -136,6 +138,7 @@ export const notificacaoService = {
         .and(n => n.destinatario_tipo === notificacao.destinatario_tipo)
         .and(n => n.user_id === notificacao.user_id)
         .and(n => n.data_envio.startsWith(hoje))
+        .and(n=> n.corpo==notificacao.corpo)
         .count();
       
       if (similarExists > 0 && notificacao.prioridade !== PrioridadeNotificacao.URGENTE) {
@@ -197,12 +200,32 @@ export const notificacaoService = {
       
       // 5. Metas com prazo
       await this.verificarMetasProximas();
+
+      // 5. Metas com prazo
+      await this.verificarTurmasEstado();
+
+
+      await this.verificarCursoEstado();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
       console.log('✅ Verificações automáticas concluídas');
     } catch (error) {
       console.error('❌ Erro nas verificações automáticas:', error);
     }
+  },
+
+  async verificarTurmasEstado(){
+      const turmas=turmaService.getTurmas();
+      (await turmas).forEach((turma)=>{
+        if(!turma.horarios||turma.horarios.length==0)
+        this.criarNotificacaoAdmin({
+          corpo:`Adicione um horario a turma ${turma.nome_turma} de forma a teres mais controle`,
+          titulo:"Horarios das turmas",
+          prioridade:PrioridadeNotificacao.MEDIA,
+          tipo:TipoNotificacao.SISTEMA
+        })
+      })
+     
   },
   
   async verificarFrequenciasPendentes() {
@@ -402,7 +425,7 @@ export const notificacaoService = {
     umaSemana.setDate(umaSemana.getDate() + 7);
     
     const metasProximas = await db.metas
-      .where('data_limite')
+      .where('data_limite_real')
       .belowOrEqual(umaSemana.toISOString())
       .and(meta => meta.status === 'em_andamento')
       .and(meta => !meta.deleted)
@@ -410,7 +433,7 @@ export const notificacaoService = {
     
     for (const meta of metasProximas) {
       const diasRestantes = Math.ceil(
-        (new Date(meta.data_limite).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (new Date(meta.data_limite_real).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
       
       await this.criarNotificacao({
@@ -535,12 +558,17 @@ export const notificacaoService = {
     prioridade?: PrioridadeNotificacao;
     meta?: NotificacaoMeta;
   }): Promise<Notificacao> {
-    return this.criarNotificacao({
-      ...params,
-      tipo: params.tipo || TipoNotificacao.ADMIN_RELATORIO,
-      prioridade: params.prioridade || PrioridadeNotificacao.MEDIA,
-      destinatario_tipo: 'admin'
-    });
+    const instituicao_id=instituicaoIdValue()||""
+    const profile=await profileService.getLocalProfile()
+      return this.criarNotificacao({
+        ...params,
+        instituicao_id,
+        user_id:profile.id,
+        tipo: params.tipo || TipoNotificacao.ADMIN_RELATORIO,
+        prioridade: params.prioridade || PrioridadeNotificacao.MEDIA,
+        destinatario_tipo: 'admin'
+      });
+    
   },
   
   // ============ BUSCAS FILTRADAS POR PERFIL ============

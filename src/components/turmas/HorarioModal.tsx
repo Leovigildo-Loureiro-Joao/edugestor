@@ -12,6 +12,7 @@ import {
   FiTrash2
 } from 'react-icons/fi';
 import { HorarioAula, HorarioAulaForm } from '../../types/turma';
+import { cursosService, turmaService } from '../../services/database';
 
 
 interface HorarioModalProps {
@@ -56,15 +57,16 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
   ];
 
   // Disciplinas sugeridas
-  const disciplinasSugeridas = [
-    'Matemática', 'Português', 'Física', 'Química', 'Biologia',
-    'História', 'Geografia', 'Inglês', 'Francês', 'Filosofia',
-    'Educação Visual', 'Álgebra', 'Geometria',
-    'Literatura', 'Gramática', 'Cálculo', 'Estatística'
-  ];
+  const [disciplinasSugeridas,setDisciplina] = useState<string[]>();
 
   // Preencher formulário se estiver editando
   useEffect(() => {
+     const addDisciplinas = async () => {
+       const turma=await turmaService.getTurmaById(turmaId)
+        const curso=await cursosService.getCourseById(turma?.curso_id)
+       setDisciplina([...(curso?.disciplinas||[])])
+    }
+    addDisciplinas()
     if (horarioEdit) {
       setFormData({
         ...horarioEdit,
@@ -84,6 +86,10 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     }
     setErrors({});
   }, [horarioEdit, isOpen]);
+
+
+   
+
 
   // Formatar hora para input type="time"
   const formatTimeForInput = (time: string) => {

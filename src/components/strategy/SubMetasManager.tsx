@@ -1,10 +1,12 @@
 // components/estrategia/SubMetasManager.tsx
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FiCheckSquare, FiCalendar, FiUsers, FiDollarSign, FiPlus, FiSave } from 'react-icons/fi';
 import { Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import { toast } from 'react-hot-toast';
+import { ModalSubmeta } from './SubMeta';
+import { KPIManager } from './KPIManager';
 
 interface SubMetasManagerProps {
   meta: Meta;
@@ -54,7 +56,7 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
   return (
      <motion.div
               initial={{x:-20,opacity:0}}
-              animate={{x:0,opacity:1}} className="space-y-6">
+              animate={{x:0,opacity:1}} className="py-6 ">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">
           Sub-metas / Ações
@@ -68,103 +70,7 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
         </button>
       </div>
 
-      {/* Formulário para nova sub-meta */}
-      {showForm && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-6"
-        >
-          <h4 className="font-medium text-gray-900 dark:text-white mb-4">Nova Sub-meta</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Título
-              </label>
-              <input
-                type="text"
-                value={novaSubMeta.titulo}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, titulo: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                placeholder="Ex: Contratar novo professor"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Responsável
-              </label>
-              <input
-                type="text"
-                value={novaSubMeta.responsavel}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, responsavel: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                placeholder="Nome do responsável"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Data Início
-              </label>
-              <input
-                type="date"
-                value={novaSubMeta.data_inicio}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, data_inicio: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Data Fim
-              </label>
-              <input
-                type="date"
-                value={novaSubMeta.data_fim}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, data_fim: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Descrição
-              </label>
-              <textarea
-                value={novaSubMeta.descricao}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, descricao: e.target.value})}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                placeholder="Descreva a sub-meta em detalhes..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Custo Estimado (AOA)
-              </label>
-              <input
-                type="number"
-                value={novaSubMeta.custo_estimado}
-                onChange={(e) => setNovaSubMeta({...novaSubMeta, custo_estimado: parseFloat(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleSaveSubMeta}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
-              <FiSave className="h-4 w-4" />
-              Salvar
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancelar
-            </button>
-          </div>
-        </motion.div>
-      )}
-
+      
       {/* Lista de Sub-metas */}
       <div className="space-y-4">
         {meta.submetas && meta.submetas.length > 0 ? (
@@ -276,6 +182,21 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
           </div>
         )}
       </div>
+
+      {/* Formulário para nova sub-meta */}
+       <AnimatePresence>
+          {showForm && (
+          <ModalSubmeta
+            handleSaveSubMeta={handleSaveSubMeta}
+            novaSubMeta={novaSubMeta}
+            setNovaSubMeta={setNovaSubMeta}
+            setShowSubMeta={setShowForm}
+            kpis={meta.kpis}
+            formData={novaSubMeta}
+          />
+        )}
+
+       </AnimatePresence>
     </motion.div>
   );
 };

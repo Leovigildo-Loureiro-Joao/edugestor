@@ -18,7 +18,8 @@ import {
   FiSearch,
   FiFilter,
   FiDownload,
-  FiRefreshCw
+  FiRefreshCw,
+  FiUserPlus
 } from 'react-icons/fi';
 import { 
   FaUserGraduate, 
@@ -27,6 +28,9 @@ import {
 } from 'react-icons/fa';
 import { supabase } from '../../services/database/db';
 import { useAuth } from '../../contexts/AuthContext';
+import { AddUserModal } from './AddUserModal';
+import { syncManager } from '../../services/database/syncManager';
+import { profileService } from '../../services/database/profileService';
 
 interface User {
   id: string;
@@ -90,6 +94,9 @@ const AdminDashboard = () => {
     is_active: true
   });
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
@@ -106,6 +113,7 @@ const AdminDashboard = () => {
   // Carregar dados
   useEffect(() => {
     loadAllData();
+    loadPendingUsers();
   }, []);
 
   // Filtrar usuários
@@ -144,37 +152,76 @@ const AdminDashboard = () => {
   };
 
   const loadUsers = async () => {
-    try {
-      setLoading(prev => ({ ...prev, users: true }));
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+  try {
+    setLoading(prev => ({ ...prev, users: true }));
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Buscar última data de login do auth.users
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
-      
-      const usersWithAuthData = data.map(profile => {
-        const authUser = authUsers?.users.find(u => u.id === profile.id);
-        return {
-          ...profile,
-          last_sign_in_at: authUser?.last_sign_in_at || null,
-          is_active: authUser?.confirmed_at ? true : false
-        };
-      });
+    // ❌ REMOVA esta parte - não funciona sem Service Role Key
+    // const { data: authUsers } = await supabase.auth.admin.listUsers();
+    
+    // ✅ Use apenas os dados da tabela profiles
+    const usersWithStatus = data.map(profile => ({
+      ...profile,
+      // Adicione status baseado em campos existentes
+      is_active: profile.status === 'active' || profile.status === 'ativo'
+    }));
 
-      setUsers(usersWithAuthData);
-      setFilteredUsers(usersWithAuthData);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      showNotification('error', 'Erro ao carregar usuários');
-    } finally {
-      setLoading(prev => ({ ...prev, users: false }));
+    setUsers(usersWithStatus);
+    setFilteredUsers(usersWithStatus);
+  } catch (error) {
+    console.error('Erro ao carregar usuários:', error);
+    showNotification('error', 'Erro ao carregar usuários');
+  } finally {
+    setLoading(prev => ({ ...prev, users: false }));
+  }
+};
+
+  const handleUserAdded = () => {
+    loadPendingUsers(); // Recarregar lista de pendentes
+    loadUsers(); // Recarregar lista geral
+    showNotification('success', 'Usuário adicionado com sucesso!');
+};
+
+const loadPendingUsers = async () => {
+  try {
+    // Supondo que você tem um service para usuários pendentes
+    // Se não, vamos criar uma versão simples:
+    const pendingUsersJson = localStorage.getItem('pending_users');
+    if (pendingUsersJson) {
+      setPendingUsers(JSON.parse(pendingUsersJson));
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar usuários pendentes:', error);
+  }
+};
+
+
+// Adicione esta função para sincronizar usuários:
+const handleSyncUsers = async () => {
+  setSyncLoading(true);
+  try {
+    // Aqui você chamaria o service de sincronização
+    // Por enquanto, vamos simular:
+    await profileService.syncPendingUsers();
+    
+    // Limpar usuários pendentes após sincronização
+    localStorage.removeItem('pending_users');
+    setPendingUsers([]);
+    
+    showNotification('success', 'Usuários sincronizados com sucesso!');
+    loadUsers(); // Recarregar lista de usuários
+  } catch (error) {
+    showNotification('error', 'Erro ao sincronizar usuários');
+  } finally {
+    setSyncLoading(false);
+  }
+};
 
   const loadAuditLogs = async () => {
     try {
@@ -557,7 +604,7 @@ const AdminDashboard = () => {
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value)}
@@ -578,9 +625,20 @@ const AdminDashboard = () => {
                     <option value="active">Ativos</option>
                     <option value="inactive">Inativos</option>
                   </select>
+                  
+                  {/* BOTÃO ADICIONAR USUÁRIO */}
+                  <button
+                    onClick={() => setShowAddUserModal(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                  >
+                    <FiUserPlus className="w-4 h-4" />
+                    Adicionar Usuário
+                  </button>
+                  
                   <button
                     onClick={loadUsers}
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                    title="Recarregar"
                   >
                     <FiRefreshCw className="w-4 h-4" />
                   </button>
@@ -593,6 +651,49 @@ const AdminDashboard = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Seção de Usuários Pendentes */}
+              {pendingUsers.length > 0 && (
+                <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                      <FiUserPlus className="w-4 h-4" />
+                      Usuários Pendentes: {pendingUsers.length}
+                    </h4>
+                    <button
+                      onClick={handleSyncUsers}
+                      disabled={syncLoading}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {syncLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <FiRefreshCw className="w-4 h-4" />
+                          Sincronizar Agora
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {pendingUsers.map((user, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded">
+                        <div>
+                          <span className="font-medium">{user.nome}</span>
+                          <span className="text-gray-500 ml-2">({user.email})</span>
+                        </div>
+                        <span className="px-2 py-1 text-xs rounded bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
+                          {user.role}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Tabela de Usuários */}
               <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -944,6 +1045,16 @@ const AdminDashboard = () => {
       )}
 
       {/* Modal de Confirmação de Deleção */}
+  {showAddUserModal && (
+      <AddUserModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        onSuccess={handleUserAdded}
+        adminId={profile?.id || ''}
+        instituicaoId={profile?.instituicao_id || ''}
+      />
+    )}
+
       {showConfirmDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div
@@ -985,6 +1096,7 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
       )}
+      
     </div>
   );
 };

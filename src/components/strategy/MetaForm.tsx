@@ -1,7 +1,7 @@
 // pages/MetaPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiArrowLeft,
   FiSave,
@@ -21,11 +21,18 @@ import {
   FiPercent,
   FiCheckCircle,
   FiClock,
-  FiBarChart2
+  FiBarChart2,
+  FiX,
+  FiDatabase
 } from 'react-icons/fi';
 import { Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
+import { SelectTyped } from '../students/StudentForm';
+import { RxActivityLog, RxAllSides, RxCheckCircled, RxCommit, RxHobbyKnife } from 'react-icons/rx';
+import { generateUniqueId } from '../../utils/idGenarator';
+import { ModalSubmeta } from './SubMeta';
+import { FREQUENCIAS, METRICAS_POR_MODULO, ModalKPI, MODULOS_DISPONIVEIS } from './KPIManager';
 
 
 const MetaPage = () => {
@@ -34,6 +41,8 @@ const MetaPage = () => {
   const isEdicao = !!id;
   
   const [loading, setLoading] = useState(true);
+  const [showSubMeta, setShowSubMeta] = useState(false);
+  const [showKPI, setShowKPI] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [recursos, setRecursos] = useState<Array<{
@@ -45,6 +54,19 @@ const MetaPage = () => {
   observacoes?: string;
 }>>([]);
 
+ const [subMetas, setSubMetas] = useState<Array<{
+  titulo: string;
+    descricao: string;
+    data_inicio: string;
+    data_fim: string;
+    status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
+    responsavel: string;
+    custo_estimado?: number;
+    custo_real?: number;
+    kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
+    notas?: string;
+}>>([]);
+
 const [novoRecurso, setNovoRecurso] = useState({
   nome: '',
   tipo: 'equipamento',
@@ -52,6 +74,20 @@ const [novoRecurso, setNovoRecurso] = useState({
   custo: undefined as number | undefined,
   prioridade: 'media',
   observacoes: ''
+});
+
+
+const [novaSubMeta, setNovaSubMeta] = useState({
+    titulo: "",
+    descricao:  "",
+    data_inicio:  "",
+    data_fim:  "",
+    status: "em_andamento" as 'pendente' | 'em_andamento' | 'concluida' | 'atrasada',
+    responsavel: "",
+    custo_estimado: 0,
+    custo_real: 0,
+    kpis_afetados:[] as string[], // IDs dos KPIs que esta sub-meta impacta
+    notas: ""
 });
 
 // Funções para manipular recursos
@@ -73,10 +109,55 @@ const removerRecurso = (index: number) => {
   setRecursos(recursos.filter((_, i) => i !== index));
 };
 
+const adicionarSubMeta = () => {
+  if (novaSubMeta.titulo.trim()) {
+    setSubMetas([...subMetas, { ...novaSubMeta }]);
+    setNovaSubMeta({
+        titulo: "",
+        descricao:  "",
+        data_inicio:  "",
+        data_fim:  "",
+        status: "em_andamento" as 'pendente' | 'em_andamento' | 'concluida' | 'atrasada',
+        responsavel: "",
+        custo_estimado: 0,
+        custo_real: 0,
+        kpis_afetados:[] as string[], // IDs dos KPIs que esta sub-meta impacta
+        notas: ""
+    });
+  }
+};
+
+const removerSubMetas = (index: number) => {
+  setSubMetas(subMetas.filter((_, i) => i !== index));
+};
+
+
+  const getModuloLabel = (modulo: string) => {
+    return MODULOS_DISPONIVEIS.find(m => m.value === modulo)?.label || modulo;
+  };
+
+  const getModuloIcon = (modulo: string) => {
+    return MODULOS_DISPONIVEIS.find(m => m.value === modulo)?.icone || '📊';
+  };
+
+  const getMetricaLabel = (modulo: string, metrica: string) => {
+    return METRICAS_POR_MODULO[modulo]?.find(m => m.value === metrica)?.label || metrica;
+  };
+
+
 // Calcular custo total
 const custoTotal = recursos.reduce((total, recurso) => {
   return total + (recurso.custo || 0) * (recurso.quantidade || 1);
 }, 0);
+
+  const handleChangeSel = (field: string, value: any) => {
+
+    setFormData((prev: Partial<Meta>) => ({ 
+      ...prev, 
+      [field]: value 
+    }));
+    console.log(formData)
+  };
 
   // Form data
   const [formData, setFormData] = useState<Partial<Meta>>({
@@ -88,35 +169,109 @@ const custoTotal = recursos.reduce((total, recurso) => {
     mensuravel: '',
     atingivel: true,
     relevante: '',
-    temporal: '',
     data_inicio: new Date().toISOString().split('T')[0],
     data_fim: '',
     progresso: 0,
     status: 'nao_iniciada',
     prioridade: 'media',
     responsavel_principal: 'Administrador',
-    kpis: []
+    kpis: [],
+    submetas:[],
+    recursos:[]
   });
 
   const [kpis, setKpis] = useState<Array<{
     nome: string;
+    descricao?: string;
     valor_atual: number;
     valor_meta: number;
     unidade: string;
-    frequencia: string;
+    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
+    peso?: number;
+    
+    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
+    fonte_dados?: {
+      tipo: 'automatico' | 'manual' | 'integracao';
+      modulo?: 
+        | 'matriculas'
+        | 'frequencia' 
+        | 'notas'
+        | 'financeiro'
+        | 'pessoal'
+        | 'biblioteca'
+        | 'infraestrutura'
+        | 'avaliacoes';
+      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      filtros?: {
+        turma_id?: string;
+        disciplina_id?: string;
+        periodo_id?: string;
+        nivel_id?: string;
+        // ... outros filtros contextuais
+      };
+      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
+    };
+    
+    ultima_atualizacao?: string;
+    historico?: Array<{
+      data: string;
+      valor: number;
+      fonte: string;
+    }>;
   }>>([]);
   const [novoKpi, setNovoKpi] = useState<{
     nome: string;
+    descricao?: string;
     valor_atual: number;
     valor_meta: number;
     unidade: string;
-    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'semestral' | 'anual';
+    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
+    peso?: number;
+    
+    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
+    fonte_dados?: {
+      tipo: 'automatico' | 'manual' | 'integracao';
+      modulo?: 
+        | 'matriculas'
+        | 'frequencia' 
+        | 'notas'
+        | 'financeiro'
+        | 'pessoal'
+        | 'biblioteca'
+        | 'infraestrutura'
+        | 'avaliacoes';
+      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      filtros?: {
+        turma_id?: string;
+        disciplina_id?: string;
+        periodo_id?: string;
+        nivel_id?: string;
+        // ... outros filtros contextuais
+      };
+      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
+    };
+    
+    ultima_atualizacao?: string;
+    historico?: Array<{
+      data: string;
+      valor: number;
+      fonte: string;
+    }>;
   }>({
     nome: '',
+    descricao: '',
+    unidade: '%',
     valor_atual: 0,
     valor_meta: 100,
-    unidade: '%',
-    frequencia: 'mensal'
+    frequencia: 'mensal' as const,
+    peso: 10,
+    fonte_dados: {
+      tipo: 'automatico' as const,
+      modulo: 'matriculas' as const,
+      metrica: 'novas_matriculas',
+      filtros: {},
+      query_parametros: {}
+    }
   });
 
   // Carregar dados se for edição
@@ -141,6 +296,14 @@ const custoTotal = recursos.reduce((total, recurso) => {
               setKpis(Array.isArray(parsed) ? parsed : []);
             } catch {
               setKpis([]);
+            }
+          }
+          if (metaData.recursos) {
+            try {
+              const parsed = metaData.recursos;
+              setRecursos(Array.isArray(parsed) ? parsed : []);
+            } catch {
+              setRecursos([]);
             }
           }
           }
@@ -187,10 +350,10 @@ const custoTotal = recursos.reduce((total, recurso) => {
     { value: 'suspensa', label: 'Suspensa', cor: 'bg-yellow-100 text-yellow-800', icon: '⏸️' }
   ];
 
-  const unidadesKpi = ['%', 'alunos', 'MZN', 'horas', 'dias', 'unidades', 'pontos', 'estrelas'];
+  const unidadesKpi = ['%', 'alunos', 'AKZ', 'horas', 'dias', 'unidades', 'pontos', 'estrelas'];
   const frequenciasKpi = ['diaria', 'semanal', 'mensal', 'trimestral', 'semestral', 'anual'];
 
-  // Handlers
+    // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -206,12 +369,19 @@ const custoTotal = recursos.reduce((total, recurso) => {
 
     setSalvando(true);
     try {
-      const dadosCompletos:Partial<Meta> = {
+      const dadosCompletos: Partial<Meta> = {
         ...formData,
         kpis: kpis.map(kpi => ({
           ...kpi,
           frequencia: kpi.frequencia as 'diaria' | 'semanal' | 'mensal' | 'trimestral'
         })) || [],
+        recursos: recursos.map(rec => ({...rec})) || [],
+        submetas: subMetas.map(sub => ({
+          id: generateUniqueId(), // Importe generateUniqueId ou use Date.now()
+          ...sub,
+          kpis_afetados: sub.kpis_afetados || []
+        })) || [],
+        progresso: calcularProgresso(), // Atualiza com base nos KPIs
         updated_at: new Date().toISOString(),
         ...(!isEdicao && {
           created_at: new Date().toISOString()
@@ -257,10 +427,19 @@ const custoTotal = recursos.reduce((total, recurso) => {
       setKpis([...kpis, { ...novoKpi }]);
       setNovoKpi({
         nome: '',
+        descricao: '',
+        unidade: '%',
         valor_atual: 0,
         valor_meta: 100,
-        unidade: '%',
-        frequencia: 'mensal'
+        frequencia: 'mensal' as const,
+        peso: 10,
+        fonte_dados: {
+          tipo: 'automatico' as const,
+          modulo: 'matriculas' as const,
+          metrica: 'novas_matriculas',
+          filtros: {},
+          query_parametros: {}
+        }
       });
     }
   };
@@ -362,17 +541,15 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 {/* Status e Progresso */}
                 <div className="flex items-center space-x-4">
                   <div>
-                    <select
+                   
+                    <SelectTyped
+                      icon={RxActivityLog}
+                      vect={statusOptions}
                       value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                      onChange={(e:any) => setFormData({...formData, status: e})}
+                   
                       className="px-4 py-2 rounded-lg border font-medium"
-                    >
-                      {statusOptions.map(status => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </select>
+                   />
                   </div>
                   
                   <div className="text-center">
@@ -432,14 +609,15 @@ const custoTotal = recursos.reduce((total, recurso) => {
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">Atingível (A)</label>
                     <div className="flex items-center space-x-4">
-                      <select
-                        value={formData.atingivel?.toString()}
-                        onChange={(e) => setFormData({...formData, atingivel: e.target.value === 'true'})}
-                        className="flex-1 p-3 border border-gray-300 rounded-lg"
-                      >
-                        <option value="true">Sim, é realizável</option>
-                        <option value="false">Não, é muito ambicioso</option>
-                      </select>
+
+                      <SelectTyped
+                        icon={RxCheckCircled}
+                        vect={[{label:"Sim, é realizável",value:true},{label:"Não, é muito ambicioso",value:false}]}
+                        onChange={(e:any) => {setFormData({...formData, atingivel: e});}}
+                    
+                        className="px-4 py-2 rounded-lg border font-medium"
+                    />
+                      
                     </div>
                   </div>
                   
@@ -454,16 +632,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                     />
                   </div>
                   
-                  <div className="md:col-span-2">
-                    <label className="block text-gray-700 font-medium mb-2">Temporal (T)</label>
-                    <input
-                      type="text"
-                      value={formData.temporal}
-                      onChange={(e) => setFormData({...formData, temporal: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      placeholder="Qual o prazo para conclusão?"
-                    />
-                  </div>
+                
                 </div>
               </div>
 
@@ -609,170 +778,554 @@ const custoTotal = recursos.reduce((total, recurso) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
           >
-            <div className="border-b p-6">
-              <h2 className="text-xl font-bold flex items-center">
-                <FiBarChart2 className="mr-2" />
-                Indicadores de Desempenho (KPIs)
-              </h2>
-              <p className="text-gray-600 mt-1">Defina como o progresso será medido</p>
+            <div className="border-b border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center text-gray-900 dark:text-white">
+                    <FiBarChart2 className="mr-2" />
+                    Indicadores de Desempenho (KPIs)
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    Indicadores conectados aos dados automáticos da escola
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowKPI(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-medium hover:from-violet-600 hover:to-indigo-700 flex items-center transition-all"
+                >
+                  <FiBarChart2 className="mr-2" />
+                  Adicionar KPI
+                </button>
+              </div>
             </div>
             
             <div className="p-6">
-              {/* Formulário de novo KPI */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Nome do KPI</label>
-                  <input
-                    type="text"
-                    value={novoKpi.nome}
-                    onChange={(e) => setNovoKpi({...novoKpi, nome: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded"
-                    placeholder="Ex: Taxa de aprovação"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Valor Atual</label>
-                  <input
-                    type="number"
-                    value={novoKpi.valor_atual}
-                    onChange={(e) => setNovoKpi({...novoKpi, valor_atual: parseFloat(e.target.value)})}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Valor Meta</label>
-                  <input
-                    type="number"
-                    value={novoKpi.valor_meta}
-                    onChange={(e) => setNovoKpi({...novoKpi, valor_meta: parseFloat(e.target.value)})}
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-                
-                <div className="flex space-x-2">
-                  <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1">Unidade</label>
-                    <select
-                      value={novoKpi.unidade}
-                      onChange={(e) => setNovoKpi({...novoKpi, unidade: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded"
-                    >
-                      {unidadesKpi.map(u => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1">Frequência</label>
-                    <select
-                      value={novoKpi.frequencia}
-                      onChange={(e) => setNovoKpi({...novoKpi, frequencia: e.target.value as 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'semestral' | 'anual'})}
-                      className="w-full p-2 border border-gray-300 rounded"
-                    >
-                      {frequenciasKpi.map(f => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="md:col-span-4">
-                  <button
-                    type="button"
-                    onClick={adicionarKpi}
-                    className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-                  >
-                    Adicionar KPI
-                  </button>
-                </div>
-              </div>
-
               {/* Lista de KPIs */}
               <div className="space-y-4">
                 {kpis.map((kpi, index) => {
                   const progresso = (kpi.valor_atual / kpi.valor_meta) * 100;
+                  const fonteAutomatica = kpi.fonte_dados?.tipo === 'automatico';
+                  const modulo = kpi.fonte_dados?.modulo || 'manual';
+                  const metrica = kpi.fonte_dados?.metrica || 'manual';
                   
                   return (
-                    <div key={index} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <motion.div 
+                      key={index} 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
                       <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-medium">{kpi.nome}</h4>
-                          <div className="text-sm text-gray-500">
-                            {kpi.unidade} • {kpi.frequencia}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">{kpi.nome}</h4>
+                            {fonteAutomatica && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                <FiCpu className="inline h-3 w-3 mr-1" />
+                                Automático
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <FiBarChart2 className="h-3 w-3" />
+                              {kpi.unidade}
+                            </span>
+                            <span>•</span>
+                            <span>{kpi.frequencia}</span>
+                            <span>•</span>
+                            <span>Peso: {kpi.peso || 10}%</span>
+                            
+                            {fonteAutomatica && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                                  <FiDatabase className="h-3 w-3" />
+                                  {getModuloLabel(modulo)} → {getMetricaLabel(modulo, metrica)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          
+                          {kpi.descricao && (
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                              {kpi.descricao}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 ml-4">
+                          {/* Atualizar valor manual (se não for automático) */}
+                          {!fonteAutomatica && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={kpi.valor_atual}
+                                onChange={(e) => atualizarKpiValor(index, parseFloat(e.target.value) || 0)}
+                                className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-sm"
+                                step="0.01"
+                              />
+                              <span className="text-sm text-gray-500 dark:text-gray-400">{kpi.unidade}</span>
+                            </div>
+                          )}
+                          
+                          <button
+                            type="button"
+                            onClick={() => removerKpi(index)}
+                            className="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                            title="Remover KPI"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Valores e progresso */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Valor Atual</div>
+                          <div className="font-bold text-lg text-gray-900 dark:text-white">
+                            {kpi.valor_atual.toLocaleString('pt-BR')} {kpi.unidade}
+                          </div>
+                          {fonteAutomatica && (
+                            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              Última atualização: {kpi.ultima_atualizacao || 'N/A'}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Meta</div>
+                          <div className="font-bold text-lg text-gray-900 dark:text-white">
+                            {kpi.valor_meta.toLocaleString('pt-BR')} {kpi.unidade}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {kpi.frequencia === 'diaria' ? 'Meta diária' : 
+                            kpi.frequencia === 'semanal' ? 'Meta semanal' : 
+                            kpi.frequencia === 'mensal' ? 'Meta mensal' : 
+                            kpi.frequencia === 'trimestral' ? 'Meta trimestral' : 'Meta anual'}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removerKpi(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-4 mb-3">
-                        <div>
-                          <div className="text-sm text-gray-600">Valor Atual</div>
-                          <div className="font-bold text-lg">{kpi.valor_atual}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Meta</div>
-                          <div className="font-bold text-lg">{kpi.valor_meta}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Progresso</div>
-                          <div className="font-bold text-lg">{Math.round(progresso)}%</div>
+                        
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-lg">
+                          <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">Progresso</div>
+                          <div className="font-bold text-2xl text-blue-600 dark:text-blue-400">
+                            {Math.round(progresso)}%
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {progresso >= 90 ? (
+                              <FiTrendingUp className="h-4 w-4 text-green-500 dark:text-green-400" />
+                            ) : progresso < 50 ? (
+                              <FiTrendingDown className="h-4 w-4 text-red-500 dark:text-red-400" />
+                            ) : null}
+                            <span className="text-xs text-blue-600 dark:text-blue-400">
+                              {progresso >= 100 ? 'Meta atingida!' : 
+                              progresso >= 90 ? 'Excelente' : 
+                              progresso >= 70 ? 'Bom' : 
+                              progresso >= 50 ? 'Regular' : 'Atenção necessária'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            progresso >= 90 ? 'bg-green-500' :
-                            progresso >= 70 ? 'bg-blue-500' :
-                            progresso >= 50 ? 'bg-yellow-500' :
-                            'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(progresso, 100)}%` }}
-                        ></div>
+                      {/* Barra de progresso */}
+                      <div className="mt-2">
+                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                          <span>Progresso em relação à meta</span>
+                          <span>{progresso.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className={`h-2.5 rounded-full transition-all duration-300 ${
+                              progresso >= 100 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                              progresso >= 90 ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                              progresso >= 70 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
+                              progresso >= 50 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
+                              'bg-gradient-to-r from-red-400 to-rose-500'
+                            }`}
+                            style={{ width: `${Math.min(progresso, 100)}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                      
+                      {/* Informações da fonte de dados */}
+                      {fonteAutomatica && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-2 text-sm">
+                            <FiDatabase className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                            <span className="text-gray-600 dark:text-gray-400">Fonte automática: </span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                              {getMetricaLabel(modulo, metrica)}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                              {getModuloIcon(modulo)} {getModuloLabel(modulo)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
                   );
                 })}
                 
                 {kpis.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <FiBarChart2 size={48} className="mx-auto mb-3 opacity-50" />
-                    <p>Nenhum KPI definido</p>
-                    <p className="text-sm">Adicione indicadores para medir o progresso desta meta</p>
-                  </div>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center gap-4 flex justify-center flex-col items-center py-12 text-gray-400 dark:text-gray-500"
+                  >
+                    <div className="relative">
+                      <FiBarChart2 size={64} className="mx-auto mb-4 opacity-30" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <FiDatabase size={32} className="text-blue-500 opacity-50" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Nenhum indicador configurado
+                      </p>
+                      <p className="text-gray-600 dark:text-gray-400 max-w-md mb-6">
+                        Adicione KPIs para monitorar automaticamente o progresso usando dados reais da escola
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowKPI(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-medium hover:from-violet-600 hover:to-indigo-700 flex items-center transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <FiBarChart2 className="mr-2" />
+                      Adicionar o primeiro KPI
+                    </button>
+                    <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                      <p>Conecte-se a módulos como: Matrículas, Notas, Frequência, Financeiro</p>
+                    </div>
+                  </motion.div>
                 )}
               </div>
               
               {/* Resumo dos KPIs */}
               {kpis.length > 0 && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-                  <div className="flex items-center justify-between">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <div className="text-sm text-blue-600">Progresso Médio dos KPIs</div>
-                      <div className="font-semibold">
-                        {calcularProgresso()}% de progresso
+                      <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">
+                        Progresso Médio dos KPIs
+                      </div>
+                      <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+                        {calcularProgresso()}%
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Baseado em {kpis.length} indicador{kpis.length > 1 ? 'es' : ''} 
+                        {kpis.some(k => k.fonte_dados?.tipo === 'automatico') && (
+                          <span className="ml-2">
+                            • <FiCpu className="inline h-3 w-3" /> {kpis.filter(k => k.fonte_dados?.tipo === 'automatico').length} automático{kpis.filter(k => k.fonte_dados?.tipo === 'automatico').length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {calcularProgresso()}%
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">KPIs por fonte</div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span className="text-sm">Automáticos: {kpis.filter(k => k.fonte_dados?.tipo === 'automatico').length}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                            <span className="text-sm">Manuais: {kpis.filter(k => !k.fonte_dados || k.fonte_dados.tipo === 'manual').length}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setShowKPI(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 flex items-center text-sm"
+                      >
+                        <FiPlus className="mr-2" />
+                        Novo KPI
+                      </button>
                     </div>
+                  </div>
+                  
+                  {/* Distribuição de pesos */}
+                  {kpis.length > 1 && (
+                    <div className="mt-4 pt-4 border-t border-blue-100 dark:border-blue-900/30">
+                      <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">
+                        Distribuição de importância (pesos)
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {kpis.map((kpi, index) => (
+                          <div 
+                            key={index}
+                            className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-900/40 flex items-center gap-2"
+                          >
+                            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {kpi.nome.substring(0, 20)}{kpi.nome.length > 20 ? '...' : ''}
+                            </div>
+                            <div className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+                              {kpi.peso || 10}%
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Sub Metas */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+          >
+            <div className="border-b p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center">
+                    <RxCommit className="mr-2" />
+                    Sub-metas
+                  </h2>
+                  <p className="text-gray-600 mt-1">Divida a meta principal em etapas menores</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubMeta(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 flex items-center"
+                >
+                  <RxAllSides className="mr-2" />
+                  Adicionar Sub-meta
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Lista de Submetas */}
+              <div className="space-y-4 mb-6">
+                {subMetas.map((sub, index) => {
+                  const dataInicio = new Date(sub.data_inicio);
+                  const dataFim = new Date(sub.data_fim);
+                  const hoje = new Date();
+                  const atrasada = dataFim < hoje && sub.status !== 'concluida';
+                  
+                  const getStatusColor = (status: string) => {
+                    switch(status) {
+                      case 'concluida': return 'bg-green-100 text-green-800';
+                      case 'em_andamento': return 'bg-blue-100 text-blue-800';
+                      case 'atrasada': return 'bg-red-100 text-red-800';
+                      default: return 'bg-gray-100 text-gray-800';
+                    }
+                  };
+                  
+                  const getStatusIcon = (status: string) => {
+                    switch(status) {
+                      case 'concluida': return '✓';
+                      case 'em_andamento': return '↻';
+                      case 'atrasada': return '⚠';
+                      default: return '○';
+                    }
+                  };
+                  
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 group"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-medium text-lg">{sub.titulo}</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(sub.status)}`}>
+                              {getStatusIcon(sub.status)} {sub.status.replace('_', ' ').toUpperCase()}
+                            </span>
+                            {atrasada && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                ATRASADA
+                              </span>
+                            )}
+                          </div>
+                          
+                          {sub.descricao && (
+                            <p className="text-gray-600 mb-3">{sub.descricao}</p>
+                          )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                            <div className="space-y-1">
+                              <div className="text-sm text-gray-500">Datas</div>
+                              <div className="flex items-center gap-2">
+                                <FiCalendar className="text-gray-400" />
+                                <span className="font-medium">
+                                  {dataInicio.toLocaleDateString('pt-BR')} → {dataFim.toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div className="text-sm text-gray-500">Responsável</div>
+                              <div className="flex items-center gap-2">
+                                <FiUser className="text-gray-400" />
+                                <span className="font-medium">{sub.responsavel}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div className="text-sm text-gray-500">Custo</div>
+                              <div className="flex items-center gap-2">
+                                <FiDollarSign className="text-gray-400" />
+                                <span className="font-medium">
+                                  {sub.custo_real?.toLocaleString('pt-BR', { 
+                                    style: 'currency', 
+                                    currency: 'AKZ' 
+                                  }) || '0,00'}
+                                  <span className="text-gray-500 text-sm ml-1">
+                                    / {sub.custo_estimado?.toLocaleString('pt-BR', { 
+                                      style: 'currency', 
+                                      currency: 'AKZ' 
+                                    }) || '0,00'}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Progresso do custo */}
+                          {sub.custo_estimado && sub.custo_estimado > 0 && (
+                            <div className="mb-3">
+                              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Utilização do orçamento</span>
+                                <span>
+                                  {sub.custo_real 
+                                    ? Math.round((sub.custo_real / sub.custo_estimado) * 100)
+                                    : 0}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full ${
+                                    sub.custo_real && sub.custo_estimado
+                                      ? (sub.custo_real / sub.custo_estimado) >= 1.1 
+                                        ? 'bg-red-500'
+                                        : (sub.custo_real / sub.custo_estimado) >= 0.9
+                                          ? 'bg-yellow-500'
+                                          : 'bg-green-500'
+                                      : 'bg-blue-500'
+                                  }`}
+                                  style={{ 
+                                    width: `${Math.min(
+                                      sub.custo_real && sub.custo_estimado
+                                        ? (sub.custo_real / sub.custo_estimado) * 100
+                                        : 0, 
+                                      100
+                                    )}%` 
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {sub.notas && (
+                            <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded-r">
+                              <div className="text-sm text-yellow-700">{sub.notas}</div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Botões de ação */}
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Editar submeta
+                              setNovaSubMeta({ ...sub });
+                              setSubMetas(subMetas.filter((_, i) => i !== index));
+                              setShowSubMeta(true);
+                            }}
+                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                            title="Editar"
+                          >
+                            <RxHobbyKnife className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removerSubMetas(index)}
+                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                            title="Remover"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                
+                {subMetas.length === 0 && (
+                  <div className="text-center py-12 text-gray-400">
+                    <RxCommit size={48} className="mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Nenhuma sub-meta definida</p>
+                    <p className="text-sm max-w-md mx-auto mt-2">
+                      Divida sua meta em etapas menores para facilitar o acompanhamento 
+                      e aumentar as chances de sucesso
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowSubMeta(true)}
+                      className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 flex items-center mx-auto"
+                    >
+                      <RxAllSides className="mr-2" />
+                      Criar Primeira Sub-meta
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Resumo das Submetas */}
+              {subMetas.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-emerald-700">{subMetas.length}</div>
+                    <div className="text-sm text-emerald-600">Sub-metas</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-700">
+                      {subMetas.filter(s => s.status === 'concluida').length}
+                    </div>
+                    <div className="text-sm text-blue-600">Concluídas</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-amber-700">
+                      {subMetas.filter(s => s.status === 'em_andamento').length}
+                    </div>
+                    <div className="text-sm text-amber-600">Em andamento</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-700">
+                      {subMetas.filter(s => s.status === 'atrasada').length}
+                    </div>
+                    <div className="text-sm text-red-600">Atrasadas</div>
                   </div>
                 </div>
               )}
             </div>
           </motion.div>
-
           {/* Recursos e Observações */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -791,7 +1344,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 {/* Orçamento */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">
-                    Orçamento Previsto (MZN)
+                    Orçamento Previsto (AKZ)
                   </label>
                   <div className="relative">
                     <FiDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -861,17 +1414,19 @@ const custoTotal = recursos.reduce((total, recurso) => {
       
       <div>
         <label className="block text-sm text-gray-600 mb-1">Tipo</label>
-        <select
-          value={novoRecurso.tipo}
-          onChange={(e) => setNovoRecurso({...novoRecurso, tipo: e.target.value})}
-          className="w-full p-2 border border-gray-300 rounded"
-        >
-          <option value="equipamento">Equipamento</option>
-          <option value="pessoa">Pessoa</option>
-          <option value="material">Material</option>
-          <option value="financeiro">Financeiro</option>
-          <option value="espaco">Espaço</option>
-        </select>
+          <SelectTyped
+            icon={null}
+            vect={[{value:"equipamento",label:"Equipamento"},
+              {value:"pessoa",label:"Pessoa"},
+              {value:"material",label:"Material"},
+              {value:"financeiro",label:"Financeiro"},
+              {value:"espaco",label:"Espaço"}
+            ]}
+            value={novoRecurso.tipo}
+            onChange={(e:any) => setNovoRecurso({...novoRecurso, tipo: e})}
+            className="px-4 py-2 rounded-lg border font-medium"
+          />
+        
       </div>
       
       <div>
@@ -889,7 +1444,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Custo Estimado (MZN)</label>
+        <label className="block text-sm text-gray-600 mb-1">Custo Estimado (AKZ)</label>
         <input
           type="number"
           value={novoRecurso.custo || ''}
@@ -902,16 +1457,18 @@ const custoTotal = recursos.reduce((total, recurso) => {
       
       <div>
         <label className="block text-sm text-gray-600 mb-1">Prioridade</label>
-        <select
-          value={novoRecurso.prioridade}
-          onChange={(e) => setNovoRecurso({...novoRecurso, prioridade: e.target.value})}
-          className="w-full p-2 border border-gray-300 rounded"
-        >
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
-          <option value="critica">Crítica</option>
-        </select>
+         <SelectTyped
+            icon={null}
+            vect={[{value:"baixa",label:"Baixa"},
+              {value:"media",label:"Média"},
+              {value:"alta",label:"Material"},
+              {value:"critica",label:"Alta"},
+            ]}
+            value={novoRecurso.prioridade}
+            onChange={(e:any) => setNovoRecurso({...novoRecurso, prioridade: e})}
+            className="px-4 py-2 rounded-lg border font-medium"
+          />
+       
       </div>
     </div>
     
@@ -948,7 +1505,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
         </div>
         {custoTotal > 0 && (
           <div className="text-lg font-bold text-blue-700">
-            {custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'MZN' })}
+            {custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'AKZ' })}
           </div>
         )}
       </div>
@@ -1002,7 +1559,35 @@ const custoTotal = recursos.reduce((total, recurso) => {
               </button>
             </div>
           </div>
+           
         </form>
+        {/* Modal Quick Add */}
+        <AnimatePresence>
+            {showSubMeta && (
+              <ModalSubmeta
+              formData={formData}
+              handleSaveSubMeta={adicionarSubMeta}
+              kpis={kpis}
+              novaSubMeta={novaSubMeta}
+              setNovaSubMeta={setNovaSubMeta}
+              setShowSubMeta={setShowSubMeta}
+              />              
+            )}
+            {showKPI && (    
+               <ModalKPI
+                  novoKPI={novoKpi}
+                  setNovoKPI={setNovoKpi}
+                  handleSaveKPI={adicionarKpi}
+                  setShowForm={() => {
+                    setShowKPI(false);
+                  }}
+                  editando={false}
+                  modulosDisponiveis={MODULOS_DISPONIVEIS}
+                  metricasPorModulo={METRICAS_POR_MODULO}
+                  frequencias={FREQUENCIAS}
+                />      
+            )}
+          </AnimatePresence>
       </div>
     </div>
   );

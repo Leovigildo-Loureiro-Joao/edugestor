@@ -78,7 +78,7 @@ export const ConfiguracoesGerais = () => {
                             value={instituicao?.nome_escola || ''}
                             onChange={(e) => handleInputChange('nome_escola', e.target.value)}
                             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="Ex: Escola Primária do Seu Irmão"
+                            placeholder="Ex: Escola Primária"
                         />
                     </div>
 

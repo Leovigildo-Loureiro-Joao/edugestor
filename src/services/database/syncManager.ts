@@ -177,24 +177,52 @@ export const syncManager: SyncManager = {
     
     // 1. Buscar dados dos itens
     const records = [];
+    const itemsToProcess = [];
+    
     for (const item of items) {
       const record = await this.getRecordFromTable(tableName, item.record_id);
       if (record) {
-        // Remover campos internos do Dexie e ID local
-        const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
-        
-        // ✅ ADICIONAR CAMPOS NECESSÁRIOS PARA RLS
-        const recordWithRLS = {
-          ...cleanRecord,
-          // Campos para RLS
-          updated_by: authData.userId,
-          instituicao_id: record.instituicao_id || localStorage.getItem('active_instituicao_id'),
-          // Timestamps no formato do Supabase
-          created_at: record.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        records.push(recordWithRLS);
+        // Verificar se já existe no Supabase (para INSERTs que podem ser UPDATEs)
+        // Se o registro já tem um ID não-local, pode já ter sido sincronizado
+        if (!record.id || record.id.startsWith('local_')) {
+          // Remover campos internos do Dexie e ID local
+          const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
+          
+          // ✅ ADICIONAR CAMPOS NECESSÁRIOS PARA RLS
+          const recordWithRLS = {
+            ...cleanRecord,
+            // Timestamps no formato do Supabase
+            created_at: record.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          // Se tiver campos únicos composto (como system_config), verificar
+          if (tableName === 'system_config') {
+            // Para system_config, verificar se já existe pelo par category/name
+            const existing = await this.checkExistingUniqueConstraint(
+              tableName, 
+              recordWithRLS
+            );
+            
+            if (existing) {
+              console.log(`⚠️ Registro já existe em ${tableName}, convertendo para UPDATE:`, {
+                category: recordWithRLS.category,
+                name: recordWithRLS.key_name
+              });
+              
+              // Se já existe, mudar para operação de UPDATE
+              await this.convertInsertToUpdate(tableName, item, existing.id);
+              continue; // Pular este item, será processado como UPDATE
+            }
+          }
+          
+          records.push(recordWithRLS);
+          itemsToProcess.push(item);
+        } else {
+          // Registro já tem ID do Supabase, marcar como sincronizado
+          console.log(`ℹ️ Registro já sincronizado: ${tableName} - ID: ${record.id}`);
+          await db.syncQueue.delete(item.id!);
+        }
       }
     }
     
@@ -208,48 +236,164 @@ export const syncManager: SyncManager = {
       }
     });
     
-    // 2. INSERT em batch no Supabase
-    const { data, error } = await supabase
-      .from(tableName)
-      .insert(records)
-      .select();
-    
-    if (error) {
-      console.error(`❌ Erro inserindo batch em ${tableName}:`, error);
+    try {
+      // 2. INSERT em batch no Supabase com upsert para evitar duplicidade
+      const { data, error } = await supabase
+        .from(tableName)
+        .upsert(records, {
+          onConflict: 'category,name', // Para system_config, ajustar conforme sua tabela
+          ignoreDuplicates: false
+        })
+        .select();
       
-      // Se for erro de RLS, adicionar mais informações
-      if (error.message.includes('row-level security') || error.code === '42501') {
-        console.error('🔍 Detalhes do erro RLS:', {
-          table: tableName,
-          userRole: authData.userRole,
-          recordsCount: records.length,
-          firstRecord: records[0] ? {
-            ...records[0],
-            // Ocultar dados sensíveis para log
-            nome: records[0].nome_completo?.substring(0, 10) + '...',
-            hasInstituicaoId: !!records[0].instituicao_id
-          } : null
-        });
-      }
-      
-      throw error;
-    }
-    
-    // 3. Atualizar IDs locais com IDs do Supabase
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const supabaseRecord = data?.[i];
-      
-      if (supabaseRecord) {
-        // Atualizar ID local
-        await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+      if (error) {
+        console.error(`❌ Erro inserindo batch em ${tableName}:`, error);
         
-        // Marcar como sincronizado
-        await db.syncQueue.delete(item.id!);
+        // Se for erro de duplicidade, tentar UPDATE individual
+        if (error.code === '23505') {
+          console.log(`🔄 Tratando duplicidade em ${tableName}, tentando UPSERT individual...`);
+          await this.handleDuplicateInsert(tableName, records, itemsToProcess, authData);
+          return;
+        }
+        
+        // Se for erro de RLS, adicionar mais informações
+        if (error.message.includes('row-level security') || error.code === '42501') {
+          console.error('🔍 Detalhes do erro RLS:', {
+            table: tableName,
+            userRole: authData.userRole,
+            recordsCount: records.length,
+            firstRecord: records[0] ? {
+              ...records[0],
+              // Ocultar dados sensíveis para log
+              nome: records[0].nome_completo?.substring(0, 10) + '...',
+              hasInstituicaoId: !!records[0].instituicao_id
+            } : null
+          });
+        }
+        
+        throw error;
+      }
+      
+      // 3. Atualizar IDs locais com IDs do Supabase
+      for (let i = 0; i < itemsToProcess.length; i++) {
+        const item = itemsToProcess[i];
+        const supabaseRecord = data?.[i];
+        
+        if (supabaseRecord) {
+          // Atualizar ID local
+          await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+          
+          // Marcar como sincronizado
+          await db.syncQueue.delete(item.id!);
+        }
+      }
+      
+      console.log(`✅ ${records.length} registros processados em ${tableName}`);
+      
+    } catch (error) {
+      console.error(`❌ Erro fatal em processInsertBatch para ${tableName}:`, error);
+      // Não propagar o erro para não parar a sincronização completa
+    }
+  },
+
+  // Métodos auxiliares adicionais:
+
+  async checkExistingUniqueConstraint(tableName: string, record: any): Promise<any> {
+    try {
+      // Para system_config, verificar pelo par category/name
+      if (tableName === 'system_config' && record.category && record.key_name) {
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .eq('category', record.category)
+          .eq('key_name', record.key_name)
+          .maybeSingle();
+        
+        if (!error && data) {
+          return data;
+        }
+      }
+      
+      // Adicionar verificações para outras tabelas conforme necessário
+      return null;
+    } catch (error) {
+      console.error('Erro ao verificar constraint única:', error);
+      return null;
+    }
+  },
+
+  async convertInsertToUpdate(tableName: string, item: SyncQueueItem, existingId: string) {
+    try {
+      // Atualizar o ID local para o ID existente
+      await this.updateLocalId(tableName, item.record_id, existingId);
+      
+      // Mudar o tipo de operação na fila de INSERT para UPDATE
+      await db.syncQueue.update(item.id!, {
+        operation: 'UPDATE',
+        record_id: existingId // Usar o ID existente
+      });
+      
+      console.log(`🔄 Convertido INSERT para UPDATE: ${tableName} - ID: ${existingId}`);
+    } catch (error) {
+      console.error('Erro ao converter INSERT para UPDATE:', error);
+    }
+  },
+
+  async handleDuplicateInsert(tableName: string, records: any[], items: SyncQueueItem[], authData: any) {
+    // Processar registros individualmente para tratar duplicidades
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      const item = items[i];
+      
+      try {
+        let result;
+        
+        // Para system_config, usar UPSERT com onConflict
+        if (tableName === 'system_config') {
+          const { data, error } = await supabase
+            .from(tableName)
+            .upsert(record, {
+              onConflict: 'category,name',
+              ignoreDuplicates: false
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          result = data;
+        } else {
+          // Para outras tabelas, tentar INSERT primeiro, depois UPDATE se falhar
+          const { data, error } = await supabase
+            .from(tableName)
+            .insert(record)
+            .select()
+            .single();
+          
+          if (error && error.code === '23505') {
+            // Se for duplicidade, buscar registro existente e atualizar
+            console.log(`🔄 Registro duplicado encontrado, convertendo para UPDATE`);
+            await this.convertInsertToUpdate(tableName, item, record.id);
+            continue;
+          } else if (error) {
+            throw error;
+          }
+          
+          result = data;
+        }
+        
+        if (result) {
+          // Atualizar ID local
+          await this.updateLocalId(tableName, item.record_id, result.id);
+          
+          // Marcar como sincronizado
+          await db.syncQueue.delete(item.id!);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Erro processando registro individual em ${tableName}:`, error);
+        // Continuar com os próximos registros
       }
     }
-    
-    console.log(`✅ ${records.length} registros inseridos em ${tableName}`);
   },
   
   // ✅ Processar UPDATE individual (mais seguro)
@@ -422,7 +566,7 @@ export const syncManager: SyncManager = {
       const tables = [
         'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
-        'evento', 'profiles', 'system_config', 'instituicao', 'notificacao','avaliacoes'
+        'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios'
       ];
       
       for (const tableName of tables) {

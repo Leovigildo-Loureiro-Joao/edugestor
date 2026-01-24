@@ -9,7 +9,11 @@ import { FrequenciaData } from '../../types/frequencia';
 import { Avaliacao, NotaData } from '../../types/avaliacao';
 import {  avaliacaoService } from '../../services/database/avaliacao';
 import { Bar, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FiX } from 'react-icons/fi';
+import { FaIdCard } from 'react-icons/fa';
+import { instituicaoService } from '../../services/database/insitituicao';
+import { transacaoService } from '../../services/database';
 
 const StudentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +24,26 @@ const StudentPage: React.FC = () => {
   const [frequencias, setFrequencias] = useState<FrequenciaData[]>([]);
   const [notas, setNotas] = useState<any>();
   const [loading, setLoading] = useState(true);
+  const [isOpen, setOpen] = useState(false);
+  const [cartao,setCartao]=useState(0);
+
+  
+  const CartaoPagar=async ()=>{
+    const resultadoCartao = await transacaoService.processarPagamento({
+          categoria: "cartão",
+          data: new Date().toISOString(),
+          descricao: `Pagamento de cartão estudante - ${aluno?.nome_completo}`,
+          tipo: "entrada",
+          valor: cartao
+      });
+      if (resultadoCartao.sucesso) {
+        await alunosService.updateStudent(aluno?.id||"",{
+          cartao_pago: true
+      });  
+    }
+    setOpen(false)  
+    carregarDadosAluno()
+  }
 
   useEffect(() => {
     if (id) {
@@ -46,6 +70,9 @@ const StudentPage: React.FC = () => {
       // Carregar notas
       const notasData = await avaliacaoService.getAvaliacoesByAluno(id!);
       setNotas(notasData);
+
+      const cartaoData = await  instituicaoService.getConfig();
+      setCartao( cartaoData?.valor_cartao || 1000);
 
     } catch (error) {
       console.error('Erro ao carregar dados do aluno:', error);
@@ -155,6 +182,19 @@ const StudentPage: React.FC = () => {
               <span className={`px-4 py-2 rounded-full text-sm font-semibold uppercase ${getStatusColor(aluno.estado)}`}>
                 {aluno.estado}
               </span>
+               <button onClick={
+                ()=>  navigate('/financeiro/pagamento/'+aluno.id)
+              } className="px-4 py-2  bg-orange-100 text-orange-800 rounded-lg hover:bg-orange-200 hover:text-orange-900 transition-colors">
+                Pagar Propina
+              </button>
+              {
+                !aluno.cartao_pago&&
+              <button onClick={
+                ()=>  setOpen(true)
+              } className="px-4 py-2 bg-violet-100 text-violet-800 rounded-lg hover:bg-violet-200 hover:text-violet-700 transition-colors">
+                Pagar Cartão
+              </button>
+              }
               <button onClick={
                 ()=>  navigate('/alunos/editar/'+aluno.id)
               } className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -304,8 +344,11 @@ const StudentPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {propinas.map((propina:Propina) => (
-                      <tr key={propina.id} className="hover:bg-white">
+                    {propinas.map((propina:Propina,key:number) => (
+                       <motion.tr
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: key*0.1 }} key={propina.id} className="hover:bg-white">
                         <td className="px-4 py-3 text-sm text-gray-900">{propina.mes_referencia}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">
                           ${propina.valor_pago.toLocaleString('pt-BR')}
@@ -329,7 +372,7 @@ const StudentPage: React.FC = () => {
                             : '-'
                           }
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -345,11 +388,17 @@ const StudentPage: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Justificativa</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aula</th>
+                      <th  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {frequencias.map((freq) => (
-                      <tr key={freq.id} className="hover:bg-white">
+                    {frequencias.map((freq,key) => (
+                      <motion.tr
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: key * 0.1 }}
+                      key={freq.id} className="hover:bg-white">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(freq.data_aula).toLocaleDateString('pt-BR')}
                         </td>
@@ -363,7 +412,18 @@ const StudentPage: React.FC = () => {
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {freq.justificativa || '-'}
                         </td>
-                      </tr>
+
+                         <td className="px-4 py-3 text-sm text-gray-900">
+                          {freq.disciplina || '-'}
+                        </td>
+                         <td className="px-4 py-3 text-sm text-gray-900">
+                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            freq.participacao ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                          {(freq.participacao?"Participou":"Não participaou")}
+                          </span>
+                        </td>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -383,8 +443,12 @@ const StudentPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {notas.avaliacoes.map((nota:Avaliacao) => (
-                      <tr key={nota.id} className="hover:bg-white">
+                    {notas.avaliacoes.map((nota:Avaliacao,key:number) => (
+                       <motion.tr
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: key * 0.1 }}
+                       key={nota.id} className="hover:bg-white">
                         <td className="px-4 py-3 text-sm text-gray-900">{nota.disciplina}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{nota.tipo_avaliacao}</td>
                         <td className="px-4 py-3">
@@ -395,7 +459,7 @@ const StudentPage: React.FC = () => {
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(nota.data_avaliacao).toLocaleDateString('pt-BR')}
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -405,7 +469,11 @@ const StudentPage: React.FC = () => {
             {/* ABA 4: INFORMAÇÕES (mantém igual) */}
             {activeTab === 4 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className=" p-6 border-r border-primary-200">
+                <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className=" p-6 border-r border-primary-200">
                   <h3 className="text-lg font-semibold text-primary-800 mb-4">Dados Pessoais</h3>
                   <div className="space-y-3">
                     <div>
@@ -431,9 +499,13 @@ const StudentPage: React.FC = () => {
                       <span className="text-gray-600">{aluno.email || 'Não informado'}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
-                <div className="p-6 ">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                className="p-6 ">
                   <h3 className="text-lg font-semibold  text-primary-800 mb-4">Informações Acadêmicas</h3>
                   <div className="space-y-3">
                     <div>
@@ -457,18 +529,109 @@ const StudentPage: React.FC = () => {
                       <span className="text-gray-600">{aluno.numero_estudante}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
-                <div className="lg:col-span-2  p-6 rounded-lg border-t border-primary-200">
+                <motion.div
+                   initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                 className="lg:col-span-2  p-6 rounded-lg border-t border-primary-200">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Endereço</h3>
                   <p className="text-gray-600">{aluno.endereco||"Não foi disponiblizado ..."}</p>
-                </div>
+                </motion.div>
               </div>
             )}
           </div>
         </div>
       </div>
+       <AnimatePresence>
+            {isOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={()=>setOpen(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                />
+      
+                {/* Modal */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ type: "spring", damping: 25 }}
+                  className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl">
+                    {/* Header */}
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-center gap-4">
+                          <div className=' pb-2'>
+                            <FaIdCard size={20} />
+                          </div>
+                          
+                      
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                               Comfirmar pagamento do cartão
+                              </h2>
+                            
+                            </div>
+                           
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                        
+                          <button
+                           onClick={()=>setOpen(false)}
+                            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <FiX className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+      
+                      
+                    </div>
+                    <div className='p-6'>
+                      <div className='flex flex-col gap-4'>
+                        <h1 className='text-lg font-bold'>Aluno: {aluno.nome_completo}</h1>
+                        <p>Deseja comfirmar o pagamento do cartão estudantil {}</p>
+                      </div>  
+                      <div>
+                        <p>O Preco actual é de {cartao} Akz </p>
+                        <p>
+                          Este dado constara nas transações
+                        </p>
+                      </div>
+                    </div> 
+                    <div className=' flex justify-end p-5 gap-5'>
+                       <button onClick={
+                          ()=>  setOpen(false)
+                        } className="px-4 py-2  bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition-colors">
+                          Cancelar
+                        </button>
+                        
+                         
+                        <button onClick={CartaoPagar} className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-violet-200 hover:text-blue-700 transition-colors">
+                          Pagar Cartão
+                        </button>
+                    </div>
+                 
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
     </div>
+
+    
   );
 };
 

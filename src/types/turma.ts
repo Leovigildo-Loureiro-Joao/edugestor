@@ -15,6 +15,7 @@ export interface Turma extends BaseEntity{
   curso_nome?:string;
   qtd?:number,
   aulas?:Aula[]
+  horarios?:HorarioAula[]
 }
 
 export interface TurmaCompleta extends Turma {
@@ -26,8 +27,9 @@ export interface TurmaCompleta extends Turma {
   })[];
 }
 
-export interface HorarioAula {
+export interface HorarioAula extends BaseEntity{
   id: string;
+  turma_id:string;
   dia_semana: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado';
   hora_inicio: string;
   hora_fim: string;

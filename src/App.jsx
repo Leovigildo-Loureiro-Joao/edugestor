@@ -37,6 +37,7 @@ import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
 import ProfilePage from './pages/User/ProfilePage.tsx';
 import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
 import { backgroundService } from './services/database/backgroundService.ts';
+import { notificacaoService } from './services/database/notificacaoService.ts';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -80,6 +81,7 @@ const ProtectedRoute = ({ children }) => {
 // Componente principal corrigido
 function AppContent() {
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [notifica, setNotifica] = useState(true);
   const [checkingSetup, setCheckingSetup] = useState(true);
 
   useEffect(() => {
@@ -88,9 +90,11 @@ function AppContent() {
       const result = await syncDatabase.syncAll();
       if (result.success) {
         console.log('Sincronização completa!');
+
       }
     };
     sincronizar()
+      notificacaoService.iniciarServicoNotificacoes()
   }, []);
 
   backgroundService.inicializar();
@@ -153,6 +157,8 @@ function AppContent() {
           await configService.initializeDefaultConfigs();
           console.log('✅ App inicializado com configurações padrão');
         }
+     
+          
       } catch (error) {
         console.warn('❌ Erro ao inicializar app:', error);
       }

@@ -9,6 +9,7 @@ import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
 import { profileService } from "./profileService";
 import { turmaService } from "./turmas";
 import { frequenciaService } from "./frequenciaService";
+import { cacheManager } from "./cacheManager";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -61,23 +62,45 @@ export const alunosService = {
 
     // ✅ Buscar todos os alunos - CORRIGIDO
   async getAllStudents() {
-    const alunosAll = await db.alunos.toArray()
-    const todasTurmas = await turmaService.getTurmas();
-    const turmaMap = new Map(todasTurmas.map(t => [t.id, t]));
-    const alunos = alunosAll.filter(aluno => !aluno.deleted&&turmaMap.get(aluno.turma_id));
-    alunos.sort((a,b)=>(a.nome_completo.localeCompare(b.nome_completo)))
-    console.log(alunos)
-  
-  return  alunos.map( aluno => {
-    const turma = aluno.turma_id ? turmaMap.get(aluno.turma_id) : null;
+    const CACHE_KEY = 'alunos_all';
     
-    return  {
-      ...aluno,  // ✅ Mantém todas as propriedades originais do aluno
-      turma_nome: turma ? turma.nome_turma : 'Sem turma',
-      professor: turma ? turma.professor : 'Sem professor',
-    };
-  });
-},
+    // 1. Tentar cache primeiro
+    const qtd= await db.alunos.count()
+    const cached = cacheManager.get(CACHE_KEY,qtd);
+    if (cached) {
+      return cached;
+    }
+    
+    try {
+      
+      const [alunosAll,todasTurmas] = await Promise.all([
+          db.alunos.toArray(),
+          turmaService.getTurmas()
+      ]) 
+      const turmaMap = new Map(todasTurmas.map(t => [t.id, t]));
+      
+      const alunos = alunosAll
+        .filter(aluno => !aluno.deleted && turmaMap.get(aluno.turma_id))
+        .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo))
+        .map(aluno => {
+          const turma = aluno.turma_id ? turmaMap.get(aluno.turma_id) : null;
+          return {
+            ...aluno,
+            turma_nome: turma ? turma.nome_turma : 'Sem turma',
+            professor: turma ? turma.professor : 'Sem professor',
+          };
+        });
+      
+      // 2. Guardar no cache
+      cacheManager.set(CACHE_KEY, alunos);
+      
+      return alunos;
+      
+    } catch (error) {
+      console.error('Erro ao carregar alunos:', error);
+      return [];
+    }
+  },
 
   async syncAlunos() {
       return syncManager.downloadTableBatch('alunos', new Date(0));
@@ -114,6 +137,29 @@ export const alunosService = {
       return undefined;
     }
   },
+  async refreshAllStudents() {
+    // Invalidar cache
+    cacheManager.delete('alunos_all');
+    cacheManager.invalidate('alunos_.*');
+    cacheManager.invalidate('chart_.*');
+    
+    // Buscar dados frescos
+    return await this.getAllStudents();
+  },
+   async getAlunosForChart() {
+    const CACHE_KEY = 'alunos_chart_data';
+    const cached = cacheManager.get(CACHE_KEY);
+    
+    if (cached) {
+      return cached;
+    }
+    
+    const alunos = await this.getAllStudents();
+    cacheManager.set(CACHE_KEY, alunos, 2 * 60 * 1000); // 2 minutos para dados de gráfico
+    
+    return alunos;
+  }
+  ,
 
   // ✅ Buscar aluno por número de estudante
   async getStudentByNumeroEstudante(numero: number): Promise<Student | undefined> {
@@ -272,5 +318,9 @@ export const alunosService = {
       return true;
     }
     return false;
+  },
+
+  async verificarAlunos(){
+    
   }
 };

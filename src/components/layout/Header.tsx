@@ -14,7 +14,6 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { initializeSyncSystem } from '../../services/database/syncManager';
 import { NotificacoesBellInteligente } from './Notificao';
-import { notificacaoService } from '../../services/database/notificacaoService';
 
 // Interface para o status de sincronização
 interface SyncStatus {
@@ -194,55 +193,13 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
     localStorage.setItem('darkMode', String(newMode));
-    
-    // Notificação de mudança de tema
-    notificacaoService.criarNotificacaoSistema({
-      titulo: 'Tema alterado',
-      corpo: `Modo ${newMode ? 'escuro' : 'claro'} ativado`,
-      tipo: 'sistema'
-    });
   };
 
-  const handleLogout = async (): Promise<void> => {
-    try {
-      // Criar notificação de logout
-      await notificacaoService.criarNotificacaoSistema({
-        titulo: 'Logout realizado',
-        corpo: `Usuário ${user?.name || 'Desconhecido'} desconectou-se do sistema`,
-        tipo: 'segurança'
-      });
-
-      // Aguardar um pouco antes de fazer logout
-      setTimeout(() => {
-        logout();
-      }, 500);
-    } catch (error) {
-      console.error('Erro ao criar notificação de logout:', error);
-      logout();
-    }
-  };
 
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>): Promise<void> => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      // Criar notificação de busca
-      await notificacaoService.criarNotificacaoSistema({
-        titulo: 'Busca realizada',
-        corpo: `Termo buscado: "${searchQuery}"`,
-        tipo: 'busca',
-        meta: { query: searchQuery }
-      });
-    }
+   
   };
 
-  const getUserInitials = (): string => {
-    if (!user?.name) return 'U';
-    return user.name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   const handleSyncClick = async (): Promise<void> => {
     if (isOnline && syncStatus.pending > 0) {
@@ -257,12 +214,6 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
         setSaveStatus('saved');
         await verificarStatusSincronizacao();
         
-        // Notificação de sincronização bem-sucedida
-        await notificacaoService.criarNotificacaoSistema({
-          titulo: 'Sincronização concluída',
-          corpo: 'Dados sincronizados com sucesso',
-          tipo: 'sincronizacao'
-        });
       } catch (error) {
         setSaveStatus('error');
         console.error('Erro na sincronização:', error);

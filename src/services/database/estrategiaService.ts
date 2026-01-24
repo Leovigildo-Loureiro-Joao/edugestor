@@ -778,6 +778,524 @@ export const estrategiaService = {
       console.error('Erro ao verificar prazos:', error);
     }
   },
+    async getProgressoEstrategias(): Promise<{
+      progressoTotal: number,
+        detalhes: {
+          metas: {
+            progresso:number,
+            peso: number,
+            total?: number,
+            porStatus?: {
+                nao_iniciada: number;
+                em_andamento: number;
+                concluida: number;
+                atrasada: number;
+            }
+          },
+          tarefas: {
+            progresso: number,
+            peso: number,
+            total?: number
+          },
+          rotinas: {
+            progresso: number,
+            peso: number,
+            total?: number
+          }
+        },
+        resumo: {
+          nivel: string,
+          cor: string,
+          mensagem: string,
+          alertas: string,
+          sugestoes: string
+        }
+  }> {
+    try {
+      console.log('📊 Calculando progresso geral das estratégias...');
+      
+      // Buscar todos os dados
+      const [metas, tarefas, rotinas] = await Promise.all([
+        this.getMetas(),
+        this.getTarefas(),
+        this.getRotinasDiarias()
+      ]);
+
+      // ============ PROGRESSO DAS METAS ============
+      let progressoMetas = 0;
+      let metasComProgresso = 0;
+      
+      // Para cada meta, calcular seu progresso considerando:
+      // 1. KPIs (50% do peso da meta)
+      // 2. Sub-metas (30% do peso da meta)
+      // 3. Orçamento (20% do peso da meta)
+      
+      for (const meta of metas) {
+        if (meta.deleted) continue;
+        
+        let progressoMetaIndividual = 0;
+        let componentesUsados = 0;
+        
+        // Progresso baseado em KPIs (se existirem)
+        if (meta.kpis && meta.kpis.length > 0) {
+          let somaKPIs = 0;
+          let pesoTotal = 0;
+          
+          meta.kpis.forEach(kpi => {
+            const peso = kpi.peso || 1;
+            const progressoKPI = kpi.valor_meta > 0 
+              ? Math.min((kpi.valor_atual / kpi.valor_meta) * 100, 100)
+              : 0;
+            
+            somaKPIs += progressoKPI * peso;
+            pesoTotal += peso;
+          });
+          
+          const mediaKPIs = pesoTotal > 0 ? somaKPIs / pesoTotal : 0;
+          progressoMetaIndividual += mediaKPIs * 0.5; // 50% dos KPIs
+          componentesUsados++;
+        }
+        
+        // Progresso baseado em sub-metas (se existirem)
+        if (meta.submetas && meta.submetas.length > 0) {
+          const subMetasConcluidas = meta.submetas.filter(sm => sm.status === 'concluida').length;
+          const progressoSubMetas = (subMetasConcluidas / meta.submetas.length) * 100;
+          progressoMetaIndividual += progressoSubMetas * 0.3; // 30% das sub-metas
+          componentesUsados++;
+        }
+        
+        // Progresso baseado em orçamento (se existir)
+        if (meta.orcamento_previsto && meta.orcamento_previsto > 0) {
+          const orcamentoUtilizado = meta.orcamento_alocado || 0;
+          const progressoOrcamento = Math.min((orcamentoUtilizado / meta.orcamento_previsto) * 100, 100);
+          progressoMetaIndividual += progressoOrcamento * 0.2; // 20% do orçamento
+          componentesUsados++;
+        }
+        
+        // Se a meta tem progresso explícito, usar ele como base
+        if (meta.progresso !== undefined && meta.progresso !== null) {
+          progressoMetaIndividual = meta.progresso;
+        }
+        
+        // Se não tem nenhum componente, considerar 0
+        if (componentesUsados === 0) {
+          progressoMetaIndividual = 0;
+        } else {
+          // Ajustar pelo número de componentes usados
+          const fator = 3 / componentesUsados; // 3 = total de componentes possíveis
+          progressoMetaIndividual = Math.min(progressoMetaIndividual * fator, 100);
+        }
+        
+        // Aplicar peso da prioridade
+        let pesoPrioridade = 1;
+        switch (meta.prioridade) {
+          case 'critica': pesoPrioridade = 1.2; break;
+          case 'alta': pesoPrioridade = 1.1; break;
+          case 'media': pesoPrioridade = 1.0; break;
+          case 'baixa': pesoPrioridade = 0.9; break;
+        }
+        
+        progressoMetas += progressoMetaIndividual * pesoPrioridade;
+        metasComProgresso++;
+      }
+      
+      const progressoFinalMetas = metasComProgresso > 0 
+        ? progressoMetas / metasComProgresso 
+        : 0;
+
+      // ============ PROGRESSO DAS TAREFAS ============
+      let progressoTarefas = 0;
+      let tarefasAtivas = 0;
+      
+      for (const tarefa of tarefas) {
+        if (tarefa.deleted) continue;
+        
+        // Se a tarefa tem status explícito de conclusão
+        if (tarefa.status === 'concluida') {
+          progressoTarefas += 100;
+        } 
+        // Se tem campo "concluida" booleano
+        else if (tarefa.concluida) {
+          progressoTarefas += 100;
+        }
+        // Se tem campo "progresso" numérico
+        else if (typeof tarefa.percentual_conclusao === 'number') {
+          progressoTarefas += Math.min(tarefa.percentual_conclusao, 100);
+        }
+        // Se está em andamento
+        else if (tarefa.status === 'em_andamento') {
+          progressoTarefas += 50; // Valor médio para tarefas em andamento
+        }
+        // Se não iniciada
+        else if (tarefa.status === 'pendente') {
+          progressoTarefas += 0;
+        }
+        // Default
+        else {
+          progressoTarefas += 0;
+        }
+        
+        tarefasAtivas++;
+      }
+      
+      const progressoFinalTarefas = tarefasAtivas > 0 
+        ? progressoTarefas / tarefasAtivas 
+        : 0;
+
+      // ============ PROGRESSO DAS ROTINAS ============
+      let progressoRotinas = 0;
+      let rotinasAtivas = 0;
+      
+      for (const rotina of rotinas) {
+        if (rotina.deleted) continue;
+        
+        // Considerar status da rotina
+        switch (rotina.status) {
+          case 'concluida':
+            progressoRotinas += 100;
+            break;
+          case 'em_andamento':
+            progressoRotinas += 60; // Valor médio
+            break;
+          case 'inativa':
+            progressoRotinas += 0;
+            break;
+          case 'suspensa':
+            progressoRotinas += 20; // Atrasada mas ainda ativa
+            break;
+          default:
+            progressoRotinas += 0;
+        }
+        
+        rotinasAtivas++;
+      }
+      
+      const progressoFinalRotinas = rotinasAtivas > 0 
+        ? progressoRotinas / rotinasAtivas 
+        : 0;
+
+      // ============ CÁLCULO FINAL ============
+      // Pesos: Metas 50%, Tarefas 30%, Rotinas 20%
+      const progressoTotal = (
+        (progressoFinalMetas * 0.5) + 
+        (progressoFinalTarefas * 0.3) + 
+        (progressoFinalRotinas * 0.2)
+      );
+
+      // ============ RESUMO POR STATUS ============
+      const statusMetas = {
+        nao_iniciada: metas.filter(m => !m.deleted && m.status === 'nao_iniciada').length,
+        em_andamento: metas.filter(m => !m.deleted && m.status === 'em_andamento').length,
+        concluida: metas.filter(m => !m.deleted && m.status === 'concluida').length,
+        atrasada: metas.filter(m => !m.deleted && m.status === 'atrasada').length
+      };
+
+      // ============ DETERMINAR NÍVEL DE PROGRESSO ============
+      let nivelProgresso = '';
+      let corProgresso = '';
+      
+      if (progressoTotal >= 90) {
+        nivelProgresso = 'Excelente';
+        corProgresso = 'text-green-600';
+      } else if (progressoTotal >= 75) {
+        nivelProgresso = 'Bom';
+        corProgresso = 'text-blue-600';
+      } else if (progressoTotal >= 50) {
+        nivelProgresso = 'Regular';
+        corProgresso = 'text-yellow-600';
+      } else if (progressoTotal >= 25) {
+        nivelProgresso = 'Preocupante';
+        corProgresso = 'text-orange-600';
+      } else {
+        nivelProgresso = 'Crítico';
+        corProgresso = 'text-red-600';
+      }
+
+      // ============ GERAR MENSAGEM RESUMO ============
+      let mensagemResumo = '';
+      
+      if (progressoTotal >= 90) {
+        mensagemResumo = 'Estratégias avançando muito bem! Continue assim!';
+      } else if (progressoTotal >= 75) {
+        mensagemResumo = 'Bom progresso! Alguns ajustes podem otimizar ainda mais.';
+      } else if (progressoTotal >= 50) {
+        mensagemResumo = 'Progresso regular. Foque nas metas prioritárias.';
+      } else if (progressoTotal >= 25) {
+        mensagemResumo = 'Atenção necessária. Reavalie prazos e recursos.';
+      } else {
+        mensagemResumo = 'Ação imediata requerida. Revise toda a estratégia.';
+      }
+
+      // Adicionar detalhes específicos
+      if (statusMetas.atrasada > 0) {
+        mensagemResumo += ` ${statusMetas.atrasada} meta(s) atrasada(s).`;
+      }
+      
+      if (statusMetas.nao_iniciada > 0 && progressoTotal < 50) {
+        mensagemResumo += ` ${statusMetas.nao_iniciada} meta(s) não iniciada(s).`;
+      }
+
+      console.log('✅ Progresso calculado:', {
+        total: progressoTotal,
+        metas: progressoFinalMetas,
+        tarefas: progressoFinalTarefas,
+        rotinas: progressoFinalRotinas
+      });
+
+      return {
+        progressoTotal: Number(progressoTotal.toFixed(1)),
+        detalhes: {
+          metas: {
+            progresso: Number(progressoFinalMetas.toFixed(1)),
+            peso: 50,
+            total: metas.filter(m => !m.deleted).length,
+            porStatus: statusMetas
+          },
+          tarefas: {
+            progresso: Number(progressoFinalTarefas.toFixed(1)),
+            peso: 30,
+            total: tarefas.filter(t => !t.deleted).length
+          },
+          rotinas: {
+            progresso: Number(progressoFinalRotinas.toFixed(1)),
+            peso: 20,
+            total: rotinas.filter(r => !r.deleted).length
+          }
+        },
+        resumo: {
+          nivel: nivelProgresso,
+          cor: corProgresso,
+          mensagem: mensagemResumo,
+          alertas: statusMetas.atrasada > 0 
+            ? `⚠️ ${statusMetas.atrasada} meta(s) atrasada(s)`
+            : '',
+          sugestoes: this.gerarSugestoesMelhoria(progressoTotal, statusMetas)
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Erro ao calcular progresso:', error);
+      return {
+        progressoTotal: 0,
+        detalhes: {
+          metas: { progresso: 0, peso: 50 },
+          tarefas: { progresso: 0, peso: 30 },
+          rotinas: { progresso: 0, peso: 20 }
+        },
+        resumo: {
+          nivel: 'Não calculado',
+          cor: 'text-gray-600',
+          mensagem: 'Erro ao calcular progresso',
+          alertas: '',
+          sugestoes: ''
+        }
+      };
+    }
+  },
+
+  /**
+   * Gera sugestões de melhoria baseadas no progresso
+   */
+   gerarSugestoesMelhoria(
+    progressoTotal: number, 
+    statusMetas: any
+  ): string {
+    const sugestoes = [];
+    
+    if (progressoTotal < 50) {
+      sugestoes.push('Foque nas metas de prioridade alta');
+      sugestoes.push('Revise prazos e recursos disponíveis');
+      sugestoes.push('Divida metas grandes em sub-metas menores');
+    }
+    
+    if (statusMetas.atrasada > 0) {
+      sugestoes.push('Atenda primeiro às metas atrasadas');
+      sugestoes.push('Considere ajustar prazos ou realocar recursos');
+    }
+    
+    if (statusMetas.nao_iniciada > 0) {
+      sugestoes.push('Inicie as metas não iniciadas');
+      sugestoes.push('Atribua responsáveis claros para cada meta');
+    }
+    
+    if (progressoTotal > 75 && progressoTotal < 90) {
+      sugestoes.push('Mantenha o ritmo atual');
+      sugestoes.push('Otimize processos para acelerar conclusão');
+    }
+    
+    if (progressoTotal >= 90) {
+      sugestoes.push('Excelente trabalho!');
+      sugestoes.push('Considere estabelecer novas metas desafiadoras');
+    }
+    
+    return sugestoes.join('. ');
+  },
+
+  /**
+   * Função simplificada para dashboard (apenas o progresso total)
+   */
+  async getProgressoDashboard(): Promise<{
+    progresso: number;
+    nivel: string;
+    cor: string;
+  }> {
+    try {
+      const resultado = await this.getProgressoEstrategias();
+      
+      return {
+        progresso: resultado.progressoTotal,
+        nivel: resultado.resumo.nivel,
+        cor: resultado.resumo.cor
+      };
+    } catch (error) {
+      console.error('Erro no progresso do dashboard:', error);
+      return {
+        progresso: 0,
+        nivel: 'Erro',
+        cor: 'text-gray-600'
+      };
+    }
+  },
+
+  /**
+   * Gera relatório detalhado do progresso
+   */
+  async gerarRelatorioProgresso(): Promise<string> {
+    try {
+      const progresso = await this.getProgressoEstrategias();
+      const dataAtual = new Date().toLocaleDateString('pt-BR');
+      
+      const relatorio = `
+RELATÓRIO DE PROGRESSO ESTRATÉGICO
+Data: ${dataAtual}
+===================================
+
+PROGRESSO GERAL: ${progresso.progressoTotal}%
+Nível: ${progresso.resumo.nivel}
+
+DETALHAMENTO:
+-------------
+• Metas: ${progresso.detalhes.metas.progresso}% (${progresso.detalhes.metas.peso}% do total)
+  - Não iniciadas: ${progresso.detalhes.metas.porStatus?.nao_iniciada}
+  - Em andamento: ${progresso.detalhes.metas.porStatus?.em_andamento}
+  - Concluídas: ${progresso.detalhes.metas.porStatus?.concluida}
+  - Atrasadas: ${progresso.detalhes.metas.porStatus?.atrasada}
+
+• Tarefas: ${progresso.detalhes.tarefas.progresso}% (${progresso.detalhes.tarefas.peso}% do total)
+  - Total: ${progresso.detalhes.tarefas.total} tarefas
+
+• Rotinas: ${progresso.detalhes.rotinas.progresso}% (${progresso.detalhes.rotinas.peso}% do total)
+  - Total: ${progresso.detalhes.rotinas.total} rotinas
+
+ANÁLISE:
+--------
+${progresso.resumo.mensagem}
+
+${progresso.resumo.alertas ? 'ALERTAS:\n' + progresso.resumo.alertas + '\n' : ''}
+SUGESTÕES:
+----------
+${progresso.resumo.sugestoes}
+
+Gerado automaticamente pelo Sistema de Gestão Educacional
+      `;
+      
+      return relatorio;
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      return 'Erro ao gerar relatório de progresso.';
+    }
+  },
+
+  async getMetasAdemicas(){
+    const metas=await db.metas.filter(m=>m.tipo=="academica"&&!m.deleted).toArray();
+    return metas.map((meta:Meta)=>{
+      return {
+        label:meta.titulo,
+        atual:meta.progresso,
+        meta:meta.kpis?.map(
+          m =>({
+            label:m.nome,
+            atual:m.valor_atual,
+            meta:m.valor_meta
+          })
+        )
+      }
+    })
+  },
+
+  /**
+   * Retorna estatísticas rápidas para cards do dashboard
+   */
+  async getEstatisticasRapidas(): Promise<{
+    metasTotal: number;
+    tarefasPendentes: number;
+    rotinasAtivas: number;
+    progressoGeral: number;
+    proximosPrazos: any[];
+  }> {
+    try {
+      const [metas, tarefas, rotinas, progresso] = await Promise.all([
+        this.getMetas(),
+        this.getTarefas(),
+        this.getRotinasDiarias(),
+        this.getProgressoDashboard()
+      ]);
+
+      // Metas não deletadas
+      const metasAtivas = metas.filter(m => !m.deleted);
+      
+      // Tarefas pendentes (não concluídas)
+      const tarefasPendentes = tarefas.filter(t => 
+        !t.deleted && 
+        t.status !== 'concluida' && 
+        t.concluida !== true
+      );
+
+      // Rotinas ativas (não deletadas e não concluídas)
+      const rotinasAtivas = rotinas.filter(r => 
+        !r.deleted && 
+        r.status !== 'concluida'
+      );
+
+      // Próximos prazos (metas que terminam nos próximos 7 dias)
+      const hoje = new Date();
+      const umaSemana = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      const proximosPrazos = metasAtivas
+        .filter(meta => {
+          if (!meta.data_fim || meta.status === 'concluida') return false;
+          const dataFim = new Date(meta.data_fim);
+          return dataFim > hoje && dataFim <= umaSemana;
+        })
+        .slice(0, 5) // Limitar a 5
+        .map(meta => ({
+          id: meta.id,
+          titulo: meta.titulo,
+          data_fim: meta.data_fim,
+          prioridade: meta.prioridade,
+          dias_restantes: Math.ceil(
+            (new Date(meta.data_fim).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)
+          )
+        }));
+
+      return {
+        metasTotal: metasAtivas.length,
+        tarefasPendentes: tarefasPendentes.length,
+        rotinasAtivas: rotinasAtivas.length,
+        progressoGeral: progresso.progresso,
+        proximosPrazos
+      };
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+      return {
+        metasTotal: 0,
+        tarefasPendentes: 0,
+        rotinasAtivas: 0,
+        progressoGeral: 0,
+        proximosPrazos: []
+      };
+    }
+  },
 
 
 };

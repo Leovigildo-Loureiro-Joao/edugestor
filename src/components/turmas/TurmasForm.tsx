@@ -8,6 +8,7 @@ import { Course } from '../../types/curso.ts';
 import { cursosService } from '../../services/database/curso.ts';
 import { SelectTyped } from '../students/StudentForm.tsx';
 import { motion } from 'framer-motion';
+import { instituicaoService } from '../../services/database/insitituicao.ts';
 
 // Definição de tipo para opções do Select
 interface SelectOption {
@@ -27,17 +28,19 @@ const TurmaForm = () => {
     turma_id ? `edugestor_draft_${turma_id}` : 'edugestor_new_turma_draft';
   
   const storageKey = getStorageKey(id);
+  
 
   // Dados iniciais - corrigido para usar curso_id
   const initialData: TurmaFormData = {
     nome_turma: '',
-    ano_lectivo: new Date().getFullYear().toString(),
+    ano_lectivo: '',
     curso_id: '',
     professor: '',
     capacidade_maxima: 0,
     turno: 'manhã',
     estado:"ativa",
-    descricao:""
+    descricao:"",
+    
   };
 
   const { 
@@ -48,9 +51,15 @@ const TurmaForm = () => {
   } = useAutoSave<TurmaFormData>(storageKey, initialData, 2000);
 
   const loadCursos = async () => {
+    formData.ano_lectivo=await instituicaoService.getAnoLectivo()
     try {
       const res = await cursosService.getCourse();
       setCursos(res ?? []);
+      setCursoSel(res[0])
+      setFormData((prev: TurmaFormData) => ({ 
+        ...prev, 
+        "curso_id": res[0].id
+      }));
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
     }
@@ -168,6 +177,8 @@ const TurmaForm = () => {
   const selectedCursoValue = formData.curso_id || '';
   const selectedTurnoValue = formData.turno || 'manhã';
 
+
+
   return (
     <div className="min-h-screen rounded-2xl shadow-sm p-8 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -188,8 +199,8 @@ const TurmaForm = () => {
             </div>
           </div>
         </div>
-
-        <div className="">
+        {
+          cursos.length>0?  <div className="">
           {/* Formulário */}
           <div>
             <form onSubmit={handleSubmit} className="space-y-6 ">
@@ -364,6 +375,24 @@ const TurmaForm = () => {
 
       
         </div>
+          :<motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          className='flex justify-center flex-col items-center h-96'>
+               <div className='flex flex-col items-center w-96 text-center'>
+                  <FiBook className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Adicione um curso para adicionar turmas</h3>
+                  <p className="mt-1 text-wrap text-sm text-gray-500 dark:text-gray-400">
+                    Ainda não possuis cursos pois cada turma neste sistema esta
+                    vinculada a um curso, caso ja possua cursos 
+                  </p>
+                    <button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium "
+                    onClick={()=> navigate("cursos/novo")}>Adicionar um Curso</button>
+               </div>
+          </motion.div>
+        }
+      
       </div>
     </div>
   );

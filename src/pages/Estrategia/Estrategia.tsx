@@ -37,6 +37,15 @@ const EstrategiaPage = () => {
   const [newTask, setNewTask] = useState('');
   const seccaoAtual = useParams().seccao || 'metas';
 
+  const [estatisticas, setEstatisticas] = useState<{
+    progressoGeral: number,
+    proximosPrazos?: [],
+    alertas?: []
+  }>({
+    progressoGeral: 0,
+    proximosPrazos: [],
+    alertas: []
+  });
 
   useEffect(() => {
     loadData();
@@ -46,15 +55,18 @@ const EstrategiaPage = () => {
     try {
       setActiveTab(seccaoAtual);
       setLoading(true);
-      const [tarefasData, metasData, rotinasData] = await Promise.all([
+      const [tarefasData, metasData, rotinasData,progressoData] = await Promise.all([
         estrategiaService.getTarefas(),
         estrategiaService.getMetas(),
         estrategiaService.getRotinasDiarias(),
+        estrategiaService.getProgressoEstrategias(),
       ]);
       setTarefas(tarefasData);
       setMetas(metasData);
       setRotinas(rotinasData);
-      
+      setEstatisticas({
+        progressoGeral: progressoData.progressoTotal
+      });
       console.log('Tarefas carregadas:', tarefasData);
       console.log('Metas carregadas:', metasData);
       console.log('Rotinas carregadas:', rotinasData);
@@ -165,18 +177,23 @@ const EstrategiaPage = () => {
           </div>
         </motion.div>
 
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-            initial={{ opacity: 0, y: -20 }}
+         <motion.div 
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-orange-500"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-orange-500"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm dark:text-white">Progresso Geral</p>
-              <h3 className="text-2xl font-bold dark:text-white">75%</h3>
+              <p className="text-gray-500 dark:text-gray-300 text-sm">Progresso Geral</p>
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
+                {estatisticas.progressoGeral}%
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {0} alertas
+              </p>
             </div>
-            <FiBarChart2 className="text-3xl text-orange-500" />
+            <FiTrendingUp className="text-3xl text-orange-500" />
           </div>
         </motion.div>
       </div>

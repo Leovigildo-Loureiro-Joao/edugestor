@@ -1,28 +1,5 @@
 import { BaseEntity, SyncStatus } from "./base";
 
-export interface EventFormData  {
-  id: string;
-  title: string;
-  date: string; // YYYY-MM-DD
-  time: string;
-  location: string;
-  type: 'academic' | 'meeting' | 'holiday' | 'event' | 'other';
-  description: string;
-  participants: string[];
-  duration: string;
-  importance: 'low' | 'medium' | 'high';
-  meta_id?: string; 
-  meta_titulo?: string;
-  objetivo_evento?: string;
-  tarefas_relacionadas?: string[]; 
-   sync_status?: SyncStatus;
-    deleted?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
-
-
 export interface VisaoEstrategica extends BaseEntity {
   id: string;
   titulo: string;
@@ -31,85 +8,6 @@ export interface VisaoEstrategica extends BaseEntity {
   data_criacao: string;
   responsavel: string;
   status: 'ativa' | 'concluida' | 'arquivada';
-}
-
-export interface Meta extends BaseEntity {
-  id: string;
-  visao_id: string;
-  titulo: string;
-  descricao: string;
-  tipo: 'academica' | 'financeira' | 'operacional' | 'marketing' | 'infraestrutura' | 'qualidade';
-  categoria: 'estrategica' | 'tatica' | 'operacional';
-  
-  // SMART Criteria
-  especifico: string;
-  mensuravel: string;
-  atingivel: boolean;
-  relevante: string;
-  temporal: string;
-  
-  // Controle
-  data_inicio: string;
-  data_fim: string;
-  data_limite_real?: string;
-  progresso: number; // 0-100
-  status: 'nao_iniciada' | 'em_andamento' | 'concluida' | 'atrasada' | 'suspensa';
-  prioridade: 'baixa' | 'media' | 'alta' | 'critica';
-  
-  // Responsabilidade
-  responsavel_principal: string;
-  responsaveis_secundarios?: string[];
-  
-  // Indicadores (KPIs - MEDIDORES)
-  kpis?: Array<{
-    id: string;
-    nome: string;
-    descricao?: string;
-    valor_atual: number;
-    valor_meta: number;
-    unidade: string;
-    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral';
-    peso?: number; // 1-100, importância no cálculo do progresso
-    fonte_dados?: 'matriculas' | 'notas' | 'frequencia' | 'financeiro' | 'manual';
-    ultima_atualizacao?: string;
-  }>;
-  
-  // Sub-metas (MINI-METAS / AÇÕES)
-  submetas?: Array<{
-    id: string;
-    titulo: string;
-    descricao: string;
-    data_inicio: string;
-    data_fim: string;
-    status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
-    responsavel: string;
-    custo_estimado?: number;
-    custo_real?: number;
-    kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
-    notas?: string;
-  }>;
-  
-  // Recursos
-  orcamento_previsto?: number;
-  orcamento_alocado?: number; // Dinheiro já alocado
-  recursos_necessarios?: string[];
-  
-  // Dependências
-  dependencias?: string[]; // IDs de outras metas
-  tarefas_relacionadas?: string[]; // IDs de tarefas
-  
-  // Histórico de alocações
-  alocacoes?: Array<{
-    id: string;
-    data: string;
-    valor: number;
-    motivo: string;
-    tipo: 'complementar' | 'completo' | 'parcial';
-    responsavel: string;
-  }>;
-  
-  created_at: string;
-  updated_at: string;
 }
 
 // Nível 3: PLANOS DE AÇÃO (Curto Prazo - Mensal/Semanal)
@@ -153,6 +51,122 @@ export interface PlanoAcao extends BaseEntity {
   resultado_esperado?: string;
   resultado_obtido?: string;
   notas?: string;
+  
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Meta extends BaseEntity {
+  id: string;
+  visao_id: string;
+  titulo: string;
+  descricao: string;
+  tipo: 'academica' | 'financeira' | 'operacional' | 'marketing' | 'infraestrutura' | 'qualidade';
+  categoria: 'estrategica' | 'tatica' | 'operacional';
+  
+  // SMART Criteria
+  especifico: string;
+  mensuravel: string;
+  atingivel: boolean;
+  relevante: string;
+
+  
+  // Controle
+  data_inicio: string;
+  data_fim: string;
+  data_limite_real?: string;
+  progresso: number; // 0-100
+  status: 'nao_iniciada' | 'em_andamento' | 'concluida' | 'atrasada' | 'suspensa';
+  prioridade: 'baixa' | 'media' | 'alta' | 'critica';
+  
+  // Responsabilidade
+  responsavel_principal: string;
+  responsaveis_secundarios?: string[];
+  
+  // Indicadores (KPIs - MEDIDORES)
+  kpis?: Array<{
+    id: string;
+    nome: string;
+    descricao?: string;
+    valor_atual: number;
+    valor_meta: number;
+    unidade: string;
+    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
+    peso?: number;
+    
+    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
+    fonte_dados?: {
+      tipo: 'automatico' | 'manual' | 'integracao';
+      modulo?: 
+        | 'matriculas'
+        | 'frequencia' 
+        | 'notas'
+        | 'financeiro'
+        | 'pessoal'
+        | 'biblioteca'
+        | 'infraestrutura'
+        | 'avaliacoes';
+      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      filtros?: {
+        turma_id?: string;
+        disciplina_id?: string;
+        periodo_id?: string;
+        nivel_id?: string;
+        // ... outros filtros contextuais
+      };
+      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
+    };
+    
+    ultima_atualizacao?: string;
+    historico?: Array<{
+      data: string;
+      valor: number;
+      fonte: string;
+    }>;
+  }>;
+
+
+  recursos?: Array<{
+    nome: string,
+    tipo: string,
+    quantidade: number,
+    custo: number | undefined,
+    prioridade: string,
+    observacoes: string
+  }>;
+  
+  // Sub-metas (MINI-METAS / AÇÕES)
+  submetas?: Array<{
+    id: string;
+    titulo: string;
+    descricao: string;
+    data_inicio: string;
+    data_fim: string;
+    status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
+    responsavel: string;
+    custo_estimado?: number;
+    custo_real?: number;
+    kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
+    notas?: string;
+  }>;
+  
+  // Recursos
+  orcamento_previsto?: number;
+  orcamento_alocado?: number; // Dinheiro já alocado
+
+  // Dependências
+  dependencias?: string[]; // IDs de outras metas
+  tarefas_relacionadas?: string[]; // IDs de tarefas
+  
+  // Histórico de alocações
+  alocacoes?: Array<{
+    id: string;
+    data: string;
+    valor: number;
+    motivo: string;
+    tipo: 'complementar' | 'completo' | 'parcial';
+    responsavel: string;
+  }>;
   
   created_at: string;
   updated_at: string;
@@ -243,7 +257,7 @@ export interface Rotina extends BaseEntity {
   dias_semana?: number[]; // 0=Domingo, 1=Segunda...
   
   // Controle
-  status: 'ativa' | 'inativa' | 'suspensa' ;
+  status: 'ativa' | 'inativa' | 'suspensa'|'concluida'|'em_andamento' ;
   versao: number;
   data_implementacao: string;
   data_revisao?: string;
@@ -264,6 +278,28 @@ export interface Rotina extends BaseEntity {
   created_at: string;
   updated_at: string;
 }
+
+export interface EventFormData  {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string;
+  location: string;
+  type: 'academic' | 'meeting' | 'holiday' | 'event' | 'other';
+  description: string;
+  participants: string[];
+  duration: string;
+  importance: 'low' | 'medium' | 'high';
+  meta_id?: string; 
+  meta_titulo?: string;
+  objetivo_evento?: string;
+  tarefas_relacionadas?: string[]; 
+   sync_status?: SyncStatus;
+    deleted?: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
 
 // ==================== INTERFACES DE SUPORTE ====================
 

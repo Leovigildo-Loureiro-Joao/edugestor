@@ -39,6 +39,7 @@ export const MetaDetailsPage: React.FC = () => {
     try {
       setLoading(true);
       const metaData = await estrategiaService.getMetasID(id!);
+      console.log(metaData)
       setMeta(metaData);
     } catch (error) {
       toast.error('Erro ao carregar meta');
@@ -465,10 +466,7 @@ export const MetaDetailsPage: React.FC = () => {
                       <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Relevante</h4>
                       <p className="text-gray-900 dark:text-white">{meta.relevante}</p>
                     </div>
-                    <div className="md:col-span-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Temporal</h4>
-                      <p className="text-gray-900 dark:text-white">{meta.temporal}</p>
-                    </div>
+                   
                   </div>
                 </div>
 

@@ -1,6 +1,6 @@
 import Dexie from "dexie";
 import { Student } from "./aluno";
-import { Turma } from "./turma";
+import { HorarioAula, Turma } from "./turma";
 import { Course } from "./curso";
 import { AlocacaoRecurso, Transacao } from "./transacao";
 import { Aula } from "./aula";
@@ -25,7 +25,7 @@ export interface BaseEntity {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacao';
+  table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacao'|'turma_horarios';
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
@@ -55,6 +55,7 @@ export interface EduGestorDatabase {
   notificacao: Dexie.Table<Notificacao, string>;
   alocacao:Dexie.Table<AlocacaoRecurso,string>;
   avaliacoes: Dexie.Table<Avaliacao, string>;
+  turma_horarios:Dexie.Table<HorarioAula,string>
 }
 
 // Helper para tipar o banco
