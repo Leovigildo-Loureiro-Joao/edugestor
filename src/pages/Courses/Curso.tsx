@@ -1,8 +1,8 @@
 // src/pages/Courses/Courses.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FiPlus, FiEdit, FiTrash2, FiBook, FiSearch, FiClock, FiUsers, FiBookOpen } from 'react-icons/fi';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FiPlus, FiEdit, FiTrash2, FiBook, FiSearch, FiClock, FiUsers, FiBookOpen, FiAlertCircle } from 'react-icons/fi';
 import { Select } from '../../components/ui/Select';
 import { FaMoneyBillWave, FaChalkboardUser } from 'react-icons/fa6';
 import { StatCard } from '../../components/students/StatCard';
@@ -10,6 +10,11 @@ import { FaChalkboardTeacher } from 'react-icons/fa';
 import { Course, CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
 import { SelectTyped } from '../../components/students/StudentForm';
+import { getPendingCount } from '../../utils/emitPendingSync';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import {  useConfirmModal } from '../../components/ui/ComfirmModal';
+import { Curso } from '../../types';
+import { useAlert } from '../../components/ui/AlertBadge';
 // Mock data - depois substitui pelo service real
 
  
@@ -19,6 +24,11 @@ export const Courses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('Todos Status');
   const [filtroDisciplina, setFiltroDisciplina] = useState<string>('Todas disciplinas');
+  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
+  const [syncStats, setSyncStats] = useState(0);
+  const [isExpanded,setExpanded]=useState(false)
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); // ✅ Hook correto
   const nav = useNavigate();
 
   const abrirCurso = (cursoId: string) => {
@@ -26,32 +36,91 @@ export const Courses = () => {
     nav(`/cursos/${cursoId}`);
   };
 
-const { status, disciplinas } = useMemo(() => {
-    const stats = ['Todos Status', 'Ativos', 'Inativos'];
-    
-    const todasDisciplinas = cursos.flatMap(curso => 
-        curso.disciplinas.filter(disciplina => disciplina && disciplina.trim() !== "")
-    );
-    
-    const disciplinasUnicas = ['Todas disciplinas', ...new Set(todasDisciplinas)];
-    
-    return {
-        status: stats,
-        disciplinas: disciplinasUnicas
-    };
-}, [cursos]); 
+  const { status, disciplinas } = useMemo(() => {
+      const stats = ['Todos Status', 'Ativos', 'Inativos'];
+      
+      const todasDisciplinas = cursos.flatMap(curso => 
+          curso.disciplinas.filter(disciplina => disciplina && disciplina.trim() !== "")
+      );
+      
+      const disciplinasUnicas = ['Todas disciplinas', ...new Set(todasDisciplinas)];
+      
+      return {
+          status: stats,
+          disciplinas: disciplinasUnicas
+      };
+  }, [cursos]); 
 
 
   useEffect(() => {
     Reload();
   }, []);
 
+   useEffect(() => {
+      // Monitorar status online
+      const handleOnline = () => setOnlineStatus(true);
+      const handleOffline = () => setOnlineStatus(false);
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      
+      // Carregar estatísticas de sincronização
+      const loadSyncStats = async () => {
+        try {
+          const turmasPendentes = await getPendingCount("cursos");
+          setSyncStats(turmasPendentes);
+        } catch (error) {
+          console.error('Erro ao carregar sync stats:', error);
+        }
+      };
+      
+      loadSyncStats();
+      
+      // Ouvir eventos de sincronização
+      const handleSyncUpdate = () => {
+        loadSyncStats();
+      };
+      
+      window.addEventListener('sync-pending', handleSyncUpdate);
+      window.addEventListener('sync-complete', handleSyncUpdate);
+      
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('sync-pending', handleSyncUpdate);
+        window.removeEventListener('sync-complete', handleSyncUpdate);
+      };
+    }, []);
+    
+    
+    const handleForceSync = async () => {
+      try {
+        await cursosService.syncCursos();
+        Reload();
+         showAlert({
+          type: 'success',
+          title: 'Sincronização concluída!',
+          message: 'Os dados foram sincronizados com o servidor.',
+          duration: 3000
+        });
+      
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          title: 'Erro na sincronização',
+          message: 'Não foi possível sincronizar com o servidor.',
+          duration: 5000
+        });
+      };
+    };
+        
+
   function Reload(){
   localStorage.setItem("last_rota","/cursos")
   const loadCursos = async () => {
     try {
       setLoading(true);
-      const cursosData = await cursosService.getCourse();
+      const cursosData = await cursosService.getCourses();
       setCursos(cursosData||[]);
        
     } catch (error) {
@@ -110,11 +179,37 @@ const { status, disciplinas } = useMemo(() => {
     return matchesSearch  && matchesStatus && matchesDisciplinas;
   });
 
-  const deleteCurso = (cursoId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este curso?')) {
-      setCursos(prev => prev.filter(curso => curso.id !== cursoId));
-    }
-  };
+  const deleteCurso = async (curso:Course) => {
+      const confirmed = await confirm({
+          type: 'delete',
+          title: 'Excluir Curso',
+          message: `Tem certeza que deseja excluir ${curso.nome}? Todos dados ligados a ele permanecerão.`,
+          isDestructive: true,
+          confirmText: 'Excluir',
+          onConfirm: async () => {
+            try {
+              await cursosService.deleteCourse(curso.id);
+              setCursos(cursos.filter(t => t.id !== curso.id));
+              showAlert({
+                type: 'success',
+                title: 'Curso excluído!',
+                message: `${curso.nome} foi removido do sistema.`,
+                duration: 3000
+              });
+              
+            } catch (error) {
+              showAlert({
+                type: 'error',
+                title: 'Erro ao excluir',
+                message: 'Não foi possível excluir o turma. Verifique sua conexão.',
+                duration: 5000
+              });
+            }
+          }
+        });
+    };
+
+
 
     if (loading) {
     return (
@@ -125,13 +220,17 @@ const { status, disciplinas } = useMemo(() => {
   }
 
   return (
-    <div className="space-y-6 p-4  dark:bg-gray-900 min-h-screen">
+    <>
+        <div className="space-y-6 p-4  dark:bg-gray-900 min-h-screen">
       {/* Cabeçalho com Busca Integrada */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Cursos</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Cursos</h1>
+              <SyncStatusBadge tableName="cursos" />
+            </div>
           <p className="text-gray-600 dark:text-gray-100 mt-1">Gerencie os cursos da instituição</p>
         </motion.div>
         
@@ -149,7 +248,110 @@ const { status, disciplinas } = useMemo(() => {
           </Link>
         </div>
       </div>
+      {syncStats > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden"
+        >
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 
+                        border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                    <FiAlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-1">
+                    {syncStats} curso{syncStats !== 1 ? 's' : ''} pendente{syncStats !== 1 ? 's' : ''}
+                  </h3>
+                  <p className="text-sm text-orange-700 dark:text-orange-400/80">
+                    {!onlineStatus 
+                      ? 'Conecte-se à internet para sincronizar os dados.'
+                      : 'Estes registros foram modificados offline e aguardam sincronização.'}
+                  </p>
+                </div>
+              </div>
 
+              {(
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleForceSync}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white 
+                            font-medium rounded-lg text-sm transition-colors"
+                  >
+                    Sincronizar Agora
+                  </button>
+                 <button
+                     onClick={() => setExpanded(!isExpanded)}
+                    className="px-4 py-2 border border-orange-300 dark:border-orange-700 
+                            text-orange-700 dark:text-orange-400 font-medium rounded-lg 
+                            text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 
+                            transition-colors"
+                  >
+                    {isExpanded ? 'Ocultar' : 'Ver Detalhes'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Detalhes Expandíveis */}
+            <motion.div
+              initial={false}
+              animate={{ height: isExpanded ? 'auto' : 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
+                <div className="space-y-3">
+                  {cursos
+                    .filter(curso => curso.sync_status === 'pending')
+                    .slice(0, 3)
+                    .map((curso, index) => (
+                      <motion.div
+                        key={curso.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 
+                                rounded-lg border border-orange-100 dark:border-orange-900/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900 
+                                        flex items-center justify-center">
+                            <FiBook className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {curso.nome}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {curso.preco} • {curso.duracao || 'Sem turma'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full 
+                                      bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                          {curso.id.startsWith('local_') ? 'Novo' : 'Alterado'}
+                        </span>
+                      </motion.div>
+                    ))}
+                  
+                  {syncStats > 3 && (
+                    <div className="text-center">
+                      <span className="text-sm text-orange-600 dark:text-orange-400">
+                        + {syncStats - 3} mais pendentes
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
       {/* Filtros Rápidos */}
       <div className="flex flex-col sm:flex-row gap-4 p-4 px-0">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
@@ -389,7 +591,7 @@ const { status, disciplinas } = useMemo(() => {
                       <FiEdit size={16} className="inline" />
                     </Link>
                     <button
-                      onClick={() => deleteCurso(curso.id)}
+                      onClick={() => deleteCurso(curso)}
                       className="text-red-600 hover:text-red-900 dark:hover:text-red-400 ml-2"
                     >
                       <FiTrash2 size={16} className="inline" />
@@ -413,7 +615,11 @@ const { status, disciplinas } = useMemo(() => {
           </div>
         )}
       </div>
+
+     
     </div>
+     <ModalComponent/>
+    </>
   );
 };
 

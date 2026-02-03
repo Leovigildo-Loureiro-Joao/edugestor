@@ -8,6 +8,7 @@ import bg from '../../assets/funcionario-que-trabalha-num-ambiente-de-comerciali
 import { FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAlert } from '../ui/AlertBadge.tsx';
 
 export {logo,logoBlack};
 const Login = () => {
@@ -25,6 +26,7 @@ const Login = () => {
   
   const { user, login, register, loginWithGoogle, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const { showAlert } = useAlert(); 
   const location = useLocation();
 
   // Frases para a máquina de escrever
@@ -133,6 +135,12 @@ const Login = () => {
         navigate('/welcome');
       }
     } catch (error) {
+       showAlert({
+            title:"Erro de autenticação",
+            type:"error",
+            duration:5000,
+            message:"Contacte ao administrador para verificar suas permissões"
+          })
       console.error('Erro de autenticação:', error);
       // O erro já é tratado no AuthContext
     }
@@ -146,6 +154,12 @@ const Login = () => {
       await loginWithGoogle();
       // O redirecionamento é feito pelo próprio Supabase
     } catch (error) {
+      showAlert({
+            title:"Erro no login com Google",
+            type:"error",
+            duration:5000,
+            message:"Contacte ao administrador para verificar suas permissões"
+          })
       console.error('Erro no login com Google:', error);
       setFormError('Erro ao tentar login com Google. Tente novamente.');
     }

@@ -14,57 +14,53 @@ export class CacheManager {
   }
 
   // 🔹 SET: Guardar dados no cache
-  set(key: string, data: any, ttl?: number) {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now()
-    });
-
-    // Auto-expiração
-    setTimeout(() => {
-      this.delete(key);
-    }, ttl || this.DEFAULT_TTL);
-
-    // Também salvar no localStorage para persistência
-    try {
-      localStorage.setItem(`cache_${key}`, JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      console.warn('LocalStorage cheio, cache apenas em memória');
+   getLatest(baseKey: string): any {
+    const keys = Object.keys(localStorage)
+      .filter(key => key.startsWith(`${baseKey}_`))
+      .sort((a, b) => {
+        // Ordenar por timestamp ou versão mais recente
+        return b.localeCompare(a);
+      });
+    
+    if (keys.length > 0) {
+      return this.get(keys[0]);
     }
-
-    console.log(`💾 Cache salvo: ${key}`);
-  }
-
-  // 🔹 GET: Buscar dados do cache
-  get(key: string, maxAge?: number): any | null {
-    // 1. Tentar memória RAM primeiro (mais rápido)
-    const memoryCache = this.cache.get(key);
-    if (memoryCache && this.isValid(memoryCache.timestamp, maxAge)) {
-      console.log(`⚡ Cache HIT (RAM): ${key}`);
-      return memoryCache.data;
-    }
-
-    // 2. Tentar localStorage (persistente)
-    try {
-      const stored = localStorage.getItem(`cache_${key}`);
-      if (stored) {
-        const { data, timestamp } = JSON.parse(stored);
-        if (this.isValid(timestamp, maxAge)) {
-          // Atualizar cache RAM
-          this.cache.set(key, { data, timestamp });
-          console.log(`💿 Cache HIT (Storage): ${key}`);
-          return data;
-        }
-      }
-    } catch (e) {
-      // Storage cheio ou problema
-    }
-
-    console.log(`❌ Cache MISS: ${key}`);
     return null;
+  }
+  
+  // Adicionar TTL (Time To Live)
+  set(key: string, value: any, options?: { ttl?: number, version?: string }) {
+    const item = {
+      value,
+      timestamp: Date.now(),
+      ttl: options?.ttl,
+      version: options?.version
+    };
+    
+    try {
+      localStorage.setItem(key, JSON.stringify(item));
+    } catch (error) {
+      this.clear();
+    }
+  }
+  
+  get(key: string): any {
+    const itemStr = localStorage.getItem(key);
+    if (!itemStr) return null;
+    
+    try {
+      const item = JSON.parse(itemStr);
+      
+      // Verificar se o cache expirou
+      if (item.ttl && (Date.now() - item.timestamp > item.ttl)) {
+        this.delete(key);
+        return null;
+      }
+      
+      return item.value;
+    } catch (e) {
+      return null;
+    }
   }
 
   // 🔹 DELETE: Remover do cache
@@ -113,6 +109,45 @@ export class CacheManager {
   private isValid(timestamp: number, maxAge?: number): boolean {
     const age = Date.now() - timestamp;
     return age < (maxAge || this.DEFAULT_TTL);
+  }
+
+  getStrictMode(): boolean {
+    return localStorage.getItem('cache_strict_mode') === 'true';
+  }
+  
+  setStrictMode(enabled: boolean): void {
+    localStorage.setItem('cache_strict_mode', enabled.toString());
+  }
+  
+  getCurrentVersion(keyPattern: string): string | null {
+    const keys = Object.keys(localStorage)
+      .filter(key => key.startsWith(keyPattern))
+      .sort((a, b) => b.localeCompare(a)); // Mais recente primeiro
+    
+    if (keys.length > 0) {
+      const item = this.getWithMetadata(keys[0]);
+      return item?.metadata?.version || null;
+    }
+    return null;
+  }
+  
+  getWithMetadata(key: string): any {
+    const itemStr = localStorage.getItem(key);
+    if (!itemStr) return null;
+    
+    try {
+      return JSON.parse(itemStr);
+    } catch {
+      return null;
+    }
+  }
+  
+  // Método para emitir eventos (se necessário)
+  emitCacheInvalidated(type: string): void {
+    const event = new CustomEvent('cache-invalidated', {
+      detail: { type, timestamp: Date.now() }
+    });
+    window.dispatchEvent(event);
   }
 
   // 🔹 Status do cache

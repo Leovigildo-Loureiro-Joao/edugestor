@@ -16,10 +16,13 @@ import { toast } from 'react-hot-toast';
 import { TransacaoFormModal } from '../../components/finance/TransacaoFormModal';
 import { useNavigate } from 'react-router-dom';
 import { tr } from 'date-fns/locale';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
 
 export const TransacoesPage = () => {
   const navigate = useNavigate();
-  
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState({
@@ -34,6 +37,8 @@ export const TransacoesPage = () => {
   const [tipoTransacao, setTipoTransacao] = useState<'entrada' | 'saida'>('entrada');
   const [transacaoEditando, setTransacaoEditando] = useState<Transacao | null>(null);
   const [mostrarFiltrosAvancados, setMostrarFiltrosAvancados] = useState(false);
+  const [transacaoSel,setTransacaoSel]=useState<Transacao|null>()
+  const [comfirm, setComfirm] = useState(false);
 
   // Carregar transações
   const carregarTransacoes = async () => {
@@ -119,19 +124,22 @@ export const TransacoesPage = () => {
   }, [transacoesFiltradas]);
 
   // Handler para deletar transação
-  const handleDeletarTransacao = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta transação?')) {
-      return;
-    }
-
-    try {
-      await transacaoService.deleteTransacao(id);
-      toast.success('Transação excluída com sucesso!');
-      carregarTransacoes();
-    } catch (error) {
-      console.error('Erro ao excluir transação:', error);
-      toast.error('Erro ao excluir transação');
-    }
+  const handleDeletarTransacao = async () => {
+    if (!comfirm) {
+      setComfirm(true)
+    }else if(transacaoSel){
+      setComfirm(false)
+      try {
+        await transacaoService.deleteTransacao(transacaoSel.id);
+        toast.success('Transação excluída com sucesso!');
+        carregarTransacoes();
+      } catch (error) {
+        console.error('Erro ao excluir transação:', error);
+        toast.error('Erro ao excluir transação');
+      }
+      setTransacaoSel(null)
+    }  
+    
   };
 
   // Exportar para CSV
@@ -180,6 +188,7 @@ export const TransacoesPage = () => {
   ];
 
   return (
+
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
        <button
           onClick={() => navigate("/financeiro")}
@@ -683,7 +692,7 @@ export const TransacoesPage = () => {
                             </button>
                             
                             <button
-                              onClick={() => handleDeletarTransacao(transacao.id)}
+                              onClick={() => {setTransacaoSel(transacao);handleDeletarTransacao()}}
                               className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                               title="Excluir"
                             >
@@ -747,6 +756,7 @@ export const TransacoesPage = () => {
           transacaoEditando={transacaoEditando}
         />
       </div>
+       
     </div>
   );
 };

@@ -8,6 +8,8 @@ import { CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
 import { SelectTyped } from '../students/StudentForm';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { useConfirmModal } from '../ui/ComfirmModal';
+import { useAlert } from '../ui/AlertBadge';
 
 
 
@@ -15,7 +17,8 @@ export const CourseForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   const [loading, setLoading] = useState(false);
   const [novaDisciplina, setNovaDisciplina] = useState('');
   const [formData, setFormData] = useState<CourseFormData>({
@@ -47,10 +50,11 @@ export const CourseForm = () => {
   const loadCourseData = async () => {
     try {
 
-      const courseData = await cursosService.getCourseId(id||"");
+      const courseData = await cursosService.getCoursesId(id||"");
       setFormData(courseData as CourseFormData);  
        console.log(courseData)
     } catch (error) {
+      
       console.error('Erro ao carregar curso:', error);
     }
   };
@@ -61,15 +65,33 @@ export const CourseForm = () => {
     
     try {
       if (isEditing) {;
+        showAlert({
+          title:"Operação concluida",
+          type:"success",
+          duration:3000,
+          message:"Curso atualizado com sucesso"
+        })
         console.log('Curso atualizado:', formData);
         cursosService.updateCourse(id||"",formData)
       } else {
+         showAlert({
+          title:"Operação concluida",
+          type:"success",
+          duration:3000,
+          message:"Curso criado com sucesso"
+        })
         console.log('Curso criado:', formData);
         cursosService.create(formData)
       }
       
       navigate('/cursos');
     } catch (error) {
+      showAlert({
+          title:"Erro ao salvar",
+          type:"error",
+          duration:5000,
+          message:"Não foi possivel efectuar a operação"
+        })
       console.error('Erro ao salvar curso:', error);
     } finally {
       setLoading(false);
@@ -338,6 +360,7 @@ export const CourseForm = () => {
             </div>
           </form>
         </motion.div>
+        <ModalComponent/>
       </div>
     </div>
   );

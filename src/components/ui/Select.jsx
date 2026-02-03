@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import { FaChevronDown } from "react-icons/fa6"
 import { RxPerson } from "react-icons/rx"
 
-export const Select = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
+export const Select = ({ vect = [], icon: Icon = RxPerson, onChange, value,multiIcon=false }) => {
     value==""?vect[0]:value
-    return <SelectChevron vect={vect} icon={Icon} onChange={onChange} value={value}/>
+    return <SelectChevron vect={vect} icon={multiIcon&&vect[0].icone||Icon} onChange={onChange} multiIcon={multiIcon} value={value}/>
 }
 
-const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) => {
+const SelectChevron = ({ vect = [], icon: Icon = RxPerson,multiIcon=false, onChange, value }) => {
     const dropdownRef = useRef(null)
     
     const normalizedVect = vect.map(item => 
-        typeof item === 'string' ? { value: item, label: item } : item
+        typeof item === 'string' ? { value: item, label: item,icone:item } : item
     )
 
     const findSelectedItem = (val) => {
@@ -83,7 +83,7 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) =>
                 aria-expanded={open}
             >
                 <span className="flex items-center gap-2 text-sm dark:text-gray-100 text-gray-700">
-                    {Icon && <Icon className="text-gray-500 dark:text-gray-200" />}
+                    {(multiIcon && selected?.icone)||(Icon  && <Icon className="text-gray-500 dark:text-gray-200" />)}
                     {selected?.label || "Selecione..."}
                 </span>
                 <FaChevronDown className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -116,7 +116,11 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson, onChange, value }) =>
                                     role="option"
                                     aria-selected={selected?.value === item.value}
                                 >
-                                    {item.label}
+                                   <span className="flex gap-2 items-center">
+                                     {typeof item.icone !=='string'?item.icone:""}
+                                    <span className="p-">  {item.label}</span>
+                                   </span>
+
                                 </button>
                             </li>
                         ))}

@@ -26,6 +26,8 @@ import { useParams } from 'react-router-dom';
 import MetaComponent from '../../components/strategy/Meta';
 import  RotinaComponent  from '../../components/strategy/Rotina';
 import EventosPorMeta from '../../components/strategy/EventoPorMeta';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
 
 const EstrategiaPage = () => {
   const [activeTab, setActiveTab] = useState('metas');
@@ -33,7 +35,8 @@ const EstrategiaPage = () => {
   const [metas, setMetas] = useState<Meta[]>([]);
   const [rotinas, setRotinas] = useState<Rotina[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   const [newTask, setNewTask] = useState('');
   const seccaoAtual = useParams().seccao || 'metas';
 
@@ -226,7 +229,7 @@ const EstrategiaPage = () => {
           ))}
         </div>
       </div>
-
+      <ModalComponent/>
       {/* Tab Content */}
       <AnimatePresence mode="wait">
         <motion.div

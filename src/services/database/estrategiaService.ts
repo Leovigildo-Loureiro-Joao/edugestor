@@ -1,4 +1,4 @@
-import { Meta } from "../../types/eventos";
+import { IndicadorDesempenho, Meta, SubMeta } from "../../types/eventos";
 import { generateUniqueId } from "../../utils/idGenarator";
 import db, { supabase } from "./db";
 import { transacaoService } from "./transacaoService";
@@ -406,23 +406,41 @@ export const estrategiaService = {
     }
   },
 
-   async updateKPI(metaId: string, kpiId: string, valorAtual: number): Promise<void> {
+ async removeKPI(metaId: string, kpiId: string){
+      const meta = await this.getMetasID(metaId);
+      if (!meta || !meta.kpis) return;
+
+      const kpi = meta.kpis.length==1?[]:meta.kpis.map(k => {
+        if(k.id !== kpiId)
+        return {...k}
+      });
+        // Salvar alterações
+      meta.kpis=kpi
+      const progresso=await this.calcularProgressoMeta(meta);
+      await this.updateMeta(metaId, {
+        kpis: kpi,
+        progresso: progresso
+      });
+      
+ },
+
+   async updateKPI(metaId: string, kpiId: string,kpi: IndicadorDesempenho): Promise<void> {
     try {
       const meta = await this.getMetasID(metaId);
       if (!meta || !meta.kpis) return;
 
       const kpiIndex = meta.kpis.findIndex(k => k.id === kpiId);
       if (kpiIndex >= 0) {
-        meta.kpis[kpiIndex].valor_atual = valorAtual;
+        meta.kpis[kpiIndex] = {...kpi};
         meta.kpis[kpiIndex].ultima_atualizacao = new Date().toISOString();
 
         // Recalcular progresso da meta
-        await this.calcularProgressoMeta(meta);
+        const progresso=await this.calcularProgressoMeta(meta);
         
         // Salvar alterações
         await this.updateMeta(metaId, {
           kpis: meta.kpis,
-          progresso: meta.progresso
+          progresso: progresso
         });
       }
     } catch (error) {
@@ -481,6 +499,47 @@ export const estrategiaService = {
     }
   },
 
+
+   async updateSubMeta(metaId: string, subMeta: SubMeta): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta || !meta.submetas) return;
+
+      const subMetaIndex = meta.submetas.findIndex(sm => sm.id === subMeta.id);
+      if (subMetaIndex >= 0) {
+        meta.submetas[subMetaIndex] = subMeta;
+        await this.updateMeta(metaId, { submetas: meta.submetas });
+        const progresso=await this.calcularProgressoMeta(meta);
+        await this.updateMeta(metaId, { progresso });
+
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar sub-meta:', error);
+      throw error;
+    }
+  },
+
+  async removeSubMeta(metaId: string, subMeta: SubMeta): Promise<void> {
+    try {
+      const meta = await this.getMetasID(metaId);
+      if (!meta || !meta.submetas) return;
+
+      const submetas = meta.submetas.length==1?[]:meta.submetas.map(sm => {
+        if(sm.id!=subMeta.id)
+          return {...sm};
+      });
+      meta.submetas=submetas;
+      
+      const progresso=await this.calcularProgressoMeta(meta);
+      await this.updateMeta(metaId, { progresso,submetas });
+
+      
+    } catch (error) {
+      console.error('Erro ao atualizar sub-meta:', error);
+      throw error;
+    }
+  },
+
   /**
    * Atualizar status de uma sub-meta
    */
@@ -500,7 +559,9 @@ export const estrategiaService = {
         }
 
         await this.updateMeta(metaId, { submetas: meta.submetas });
-        await this.calcularProgressoMeta(meta);
+        const progresso=await this.calcularProgressoMeta(meta);
+        await this.updateMeta(metaId, { submetas: meta.submetas,progresso });
+
       }
     } catch (error) {
       console.error('Erro ao atualizar sub-meta:', error);
@@ -519,9 +580,9 @@ export const estrategiaService = {
   async calcularProgressoMeta(meta: Meta): Promise<number> {
     let progressoTotal = 0;
     let componentesAtivos = 0;
-
+    let prSec=[meta.kpis && meta.kpis.length > 0,meta.submetas && meta.submetas.length > 0,meta.orcamento_previsto && meta.orcamento_previsto > 0]
     // 1. Progresso baseado em KPIs (50%)
-    if (meta.kpis && meta.kpis.length > 0) {
+    if (prSec[0]) {
       let progressoKPIs = 0;
       let pesoTotal = 0;
 
@@ -534,25 +595,29 @@ export const estrategiaService = {
         progressoKPIs += progressoKPI * peso;
         pesoTotal += peso;
       });
-
       const mediaKPIs = pesoTotal > 0 ? progressoKPIs / pesoTotal : 0;
-      progressoTotal += mediaKPIs * 0.5;
+      progressoTotal += mediaKPIs * ((prSec[1]&&prSec[2])||(prSec[1]&&!prSec[2])||(!prSec[1]&&prSec[2])?
+                    0.5:1);
       componentesAtivos++;
     }
 
     // 2. Progresso baseado em sub-metas (30%)
-    if (meta.submetas && meta.submetas.length > 0) {
+    if (prSec[1]) {
+
       const concluidas = meta.submetas.filter(sm => sm.status === 'concluida').length;
       const progressoSubMetas = (concluidas / meta.submetas.length) * 100;
-      progressoTotal += progressoSubMetas * 0.3;
+      progressoTotal += progressoSubMetas * ((prSec[0]&&prSec[2])?
+                    0.3:((!prSec[0]&&prSec[2])||(prSec[0]&&!prSec[2])?0.5:1));
       componentesAtivos++;
     }
 
     // 3. Progresso baseado em orçamento (20%)
-    if (meta.orcamento_previsto && meta.orcamento_previsto > 0) {
+    if (prSec[2]) {
+
       const orcamentoAlocado = meta.orcamento_alocado || 0;
       const progressoOrcamento = Math.min((orcamentoAlocado / meta.orcamento_previsto) * 100, 100);
-      progressoTotal += progressoOrcamento * 0.2;
+      progressoTotal += progressoOrcamento * ((prSec[0]&&prSec[1])?
+                    0.2:((!prSec[0]&&prSec[1])||(prSec[0]&&!prSec[1])?0.5:1));
       componentesAtivos++;
     }
 
@@ -560,10 +625,19 @@ export const estrategiaService = {
     if (componentesAtivos === 0) return 0;
 
     // Ajustar se não tem todos os componentes
-    const fatorAjuste = 3 / componentesAtivos; // 3 = total de componentes possíveis
+    const fatorAjuste=this.fatorAjuste(prSec,componentesAtivos); // 3 = total de componentes possíveis
+    
     const progressoFinal = Math.min(progressoTotal * fatorAjuste, 100);
 
     return Number(progressoFinal.toFixed(1));
+  },
+
+  fatorAjuste(prSec:boolean[],componentesAtivos:number):number{
+    if((prSec[0]&&!prSec[1]&&!prSec[2])||(!prSec[0]&&prSec[1]&&!prSec[2])||(!prSec[0]&&!prSec[1]&&prSec[2]))
+      return 1
+    else if((prSec[0]&&prSec[1]&&!prSec[2])||(prSec[0]&&prSec[2]&&!prSec[1])||(prSec[2]&&prSec[1]&&!prSec[0]))
+      return 1
+    return 3 / componentesAtivos
   },
 
   // ============ ALOCAÇÃO DE RECURSOS ============
@@ -594,11 +668,15 @@ export const estrategiaService = {
       const alocacoesAtualizadas = meta.alocacoes 
         ? [...meta.alocacoes, alocacao] 
         : [alocacao];
+      
+        // Recalcular progresso
+     const progresso= await this.calcularProgressoMeta(await this.getMetasID(metaId));
 
       // Atualizar meta
       await this.updateMeta(metaId, {
         orcamento_alocado: novoOrcamentoAlocado,
-        alocacoes: alocacoesAtualizadas
+        alocacoes: alocacoesAtualizadas,
+        progresso
       });
 
       // Criar transação financeira
@@ -610,8 +688,7 @@ export const estrategiaService = {
         valor: alocacaoData.valor
       });
 
-      // Recalcular progresso
-      await this.calcularProgressoMeta(await this.getMetasID(metaId));
+      
 
       console.log(`💰 ${alocacaoData.valor} AOA alocados para meta ${meta.titulo}`);
     } catch (error) {

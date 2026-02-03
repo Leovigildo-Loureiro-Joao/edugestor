@@ -1,12 +1,13 @@
 // components/estrategia/SubMetasManager.tsx
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiCheckSquare, FiCalendar, FiUsers, FiDollarSign, FiPlus, FiSave } from 'react-icons/fi';
-import { Meta } from '../../types/eventos';
+import { FiCheckSquare, FiCalendar, FiUsers, FiDollarSign, FiPlus, FiSave, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { Meta, SubMeta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import { toast } from 'react-hot-toast';
 import { ModalSubmeta } from './SubMeta';
 import { KPIManager } from './KPIManager';
+import { generateUniqueId } from '../../utils/idGenarator';
 
 interface SubMetasManagerProps {
   meta: Meta;
@@ -15,20 +16,28 @@ interface SubMetasManagerProps {
 
 export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate }) => {
   const [showForm, setShowForm] = useState(false);
-  const [novaSubMeta, setNovaSubMeta] = useState({
+  const [editando, setEditando] = useState(false);
+  const [novaSubMeta, setNovaSubMeta] = useState<SubMeta>({
+    id:generateUniqueId(),
     titulo: '',
     descricao: '',
     data_inicio: new Date().toISOString().split('T')[0],
     data_fim: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     responsavel: '',
+    status:"pendente",
     custo_estimado: 0
   });
 
   const handleSaveSubMeta = async () => {
     try {
+      if (editando) {
+        await estrategiaService.updateSubMeta(meta.id, novaSubMeta);  
+      }else
       await estrategiaService.addSubMeta(meta.id, novaSubMeta);
       setShowForm(false);
       setNovaSubMeta({
+        id:generateUniqueId(),
+        status:"em_andamento",
         titulo: '',
         descricao: '',
         data_inicio: new Date().toISOString().split('T')[0],
@@ -41,6 +50,18 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
     } catch (error) {
       toast.error('Erro ao adicionar sub-meta');
     }
+  };
+
+  const handleEditSubMeta = async (submeta:SubMeta) => {
+    setEditando(true)
+    setNovaSubMeta(submeta)
+    setShowForm(true)
+  };
+
+   const handleDelete = async (submeta:SubMeta) => {
+      await estrategiaService.removeSubMeta(meta.id, submeta);
+      onUpdate();
+      toast.success('Sub-meta removida com sucesso!');
   };
 
   const handleUpdateStatus = async (subMetaId: string, status: any) => {
@@ -56,8 +77,8 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
   return (
      <motion.div
               initial={{x:-20,opacity:0}}
-              animate={{x:0,opacity:1}} className="py-6 ">
-      <div className="flex justify-between items-center">
+              animate={{x:0,opacity:1}} className=" ">
+      <div className="flex justify-between items-center pb-4">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">
           Sub-metas / Ações
         </h3>
@@ -169,6 +190,22 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
                        status === 'atrasada' ? 'Atrasar' : 'Pendente'}
                     </button>
                   ))}
+                </div>
+                 <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() =>handleEditSubMeta(subMeta)}
+                    className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Editar SubMeta"
+                  >
+                    <FiEdit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(subMeta)}
+                    className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Excluir SubMeta"
+                  >
+                    <FiTrash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             );

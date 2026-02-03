@@ -7,6 +7,8 @@ import { Avaliacao } from "../../types/avaliacao";
 import { Propina } from "../../types/propina";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { profileService } from "./profileService";
+import { get } from "http";
+import { getPendingCount } from "../../utils/emitPendingSync";
 
 // Tipos
 export interface NotificacaoMeta {
@@ -116,7 +118,7 @@ export const notificacaoService = {
         lida: false,
         data_envio: notificacaoData.data_envio || now,
         meta: notificacaoData.meta || {},
-        instituicao_id: notificacaoData.instituicao_id || "",
+        instituicao_id: notificacaoData.instituicao_id || instituicaoIdValue() || "",
         aluno_id: notificacaoData.aluno_id,
         turma_id: notificacaoData.turma_id,
         user_id: notificacaoData.user_id,
@@ -205,7 +207,7 @@ export const notificacaoService = {
       await this.verificarTurmasEstado();
 
 
-      await this.verificarCursoEstado();
+      await this.verificarPending();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
       console.log('✅ Verificações automáticas concluídas');
@@ -225,6 +227,30 @@ export const notificacaoService = {
           tipo:TipoNotificacao.SISTEMA
         })
       })
+     
+  },
+  async verificarPending(){
+      const tables = [
+        'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
+        'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
+        'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios'
+      ];
+      for (const table of tables) {
+        const count=await getPendingCount(table)
+        if (count>0) {
+          this.criarNotificacao(
+            {
+               titulo: 'Sicronize com a internet',
+                corpo: `Possuis dados pendentes da secção ${table} `,
+                tipo: TipoNotificacao.ALERTA,
+                prioridade: PrioridadeNotificacao.ALTA,
+                destinatario_tipo: 'todos',
+            }
+          )
+        }
+        
+      }
+      
      
   },
   
@@ -353,7 +379,9 @@ export const notificacaoService = {
         corpo: `${aluno.nome_completo}: ${propinas.length} pagamento(s) totalizando R$ ${total.toFixed(2)}`,
         tipo: TipoNotificacao.ALUNO_FINANCEIRO,
         prioridade: PrioridadeNotificacao.MEDIA,
+        instituicao_id: instituicaoIdValue()||"",
         aluno_id: alunoId,
+        
         destinatario_tipo: 'responsavel',
         meta: { 
           propinas_ids: propinas.map(p => p.id),

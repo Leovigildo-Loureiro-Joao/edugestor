@@ -14,7 +14,7 @@ interface ModalDetalhesAulaProps {
   setShowForm: React.Dispatch<React.SetStateAction<boolean>>;
   setAulaEditando: React.Dispatch<React.SetStateAction<Aula | null>>;
   handleEditarAula: (aulaAtualizada: AulaFormData) => Promise<void>;
-  handleDeletarAula: (id: string) => Promise<void>;
+  handleDeletarAula: (aula:Aula) => Promise<void>;
 }
 
 export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
@@ -281,7 +281,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                   </button>
                   
                   <button
-                    onClick={() => handleDeletarAula(aulaExpandida.id)}
+                    onClick={() => handleDeletarAula(aulaExpandida)}
                     className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium flex items-center justify-center gap-3 transition-all"
                   >
                     <FiTrash2 className="h-5 w-5" />

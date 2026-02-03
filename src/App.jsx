@@ -24,7 +24,7 @@ import CourseDetails from './pages/Courses/CursoPage.tsx';
 import { CompletarMatricula } from './pages/Finance/RegistraMatricula.tsx';
 import { configService } from './services/database/config.ts';
 import EstrategiaPage from './pages/Estrategia/Estrategia.tsx';
-import TarefaPage from './components/strategy/TarefaPage.tsx';
+import TarefaPage from './pages/Estrategia/TarefaPage.tsx';
 import MetaPage from './components/strategy/MetaForm.tsx';
 import EventosPage from './components/event/EventosPage.tsx';
 import TurmaForm from './components/turmas/TurmasForm.tsx';
@@ -38,6 +38,7 @@ import ProfilePage from './pages/User/ProfilePage.tsx';
 import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
 import { backgroundService } from './services/database/backgroundService.ts';
 import { notificacaoService } from './services/database/notificacaoService.ts';
+import { AlertProvider } from './components/ui/AlertBadge.tsx';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -203,78 +204,81 @@ useEffect(() => {
 
   // Sistema normal (já configurado)
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* ROTA PÚBLICA DE LOGIN */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* ROTA DE CALLBACK DO GOOGLE (PÚBLICA) */}
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          
-          {/* ROTA RAIZ REDIRECIONA PARA LOGIN OU DASHBOARD */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* ROTA DE PROMOÇÃO A ADMIN (PROTEGIDA) */}
-          <Route path="/setup/promote-admin" element={
-            <ProtectedRoute>
-              <PromoteToAdmin />
-            </ProtectedRoute>
-          } />
+    
+      <AlertProvider>
+        <AuthProvider>
+        <Router>
+          <Routes>
+            {/* ROTA PÚBLICA DE LOGIN */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* ROTA DE CALLBACK DO GOOGLE (PÚBLICA) */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            {/* ROTA RAIZ REDIRECIONA PARA LOGIN OU DASHBOARD */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            
+            {/* ROTA DE PROMOÇÃO A ADMIN (PROTEGIDA) */}
+            <Route path="/setup/promote-admin" element={
+              <ProtectedRoute>
+                <PromoteToAdmin />
+              </ProtectedRoute>
+            } />
 
 
-        
           
-          {/* TODAS AS ROTAS PROTEGIDAS */}
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <Layout>
-                <Routes>
-                    <Route path="/admin/dashboard" element={
-                      <ProtectedRoute adminOnly>
-                        <AdminDashboard />
-                      </ProtectedRoute>
-                    } />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/alunos" element={<Students />} />
-                  <Route path="/alunos/:id" element={<StudentPage />} />
-                  <Route path="/alunos/novo" element={<StudentNew />} />
-                  <Route path="/alunos/editar/:id" element={<StudentEdit />} />
-                  <Route path="/frequencia" element={<FrequenciaPage/>} />
-                  <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
-                  <Route path="/financeiro" element={<FinanceiroPage/>} />
-                  <Route path="/cursos" element={<Courses/>} />
-                  <Route path="/eventos/add" element={<EventosPage />} />
-                  <Route path="/estrategia/metas/nova" element={<MetaPage />} />
-                  <Route path="/estrategia/metas/editar/:id" element={<MetaPage />} />
-                  <Route path="/estrategia/tarefas/nova" element={<TarefaPage />} />
-                  <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
-                  <Route path="/estrategia/:seccao" element={<EstrategiaPage/>} />
-                  <Route path="/estrategia" element={<EstrategiaPage/>} />
-                  <Route path="/estrategia/metas/:id" element={<MetaDetailsPage />} />
-                  <Route path="/cursos/novo" element={<CursoNew/>} />
-                  <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
-                  <Route path="/cursos/:id" element={<CourseDetails/>} />
-                  <Route path="/financeiro/pagamentos" element={<PagamentosPage/>} />
-                  <Route path="/financeiro/transacoes" element={<TransacoesPage/>} />
-                  <Route path="/financeiro/Pagamento/:alunoId" element={<RegistroPagamentoPage/>} />
-                  <Route path="/financeiro/matricula/:alunoId" element={<CompletarMatricula/>} />
-                  <Route path="/aulas" element={<AulasPage/>} />
-                  <Route path="/turmas" element={<Turmas />} />
-                  <Route path="/turmas/:id" element={<TurmaDetails />} />
-                  <Route path="/turmas/nova" element={<TurmaForm />} />
-                  <Route path="/turmas/editar/:id" element={<TurmaForm />} />
-                  
-                  {/* ROTA 404 */}
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-              </Layout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </Router>
-    </AuthProvider>
+            
+            {/* TODAS AS ROTAS PROTEGIDAS */}
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                      <Route path="/admin/dashboard" element={
+                        <ProtectedRoute adminOnly>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      } />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/alunos" element={<Students />} />
+                    <Route path="/alunos/:id" element={<StudentPage />} />
+                    <Route path="/alunos/novo" element={<StudentNew />} />
+                    <Route path="/alunos/editar/:id" element={<StudentEdit />} />
+                    <Route path="/frequencia" element={<FrequenciaPage/>} />
+                    <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
+                    <Route path="/financeiro" element={<FinanceiroPage/>} />
+                    <Route path="/cursos" element={<Courses/>} />
+                    <Route path="/eventos/add" element={<EventosPage />} />
+                    <Route path="/estrategia/metas/nova" element={<MetaPage />} />
+                    <Route path="/estrategia/metas/editar/:id" element={<MetaPage />} />
+                    <Route path="/estrategia/tarefas/nova" element={<TarefaPage />} />
+                    <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
+                    <Route path="/estrategia/:seccao" element={<EstrategiaPage/>} />
+                    <Route path="/estrategia" element={<EstrategiaPage/>} />
+                    <Route path="/estrategia/metas/:id" element={<MetaDetailsPage />} />
+                    <Route path="/cursos/novo" element={<CursoNew/>} />
+                    <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
+                    <Route path="/cursos/:id" element={<CourseDetails/>} />
+                    <Route path="/financeiro/pagamentos" element={<PagamentosPage/>} />
+                    <Route path="/financeiro/transacoes" element={<TransacoesPage/>} />
+                    <Route path="/financeiro/Pagamento/:alunoId" element={<RegistroPagamentoPage/>} />
+                    <Route path="/financeiro/matricula/:alunoId" element={<CompletarMatricula/>} />
+                    <Route path="/aulas" element={<AulasPage/>} />
+                    <Route path="/turmas" element={<Turmas />} />
+                    <Route path="/turmas/:id" element={<TurmaDetails />} />
+                    <Route path="/turmas/nova" element={<TurmaForm />} />
+                    <Route path="/turmas/editar/:id" element={<TurmaForm />} />
+                    
+                    {/* ROTA 404 */}
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+        </AuthProvider>
+      </AlertProvider>
   );
 }
 

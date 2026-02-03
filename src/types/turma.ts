@@ -18,15 +18,6 @@ export interface Turma extends BaseEntity{
   horarios?:HorarioAula[]
 }
 
-export interface TurmaCompleta extends Turma {
-  horarios?: HorarioAula[];
-  alunos?: (Student & {
-    media?: number;
-    presenca?: number;
-    ultimaAvaliacao?: number;
-  })[];
-}
-
 export interface HorarioAula extends BaseEntity{
   id: string;
   turma_id:string;
@@ -37,6 +28,17 @@ export interface HorarioAula extends BaseEntity{
   sala: string;
   professor_responsavel: string;
 }
+
+export interface TurmaCompleta extends Turma {
+  horarios?: HorarioAula[];
+  alunos?: (Student & {
+    media?: number;
+    presenca?: number;
+    ultimaAvaliacao?: number;
+  })[];
+}
+
+
 
 export type TurmaFormData = Omit<Turma, 
   'id' | 'created_at'|'cursos'|'sync_status'

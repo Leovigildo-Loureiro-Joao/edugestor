@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { FiSave } from "react-icons/fi";
+import { useAlert } from "../ui/AlertBadge";
 
 export const ConfiguracoesSeguranca = () => {
+  const { showAlert } = useAlert(); 
   const [config, setConfig] = useState({
     tempoSessao: 60, // minutos
     tentativasLogin: 3,
@@ -22,7 +24,11 @@ export const ConfiguracoesSeguranca = () => {
   const alterarSenha = async (e: React.FormEvent) => {
     e.preventDefault();
     // Implementar alteração de senha
-    alert('Senha alterada com sucesso!');
+     showAlert({
+        type: 'success',
+        title: 'Senha alterada com sucesso!',
+        duration: 3000
+    });
     setNovaSenha({ atual: '', nova: '', confirmar: '' });
   };
 

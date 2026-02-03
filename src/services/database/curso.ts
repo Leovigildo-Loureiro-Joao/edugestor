@@ -3,7 +3,9 @@ import { alunosService } from ".";
 import { Student } from "../../types";
 import { Course, CourseFormData } from "../../types/curso";
 import { UserProfile } from "../../types/profile";
+import { emitPendingSync } from "../../utils/emitPendingSync";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
 import { supabase } from "../database/db";
 import { cacheManager } from "./cacheManager";
 import db from "./db";
@@ -51,76 +53,280 @@ export const cursosService = {
     }
   },
 
-  // ✅ Buscar todos os cursos
-  async getCourse(): Promise<Course[]> {
+    // ✅ Buscar todos os cursos
+  async getCourses(): Promise<Course[]> {
     try {
       console.log('📋 Buscando cursos...');
       const CACHE_KEY = 'cursos_all';
-      const qtd= await db.cursos.count()
-      const cached = cacheManager.get(CACHE_KEY,qtd);
+      
+      // 1. Criar versão de cache baseada em múltiplos fatores
+      const [cursoCount, turmaCount, alunoCount, lastModified] = await Promise.all([
+        db.cursos.count(),
+        db.turmas.count(),
+        db.alunos.count(),
+        getLastModifiedTimestamp()
+      ]);
+      
+      // 2. Criar chave de cache com versão
+      const cacheVersion = `v${cursoCount}_${turmaCount}_${alunoCount}_${lastModified}`;
+      const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
+      
+      // 3. Tentar cache primeiro
+      const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
+        console.log('✅ Cache HIT para cursos');
         return cached;
       }
-
-      const [todosCursos,todasTurmas,todosAlunos]=await Promise.all([
-          db.cursos
+      
+      console.log('🔄 Cache MISS para cursos, buscando do banco...');
+      
+      // 4. Buscar dados em paralelo com otimizações
+      const instituicaoId = instituicaoIdValue() || "";
+      
+      const [todosCursos, todasTurmas, todosAlunos] = await Promise.all([
+        // Buscar cursos filtrados diretamente do banco
+        db.cursos
           .where("instituicao_id")
-          .equals(instituicaoIdValue()||"")
-          .and(curso=> !curso.deleted)
-          .toArray(),
-          turmaService.getTurmas(),
-          alunosService.getAllStudents(),
-      ])
+          .equals(instituicaoId)
+          .filter(curso => !curso.deleted)
+          .sortBy('nome')
+          .catch(() => []), // Fallback seguro
+        
+        // Usar cache do serviço de turmas se disponível
+        turmaService.getTurmas(),
+        
+        // Usar cache do serviço de alunos se disponível
+        alunosService.getAllStudents()
+      ]);
       
-      // Filtrar os não deletados
-      const cursosAtivos = todosCursos.filter(curso => !curso.deleted);
+      // 5. Otimizar: Criar estruturas de lookup eficientes
+      // Mapa de turmas por curso_id
+      const turmasPorCurso = new Map<string, Turma[]>();
       const turmasAtivas = todasTurmas.filter(turma => !turma.deleted);
-      const alunosAtivos = todosAlunos.filter((aluno:Student) => !aluno.deleted);
       
-      // Ordenar por nome
-      cursosAtivos.sort((a, b) => 
-        (a.nome || '').localeCompare(b.nome || '')
-      );
-      const cursos=cursosAtivos.map(curso=>{
-        const turmas=turmasAtivas.filter(turma=> turma.curso_id==curso.id)
-        const alunosCount = alunosAtivos.filter(aluno => aluno.turma_id && turmasAtivas.some(turma => turma.id === aluno.turma_id && turma.curso_id === curso.id)).length;
-        return {
-          ...curso,
-          alunos: alunosCount,
-          turmas: turmas
+      turmasAtivas.forEach(turma => {
+        if (turma.curso_id) {
+          if (!turmasPorCurso.has(turma.curso_id)) {
+            turmasPorCurso.set(turma.curso_id, []);
+          }
+          turmasPorCurso.get(turma.curso_id)!.push(turma);
         }
-      })
-      cacheManager.set(CACHE_KEY,cursos)
-      console.log(`✅ Encontrados ${cursosAtivos.length} cursos ativos`);
+      });
+      
+      // Mapa de alunos por turma_id para contagem rápida
+      const alunosAtivos = todosAlunos.filter(aluno => !aluno.deleted);
+      const alunosPorTurma = alunosAtivos.reduce((map, aluno) => {
+        if (aluno.turma_id) {
+          map.set(aluno.turma_id, (map.get(aluno.turma_id) || 0) + 1);
+        }
+        return map;
+      }, new Map<string, number>());
+      
+      // 6. Processar cursos de forma eficiente
+      const cursos = todosCursos
+        .filter(curso => !curso.deleted && curso.instituicao_id === instituicaoId)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }))
+        .map(curso => {
+          const turmasDoCurso = turmasPorCurso.get(curso.id) || [];
+          
+          // Calcular total de alunos no curso
+          let alunosCount = 0;
+          if (turmasDoCurso.length > 0) {
+            alunosCount = turmasDoCurso.reduce((total, turma) => {
+              return total + (alunosPorTurma.get(turma.id) || 0);
+            }, 0);
+          }
+          
+          // Calcular estatísticas adicionais
+          const turmasCount = turmasDoCurso.length;
+          const hasActiveTurmas = turmasDoCurso.some(turma => turma.status === 'ativa');
+          
+          return {
+            ...curso,
+            // Informações básicas
+            alunos: alunosCount,
+            turmas: turmasDoCurso,
+            turmas_count: turmasCount,
+            
+            // Estatísticas adicionais (úteis para UI)
+            has_active_turmas: hasActiveTurmas,
+            alunos_por_turma: turmasCount > 0 ? (alunosCount / turmasCount).toFixed(1) : '0',
+            
+            // Metadados para cache
+            _cached_at: Date.now(),
+            _cache_version: cacheVersion
+          };
+        });
+      
+      // 7. Validar se há dados antes de salvar no cache
+      if (cursos.length > 0 || cacheManager.getStrictMode() === false) {
+        // Guardar no cache com TTL e metadados
+        cacheManager.set(cacheKeyWithVersion, cursos, {
+          ttl: 15 * 60 * 1000, // 15 minutos (cursos mudam menos frequentemente)
+          version: cacheVersion,
+          
+        });
+
+         const pendentesCount = cursos.filter(curso => 
+            curso.sync_status === 'pending' || curso.sync_status === 'pending_delete'
+          ).length;
+  
+        if (pendentesCount > 0) {
+          emitPendingSync('cursos', pendentesCount);
+        }
+        
+        // 8. Limpar versões antigas do cache
+        this.cleanOldCourseCache(CACHE_KEY, cacheVersion);
+      }
+      
+      console.log(`✅ Encontrados ${cursos.length} cursos ativos`);
       return cursos;
+      
     } catch (error) {
       console.error('❌ Erro ao buscar cursos:', error);
+      
+      // 9. Fallback robusto
+      const fallbackStrategies = [
+        // Primeiro: última versão em cache
+        () => cacheManager.getLatest(CACHE_KEY),
+        // Segundo: buscar apenas cursos básicos (fallback mínimo)
+        async () => {
+          const cursosBasicos = await db.cursos
+            .where("instituicao_id")
+            .equals(instituicaoIdValue() || "")
+            .filter(curso => !curso.deleted)
+            .sortBy('nome')
+            .catch(() => []);
+          
+          return cursosBasicos.map(curso => ({
+            ...curso,
+            alunos: 0,
+            turmas: [],
+            turmas_count: 0,
+            has_active_turmas: false,
+            alunos_por_turma: '0'
+          }));
+        }
+      ];
+      
+      // Tentar cada estratégia até encontrar uma que funcione
+      for (const strategy of fallbackStrategies) {
+        try {
+          const result = await strategy();
+          if (result && Array.isArray(result)) {
+            console.warn(`⚠️  Usando fallback (${strategy.name}) para cursos`);
+            return result;
+          }
+        } catch (e) {
+          // Continuar para próxima estratégia
+        }
+      }
+      
       return [];
     }
+  }
+
+  // Métodos auxiliares recomendados:
+
+  , cleanOldCourseCache(baseKey: string, currentVersion: string): void {
+    // Limpar versões antigas do cache de cursos
+    const cacheKeys = Object.keys(localStorage)
+      .filter(key => key.startsWith(`${baseKey}_v`))
+      .filter(key => !key.endsWith(`_${currentVersion}`));
+    
+    // Manter apenas as últimas 2 versões (cursos mudam menos)
+    if (cacheKeys.length > 2) {
+      const keysToRemove = cacheKeys.slice(2);
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      console.log(`🧹 Removidas ${keysToRemove.length} versões antigas do cache de cursos`);
+    }
+  }
+
+  // Método para invalidar cache quando necessário
+  , invalidateCourseCache(): void {
+    const keys = Object.keys(localStorage).filter(key => key.startsWith('cursos_all_'));
+    const count = keys.length;
+    
+    keys.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    console.log(`🧹 Cache de cursos invalidado (${count} itens removidos)`);
+    
+    // Emitir evento se estiver usando algum sistema de eventos
+    cacheManager.emitCacheInvalidated('courses');
   },
 
-  // ✅ Buscar curso por ID
-  async getCourseById(id: string): Promise<Course | null> {
+  // Método para buscar um curso específico com cache individual
+  async getCoursesById(id: string): Promise<Course | null> {
+    const CACHE_KEY = `curso_${id}`;
+    
+    // Verificar cache individual primeiro
+    const cached = cacheManager.get(CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+    
     try {
+      // Buscar curso específico
       const curso = await db.cursos.get(id);
-      const alunos=(await db.alunos.where('curso').equals(curso?.nome||'').and(aluno => !aluno.deleted).toArray()).length
-      const turmas=(await db.turmas.where('curso_id').equals(curso?.id||'').and(turma => !turma.deleted).toArray())
-      return  !curso?.deleted ? {
+      if (!curso || curso.deleted || curso.instituicao_id !== instituicaoIdValue()) {
+        return null;
+      }
+      
+      // Buscar informações relacionadas
+      const [turmas, alunos] = await Promise.all([
+        turmaService.getTurmasPorCurso(id),
+        alunosService.getAllStudents()
+      ]);
+      
+      const turmasAtivas = turmas.filter(t => !t.deleted);
+      const alunosAtivos = alunos.filter(a => !a.deleted);
+      
+      const alunosCount = alunosAtivos.filter(aluno => 
+        aluno.turma_id && turmasAtivas.some(t => t.id === aluno.turma_id)
+      ).length;
+      
+      const cursoCompleto = {
         ...curso,
-        alunos,
-        turmas
-      } as Course :null;
+        alunos: alunosCount,
+        turmas: turmasAtivas,
+        turmas_count: turmasAtivas.length,
+        has_active_turmas: turmasAtivas.some(t => t.estado === 'ativa')
+      };
+      
+      // Cache individual com TTL menor
+      cacheManager.set(CACHE_KEY, cursoCompleto, {
+        ttl: 5 * 60 * 1000 // 5 minutos
+      });
+      
+      return cursoCompleto;
     } catch (error) {
-      console.error('Erro ao buscar curso por ID:', error);
+      console.error(`❌ Erro ao buscar curso ${id}:`, error);
       return null;
     }
+  }
+
+  // Método para forçar refresh do cache
+  , async refreshCoursesCache(): Promise<Course[]> {
+    console.log('🔄 Forçando refresh do cache de cursos...');
+    
+    // Invalidar cache existente
+    this.invalidateCourseCache();
+    
+    // Buscar dados frescos
+    const cursos = await this.getCoursess();
+    
+    return cursos;
   },
 
   // ✅ Buscar curso por ID (com cache remoto)
-  async getCourseId(id: string): Promise<Course | null> {
+  async getCoursesId(id: string): Promise<Course | null> {
     try {
       // Primeiro busca localmente
-      const cursoLocal = await this.getCourseById(id);
+      const cursoLocal = await this.getCoursesById(id);
       if (cursoLocal) {
         return cursoLocal;
       }
@@ -222,8 +428,13 @@ export const cursosService = {
   },
 
  async syncCursos() {
-      return syncManager.downloadTableBatch('cursos', new Date(0));
-    },
+   if(navigator.onLine)
+      return Promise.all([syncManager.uploadTableBatch('cursos'),
+        syncManager.downloadTableBatch('cursos', new Date(0))
+      ])
+    throw new Error("sem net")
+      
+  },
   
   // ✅ Função auxiliar para marcar como pendente
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
@@ -247,7 +458,7 @@ export const cursosService = {
         .and(item => item.status === 'pending')
         .count();
       
-      const cursosAtivos = (await this.getCourse()).length;
+      const cursosAtivos = (await this.getCourses()).length;
       
       return {
         cursosTotal: cursoCount,
@@ -267,7 +478,7 @@ export const cursosService = {
   // ✅ Obter estatísticas
   async getEstatisticas() {
     try {
-      const cursos = await this.getCourse();
+      const cursos = await this.getCourses();
       
       // Agrupar por área ou tipo
       const porArea: Record<string, number> = {};
@@ -303,7 +514,7 @@ export const cursosService = {
   // ✅ Buscar cursos com filtros
   async searchCursos(filtro: string): Promise<Course[]> {
     try {
-      const cursos = await this.getCourse();
+      const cursos = await this.getCourses();
       
       return cursos.filter(curso => 
         curso.nome.toLowerCase().includes(filtro.toLowerCase()) ||

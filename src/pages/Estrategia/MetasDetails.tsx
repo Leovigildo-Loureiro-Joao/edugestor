@@ -17,6 +17,8 @@ import { toast } from 'react-hot-toast';
 import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursosModal';
 import { KPIManager } from '../../components/strategy/KPIManager';
 import { SubMetasManager } from '../../components/strategy/SubMetasManager';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
 
 export const MetaDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +30,8 @@ export const MetaDetailsPage: React.FC = () => {
   const [showAlocacaoModal, setShowAlocacaoModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
-
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   useEffect(() => {
     if (id) {
       carregarMeta();
@@ -639,7 +642,7 @@ export const MetaDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
+        <ModalComponent/>
       {/* Modal de Alocação de Recursos */}
        <AlocacaoRecursosModal
         isOpen={showAlocacaoModal}

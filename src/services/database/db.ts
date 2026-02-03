@@ -72,7 +72,7 @@ class EduGestorDatabase extends Dexie {
     
     this.version(3).stores({
       // 🔥 Agora sua IDE vai entender ESTA estrutura
-      alunos: '++id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted',
+      alunos: '++id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
       avaliacoes:'++id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status',
       turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
       cursos: '++id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted, [sync_status+deleted]',

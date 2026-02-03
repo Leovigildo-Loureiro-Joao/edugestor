@@ -8,7 +8,7 @@ import {
   FiHome, FiCheckSquare, FiPercent, FiTrendingDown,
   FiFileText, FiLink, FiDownload, FiEye
 } from 'react-icons/fi';
-import { Meta } from '../../types/eventos';
+import { IndicadorDesempenho, Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import { toast } from 'react-hot-toast';
 
@@ -98,10 +98,10 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
       : 0;
   };
 
-  const handleAtualizarKPI = async (kpiId: string, novoValor: number) => {
+  const handleAtualizarKPI = async (kpi: IndicadorDesempenho) => {
     try {
       setLoading(true);
-      await estrategiaService.updateKPI(meta.id, kpiId, novoValor);
+      await estrategiaService.updateKPI(meta.id, kpi.id, kpi);
       toast.success('KPI atualizado com sucesso!');
     } catch (error) {
       toast.error('Erro ao atualizar KPI');
@@ -530,7 +530,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                                             onBlur={(e) => {
                                               const novoValor = parseFloat(e.target.value) || 0;
                                               if (novoValor !== kpi.valor_atual) {
-                                                handleAtualizarKPI(kpi.id, novoValor);
+                                                handleAtualizarKPI(kpi.id, kpi);
                                               }
                                             }}
                                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"

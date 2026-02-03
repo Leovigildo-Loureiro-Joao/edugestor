@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../ui/AlertBadge';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   managerOrAdmin = false
 }) => {
   const { user, loading, profile, isAdmin, isManagerOrAdmin, hasPermission } = useAuth();
-  
+    const { showAlert } = useAlert(); 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,22 +29,46 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 🔥 SEM AUTENTICAÇÃO
   if (!user&&!profile) {
+    showAlert({
+        title:"Erro de autenticação",
+        type:"warning",
+        duration:5000,
+        message:"Acesso não autorizado: Usuário não autenticado"
+      })
     console.warn('⚠️ Acesso não autorizado: Usuário não autenticado');
     return <Navigate to="/login" replace />;
   }
 
   // 🔥 VERIFICAÇÕES DE PERMISSÃO
   if (adminOnly && !isAdmin()) {
+     showAlert({
+        title:"Erro de autenticação",
+        type:"warning",
+        duration:5000,
+        message:"Acesso negado: Apenas administradores"
+      })
     console.warn('⚠️ Acesso negado: Apenas administradores');
     return <Navigate to="/unauthorized" replace />;
   }
 
   if (managerOrAdmin && !isManagerOrAdmin()) {
+    showAlert({
+        title:"Erro de autenticação",
+        type:"warning",
+        duration:5000,
+        message:"Acesso negado: Apenas gerentes ou administradores"
+      })
     console.warn('⚠️ Acesso negado: Apenas gerentes ou administradores');
     return <Navigate to="/unauthorized" replace />;
   }
 
   if (requiredRole && !hasPermission(requiredRole)) {
+    showAlert({
+        title:"Erro de autenticação",
+        type:"warning",
+        duration:5000,
+        message:`Acesso negado: Role ${requiredRole} requerida`
+      })
     console.warn(`⚠️ Acesso negado: Role ${requiredRole} requerida`);
     return <Navigate to="/unauthorized" replace />;
   }

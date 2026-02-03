@@ -323,7 +323,7 @@ export const avaliacaoService = {
       let reprovados = 0;
 
        const turma=await turmaService.getTurmaById(aulas.at(0)?.turma_id||"")
-      const curso= await cursosService.getCourseById(turma?.curso_id||"")
+      const curso= await cursosService.getCoursesById(turma?.curso_id||"")
 
       avaliacoes.forEach((av:Avaliacao) => {
         // Média por disciplina

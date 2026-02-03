@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiActivity, FiSave, FiShield } from "react-icons/fi";
 import { SelectTyped } from "../students/StudentForm";
 import { motion } from "framer-motion";
+import { useAlert } from "../ui/AlertBadge";
 
 export const ConfiguracoesBackup = () => {
   const [config, setConfig] = useState({
@@ -11,7 +12,7 @@ export const ConfiguracoesBackup = () => {
     backupNotificacoes: true,
     ultimoBackup: null as string | null
   });
-
+  const { showAlert } = useAlert(); 
   const [backupProgress, setBackupProgress] = useState(0);
   const [fazendoBackup, setFazendoBackup] = useState(false);
 
@@ -35,7 +36,12 @@ export const ConfiguracoesBackup = () => {
 
   const restaurarBackup = async () => {
     // Implementar restauração
-    alert('Selecione o arquivo de backup para restaurar');
+    showAlert({
+        type: 'warning',
+        title: 'Selecione o arquivo',
+        message: 'Selecione o arquivo de backup para restaurar',
+        duration: 3000
+    });
   };
 
   return (

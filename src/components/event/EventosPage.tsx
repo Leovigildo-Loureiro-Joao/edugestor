@@ -30,12 +30,16 @@ import {
 import { EventFormData } from '../../types/eventos';
 import { eventoService } from '../../services/database/eventoService';
 import { estrategiaService } from '../../services/database/estrategiaService';
+import { generateUniqueId } from '../../utils/idGenarator';
+import { useAlert } from '../ui/AlertBadge';
+import toast from 'react-hot-toast';
+import { useConfirmModal } from '../ui/ComfirmModal';
 
 const EventosPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = !!id;
-  
+    const { confirm, ModalComponent } = useConfirmModal();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [events, setEvents] = useState<EventFormData[]>([]);
@@ -45,6 +49,7 @@ const EventosPage = () => {
   
   // Form states
   const [formData, setFormData] = useState<EventFormData>({
+    id:generateUniqueId(),
     title: '',
     date: new Date().toISOString().split('T')[0],
     time: '08:00',
@@ -65,7 +70,7 @@ const EventosPage = () => {
   const [filterImportance, setFilterImportance] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'upcoming'>('list');
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
-  
+  const { showAlert } = useAlert(); 
   // Carregar dados
   useEffect(() => {
     loadData();
@@ -146,7 +151,12 @@ const EventosPage = () => {
     e.preventDefault();
     
     if (!formData.title.trim()) {
-      alert('Título é obrigatório');
+      showAlert({
+          type: 'warning',
+          title: 'Preencha todos campos obrigatórios',
+          message: 'Título é obrigatório',
+          duration: 3000
+        });
       return;
     }
     
@@ -156,35 +166,74 @@ const EventosPage = () => {
         // Atualizar evento existente
         const updatedEvent = await eventoService.atualizarEvento(id, formData);
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-        alert('Evento atualizado com sucesso!');
+         showAlert({
+          type: 'success',
+          title: 'Operação concluida',
+          message: 'Evento atualizado com sucesso!',
+          duration: 3000
+        });
+        toast.success('Evento atualizado com sucesso!')
       } else {
         // Criar novo evento
         const newEvent = await eventoService.criarEvento(formData);
         setEvents(prev => [newEvent, ...prev]);
-        alert('Evento criado com sucesso!');
+        showAlert({
+          type: 'success',
+          title: 'Operação concluida',
+          message: 'Evento criado com sucesso!',
+          duration: 3000
+        });
+        toast.success('Evento criado com sucesso!')
       }
       
       // Voltar para lista ou dashboard
       navigate('/eventos');
     } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao salvar o evento',
+        message: 'Não foi possivel efectuar a operação',
+        duration: 5000
+      });
+      toast.error('Erro ao salvar evento')
       console.error('Erro ao salvar evento:', error);
-      alert('Erro ao salvar evento');
     } finally {
       setSaving(false);
     }
   };
   
-  const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+  const handleDeleteEvent = async (eventId: string) => {
+      const confirmed = await confirm({
+      type: 'delete',
+      title: 'Excluir Evento',
+      message: `'Tem certeza que deseja excluir este evento?'`,
+      isDestructive: true,
+      confirmText: 'Excluir',
+      onConfirm: async () => {
+        try {
+          await eventoService.deletarEvento(eventId.toString());
+          setEvents(prev => prev.filter(e => e.id !== eventId));
+          showAlert({
+              type: 'success',
+              title: 'Operação concluida',
+              message: 'Evento excluído com sucesso!',
+              duration: 3000
+            });
+          toast.success('Evento excluído com sucesso!');
+        } catch (error) {
+          console.error('Erro ao excluir evento:', error);
+          toast.error('Erro ao excluir evento');
+          showAlert({
+            type: 'error',
+            title: 'Erro ao excluir evento',
+            message: 'Não foi possivel efectuar a operação',
+            duration: 5000
+          });
+        }
+      }
+    });
     
-    try {
-      await eventoService.deletarEvento(eventId.toString());
-      setEvents(prev => prev.filter(e => e.id !== eventId));
-      alert('Evento excluído com sucesso!');
-    } catch (error) {
-      console.error('Erro ao excluir evento:', error);
-      alert('Erro ao excluir evento');
-    }
+      
   };
   
   const handleDuplicateEvent = (event: EventFormData) => {
@@ -293,6 +342,7 @@ const EventosPage = () => {
             <FiArrowLeft className="mr-2" />
             Voltar para Dashboard
           </button>
+        <ModalComponent/>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>

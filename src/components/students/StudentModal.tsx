@@ -71,10 +71,15 @@ export const StudentModal = ({
   }, []);
 
   useEffect(() => {
-    if (alunoSelecionado?.avaliacao) {
-      calcularEstatisticas(alunoSelecionado.avaliacao);
+    const avaliacoes= async () =>{
+      const result=await avaliacaoService.getAvaliacoesByAluno(alunoSelecionado?.id||"")
+        if (result) {
+          calcularEstatisticas((await result).avaliacoes);
+        }
     }
-  }, [alunoSelecionado, calcularEstatisticas]);
+    avaliacoes()
+   
+  }, [alunoSelecionado,calcularEstatisticas]);
 
   // Carrega configurações
   useEffect(() => {
@@ -134,7 +139,7 @@ export const StudentModal = ({
     setData: setFormData,
     clearDraft,
     hasUnsavedChanges
-  } = useAutoSave<AvaliacaoFormData>(storageKey, initialData, 2000);
+  } = useAutoSave(storageKey, initialData, 2000);
 
   // Handlers
   const handleChange = useCallback((field: keyof AvaliacaoFormData, value: string | number) => {
@@ -520,6 +525,7 @@ export const StudentModal = ({
                         placeholder="Selecione a disciplina"
                         icon={FiBook}
                         value={formData.disciplina}
+                        multiuser={false}
                       />
                     </div>
 

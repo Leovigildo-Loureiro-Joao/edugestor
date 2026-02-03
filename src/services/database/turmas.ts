@@ -1,7 +1,11 @@
 // services/database/turmaService.ts
 import { Student } from '../../types';
+import { Aula } from '../../types/aula';
+import { SyncStatus } from '../../types/base';
 import { HorarioAula, HorarioAulaForm, Turma, TurmaFormData } from '../../types/turma';
+import { emitPendingSync } from '../../utils/emitPendingSync';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
 import { supabase } from '../database/db';
 import { alunosService } from './alunosService';
 import { cacheManager } from './cacheManager';
@@ -52,68 +56,140 @@ export const turmaService = {
 
   // ✅ Buscar todas as turmas
   async getTurmas(): Promise<Turma[]> {
+    const CACHE_KEY = 'turmas_all';
     try {
       console.log('📋 Buscando turmas...');
-      const CACHE_KEY = 'turmas_all';
-      const qtd= await db.turmas.count()
-      const cached = cacheManager.get(CACHE_KEY,qtd);
+      
+      // 1. Obter versão/checksum dos dados para cache mais inteligente
+      const [turmaCount, cursoCount, aulaCount, alunoCount,lastModified] = await Promise.all([
+        db.turmas.count(),
+        db.cursos.count(),
+        db.aulas.count(),
+        db.alunos.count(),
+        getLastModifiedTimestamp()
+      ]);
+      
+      // Criar uma chave de versão baseada em contagens e timestamps
+      const cacheVersion = `${turmaCount}_${cursoCount}_${aulaCount}_${alunoCount}_${lastModified}`;
+      const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
+      
+      // 2. Tentar obter do cache com a nova chave
+      const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
+        console.log('✅ Cache HIT para turmas');
         return cached;
       }
-
-      const [todosCursos,aulasDb,alunos]= await Promise.all([
-            db.cursos
-            .where("instituicao_id")
-            .equals(instituicaoIdValue()||"")
-            .and(curso=>!curso.deleted)
-            .toArray(),
-            db.aulas.filter(aula=>!aula.deleted ).toArray(),
-            db.alunos.filter(aluno=>!aluno.deleted).toArray(),
-      ])
       
-          
-      const todasTurmas:Turma[] = []
-      const horarios:HorarioAula[]=[]
-
-      for (const curso of todosCursos) {
-          const value =await this.getTurmasPorCurso(curso.id)
-          todasTurmas.push(...value)
-      }
-      for (const turma of todasTurmas) {
-        const value =await this.getHorarios(turma.id)
-        horarios.push(...value)
-      }
+      console.log('🔄 Cache MISS, buscando do banco...');
       
-      // Filtrar as não deletadas
-      const turmasAtivas = todasTurmas.filter(turma =>  !turma.deleted);
+      // 3. Buscar dados em paralelo de forma mais eficiente
+      const [todosCursos, aulasDb, alunos, todasTurmasDb] = await Promise.all([
+        db.cursos
+          .where("instituicao_id")
+          .equals(instituicaoIdValue() || "")
+          .filter(curso => !curso.deleted)
+          .toArray(),
+        db.aulas.filter(aula => !aula.deleted).toArray(),
+        db.alunos.filter(aluno => !aluno.deleted).toArray(),
+        db.turmas.filter(turma => !turma.deleted).toArray() ,
+      ]);
+      
+      // 4. Otimizar: buscar horários em batch em vez de um por um
+      const todasTurmasIds = todasTurmasDb.map(t => t.id);
+      const horarios = await this.getHorariosBatch(todasTurmasIds);
+      
+      // 5. Criar maps para lookup O(1)
       const cursosMap = new Map(todosCursos.map(c => [c.id, c]));
-                        // Ordenar por nome
-      turmasAtivas.sort((a, b) => 
-        (a.nome_turma || '').localeCompare(b.nome_turma || '')
-      );
-
-     const turmas= (turmasAtivas.map( turma=>{
-         const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
-         const aluno= alunos.filter((aluno:Student)=> aluno.turma_id==turma.id).length
-         const aulas=aulasDb.filter(aula=> aula.turma_id==turma.id)
-         const horario=horarios.filter(h=>h.turma_id==turma.id)
-         return {
-          ...turma,
-          curso_nome:curso?.nome,
-          qtd:aluno,
-          aulas,
-          horarios:horario
-         }
-      }))
+      const horariosMap = new Map();
+      horarios.forEach(h => {
+        if (!horariosMap.has(h.turma_id)) horariosMap.set(h.turma_id, []);
+        horariosMap.get(h.turma_id).push(h);
+      });
       
-      cacheManager.set(CACHE_KEY, turmas);
+      const alunosPorTurma = alunos.reduce((acc, aluno) => {
+        if (aluno.turma_id) {
+          acc[aluno.turma_id] = (acc[aluno.turma_id] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const aulasPorTurma = aulasDb.reduce((acc, aula) => {
+        if (aula.turma_id) {
+          if (!acc[aula.turma_id]) acc[aula.turma_id] = [];
+          acc[aula.turma_id].push(aula);
+        }
+        return acc;
+      }, {} as Record<string, Aula[]>);
+      
+      // 6. Processar turmas
+      const turmasAtivas = todasTurmasDb
+        .filter(turma => !turma.deleted)
+        .sort((a, b) => (a.nome_turma || '').localeCompare(b.nome_turma || ''));
+      
+      const turmas = turmasAtivas.map(turma => {
+        const curso = turma.curso_id ? cursosMap.get(turma.curso_id) : null;
+        
+        return {
+          ...turma,
+          curso_nome: curso?.nome,
+          qtd: alunosPorTurma[turma.id] || 0,
+          aulas: aulasPorTurma[turma.id] || [],
+          horarios: horariosMap.get(turma.id) || []
+        };
+      });
+      
+      // 7. Salvar no cache com expiration time
+      cacheManager.set(cacheKeyWithVersion, turmas, {
+        ttl: 5 * 60 * 1000, // 5 minutos
+        version: cacheVersion
+      });
+      const pendentesCount = turmas.filter(turma => 
+        turma.sync_status === 'pending' || turma.sync_status === 'pending_delete'
+      ).length;
 
-      console.log(`✅ Encontradas ${turmasAtivas.length} turmas ativas`);
-      return turmas
+      if (pendentesCount > 0) {
+        emitPendingSync('turmas', pendentesCount);
+      }
+
+      // 8. Limpar versões antigas do cache
+      this.cleanOldCacheVersions(CACHE_KEY, cacheVersion);
+      
+      console.log(`✅ Encontradas ${turmas.length} turmas ativas`);
+
+
+      return turmas;
+      
     } catch (error) {
       console.error('❌ Erro ao buscar turmas:', error);
+      // Fallback para cache mais antigo se disponível
+      const fallback = cacheManager.getLatest(CACHE_KEY);
+      if (fallback) {
+        console.warn('⚠️  Usando cache fallback devido a erro');
+        return fallback;
+      }
       return [];
     }
+  }
+
+  // Métodos auxiliares recomendados:
+  , async getHorariosBatch(turmaIds: string[]): Promise<HorarioAula[]> {
+    if (turmaIds.length === 0) return [];
+    
+    return db.turma_horarios
+      .where('turma_id')
+      .anyOf(turmaIds)
+      .filter(horario => !horario.deleted)
+      .toArray();
+  }
+
+  , cleanOldCacheVersions(baseKey: string, currentVersion: string) {
+    const keys = Object.keys(localStorage)
+      .filter(key => key.startsWith(`${baseKey}_`))
+      .filter(key => !key.endsWith(`_${currentVersion}`));
+    
+    keys.forEach(key => {
+      cacheManager.delete(key);
+    });
   },
 
   async getTurmaById(id: string): Promise<Turma | undefined> {
@@ -217,9 +293,8 @@ export const turmaService = {
         // Se já sincronizado, marcar para deleção remota
         await db.turmas.update(id, { 
           deleted: true, 
-          sync_status: 'pending_delete',
+          sync_status: 'pending_delete' as SyncStatus,
           updated_at: new Date().toISOString(),
-          
         });
         
         await db.syncQueue.add({
@@ -323,7 +398,8 @@ export const turmaService = {
       console.log('💾 Salvando horario:', horarios.dia_semana);
       
       await db.turma_horarios.put(horarios);
-      
+    
+      this.markForSync(id,'upsert')
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'turma_horarios',
@@ -345,47 +421,53 @@ export const turmaService = {
   // ✅ Atualizar horário
   async updateHorario(id: string, horario: Partial<HorarioAulaForm>) {
     try {
-      if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from('turma_horarios')
-          .update(horario)
-          .eq('id', id)
-          .select();
-        
-        if (error) throw new Error(`Erro ao atualizar horário: ${error.message}`);
-        return data;
-      } else {
-        throw new Error('Offline - não é possível atualizar horário sem conexão');
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar horário:', error);
+      await db.turma_horarios.update(id,{
+        ...horario,
+        sync_status:"pending",
+        updated_at:new Date().toISOString()        
+      })
+
+      await db.syncQueue.add({
+        table: 'turma_horarios',
+        record_id: id,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: new Date().toISOString()        
+      });
+      console.timeLog('Horario editado com sucesso');
+    }catch(error){
+      console.error('Erro ao editar horário:', error);
       throw error;
     }
   },
 
   // ✅ Excluir horário
   async excluirHorario(id: string) {
-    try {
-      if (navigator.onLine) {
-        const { error } = await supabase
-          .from('turma_horarios')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw new Error(`Erro ao excluir horário: ${error.message}`);
-      } else {
-        throw new Error('Offline - não é possível excluir horário sem conexão');
-      }
-    } catch (error) {
+    try{
+    await db.turma_horarios.delete(id)
+
+      await db.syncQueue.add({
+        table: 'turma_horarios',
+        record_id: id,
+        operation: 'delete',
+        status: 'pending_delete',
+        created_at: new Date().toISOString()        
+      });
+      console.log('Horario excluido com sucesso');
+    }catch(error){
       console.error('Erro ao excluir horário:', error);
       throw error;
     }
   },
 
- async syncTurmas() {
-      return syncManager.downloadTableBatch('turmas', new Date(0));
+    async syncTurmas() {
+      if(navigator.onLine)
+        return Promise.all([syncManager.uploadTableBatch('turmas'),
+          syncManager.downloadTableBatch('turmas', new Date(0))
+        ])
+      throw new Error("sem net")
     },
-  
+
   // ✅ Função auxiliar para marcar como pendente
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({

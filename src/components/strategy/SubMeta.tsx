@@ -1,11 +1,12 @@
 import { motion } from "framer-motion"
 import { FiSave, FiX } from "react-icons/fi"
 import { SelectTyped } from "../students/StudentForm"
+import { useAlert } from "../ui/AlertBadge"
 
 export const ModalSubmeta=({novaSubMeta,formData,setNovaSubMeta,handleSaveSubMeta,kpis,setShowSubMeta}:{
     novaSubMeta:any,setNovaSubMeta:any,handleSaveSubMeta:any,setShowSubMeta:any,kpis:[],formData:any
 })=>{
-
+const { showAlert } = useAlert(); 
     return   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -51,7 +52,7 @@ export const ModalSubmeta=({novaSubMeta,formData,setNovaSubMeta,handleSaveSubMet
                         </button>
                       </div>
                       
-                      <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                      <div className="space-y-4 w-full overflow-y-auto flex-1 px-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -251,19 +252,39 @@ export const ModalSubmeta=({novaSubMeta,formData,setNovaSubMeta,handleSaveSubMet
                           type="button"
                           onClick={() => {
                             if (!novaSubMeta.titulo.trim()) {
-                              alert('Título é obrigatório');
+                                showAlert({
+                                  type: 'warning',
+                                  title: 'Preencha todos campos obrigatórios',
+                                  message: 'Título é obrigatório',
+                                  duration: 3000
+                                });
                               return;
                             }
                             if (!novaSubMeta.data_inicio) {
-                              alert('Data de início é obrigatória');
+                                showAlert({
+                                  type: 'warning',
+                                  title: 'Preencha todos campos obrigatórios',
+                                  message: 'Data de início é obrigatória',
+                                  duration: 3000
+                                });
                               return;
                             }
                             if (!novaSubMeta.data_fim) {
-                              alert('Data de término é obrigatória');
+                              showAlert({
+                                  type: 'warning',
+                                  title: 'Preencha todos campos obrigatórios',
+                                  message: 'Data de término é obrigatória',
+                                  duration: 3000
+                                });
                               return;
                             }
                             if (!novaSubMeta.responsavel.trim()) {
-                              alert('Responsável é obrigatório');
+                                showAlert({
+                                  type: 'warning',
+                                  title: 'Preencha todos campos obrigatórios',
+                                  message: 'Responsável é obrigatório',
+                                  duration: 3000
+                                });
                               return;
                             }
                             

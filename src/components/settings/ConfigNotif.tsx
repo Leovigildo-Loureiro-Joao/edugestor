@@ -2,8 +2,10 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { FaQuestion } from 'react-icons/fa6';
 import { FiMail, FiPhone, FiMessageSquare, FiSave } from 'react-icons/fi';
+import { useAlert } from '../ui/AlertBadge';
 
 export const ConfiguracoesNotificacoes = () => {
+  const { showAlert } = useAlert(); 
   const [config, setConfig] = useState({
     // Métodos ativos
     metodos: ['email', 'whatsapp', 'sms'] as string[],
@@ -62,9 +64,21 @@ export const ConfiguracoesNotificacoes = () => {
       });
       
       const result = await response.json();
-      alert(result.success ? '✅ WhatsApp configurado!' : '❌ Erro: ' + result.error);
+      
+      showAlert({
+        type: result.success?'success':'error',
+        title: result.success?'Analisando...':'Não foi possivel configurar',
+        message: result.success?'WhatsApp configurado!':'WhatsApp mal configurado!',
+        duration: result.success?3000:5000
+    });
+      
     } catch (error) {
-      alert('❌ Erro ao testar WhatsApp');
+      showAlert({
+        type: 'error',
+        title: 'Não foi possivel configurar',
+        message: 'WhatsApp mal configurado!',
+        duration: 5000
+    });
     } finally {
       setTestando(prev => ({...prev, whatsapp: false}));
     }
@@ -88,9 +102,19 @@ export const ConfiguracoesNotificacoes = () => {
       });
       
       const result = await response.json();
-      alert(result.success ? '✅ SMS configurado!' : '❌ Erro: ' + result.error);
+      showAlert({
+        type: result.success?'success':'error',
+        title: result.success?'Analisando...':'Não foi possivel configurar',
+        message: result.success?'SMS configurado!':'Erro ao testar SMS',
+        duration: result.success?3000:5000
+    });
     } catch (error) {
-      alert('❌ Erro ao testar SMS');
+      showAlert({
+        type: 'error',
+        title: 'Não foi possivel configurar',
+        message: 'Erro ao testar SMS',
+        duration: 5000
+    });
     } finally {
       setTestando(prev => ({...prev, sms: false}));
     }
@@ -115,9 +139,19 @@ export const ConfiguracoesNotificacoes = () => {
       });
       
       const result = await response.json();
-      alert(result.success ? '✅ Email configurado!' : '❌ Erro: ' + result.error);
+      showAlert({
+        type: result.success?'success':'error',
+        title: result.success?'Analisando...':'Não foi possivel configurar',
+        message: result.success?'Email configurado!':'Erro ao testar SMS',
+        duration: result.success?3000:5000
+    });
     } catch (error) {
-      alert('❌ Erro ao testar Email');
+      showAlert({
+        type: 'error',
+        title: 'Não foi possivel configurar',
+        message: 'Erro ao testar Email',
+        duration: 5000
+    });
     } finally {
       setTestando(prev => ({...prev, email: false}));
     }

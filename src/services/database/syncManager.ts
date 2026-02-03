@@ -18,6 +18,7 @@ interface SyncManager {
   deleteLocalRecord(tableName: string, recordId: string): Promise<void>;
   handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
   downloadTableBatch(tableName: string, since: Date): Promise<void>;
+  uploadTableBatch(tableName: string): Promise<void>;
   processDownloadBatch(tableName: string, batch: any[]): Promise<void>;
 }
 
@@ -118,7 +119,18 @@ export const syncManager: SyncManager = {
       throw error;
     }
   },
-  
+   async uploadTableBatch (tableName: string) {
+     
+    const pendingItems = await db.syncQueue
+        .where('status')
+        .equals('pending')
+        .and(item => item.table === tableName )
+        .toArray();
+      console.log(`📤 Processando batch de ${pendingItems.length} ${tableName}...`);
+      await this.processTableBatch(tableName, pendingItems);
+      
+  },
+
   // ✅ Agrupar itens por tabela
   groupByTable(items: SyncQueueItem[]) {
     const groups: Record<string, SyncQueueItem[]> = {};
@@ -165,11 +177,59 @@ export const syncManager: SyncManager = {
     }
   },
   
-  // ✅ Processar INSERTs em batch
+  async debugCurrentJWT() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      console.error('❌ Nenhum token JWT disponível');
+      return;
+    }
+    
+    // Decodificar JWT manualmente
+    const token = session.access_token;
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('❌ Token JWT inválido');
+      return;
+    }
+    
+    const payload = JSON.parse(atob(parts[1]));
+    
+    console.log('🔍 JWT Claims (cru):', payload);
+    console.log('🔍 JWT Claims específicos:', {
+      // Claims padrão
+      sub: payload.sub,
+      email: payload.email,
+      role: payload.role,
+      // Claims customizados que estamos procurando
+      instituicao_id: payload.instituicao_id,
+      // App metadata (vindo da Edge Function)
+      app_metadata: payload.app_metadata,
+      // User metadata (vindo do Supabase Auth)
+      user_metadata: payload.user_metadata,
+      // Verificar se está em algum lugar
+      has_instituicao_id_in_app_metadata: payload.app_metadata?.instituicao_id,
+      has_instituicao_id_in_user_metadata: payload.user_metadata?.instituicao_id,
+      // Timestamps
+      exp: new Date(payload.exp * 1000),
+      iat: new Date(payload.iat * 1000)
+    });
+    
+    // Verificar a política RLS
+    console.log('🔍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+    
+  } catch (error) {
+    console.error('❌ Erro ao decodificar JWT:', error);
+  }
+},
+
+// ✅ Processar INSERTs em batch - CORRIGIDO
   async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
+
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
-    
+    await this.debugCurrentJWT();
     if (!authData.isAuthenticated) {
       console.warn(`⚠️ Usuário não autenticado. Ignorando INSERTs em ${tableName}`);
       return;
@@ -183,10 +243,9 @@ export const syncManager: SyncManager = {
       const record = await this.getRecordFromTable(tableName, item.record_id);
       if (record) {
         // Verificar se já existe no Supabase (para INSERTs que podem ser UPDATEs)
-        // Se o registro já tem um ID não-local, pode já ter sido sincronizado
         if (!record.id || record.id.startsWith('local_')) {
           // Remover campos internos do Dexie e ID local
-          const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
+          const { id, sync_status, deleted, created_at, updated_at, ...cleanRecord } = record;
           
           // ✅ ADICIONAR CAMPOS NECESSÁRIOS PARA RLS
           const recordWithRLS = {
@@ -195,27 +254,19 @@ export const syncManager: SyncManager = {
             created_at: record.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
+        
+          const existing = await this.checkExistingUniqueConstraint(recordWithRLS);
           
-          // Se tiver campos únicos composto (como system_config), verificar
-          if (tableName === 'system_config') {
-            // Para system_config, verificar se já existe pelo par category/name
-            const existing = await this.checkExistingUniqueConstraint(
-              tableName, 
-              recordWithRLS
-            );
+          if (existing) {
+            console.log(`⚠️ ${tableName} já existe, convertendo para UPDATE:`, {
+              category: recordWithRLS.category,
+              name: recordWithRLS.key_name
+            });
             
-            if (existing) {
-              console.log(`⚠️ Registro já existe em ${tableName}, convertendo para UPDATE:`, {
-                category: recordWithRLS.category,
-                name: recordWithRLS.key_name
-              });
-              
-              // Se já existe, mudar para operação de UPDATE
-              await this.convertInsertToUpdate(tableName, item, existing.id);
-              continue; // Pular este item, será processado como UPDATE
-            }
+            await this.convertInsertToUpdate(tableName, item, existing.id);
+            continue;
           }
-          
+        
           records.push(recordWithRLS);
           itemsToProcess.push(item);
         } else {
@@ -228,71 +279,191 @@ export const syncManager: SyncManager = {
     
     if (records.length === 0) return;
     
-    // Verificar se algum registro ainda tem ID local (deve ser removido)
+    // Verificar se algum registro ainda tem ID local
     records.forEach(record => {
       if (record.id && record.id.startsWith('local_')) {
-        console.warn('⚠️ ID local encontrado e removido:', record.id);
         delete record.id;
       }
     });
     
     try {
-      // 2. INSERT em batch no Supabase com upsert para evitar duplicidade
-      const { data, error } = await supabase
-        .from(tableName)
-        .upsert(records, {
-          onConflict: 'category,name', // Para system_config, ajustar conforme sua tabela
-          ignoreDuplicates: false
-        })
-        .select();
+      // 2. INSERT em batch no Supabase com configuração correta por tabela
+      let result: any;
       
-      if (error) {
-        console.error(`❌ Erro inserindo batch em ${tableName}:`, error);
+      // ✅ CORREÇÃO: Configurar onConflict específico para cada tabela
+      if (tableName === 'system_config') {
+        const { data, error } = await supabase
+          .from(tableName)
+          .upsert(records, {
+            onConflict: 'category,name', // ✅ Apenas para system_config
+            ignoreDuplicates: false
+          })
+          .select();
+        
+        if (error) throw error;
+        result = { data };
+        
+      }  else {
+        // Para outras tabelas, upsert padrão por ID
+        var recordsToInsert = records;
+        if (tableName=="alunos") {
+          recordsToInsert=records.map(record=>{
+            const { avaliacao,id, ...rest } = record;
+            return rest;
+          });
+        }
+        const { data, error } = await supabase
+          .from(tableName)
+          .upsert(recordsToInsert, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
+          .select();
+        
+        if (error) throw error;
+        result = { data };
+      }
+     
+      
+      if (result.error) {
+        console.error(`❌ Erro inserindo batch em ${tableName}:`, result.error);
         
         // Se for erro de duplicidade, tentar UPDATE individual
-        if (error.code === '23505') {
+        if (result.error.code === '23505') {
           console.log(`🔄 Tratando duplicidade em ${tableName}, tentando UPSERT individual...`);
           await this.handleDuplicateInsert(tableName, records, itemsToProcess, authData);
           return;
         }
         
-        // Se for erro de RLS, adicionar mais informações
-        if (error.message.includes('row-level security') || error.code === '42501') {
-          console.error('🔍 Detalhes do erro RLS:', {
-            table: tableName,
-            userRole: authData.userRole,
-            recordsCount: records.length,
-            firstRecord: records[0] ? {
-              ...records[0],
-              // Ocultar dados sensíveis para log
-              nome: records[0].nome_completo?.substring(0, 10) + '...',
-              hasInstituicaoId: !!records[0].instituicao_id
-            } : null
-          });
-        }
-        
-        throw error;
+        throw result.error;
       }
       
       // 3. Atualizar IDs locais com IDs do Supabase
-      for (let i = 0; i < itemsToProcess.length; i++) {
-        const item = itemsToProcess[i];
-        const supabaseRecord = data?.[i];
-        
-        if (supabaseRecord) {
-          // Atualizar ID local
-          await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+      if (result.data) {
+        for (let i = 0; i < itemsToProcess.length; i++) {
+          const item = itemsToProcess[i];
+          const supabaseRecord = result.data[i];
           
-          // Marcar como sincronizado
-          await db.syncQueue.delete(item.id!);
+          if (supabaseRecord) {
+            await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+            await db.syncQueue.delete(item.id!);
+          }
         }
       }
       
       console.log(`✅ ${records.length} registros processados em ${tableName}`);
       
     } catch (error) {
+       if (error.code === '42501') {
+          console.error('🔍 DEBUG RLS Error:', {
+            table: tableName,
+            errorCode: error.code,
+            errorMessage: error.message,
+            
+            // Verificar autenticação atual
+            authState: await supabase.auth.getSession().then(s => ({
+              hasSession: !!s.data.session,
+              userId: s.data.session?.user?.id,
+              // Verificar headers sendo enviados
+              tokenPresent: !!s.data.session?.access_token,
+              tokenPreview: s.data.session?.access_token?.substring(0, 20) + '...'
+            }))
+          });
+      }
       console.error(`❌ Erro fatal em processInsertBatch para ${tableName}:`, error);
-      // Não propagar o erro para não parar a sincronização completa
+    }
+  },
+
+  async checkExistingNotificacao(record: any): Promise<any> {
+    try {
+      // ✅ Verificar se já existe uma notificação similar
+      // Pode usar combinação de campos únicos como referência
+      if (record.titulo && record.data_envio && record.destinatario_tipo) {
+        const { data, error } = await supabase
+          .from('notificacao')
+          .select('*')
+          .eq('titulo', record.titulo)
+          .eq('data_envio', record.data_envio)
+          .eq('destinatario_tipo', record.destinatario_tipo)
+          .maybeSingle();
+        
+        if (!error && data) return data;
+      }
+      
+      // Se tiver um ID de referência, verificar por ele
+      if (record.referencia_id) {
+        const { data, error } = await supabase
+          .from('notificacao')
+          .select('*')
+          .eq('referencia_id', record.referencia_id)
+          .maybeSingle();
+        
+        if (!error && data) return data;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao verificar notificacao:', error);
+      return null;
+    }
+  },
+
+  async handleDuplicateInsert(tableName: string, records: any[], items: SyncQueueItem[], authData: any) {
+    // Processar registros individualmente para tratar duplicidades
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      const item = items[i];
+      
+      try {
+        let result;
+        
+        // ✅ CORREÇÃO: Configurações específicas por tabela
+        if (tableName === 'system_config') {
+          const { data, error } = await supabase
+            .from(tableName)
+            .upsert(record, {
+              onConflict: 'category,name'
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          result = data;
+          
+        } else if (tableName === 'notificacao') {
+          // ✅ CORREÇÃO: Para notificacao, upsert normal
+          const { data, error } = await supabase
+            .from(tableName)
+            .upsert(record)
+            .select()
+            .single();
+          
+          if (error) throw error;
+          result = data;
+          
+        } else {
+          // Para outras tabelas, upsert padrão
+          const { data, error } = await supabase
+            .from(tableName)
+            .upsert(record, {
+              onConflict: 'id'
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          result = data;
+        }
+        
+        if (result) {
+          await this.updateLocalId(tableName, item.record_id, result.id);
+          await db.syncQueue.delete(item.id!);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Erro processando registro individual em ${tableName}:`, error);
+        await this.handleSyncError(item, error);
+      }
     }
   },
 
@@ -338,63 +509,6 @@ export const syncManager: SyncManager = {
       console.error('Erro ao converter INSERT para UPDATE:', error);
     }
   },
-
-  async handleDuplicateInsert(tableName: string, records: any[], items: SyncQueueItem[], authData: any) {
-    // Processar registros individualmente para tratar duplicidades
-    for (let i = 0; i < records.length; i++) {
-      const record = records[i];
-      const item = items[i];
-      
-      try {
-        let result;
-        
-        // Para system_config, usar UPSERT com onConflict
-        if (tableName === 'system_config') {
-          const { data, error } = await supabase
-            .from(tableName)
-            .upsert(record, {
-              onConflict: 'category,name',
-              ignoreDuplicates: false
-            })
-            .select()
-            .single();
-          
-          if (error) throw error;
-          result = data;
-        } else {
-          // Para outras tabelas, tentar INSERT primeiro, depois UPDATE se falhar
-          const { data, error } = await supabase
-            .from(tableName)
-            .insert(record)
-            .select()
-            .single();
-          
-          if (error && error.code === '23505') {
-            // Se for duplicidade, buscar registro existente e atualizar
-            console.log(`🔄 Registro duplicado encontrado, convertendo para UPDATE`);
-            await this.convertInsertToUpdate(tableName, item, record.id);
-            continue;
-          } else if (error) {
-            throw error;
-          }
-          
-          result = data;
-        }
-        
-        if (result) {
-          // Atualizar ID local
-          await this.updateLocalId(tableName, item.record_id, result.id);
-          
-          // Marcar como sincronizado
-          await db.syncQueue.delete(item.id!);
-        }
-        
-      } catch (error) {
-        console.error(`❌ Erro processando registro individual em ${tableName}:`, error);
-        // Continuar com os próximos registros
-      }
-    }
-  },
   
   // ✅ Processar UPDATE individual (mais seguro)
   async processSingleUpdate(tableName: string, item: SyncQueueItem) {
@@ -409,7 +523,7 @@ export const syncManager: SyncManager = {
       }
       
       // Remover campos internos do Dexie
-      const { id, sync_status, deleted, createdAt, updatedAt, ...cleanRecord } = record;
+      const { id, sync_status, deleted, createdAt, updated_at, ...cleanRecord } = record;
       
       // ✅ ADICIONAR CAMPOS PARA RLS
       const recordWithRLS = {

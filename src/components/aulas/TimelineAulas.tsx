@@ -16,7 +16,8 @@ import {
   FiPlus,
   FiEye,
   FiEdit,
-  FiTrash
+  FiTrash,
+  FiPercent
 } from 'react-icons/fi';
 import { format, startOfWeek, endOfWeek, isSameWeek, parseISO, eachWeekOfInterval, subWeeks, addWeeks } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -26,7 +27,7 @@ interface TimelineWindowsProps {
   aulas: Aula[];
   onAulaClick?: (aula: Aula) => void;
   onEditClick?: (aula: Aula) => void;
-  onDeleteClick?: (aulaId: string) => void;
+  onDeleteClick?: (aula: Aula) => void;
   showActions?: boolean;
 }
 
@@ -40,7 +41,7 @@ export const TimelineWindows = ({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [currentYearMonth, setCurrentYearMonth] = useState<string>('');
   const timelineRef = useRef<HTMLDivElement>(null);
-
+  const { showAlert } = useAlert(); 
   // Memoizar o agrupamento de aulas por semana
   const semanas = useMemo(() => {
     const grouped: Record<string, {
@@ -87,6 +88,12 @@ export const TimelineWindows = ({
           grouped[weekKey].aulas.push(aula);
         }
       } catch (error) {
+         showAlert({
+            title:"Erro ao processar a aula",
+            type:"error",
+            duration:5000,
+            message:"Contacte ao administrador para verificar suas permissões"
+          })
         console.error('Erro ao processar aula:', aula, error);
       }
     });
@@ -206,7 +213,7 @@ export const TimelineWindows = ({
   }, [onEditClick]);
 
   // Função para lidar com exclusão
-  const handleDeleteClick = useCallback((aulaId: string, e: React.MouseEvent) => {
+  const handleDeleteClick = useCallback((aulaId: Aula, e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDeleteClick) {
       onDeleteClick(aulaId);
@@ -499,12 +506,12 @@ export const TimelineWindows = ({
                                         <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                                           <div className="flex items-center gap-1">
                                             <FiUsers className="w-3 h-3" />
-                                            <span>{aula.turma_nome || aula.turma_id}</span>
+                                            <span>{aula.turmas?.nome_turma || aula.turma_id}</span>
                                           </div>
-                                          {aula.sala && (
+                                          {aula.taxa_participacao && (
                                             <div className="flex items-center gap-1">
-                                              <FiMapPin className="w-3 h-3" />
-                                              <span>Sala: {aula.sala}</span>
+                                              
+                                              <span>Participação: {aula.taxa_participacao}</span><FiPercent className="-ml-1 mb-[0.20rem] w-3 h-3" />
                                             </div>
                                           )}
                                         </div>
@@ -527,7 +534,7 @@ export const TimelineWindows = ({
                                           
                                           {onDeleteClick && (
                                             <button
-                                              onClick={(e) => handleDeleteClick(aula.id, e)}
+                                              onClick={(e) => handleDeleteClick(aula, e)}
                                               className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-red-600 
                                                 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 
                                                 rounded-lg transition-colors"

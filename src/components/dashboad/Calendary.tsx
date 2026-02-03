@@ -7,6 +7,9 @@ import { EventFormData } from "../../types/eventos";
 import Holidays from 'date-holidays';
 import { IconType } from "react-icons";
 import EventModalForm from "../event/EventosPage";
+import { useAlert } from "../ui/AlertBadge";
+import { useConfirmModal } from "../ui/ComfirmModal";
+import toast from "react-hot-toast";
 
 // Adicione este tipo
 type ModalMode = 'list' | 'view' | 'edit' | 'create';
@@ -15,12 +18,13 @@ export const CalendarWithEvents = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<EventFormData[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const { confirm, ModalComponent } = useConfirmModal();
   const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>('list'); // Nova state para controlar o modo
   const [loading, setLoading] = useState<boolean>(false);
   const currentYear = currentDate.getFullYear();
-
+  const { showAlert } = useAlert(); 
 
   // Inicializar date-holidays para Angola
   const hd = useMemo(() => {
@@ -29,7 +33,14 @@ export const CalendarWithEvents = () => {
       holidays.setLanguages(['pt']);
       return holidays;
     } catch (error) {
+      
       console.error('Erro ao inicializar date-holidays:', error);
+       showAlert({
+          title:"Erro ao inicializar date-holidays",
+          type:"error",
+          duration:5000,
+          message:"Não foi possivel aceder aos feriados"
+        })
       return null;
     }
   }, []);
@@ -74,6 +85,12 @@ export const CalendarWithEvents = () => {
         };
       });
     } catch (error) {
+       showAlert({
+          title:"Erro ao carregar feriados",
+          type:"warning",
+          duration:5000,
+          message:"Não foi possivel aceder aos feriados"
+        })
       console.warn('Não foi possível carregar feriados:', error);
       return [];
     }
@@ -104,8 +121,13 @@ export const CalendarWithEvents = () => {
   };
 
   const handleEditEvent = (event: EventFormData): void => {
-    if (event.id && event.id < 0) {
-      alert('Feriados nacionais não podem ser editados.');
+    if (event.id) {
+      showAlert({
+          type: 'error',
+          title: 'Feriados nacionais não podem ser editados.',
+          message: 'Não foi possível editar o evento '+event.title,
+          duration: 5000
+        });
       return;
     }
     setSelectedEvent(event);
@@ -149,18 +171,38 @@ export const CalendarWithEvents = () => {
       });
   };
 
-  const handleDeleteEvent = (eventId: number): void => {
-    if (confirm('Tem certeza que deseja remover este evento?')) {
-      eventoService.deletarEvento(eventId.toString())
-        .then(() => {
-          setEvents(prevEvents => prevEvents.filter(ev => ev.id !== eventId));
-          setModalMode('list');
-          setSelectedEvent(null);
-        })
-        .catch((error) => {
-          console.error('Erro ao remover o evento:', error);
+  const handleDeleteEvent = async (eventId: string) => {
+      const confirmed = await confirm({
+          type: 'delete',
+          title: 'Excluir Evento',
+          message: `Tem certeza que deseja remover este evento?`,
+          isDestructive: true,
+          confirmText: 'Excluir',
+          onConfirm: async () => {
+            try {
+              const eve=events.find(s => s.id === eventId)
+              await eventoService.deletarEvento(eventId);
+              setEvents(prev => prev.filter(s => s.id !== eventId));
+              setModalMode('list');
+              setSelectedEvent(null);
+              toast.success('Aula excluída com sucesso!');
+              showAlert({
+                type: 'success',
+                title: 'Evento excluido com sucesso!',
+                message: `Evento ${eve?.title} foi removido do sistema`,
+                duration: 3000
+              });
+              
+            } catch (error) {
+              showAlert({
+                type: 'error',
+                title: 'Erro ao excluir',
+                message: 'Não foi possível excluir o evento. Verifique sua conexão.',
+                duration: 5000
+              });
+            }
+          }
         });
-    }
   };
 
   const buscarEventos = async (): Promise<void> => {
@@ -554,6 +596,7 @@ export const CalendarWithEvents = () => {
       </div>
 
       <EventModal />
+      <ModalComponent/>
     </div>
   );
 };

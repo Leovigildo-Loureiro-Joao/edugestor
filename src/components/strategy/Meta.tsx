@@ -17,12 +17,18 @@ import {
 } from "react-icons/fi";
 import { Meta } from "../../types/eventos";
 import { useNavigate } from "react-router-dom";
+import { useConfirmModal } from "../ui/ComfirmModal";
+import { estrategiaService } from "../../services/database/estrategiaService";
+import toast from "react-hot-toast";
+import { useAlert } from "../ui/AlertBadge";
 
 const MetaComponent = ({ metas, setMetas }: { 
   metas: Meta[], 
   setMetas: React.Dispatch<React.SetStateAction<Meta[]>> 
 }) => {
   const navigate = useNavigate();
+  const { showAlert } = useAlert(); 
+  const { confirm, ModalComponent } = useConfirmModal();
   const [expandedMeta, setExpandedMeta] = useState<string | null>(null);
 
   const toggleMeta = (id: string) => {
@@ -77,26 +83,39 @@ const MetaComponent = ({ metas, setMetas }: {
 
   const handleDelete = async (metaId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (confirm('Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.')) {
-      try {
-        // Aqui você chamaria seu serviço para deletar
-        // await estrategiaService.deleteMeta(metaId);
-        
-        // Atualizar estado local
-        setMetas(metas.filter(meta => meta.id !== metaId));
-        
-        // Fechar se estiver expandida
-        if (expandedMeta === metaId) {
-          setExpandedMeta(null);
-        }
-        
-        // Mostrar mensagem de sucesso
-        console.log(`Meta ${metaId} excluída`);
-      } catch (error) {
-        console.error('Erro ao excluir meta:', error);
-      }
-    }
+      const confirmed = await confirm({
+          type: 'delete',
+          title: 'Excluir Meta',
+          message: `'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.'`,
+          isDestructive: true,
+          confirmText: 'Excluir',
+          onConfirm: async () => {
+            try {
+              await estrategiaService.deleteMeta(metaId);
+              const m=metas.find(meta => meta.id == metaId);      
+              setMetas(metas.filter(meta => meta.id !== metaId));      
+              // Fechar se estiver expandida
+              if (expandedMeta === metaId) {
+                setExpandedMeta(null);
+              }
+              toast.success('Meta excluída com sucesso!');
+              showAlert({
+                type: 'success',
+                title: 'Meta excluída!',
+                message: `Meta da ${m?.titulo} foi removida do sistema.`,
+                duration: 3000
+              });
+              
+            } catch (error) {
+              showAlert({
+                type: 'error',
+                title: 'Meta ao excluir',
+                message: 'Não foi possível excluir a meta. Verifique sua conexão.',
+                duration: 5000
+              });
+            }
+          }
+        });
   };
 
   return (
@@ -289,6 +308,7 @@ const MetaComponent = ({ metas, setMetas }: {
                       }`} />
                     </div>
                   </div>
+                  <ModalComponent/>
                 </div>
 
                 {/* Conteúdo Expandido */}
@@ -418,6 +438,7 @@ const MetaComponent = ({ metas, setMetas }: {
                     </div>
                   </motion.div>
                 )}
+                
               </motion.div>
             );
           })

@@ -19,8 +19,10 @@ import { Course } from "../../types/curso";
 import { Select } from "../ui/Select.jsx";
 import { configService } from "../../services/database/config.ts";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { logoBlack } from "../auth/Login.jsx";
+import { useConfirmModal } from "../ui/ComfirmModal.tsx";
+import { useAlert } from "../ui/AlertBadge.tsx";
 
 // ✅ Chave para localStorage
 const getStorageKey = (studentId?: string) => 
@@ -41,7 +43,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const storageKey = getStorageKey(student?.id);
   const [submit,setSubmit]=useState(true)
-  
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
+  const [comfirm, setComfirm] = useState(false);
+  const [cancel, setCancel] = useState(false);
+  const [update, setUpdate] = useState(false);
   // Estado interno do formulário
   const initialData: StudentFormData = student ? {
     nome_completo: student.nome_completo || '',
@@ -100,7 +106,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     pagamento_em_dia: false,
     sync_status: "pending"
   };
-
   const { 
     data: formData, 
     setData: setFormData, 
@@ -167,7 +172,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   const loadCursos = async () => {
     try {
-      const res = await cursosService.getCourse();
+      const res = await cursosService.getCourses();
       setCursos(res ?? []);
       setFormData((prev: StudentFormData) => ({ ...prev, curso: res?.[0]?.nome || '' }));
     } catch (error) {
@@ -257,10 +262,9 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setUpdate(true)
     const { name, value, type } = e.target;
-    
     if (name === 'curso') {
-      // Usar a função específica para mudança de curso
       handleCursoChange(value);
     } else {
       setFormData((prev: any) => ({
@@ -272,6 +276,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   };
 
   const handleChangeSel = (field: string, value: any) => {
+    setUpdate(true)
     if (field === 'curso') {
       handleCursoChange(value);
     } else {
@@ -294,10 +299,14 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   };
 
   const handleCancel = () => {
-    if (hasUnsavedChanges && !window.confirm('Tem alterações não salvas. Deseja realmente cancelar?')) {
-      return;
+    if ((update||hasUnsavedChanges) && !cancel) {
+      setUpdate(true)
+      setComfirm(true)
+      return 
+    }else if(cancel){
+      setComfirm(false)
+      clearDraft();
     }
-    clearDraft();
     onCancel();
   };
 
@@ -488,7 +497,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   name="nome_completo" 
                   id="nome_completo"
                   value={formData.nome_completo}
-                  onChange={handleChange}
+                  onChange={(e)=>handleChange(e)}
                   required
                 />
               </div>
@@ -708,6 +717,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                     <SelectTyped 
                       vect={cursos.map(curso => curso.nome)} 
                       icon={FiFileText}
+                      
                       onChange={(value: string) => handleChangeSel('curso', value)}
                       value={formData.curso}
                       placeholder="Selecione o curso"
@@ -911,7 +921,9 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             {loading ? 'Salvando...' : (isEditing ? 'Atualizar Aluno' : 'Salvar Aluno')}
           </button>
         </div>
+        
       </motion.form>
+     <ModalComponent/>
     </>
   );
 };

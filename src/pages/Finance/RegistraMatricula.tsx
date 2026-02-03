@@ -7,11 +7,14 @@ import { transacaoService } from '../../services/database/transacaoService.ts';
 import { Student } from '../../types/aluno.ts';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
 import { SeletorMeses } from '../../components/ui/SelectMonth.tsx';
+import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
+import { useAlert } from '../../components/ui/AlertBadge.tsx';
 
 export const CompletarMatricula = () => {
     const { alunoId } = useParams();
     const navigate = useNavigate();
-    
+    const { confirm, ModalComponent } = useConfirmModal();
+    const { showAlert } = useAlert(); 
     const [aluno, setAluno] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [processando, setProcessando] = useState(false);
@@ -67,7 +70,13 @@ export const CompletarMatricula = () => {
             
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
-            alert('Erro ao carregar dados do aluno');
+            showAlert({
+            type: 'error',
+            title: 'Erro ao carregar dados do aluno',
+            message: 'Verifique os dados e tente novamente',
+            duration: 5000
+            });
+
         } finally {
             setLoading(false);
         }
@@ -159,7 +168,12 @@ export const CompletarMatricula = () => {
             
         } catch (error: any) {
             console.error('Erro ao registrar matrícula:', error);
-            alert('Erro ao registrar matrícula: ' + error.message);
+             showAlert({
+            type: 'error',
+            title: 'Erro ao registrar matrícula',
+            message: 'Verifique os dados e tente novamente',
+            duration: 5000
+            });
         } finally {
             setProcessando(false);
         }
@@ -250,7 +264,7 @@ export const CompletarMatricula = () => {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                
+                <ModalComponent/>
                 {/* Header */}
                 <div className="mb-8">
                     <button

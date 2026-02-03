@@ -10,6 +10,8 @@ import { profileService } from "./profileService";
 import { turmaService } from "./turmas";
 import { frequenciaService } from "./frequenciaService";
 import { cacheManager } from "./cacheManager";
+import { emitPendingSync } from "../../utils/emitPendingSync";
+import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -61,50 +63,185 @@ export const alunosService = {
   },
 
     // ✅ Buscar todos os alunos - CORRIGIDO
-  async getAllStudents() {
-    const CACHE_KEY = 'alunos_all';
+async getAllStudents(): Promise<Student[]> {
+  const CACHE_KEY = 'alunos_all';
+  
+  try {
+    // 1. Criar versão baseada em múltiplos contadores para detectar mudanças reais
+    const [alunoCount, turmaCount, lastModified] = await Promise.all([
+      db.alunos.count(),
+      db.turmas.count(),
+      getLastModifiedTimestamp() // Método para obter timestamp da última modificação
+    ]);
     
-    // 1. Tentar cache primeiro
-    const qtd= await db.alunos.count()
-    const cached = cacheManager.get(CACHE_KEY,qtd);
+    // 2. Criar chave de cache composta por versões
+    const cacheVersion = `v${alunoCount}_${turmaCount}_${lastModified}`;
+    const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
+    
+    // 3. Tentar cache primeiro
+    const cached = cacheManager.get(cacheKeyWithVersion);
     if (cached) {
+      console.log('✅ Cache HIT para alunos');
       return cached;
     }
     
-    try {
+    console.log('🔄 Cache MISS para alunos, buscando do banco...');
+    
+    // 4. Buscar dados em paralelo
+    const [alunosAll, todasTurmas] = await Promise.all([
+      db.alunos.toArray(),
+      turmaService.getTurmas()
+    ]);
+    
+    // 5. Otimizar: Criar mapa de turmas mais eficiente
+    // Filtrar apenas turmas ativas e válidas
+    const turmasAtivas = todasTurmas.filter(t => !t.deleted);
+    const turmaMap = new Map(
+      turmasAtivas.map(t => [t.id, {
+        id: t.id,
+        nome_turma: t.nome_turma || '',
+        professor: t.professor || '',
+        curso_nome: t.curso_nome || ''
+      }])
+    );
+    
+    // 6. Processar alunos
+    // Primeiro filtrar, depois ordenar, depois mapear
+    const alunos = alunosAll
+      .filter(aluno => {
+        // Aluno não deletado
+        if (aluno.deleted) return false;
+        
+        // Aluno com turma válida (se tiver turma_id)
+        if (aluno.turma_id) {
+          const turma = turmaMap.get(aluno.turma_id);
+          return turma !== undefined;
+        }
+        
+        // Aceitar alunos sem turma também
+        return true;
+      })
+      .sort((a, b) => {
+        // Ordenação otimizada
+        const nomeA = a.nome_completo || '';
+        const nomeB = b.nome_completo || '';
+        return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+      })
+      .map(aluno => {
+        let turmaInfo = {
+          turma_nome: 'Sem turma',
+          professor: 'Sem professor',
+          curso_nome: ''
+        };
+        
+        if (aluno.turma_id) {
+          const turma = turmaMap.get(aluno.turma_id);
+          if (turma) {
+            turmaInfo = {
+              turma_nome: turma.nome_turma,
+              professor: turma.professor,
+              curso_nome: turma.curso_nome
+            };
+          }
+        }
+       
+        
+        return {
+          ...aluno,
+          ...turmaInfo,
+          // Adicionar informações calculadas se necessário
+          idade: aluno.data_nascimento ? this.calcularIdade(aluno.data_nascimento) : null
+        };
+      });
+    
+      const pendentesCount = alunosAll.filter(aluno => 
+        aluno.sync_status === 'pending' || aluno.sync_status === 'pending_delete'
+      ).length;
       
-      const [alunosAll,todasTurmas] = await Promise.all([
-          db.alunos.toArray(),
-          turmaService.getTurmas()
-      ]) 
-      const turmaMap = new Map(todasTurmas.map(t => [t.id, t]));
-      
-      const alunos = alunosAll
-        .filter(aluno => !aluno.deleted && turmaMap.get(aluno.turma_id))
-        .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo))
-        .map(aluno => {
-          const turma = aluno.turma_id ? turmaMap.get(aluno.turma_id) : null;
-          return {
-            ...aluno,
-            turma_nome: turma ? turma.nome_turma : 'Sem turma',
-            professor: turma ? turma.professor : 'Sem professor',
-          };
-        });
-      
-      // 2. Guardar no cache
-      cacheManager.set(CACHE_KEY, alunos);
-      
-      return alunos;
-      
-    } catch (error) {
-      console.error('Erro ao carregar alunos:', error);
-      return [];
+      if (pendentesCount > 0) {
+        emitPendingSync('alunos', pendentesCount);
+      }
+    
+    // 7. Guardar no cache com TTL
+    cacheManager.set(cacheKeyWithVersion, alunos, {
+      ttl: 10 * 60 * 1000, // 10 minutos
+      version: cacheVersion
+    });
+    
+    // 8. Limpar versões antigas do cache (opcional, mas recomendado)
+    this.cleanOldStudentCache(CACHE_KEY, cacheVersion);
+    
+    console.log(`✅ Carregados ${alunos.length} alunos`);
+    return alunos;
+    
+  } catch (error) {
+    console.error('❌ Erro ao carregar alunos:', error);
+    
+    // 9. Fallback para última versão em cache disponível
+    const fallback = cacheManager.getLatest(CACHE_KEY);
+    if (fallback) {
+      console.warn('⚠️ Usando cache fallback devido a erro');
+      return fallback;
     }
-  },
+    
+    return [];
+  }
+}
+
+// Métodos auxiliares recomendados:
+, calcularIdade(dataNascimento: Date | string): number {
+  const nascimento = new Date(dataNascimento);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const mes = hoje.getMonth() - nascimento.getMonth();
+  
+  if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+    idade--;
+  }
+  
+  return idade;
+}
+
+, cleanOldStudentCache(baseKey: string, currentVersion: string): void {
+  // Limpar versões antigas do cache de alunos
+  const cacheKeys = Object.keys(localStorage)
+    .filter(key => key.startsWith(`${baseKey}_v`))
+    .filter(key => !key.endsWith(`_${currentVersion}`));
+  
+  // Manter apenas as últimas 3 versões
+  if (cacheKeys.length > 3) {
+    const keysToRemove = cacheKeys.slice(3);
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+  }
+}
+
+// Adicione também métodos para invalidar cache quando necessário:
+, invalidateStudentCache(): void {
+  // Invalidar todas as versões do cache de alunos
+  const keys = Object.keys(localStorage).filter(key => key.startsWith('alunos_all_'));
+  keys.forEach(key => localStorage.removeItem(key));
+  console.log('🧹 Cache de alunos invalidado');
+}
+
+// Ou invalidar seletivamente:
+, invalidateCacheOnStudentChange(studentId?: string): void {
+  if (studentId) {
+    // Cache específico por aluno se necessário
+    cacheManager.delete(`aluno_${studentId}`);
+  }
+  // Invalidar cache geral
+  this.invalidateStudentCache();
+},
 
   async syncAlunos() {
-      return syncManager.downloadTableBatch('alunos', new Date(0));
-    },
+    if(navigator.onLine)
+     return Promise.all([syncManager.uploadTableBatch('alunos'),
+      syncManager.downloadTableBatch('alunos', new Date(0))
+    ])
+    throw new Error("sem net")
+  },
   
   // ✅ Função auxiliar para marcar como pendente
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
@@ -155,7 +292,11 @@ export const alunosService = {
     }
     
     const alunos = await this.getAllStudents();
-    cacheManager.set(CACHE_KEY, alunos, 2 * 60 * 1000); // 2 minutos para dados de gráfico
+    
+    cacheManager.set(CACHE_KEY, alunos,  {
+      ttl: 10 * 60 * 1000, // 10 minutos
+      version: CACHE_KEY
+    }); // 2 minutos para dados de gráfico
     
     return alunos;
   }

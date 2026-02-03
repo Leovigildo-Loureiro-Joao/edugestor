@@ -5,12 +5,15 @@ import { Student } from '../../types';
 import { alunosService } from '../../services/database';
 import { FaCalendarWeek } from 'react-icons/fa6';
 import { RegistroFrequenciaLote } from '../../types/frequencia';
+import { useAlert } from '../ui/AlertBadge';
+import { useConfirmModal } from '../ui/ComfirmModal';
 
 export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{aula:Aula,onRegistrarFrequencia:(registro:RegistroFrequenciaLote) => Promise<void>,setAulaSelect:(aula:Aula) => void}) => {
   const [alunos, setAlunos] = useState<Student[]>([]);
   const [registros, setRegistros] = useState<Record<string, {presente: boolean, participou: boolean}>>({});
   const [enviando, setEnviando] = useState(false);
-
+    const { confirm, ModalComponent } = useConfirmModal();
+    const { showAlert } = useAlert(); 
   useEffect(() => {
     loadData();
   }, [aula]);
@@ -63,8 +66,19 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
         data_aula: aula.data_aula,
         registros: registrosArray,
       });
-      
+      showAlert({
+        title:"Registrado com sucesso",
+        type:"success",
+        duration:5000,
+        message:"Continue com este progressso"
+      })
     } catch (error) {
+      showAlert({
+        title:"Erro ao registrar",
+        type:"error",
+        duration:5000,
+        message:"Contacte ao administrador para verificar suas permissões"
+      })
       console.error('Erro ao registrar:', error);
     } finally {
       setEnviando(false);

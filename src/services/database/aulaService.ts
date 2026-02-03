@@ -5,6 +5,9 @@ import { Aula, AulaFormData } from '../../types/aula';
 import { syncManager } from './syncManager';
 import { Turma } from '../../types/turma';
 import { frequenciaService, turmaService } from '.';
+import { emitPendingSync } from '../../utils/emitPendingSync';
+import { cacheManager } from './cacheManager';
+import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -50,22 +53,43 @@ export const aulaService = {
   async getAllAulas(): Promise<Aula[]> {
     try {
       console.log('📋 Buscando aulas...');
+      const CACHE_KEY = 'aulas_all';
+            
+      // 1. Criar versão de cache baseada em múltiplos fatores
+      const [cursoCount, turmaCount, aulasCount, lastModified] = await Promise.all([
+        db.cursos.count(),
+        db.turmas.count(),
+        db.aulas.count(),
+        getLastModifiedTimestamp()
+      ]);
       
-      const todasAulas = await db.aulas.toArray();
-      const todasTurmas = await db.turmas.toArray();
+      // 2. Criar chave de cache com versão
+      const cacheVersion = `v${cursoCount}_${turmaCount}_${aulasCount}_${lastModified}`;
+      const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
-      // Filtrar as não deletadas
-      const aulasAtivas = todasAulas.filter(aula => !aula.deleted);
-      const turmaAtivas = todasTurmas.filter(turma => !turma.deleted);
-        const turmaMap = new Map(turmaAtivas.map(t => [t.id, t]));
+      // 3. Tentar cache primeiro
+      const cached = cacheManager.get(cacheKeyWithVersion);
+      if (cached) {
+        console.log('✅ Cache HIT para aulas');
+        return cached;
+      }
+      
+      console.log('🔄 Cache MISS para aulas, buscando do banco...');
 
-      // Ordenar por data (mais recente primeiro)
-      aulasAtivas.sort((a, b) => 
+      const [todasAulas, todasTurmas, frequencia] = await Promise.all([
+        db.aulas.toArray(),
+        db.turmas.toArray(),
+        frequenciaService.getAllFrequencias()
+      ]);
+
+      // Filtrar as não deletadas
+      const turmaMap = new Map(todasTurmas.filter(turma => !turma.deleted).map(t => [t.id, t]));
+
+      const aulasAtivas =todasAulas.filter(aula => !aula.deleted)
+      .sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
-      );
-      const frequencia=await frequenciaService.getAllFrequencias()
-      console.log(`✅ Encontradas ${aulasAtivas.length} aulas ativas`);
-      return aulasAtivas.map((aulas)=>{
+      )
+      .map((aulas)=>{
         const turma=turmaMap.get(aulas.turma_id)
         return {
           ...aulas,
@@ -73,6 +97,15 @@ export const aulaService = {
           registro:frequencia.filter((f)=>f.aula_id==aulas.id)
         }
       });
+      console.log(`✅ Encontradas ${aulasAtivas.length} aulas ativas`);
+       const pendentesCount = aulasAtivas.filter(aula => 
+        aula.sync_status === 'pending' || aula.sync_status === 'pending_delete'
+      ).length;
+      
+      if (pendentesCount > 0) {
+        emitPendingSync('aulas', pendentesCount);
+      }
+      return aulasAtivas
     } catch (error) {
       console.error('❌ Erro ao buscar aulas:', error);
       return [];
@@ -80,7 +113,11 @@ export const aulaService = {
   },
 
     async syncAulas() {
-      return syncManager.downloadTableBatch('aulas', new Date(0));
+      if(navigator.onLine)
+        return Promise.all([syncManager.uploadTableBatch('aulas'),
+          syncManager.downloadTableBatch('turmas', new Date(0))
+        ])
+      throw new Error("sem net")
     },
   
   // ✅ Função auxiliar para marcar como pendente

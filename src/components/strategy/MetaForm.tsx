@@ -18,14 +18,17 @@ import {
   FiAlertCircle,
   FiTrash2,
   FiCopy,
+  FiPlus,
+  FiCpu,
   FiPercent,
   FiCheckCircle,
   FiClock,
   FiBarChart2,
   FiX,
-  FiDatabase
+  FiDatabase,
+  FiEdit
 } from 'react-icons/fi';
-import { Meta } from '../../types/eventos';
+import { IndicadorDesempenho, Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
 import { SelectTyped } from '../students/StudentForm';
@@ -33,16 +36,20 @@ import { RxActivityLog, RxAllSides, RxCheckCircled, RxCommit, RxHobbyKnife } fro
 import { generateUniqueId } from '../../utils/idGenarator';
 import { ModalSubmeta } from './SubMeta';
 import { FREQUENCIAS, METRICAS_POR_MODULO, ModalKPI, MODULOS_DISPONIVEIS } from './KPIManager';
+import { useAlert } from '../ui/AlertBadge';
+import toast from 'react-hot-toast';
+import { useConfirmModal } from '../ui/ComfirmModal';
 
 
 const MetaPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdicao = !!id;
-  
+  const { confirm, ModalComponent } = useConfirmModal();
   const [loading, setLoading] = useState(true);
   const [showSubMeta, setShowSubMeta] = useState(false);
   const [showKPI, setShowKPI] = useState(false);
+  const [editandoKpi, setEditandoKpi] = useState<string|null>(null);
   const [salvando, setSalvando] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [recursos, setRecursos] = useState<Array<{
@@ -144,7 +151,6 @@ const removerSubMetas = (index: number) => {
     return METRICAS_POR_MODULO[modulo]?.find(m => m.value === metrica)?.label || metrica;
   };
 
-
 // Calcular custo total
 const custoTotal = recursos.reduce((total, recurso) => {
   return total + (recurso.custo || 0) * (recurso.quantidade || 1);
@@ -180,84 +186,9 @@ const custoTotal = recursos.reduce((total, recurso) => {
     recursos:[]
   });
 
-  const [kpis, setKpis] = useState<Array<{
-    nome: string;
-    descricao?: string;
-    valor_atual: number;
-    valor_meta: number;
-    unidade: string;
-    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
-    peso?: number;
-    
-    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
-    fonte_dados?: {
-      tipo: 'automatico' | 'manual' | 'integracao';
-      modulo?: 
-        | 'matriculas'
-        | 'frequencia' 
-        | 'notas'
-        | 'financeiro'
-        | 'pessoal'
-        | 'biblioteca'
-        | 'infraestrutura'
-        | 'avaliacoes';
-      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
-      filtros?: {
-        turma_id?: string;
-        disciplina_id?: string;
-        periodo_id?: string;
-        nivel_id?: string;
-        // ... outros filtros contextuais
-      };
-      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
-    };
-    
-    ultima_atualizacao?: string;
-    historico?: Array<{
-      data: string;
-      valor: number;
-      fonte: string;
-    }>;
-  }>>([]);
-  const [novoKpi, setNovoKpi] = useState<{
-    nome: string;
-    descricao?: string;
-    valor_atual: number;
-    valor_meta: number;
-    unidade: string;
-    frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
-    peso?: number;
-    
-    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
-    fonte_dados?: {
-      tipo: 'automatico' | 'manual' | 'integracao';
-      modulo?: 
-        | 'matriculas'
-        | 'frequencia' 
-        | 'notas'
-        | 'financeiro'
-        | 'pessoal'
-        | 'biblioteca'
-        | 'infraestrutura'
-        | 'avaliacoes';
-      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
-      filtros?: {
-        turma_id?: string;
-        disciplina_id?: string;
-        periodo_id?: string;
-        nivel_id?: string;
-        // ... outros filtros contextuais
-      };
-      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
-    };
-    
-    ultima_atualizacao?: string;
-    historico?: Array<{
-      data: string;
-      valor: number;
-      fonte: string;
-    }>;
-  }>({
+  const [kpis, setKpis] = useState<Array<IndicadorDesempenho>>([]);
+  const [novoKpi, setNovoKpi] = useState<IndicadorDesempenho>({
+    id:generateUniqueId(),
     nome: '',
     descricao: '',
     unidade: '%',
@@ -352,18 +283,28 @@ const custoTotal = recursos.reduce((total, recurso) => {
 
   const unidadesKpi = ['%', 'alunos', 'AKZ', 'horas', 'dias', 'unidades', 'pontos', 'estrelas'];
   const frequenciasKpi = ['diaria', 'semanal', 'mensal', 'trimestral', 'semestral', 'anual'];
-
+  const { showAlert } = useAlert(); 
     // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.titulo?.trim()) {
-      alert('Título é obrigatório');
+        showAlert({
+          type: 'warning',
+          message:"Título é obrigatório",
+          title: 'Preencha todos campos obrigatórios',
+          duration: 3000
+      });
       return;
     }
 
     if (!formData.data_fim) {
-      alert('Data final é obrigatória');
+      showAlert({
+          type: 'warning',
+          message:"Data final é obrigatória",
+          title: 'Preencha todos campos obrigatórios',
+          duration: 3000
+      });
       return;
     }
 
@@ -397,19 +338,50 @@ const custoTotal = recursos.reduce((total, recurso) => {
       navigate('/estrategia');
     } catch (error) {
       console.error('Erro ao salvar meta:', error);
-      alert('Erro ao salvar meta');
+      showAlert({
+          type: 'error',
+          message:"Verifique suas permissões",
+          title: 'Erro ao salvar meta',
+          duration: 5000
+      });
+      toast.error('Erro ao salvar meta');
     } finally {
       setSalvando(false);
     }
   };
 
   const handleExcluir = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta meta?')) return;
-    
-    if (isEdicao && id) {
-      await estrategiaService.deleteMeta(id);
-      navigate('/estrategia/metas');
-    }
+     const confirmed = await confirm({
+              type: 'delete',
+              title: 'Excluir Meta',
+              message: `'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.'`,
+              isDestructive: true,
+              confirmText: 'Excluir',
+              onConfirm: async () => {
+                try {
+                  if (isEdicao && id) {
+                    await estrategiaService.deleteMeta(id);
+                    toast.success('Meta excluída com sucesso!');
+                    showAlert({
+                      type: 'success',
+                      title: 'Meta excluída!',
+                      message: `Meta da ${m?.titulo} foi removida do sistema.`,
+                      duration: 3000
+                    });
+                    navigate('/estrategia/metas');
+                  }
+                } catch (error) {
+                  showAlert({
+                    type: 'error',
+                    title: 'Meta ao excluir',
+                    message: 'Não foi possível excluir a meta. Verifique sua conexão.',
+                    duration: 5000
+                  });
+                }
+              }
+            });
+   
+   
   };
 
   const handleDuplicar = () => {
@@ -423,9 +395,34 @@ const custoTotal = recursos.reduce((total, recurso) => {
   };
 
   const adicionarKpi = () => {
-    if (novoKpi.nome.trim()) {
+    setShowKPI(false);
+    if(editandoKpi){
+        setKpis((kpis)=>{
+          const kipis=[...(kpis.map((p)=> (p.id==editandoKpi?novoKpi:p)))]
+          return [...kipis]
+      });
+      setEditandoKpi(null)
+       setNovoKpi({
+        id:generateUniqueId(),
+        nome: '',
+        descricao: '',
+        unidade: '%',
+        valor_atual: 0,
+        valor_meta: 100,
+        frequencia: 'mensal' as const,
+        peso: 10,
+        fonte_dados: {
+          tipo: 'automatico' as const,
+          modulo: 'matriculas' as const,
+          metrica: 'novas_matriculas',
+          filtros: {},
+          query_parametros: {}
+        }
+      });
+    }else if (novoKpi.nome.trim()) {
       setKpis([...kpis, { ...novoKpi }]);
       setNovoKpi({
+        id:generateUniqueId(),
         nome: '',
         descricao: '',
         unidade: '%',
@@ -443,6 +440,16 @@ const custoTotal = recursos.reduce((total, recurso) => {
       });
     }
   };
+
+  const atualizarKpiValor=(id:string,value:number)=>{
+      setKpis((kpis)=>{
+        const kipis=[...(kpis.map((p)=> (p.id==id?{
+          ...p,
+          valor_atual:value
+        }:p)))]
+        return [...kipis]
+      });
+  }
 
   const removerKpi = (index: number) => {
     setKpis(kpis.filter((_, i) => i !== index));
@@ -865,14 +872,25 @@ const custoTotal = recursos.reduce((total, recurso) => {
                               <input
                                 type="number"
                                 value={kpi.valor_atual}
-                                onChange={(e) => atualizarKpiValor(index, parseFloat(e.target.value) || 0)}
+                                onChange={(e) => atualizarKpiValor(kpi.id, parseFloat(e.target.value) || 0)}
                                 className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-sm"
                                 step="0.01"
                               />
                               <span className="text-sm text-gray-500 dark:text-gray-400">{kpi.unidade}</span>
                             </div>
                           )}
-                          
+                           <button
+                            type="button"
+                            onClick={() =>{ 
+                              setNovoKpi(kpi);
+                              setEditandoKpi(kpi.id);
+                              setShowKPI(true);
+                            }}
+                            className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                            title="Editar KPI"
+                          >
+                            <FiEdit size={16} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => removerKpi(index)}
@@ -961,7 +979,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                             <span className="font-medium text-gray-700 dark:text-gray-300">
                               {getMetricaLabel(modulo, metrica)}
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                            <span className="text-xs px-2 flex items-center py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
                               {getModuloIcon(modulo)} {getModuloLabel(modulo)}
                             </span>
                           </div>
@@ -1580,14 +1598,16 @@ const custoTotal = recursos.reduce((total, recurso) => {
                   handleSaveKPI={adicionarKpi}
                   setShowForm={() => {
                     setShowKPI(false);
+                    setEditandoKpi(null)
                   }}
-                  editando={false}
+                  editando={editandoKpi!=null}
                   modulosDisponiveis={MODULOS_DISPONIVEIS}
                   metricasPorModulo={METRICAS_POR_MODULO}
                   frequencias={FREQUENCIAS}
                 />      
             )}
           </AnimatePresence>
+          <ModalComponent/>
       </div>
     </div>
   );

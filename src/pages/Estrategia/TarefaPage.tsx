@@ -1,4 +1,3 @@
-// pages/TarefaPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -20,11 +19,20 @@ import {
   FiEye,
   FiEyeOff,
   FiStar,
-  FiSend
+  FiSend,
+  FiTarget
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import toast from 'react-hot-toast';
+import { RxCalendar, RxLoop, RxStar, RxSwitch, RxUpdate } from 'react-icons/rx';
+import { SelectTyped } from '../../components/students/StudentForm';
+import { FaGolang } from 'react-icons/fa6';
+import { Library, List } from 'lucide-react';
+import { FaCheck } from 'react-icons/fa';
 
 
 
@@ -33,7 +41,7 @@ const TarefaPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isEdicao = !!id;
-  
+  const { showAlert } = useAlert(); 
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [tarefa, setTarefa] = useState<Tarefa | null>(null);
@@ -50,6 +58,7 @@ const TarefaPage = () => {
   }>>([]);
   const [novoComentario, setNovoComentario] = useState('');
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
+    const { confirm, ModalComponent } = useConfirmModal();
 
   // Form data
   const [formData, setFormData] = useState<Partial<Tarefa>>({
@@ -125,11 +134,11 @@ const TarefaPage = () => {
   ];
 
   const categorias = [
-    { value: 'importante', label: 'Importante', cor: 'bg-purple-100 text-purple-800', icon: '⭐' },
-    { value: 'urgente', label: 'Urgente', cor: 'bg-red-100 text-red-800', icon: '🚨' },
-    { value: 'evento', label: 'Evento', cor: 'bg-indigo-100 text-indigo-800', icon: '📅' },
-    { value: 'rotina', label: 'Rotina', cor: 'bg-green-100 text-green-800', icon: '🔄' },
-    { value: 'melhoria', label: 'Melhoria', cor: 'bg-teal-100 text-teal-800', icon: '⚡' }
+    { value: 'importante', label: 'Importante', cor: 'bg-purple-100 text-purple-800', icon: <FiStar/> },
+    { value: 'urgente', label: 'Urgente', cor: 'bg-red-100 text-red-800', icon: <FiAlertCircle/> },
+    { value: 'evento', label: 'Evento', cor: 'bg-indigo-100 text-indigo-800', icon: <RxCalendar/> },
+    { value: 'rotina', label: 'Rotina', cor: 'bg-green-100 text-green-800', icon: <RxLoop/> },
+    { value: 'melhoria', label: 'Melhoria', cor: 'bg-teal-100 text-teal-800', icon: <RxUpdate/> }
   ];
 
   const prioridades = [
@@ -152,7 +161,12 @@ const TarefaPage = () => {
     e.preventDefault();
     
     if (!formData.titulo?.trim()) {
-      alert('Título é obrigatório');
+       showAlert({
+          type: 'warning',
+          title: 'Preencha todos campos obrigatórios',
+          message: 'Título é obrigatório',
+          duration: 3000
+        });
       return;
     }
 
@@ -193,19 +207,50 @@ const TarefaPage = () => {
       navigate('/tarefas');
     } catch (error) {
       console.error('Erro ao salvar tarefa:', error);
-      alert('Erro ao salvar tarefa');
+        showAlert({
+          type: 'error',
+          title: 'Verifique suas permissões de utilizador',
+          message: 'Erro ao salvar tarefa',
+          duration: 5000
+        });
     } finally {
       setSalvando(false);
     }
   };
 
   const handleExcluir = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
-    
-    if (isEdicao && id) {
-      await estrategiaService.deleteTarefa(id);
-      navigate('/tarefas');
-    }
+    const confirmed = await confirm({
+          type: 'delete',
+          title: 'Excluir tarefa',
+          message: `Tem certeza que deseja excluir esta tarefa?`,
+          isDestructive: true,
+          confirmText: 'Excluir',
+          onConfirm: async () => {
+            try {
+               if (isEdicao && id) {
+                await estrategiaService.deleteTarefa(id);
+                toast.success('Tarefa excluída com sucesso!');
+                showAlert({
+                  type: 'success',
+                  title: 'Tarefa excluída!',
+                  message: `Tarefa foi removida do sistema.`,
+                  duration: 3000
+                });
+                navigate('/tarefas');
+              }
+            
+              
+            } catch (error) {
+              showAlert({
+                type: 'error',
+                title: 'Meta ao excluir',
+                message: 'Não foi possível excluir a tarefa. Verifique sua conexão.',
+                duration: 5000
+              });
+            }
+          }
+        });
+   
   };
 
   const handleDuplicar = () => {
@@ -293,7 +338,8 @@ const TarefaPage = () => {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-4xl font-bold mb-2">
+              <h1 className="text-2xl md:text-4xl font-bold mb-2 flex gap-3">
+                <FiCheckSquare/>
                 {isEdicao ? 'Editar Tarefa' : 'Nova Tarefa'}
               </h1>
               <p className="text-blue-100">
@@ -350,17 +396,14 @@ const TarefaPage = () => {
                 
                 {/* Status */}
                 <div>
-                  <select
+                  <SelectTyped
                     value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                    icon={null}
+                    onChange={(e) => setFormData({...formData, status: e as any})}
                     className="px-4 py-2 rounded-lg border font-medium"
-                  >
-                    {statusOptions.map(status => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
+                    vect={[...statusOptions]}
+                  />
+                  
                 </div>
               </div>
             </div>
@@ -552,18 +595,12 @@ const TarefaPage = () => {
                     <label className="block text-gray-700 font-medium mb-2">
                       Meta Relacionada
                     </label>
-                    <select
+                    <SelectTyped
+                      vect={["Selecione uma Meta",...(metas.map(m=>({'value':m.id,'label':m.titulo})))]}
+                      onChange={(e) => setFormData({...formData, meta_id: e})}
                       value={formData.meta_id || ''}
-                      onChange={(e) => setFormData({...formData, meta_id: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Nenhuma meta específica</option>
-                      {metas.map(meta => (
-                        <option key={meta.id} value={meta.id}>
-                          {meta.titulo.substring(0, 40)}...
-                        </option>
-                      ))}
-                    </select>
+                      icon={FiTarget}
+                    />
                   </div>
                 </div>
               </div>
@@ -704,6 +741,7 @@ const TarefaPage = () => {
           </div>
         </form>
       </div>
+      <ModalComponent/>
     </div>
   );
 };

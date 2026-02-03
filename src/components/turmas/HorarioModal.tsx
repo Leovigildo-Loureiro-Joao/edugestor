@@ -13,28 +13,37 @@ import {
 } from 'react-icons/fi';
 import { HorarioAula, HorarioAulaForm } from '../../types/turma';
 import { cursosService, turmaService } from '../../services/database';
+import { useConfirmModal } from '../ui/ComfirmModal';
+import { useAlert } from '../ui/AlertBadge';
 
 
+// No HorarioModal.tsx, adicione estas props:
 interface HorarioModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (horario: HorarioAulaForm) => void;
   onDelete?: (id: string) => void;
+  confirm: any;
   horarioEdit?: HorarioAula | null;
   turmaId?: string;
   title?: string;
+  horariosExistentes?: HorarioAula[]; // Nova prop para horários existentes
 }
+
 
 const HorarioModal: React.FC<HorarioModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
   onDelete,
+  confirm,
   horarioEdit,
   turmaId,
-  title = 'Adicionar Horário'
+  title = 'Adicionar Horário',
+  horariosExistentes
 }) => {
   const [formData, setFormData] = useState<HorarioAulaForm>({
+    turma_id:turmaId,
     dia_semana: 'segunda',
     hora_inicio: '08:00',
     hora_fim: '09:30',
@@ -58,12 +67,12 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
 
   // Disciplinas sugeridas
   const [disciplinasSugeridas,setDisciplina] = useState<string[]>();
-
+  const {showAlert} = useAlert()
   // Preencher formulário se estiver editando
   useEffect(() => {
      const addDisciplinas = async () => {
-       const turma=await turmaService.getTurmaById(turmaId)
-        const curso=await cursosService.getCourseById(turma?.curso_id)
+       const turma=await turmaService.getTurmaById(turmaId||"")
+        const curso=await cursosService.getCoursesById(turma?.curso_id||"")
        setDisciplina([...(curso?.disciplinas||[])])
     }
     addDisciplinas()
@@ -76,6 +85,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     } else {
       // Reset form
       setFormData({
+        turma_id:turmaId,
         dia_semana: 'segunda',
         hora_inicio: '08:00',
         hora_fim: '09:30',
@@ -88,6 +98,153 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
   }, [horarioEdit, isOpen]);
 
 
+  const verificarConflitoNoModal = (
+    horario: HorarioAulaForm,
+    horariosExistentes?: HorarioAula[],
+    isEdicao?: boolean,
+    horarioEditId?: string
+  ): string | null => {
+    if (!horariosExistentes || horariosExistentes.length === 0) {
+      return null;
+    }
+    
+    const { dia_semana, hora_inicio, hora_fim } = horario;
+    
+    // Converter horas para minutos
+    const toMinutes = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    const inicioNovo = toMinutes(hora_inicio);
+    const fimNovo = toMinutes(hora_fim);
+    
+    for (const horarioExistente of horariosExistentes) {
+      // Ignorar o próprio horário durante edição
+      if (isEdicao && horarioExistente.id === horarioEditId) {
+        continue;
+      }
+      
+      if (horarioExistente.dia_semana === dia_semana) {
+        const inicioExistente = toMinutes(horarioExistente.hora_inicio);
+        const fimExistente = toMinutes(horarioExistente.hora_fim);
+        
+        const sobrepoe = (
+          (inicioNovo >= inicioExistente && inicioNovo < fimExistente) ||
+          (fimNovo > inicioExistente && fimNovo <= fimExistente) ||
+          (inicioNovo <= inicioExistente && fimNovo >= fimExistente)
+        );
+        
+        if (sobrepoe) {
+          return `Conflito com: ${horarioExistente.disciplina} (${horarioExistente.hora_inicio} - ${horarioExistente.hora_fim})`;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // No handleSubmit do HorarioModal, adicione a validação:
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    // Verificar conflito antes de submeter
+    const conflito = verificarConflitoNoModal(
+      formData,
+      horariosExistentes, // Passar os horários existentes como prop
+      !!horarioEdit,
+      horarioEdit?.id
+    );
+    
+    if (conflito) {
+      setErrors(prev => ({
+        ...prev,
+        hora_fim: conflito,
+        hora_inicio: 'Conflito de horário'
+      }));
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Formatar horas para salvar
+      const horarioParaSalvar: HorarioAulaForm = {
+        turma_id: turmaId,
+        dia_semana: formData.dia_semana,
+        hora_inicio: formData.hora_inicio.padStart(5, '0'),
+        hora_fim: formData.hora_fim.padStart(5, '0'),
+        disciplina: formData.disciplina,
+        sala: formData.sala,
+        professor_responsavel: formData.professor_responsavel,
+      };
+
+      await onSubmit(horarioParaSalvar);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar horário:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Adicione validação em tempo real nas mudanças de hora:
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Limpar erro do campo
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+
+    // Validar horas em tempo real
+    if (name === 'hora_inicio' || name === 'hora_fim') {
+      const timeError = validateTimes(
+        name === 'hora_inicio' ? value : formData.hora_inicio,
+        name === 'hora_fim' ? value : formData.hora_fim
+      );
+      
+      if (timeError) {
+        setErrors(prev => ({ ...prev, [name]: timeError }));
+      } else {
+        // Verificar conflito com horários existentes
+        const conflito = verificarConflitoNoModal(
+          { ...formData, [name]: value },
+          horariosExistentes,
+          !!horarioEdit,
+          horarioEdit?.id
+        );
+        
+        if (conflito) {
+          setErrors(prev => ({
+            ...prev,
+            hora_fim: conflito,
+            hora_inicio: 'Conflito de horário'
+          }));
+        }
+      }
+    }
+  };
+
+  // Adicione uma função para mostrar horários disponíveis:
+  const getHorariosDisponiveis = (dia: string) => {
+    if (!horariosExistentes) return [];
+    
+    const horariosDoDia = horariosExistentes
+      .filter(h => h.dia_semana === dia)
+      .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+    
+    return horariosDoDia;
+  };
    
 
 
@@ -128,31 +285,6 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     return '';
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Limpar erro do campo
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-
-    // Validar horas em tempo real
-    if (name === 'hora_inicio' || name === 'hora_fim') {
-      const timeError = validateTimes(
-        name === 'hora_inicio' ? value : formData.hora_inicio,
-        name === 'hora_fim' ? value : formData.hora_fim
-      );
-      
-      if (timeError) {
-        setErrors(prev => ({ ...prev, [name]: timeError }));
-      }
-    }
-  };
 
   const handleSelectDisciplina = (disciplina: string) => {
     setFormData(prev => ({
@@ -178,55 +310,53 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     if (!formData.professor_responsavel.trim()) {
       newErrors.professor_responsavel = 'Informe o professor';
     }
+    
+    if (!formData.professor_responsavel.trim()) {
+      newErrors.professor_responsavel = 'Informe o professor';
+    }
 
     const timeError = validateTimes(formData.hora_inicio, formData.hora_fim);
     if (timeError) {
       newErrors.hora_fim = timeError;
     }
 
+
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    // Formatar horas para salvar
-    const horarioParaSalvar: HorarioAulaForm = {
-      dia_semana: formData.dia_semana,
-      hora_inicio: formData.hora_inicio.padStart(5, '0'),
-      hora_fim: formData.hora_fim.padStart(5, '0'),
-      disciplina: formData.disciplina,
-      sala: formData.sala,
-      professor_responsavel: formData.professor_responsavel,
-    };
-
-    await onSubmit(horarioParaSalvar);
-    onClose();
-  } catch (error) {
-    console.error('Erro ao salvar horário:', error);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
 
   const handleDelete = async () => {
     if (horarioEdit?.id && onDelete) {
-      if (window.confirm('Tem certeza que deseja excluir este horário?')) {
-        try {
-          await onDelete(horarioEdit.id);
-          onClose();
-        } catch (error) {
-          console.error('Erro ao excluir horário:', error);
-        }
-      }
+       await confirm({
+            type: 'delete',
+            title: 'Excluir Horário',
+            message: `Tem certeza que deseja excluir o horário? `,
+            isDestructive: true,
+            confirmText: 'Excluir',
+            onConfirm: async () => {
+              try {
+                onDelete(horarioEdit.id);
+                onClose();
+                showAlert({
+                  type: 'success',
+                  title: 'Horário excluído!',
+                  message: `Tem certeza que deseja excluir este horário?`,
+                  duration: 3000
+                });
+                
+              } catch (error) {
+                showAlert({
+                  type: 'error',
+                  title: 'Erro ao excluir',
+                  message: 'Não foi possível excluir o aluno. Verifique sua conexão.',
+                  duration: 5000
+                });
+                console.error('Erro ao excluir horário:', error);
+              }
+            }
+          });
     }
   };
 
@@ -253,6 +383,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
 
   return (
     <AnimatePresence>
+
       {isOpen && (
         <>
           {/* Backdrop */}
@@ -263,7 +394,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
             onClick={handleClose}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
           />
-
+          
           {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
@@ -300,7 +431,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6">
+              <form onSubmit={handleSubmit} className="p-6 overflow-auto max-h-[80vh]">
                 <div className="space-y-6">
                   {/* Dia da semana e Horário */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -322,6 +453,22 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
                           </option>
                         ))}
                       </select>
+                      <div className="mt-2">
+                        {getHorariosDisponiveis(formData.dia_semana).length > 0 && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            <p className="font-medium mb-1">Horários já existentes neste dia:</p>
+                            {getHorariosDisponiveis(formData.dia_semana).map((h, idx) => (
+                              <div key={idx} className="flex items-center gap-2 mb-1">
+                                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span>
+                                  {h.disciplina}: {h.hora_inicio} - {h.hora_fim} ({h.sala})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                     </div>
 
                     {/* Hora início */}

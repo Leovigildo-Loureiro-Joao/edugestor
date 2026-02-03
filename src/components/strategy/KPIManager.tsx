@@ -11,11 +11,23 @@ import {
   FiX,
   FiDatabase,
   FiCpu,
-  FiEdit
+  FiEdit,
+  FiDollarSign,
+  FiBook,
+  FiHome,
+  FiEdit2,
+  FiBox
 } from 'react-icons/fi';
-import { Meta } from '../../types/eventos';
+import { IndicadorDesempenho, Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import { toast } from 'react-hot-toast';
+import { FaBusinessTime, FaFileWord, FaRegIdCard } from 'react-icons/fa';
+import { RxCheckCircled, RxGroup, RxText } from 'react-icons/rx';
+import { SelectTyped } from '../students/StudentForm';
+import { FaTimeline } from 'react-icons/fa6';
+import { generateUniqueId } from '../../utils/idGenarator';
+import { useConfirmModal } from '../ui/ComfirmModal';
+import { useAlert } from '../ui/AlertBadge';
 
 interface KPIManagerProps {
   meta: Meta;
@@ -24,14 +36,14 @@ interface KPIManagerProps {
 
 // Opções para fonte de dados
 export const MODULOS_DISPONIVEIS = [
-  { value: 'matriculas', label: 'Matrículas', icone: '📋' },
-  { value: 'frequencia', label: 'Frequência', icone: '📊' },
-  { value: 'notas', label: 'Notas', icone: '📝' },
-  { value: 'financeiro', label: 'Financeiro', icone: '💰' },
-  { value: 'pessoal', label: 'Pessoal (RH)', icone: '👥' },
-  { value: 'biblioteca', label: 'Biblioteca', icone: '📚' },
-  { value: 'infraestrutura', label: 'Infraestrutura', icone: '🏫' },
-  { value: 'manual', label: 'Manual', icone: '✏️' },
+  { value: 'matriculas', label: 'Matrículas', icone: <FaRegIdCard className='text-gray-500 dark:text-gray-200'/>},
+  { value: 'frequencia', label: 'Frequência', icone: <FiTrendingUp className='text-gray-500 dark:text-gray-200'/> },
+  { value: 'notas', label: 'Notas', icone: <RxCheckCircled className='text-gray-500 dark:text-gray-200'/>},
+  { value: 'financeiro', label: 'Financeiro', icone: <FiDollarSign className='text-gray-500 dark:text-gray-200'/> },
+  { value: 'pessoal', label: 'Pessoal (RH)', icone: <RxGroup className='text-gray-500 dark:text-gray-200'/> },
+  { value: 'biblioteca', label: 'Biblioteca', icone: <FiBook className='text-gray-500 dark:text-gray-200'/> },
+  { value: 'infraestrutura', label: 'Infraestrutura', icone: <FiHome className='text-gray-500 dark:text-gray-200'/> },
+  { value: 'manual', label: 'Manual', icone: <FiEdit2 className='text-gray-500 dark:text-gray-200'/> },
 ] as const;
 
 // Métricas por módulo (exemplos)
@@ -77,7 +89,10 @@ export const FREQUENCIAS = [
 
 export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
   const [showForm, setShowForm] = useState(false);
-  const [novoKPI, setNovoKPI] = useState({
+  const {showAlert} = useAlert();
+    const { confirm, ModalComponent } = useConfirmModal();
+  const [novoKPI, setNovoKPI] = useState<IndicadorDesempenho>({
+    id:generateUniqueId(),
     nome: '',
     descricao: '',
     unidade: '%',
@@ -104,19 +119,31 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           ...novoKPI,
           id: editandoKPI
         });
-        toast.success('KPI atualizado com sucesso!');
+         showAlert({
+          type: 'success',
+          title: 'Operação concluida',
+          message: 'KPI atualizado com sucesso!',
+          duration: 3000
+        });
         setEditandoKPI(null);
       } else {
         // Criar novo KPI
         await estrategiaService.addKPI(meta.id, {
           ...novoKPI,
-          id: Date.now().toString() // ID temporário
+          id: generateUniqueId(), // ID temporário
+        });
+          showAlert({
+          type: 'success',
+          title: 'Operação concluida',
+          message: 'KPI adicionado com sucesso!',
+          duration: 3000
         });
         toast.success('KPI adicionado com sucesso!');
       }
       
       setShowForm(false);
       setNovoKPI({
+        id:generateUniqueId(),
         nome: '',
         descricao: '',
         unidade: '%',
@@ -134,25 +161,54 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
       });
       onUpdate();
     } catch (error) {
+      showAlert({
+          type: 'error',
+          title: 'Erro!!!',
+          message: editandoKPI ? 'Erro ao atualizar KPI' : 'Erro ao adicionar KPI',
+          duration: 5000
+        });
       toast.error(editandoKPI ? 'Erro ao atualizar KPI' : 'Erro ao adicionar KPI');
     }
   };
 
   const handleDeleteKPI = async (kpiId: string) => {
-    if (confirm('Tem certeza que deseja excluir este KPI?')) {
-      try {
-        await estrategiaService.removeKPI(meta.id, kpiId);
-        onUpdate();
-        toast.success('KPI excluído com sucesso!');
-      } catch (error) {
-        toast.error('Erro ao excluir KPI');
-      }
-    }
+      const confirmed = await confirm({
+          type: 'delete',
+          title: 'Excluir KPI',
+          message: `'Tem certeza que deseja excluir este KPI?'`,
+          isDestructive: true,
+          confirmText: 'Excluir',
+          onConfirm: async () => {
+            try {
+             await estrategiaService.removeKPI(meta.id, kpiId);
+              showAlert({
+                  type: 'success',
+                  title: 'Operação concluida',
+                  message: 'KPI excluído com sucesso!',
+                  duration: 3000
+                });
+                onUpdate();
+              toast.success('KPI excluído com sucesso!');
+            } catch (error) {
+              console.error('Erro ao excluir KPI:', error);
+              toast.error('Erro ao excluir KPI');
+              showAlert({
+                type: 'error',
+                title: 'Erro ao excluir KPI',
+                message: 'Não foi possivel efectuar a operação',
+                duration: 5000
+              });
+            }
+          }
+        });
+   
   };
 
   const handleEditKPI = (kpi: any) => {
-    setEditandoKPI(kpi.id);
+    
+    setEditandoKPI(kpi.id||generateUniqueId());
     setNovoKPI({
+      id:generateUniqueId(),
       nome: kpi.nome,
       descricao: kpi.descricao || '',
       unidade: kpi.unidade,
@@ -187,13 +243,24 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
     return METRICAS_POR_MODULO[modulo]?.find(m => m.value === metrica)?.label || metrica;
   };
 
-  const atualizarValorManual = async (kpiId: string, novoValor: number) => {
+  const atualizarValorManual = async (kpi: IndicadorDesempenho, novoValor: number) => {
     try {
-      await estrategiaService.updateKPIValor(meta.id, kpiId, novoValor);
+      await estrategiaService.updateKPI(meta.id, kpi.id, {...kpi,valor_atual:novoValor});
+        showAlert({
+          type: 'success',
+          title: 'Operação concluida',
+          message: 'Valor atualizado com sucesso!',
+          duration: 3000
+        });
       onUpdate();
       toast.success('Valor atualizado!');
     } catch (error) {
-      toast.error('Erro ao atualizar valor');
+       showAlert({
+          type: 'error',
+          title: 'Erro ao atualizar',
+          message: 'Erro ao atualizar o valor!',
+          duration: 5000
+        });
     }
   };
 
@@ -201,7 +268,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
     <motion.div
       initial={{x:-20,opacity:0}}
       animate={{x:0,opacity:1}} 
-      className="space-y-6"
+      className=" gap-6 flex flex-col "
     >
       <div className="flex justify-between items-center">
         <div>
@@ -223,23 +290,6 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           Novo KPI
         </button>
       </div>
-
-      {/* Modal de formulário */}
-      {showForm && (
-        <ModalKPI
-          novoKPI={novoKPI}
-          setNovoKPI={setNovoKPI}
-          handleSaveKPI={handleSaveKPI}
-          setShowForm={() => {
-            setShowForm(false);
-            setEditandoKPI(null);
-          }}
-          editando={!!editandoKPI}
-          modulosDisponiveis={MODULOS_DISPONIVEIS}
-          metricasPorModulo={METRICAS_POR_MODULO}
-          frequencias={FREQUENCIAS}
-        />
-      )}
 
       {/* Lista de KPIs */}
       <div className="space-y-4">
@@ -267,7 +317,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-bold text-gray-900 dark:text-white">{kpi.nome}</h4>
-                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        <span className="text-xs flex gap-2 items-center px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                           {getModuloIcon(kpi.fonte_dados?.modulo || 'manual')} {getModuloLabel(kpi.fonte_dados?.modulo || 'manual')}
                         </span>
                         {fonteAutomatica && (
@@ -294,7 +344,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                           <>
                             <span>•</span>
                             <span className="text-blue-600 dark:text-blue-400">
-                              {getMetricaLabel(kpi.fonte_dados.modulo, kpi.fonte_dados.metrica)}
+                              {getMetricaLabel(kpi.fonte_dados.modulo||"pessoal", kpi.fonte_dados.metrica)}
                             </span>
                           </>
                         )}
@@ -331,7 +381,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                         <input
                           type="number"
                           value={kpi.valor_atual}
-                          onChange={(e) => atualizarValorManual(kpi.id, parseFloat(e.target.value) || 0)}
+                          onChange={(e) => atualizarValorManual(kpi, parseFloat(e.target.value) || 0)}
                           className="w-24 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-right"
                           step="0.01"
                         />
@@ -401,7 +451,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                       <FiDatabase className="h-3 w-3" />
                       <span>Fonte automática: </span>
                       <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {getMetricaLabel(kpi.fonte_dados.modulo, kpi.fonte_dados.metrica)}
+                        {getMetricaLabel(kpi.fonte_dados.modulo||"pessoal", kpi.fonte_dados.metrica)}
                       </span>
                       {kpi.fonte_dados.filtros && Object.keys(kpi.fonte_dados.filtros).length > 0 && (
                         <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
@@ -433,6 +483,23 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           </div>
         )}
       </div>
+ {/* Modal de formulário */}
+      {showForm && (
+        <ModalKPI
+          novoKPI={novoKPI}
+          setNovoKPI={setNovoKPI}
+          handleSaveKPI={handleSaveKPI}
+          setShowForm={() => {
+            setShowForm(false);
+            setEditandoKPI(null);
+          }}
+          editando={editandoKPI!=null}
+          modulosDisponiveis={MODULOS_DISPONIVEIS}
+          metricasPorModulo={METRICAS_POR_MODULO}
+          frequencias={FREQUENCIAS}
+        />
+      )}
+      <ModalComponent/>
     </motion.div>
   );
 };
@@ -468,14 +535,15 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       onClick={() => setShowForm(false)}
     >
+      
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl "
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6">
+        <div className="p-6 ">
           <div className='flex justify-between items-center mb-4'>
             <div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -493,7 +561,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto p-2 max-h-[80vh] w-full">
             {/* Informações básicas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -609,47 +677,38 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Módulo de Dados
                       </label>
-                      <select
+                      <SelectTyped
+                        multiIcon={true}
                         value={novoKPI.fonte_dados.modulo}
+                        vect={[...(modulosDisponiveis.filter(m => m.value !== 'manual'))]
+                        }
                         onChange={(e) => setNovoKPI({
                           ...novoKPI,
                           fonte_dados: { 
                             ...novoKPI.fonte_dados, 
-                            modulo: e.target.value,
-                            metrica: METRICAS_POR_MODULO[e.target.value]?.[0]?.value || 'manual'
+                            modulo: e,
+                            metrica: METRICAS_POR_MODULO[e]?.[0]?.value || 'manual'
                           }
                         })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                      >
-                        {modulosDisponiveis
-                          .filter(m => m.value !== 'manual')
-                          .map(modulo => (
-                            <option key={modulo.value} value={modulo.value}>
-                              {modulo.icone} {modulo.label}
-                            </option>
-                          ))
-                        }
-                      </select>
+                      />
+                      
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Métrica
                       </label>
-                      <select
+                      <SelectTyped
+                        icon={FiBox}
+                        vect={[...metricaAtual]}
                         value={novoKPI.fonte_dados.metrica}
                         onChange={(e) => setNovoKPI({
                           ...novoKPI,
-                          fonte_dados: { ...novoKPI.fonte_dados, metrica: e.target.value }
+                          fonte_dados: { ...novoKPI.fonte_dados, metrica: e }
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                      >
-                        {metricaAtual.map(metrica => (
-                          <option key={metrica.value} value={metrica.value}>
-                            {metrica.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
+                     
                     </div>
                   </>
                 )}
@@ -679,17 +738,13 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Frequência de Atualização
                 </label>
-                <select
+                 <SelectTyped
+                  vect={[...frequencias]}
+                  icon={FaTimeline}
                   value={novoKPI.frequencia}
-                  onChange={(e) => setNovoKPI({...novoKPI, frequencia: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-                >
-                  {frequencias.map(freq => (
-                    <option key={freq.value} value={freq.value}>
-                      {freq.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(e) => setNovoKPI({...novoKPI, frequencia: e as any})}
+                 />
+                
               </div>
               
               <div>
@@ -733,6 +788,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
           </div>
         </div>
       </motion.div>
+     
     </motion.div>
   );
 };

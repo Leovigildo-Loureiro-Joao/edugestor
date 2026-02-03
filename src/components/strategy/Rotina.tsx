@@ -27,6 +27,7 @@ import {
 } from 'react-icons/fi';
 import { Rotina } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService.ts';
+import { useAlert } from '../ui/AlertBadge.tsx';
 
 const RotinasComponent = () => {
   const [rotinas, setRotinas] = useState<Rotina[]>([]);
@@ -38,7 +39,7 @@ const RotinasComponent = () => {
   const [rotinaExpandida, setRotinaExpandida] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showMetrics, setShowMetrics] = useState(false);
-
+  const { showAlert } = useAlert(); 
   const navigate = useNavigate();
 
   // Carregar rotinas
@@ -115,10 +116,20 @@ const RotinasComponent = () => {
   const executarRotina = async (rotinaId: string) => {
     try {
       await estrategiaService.executarRotina(rotinaId);
-      alert('Rotina executada com sucesso!');
+      showAlert({
+        type: 'success',
+        message:"Rotina executada com sucesso!",
+        title: 'Executando rotina',
+        duration: 3000
+      });
     } catch (error) {
       console.error('Erro ao executar rotina:', error);
-      alert('Erro ao executar rotina');
+      showAlert({
+        type: 'error',
+        message:"Erro ao executar rotina",
+        title: 'Não foi possivel executar a rotina',
+        duration: 5000
+      });
     }
   };
 

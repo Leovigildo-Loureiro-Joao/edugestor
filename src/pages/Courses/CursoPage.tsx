@@ -22,7 +22,7 @@ import { cursosService } from '../../services/database/curso';
     try {
       setLoading(true);
       // TODO: Substituir pelo service real
-      const courseData = await cursosService.getCourseId(id||"");
+      const courseData = await cursosService.getCoursesId(id||"");
       
       // Mock data
         console.log(courseData)
@@ -289,6 +289,7 @@ import { cursosService } from '../../services/database/curso';
           </div>
         </div>
       </div>
+      
     </div>
   );
 };

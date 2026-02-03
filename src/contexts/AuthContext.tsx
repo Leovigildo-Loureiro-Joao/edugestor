@@ -4,6 +4,7 @@ import { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
 import { UserProfile } from '../types/profile';
 import { profileService } from '../services/database/profileService';
+import { updateJWTClaims } from '../utils/update_claims_jwt';
 
 // 🔥 INTERFACE E CONTEXTO DEVEM VIR ANTES DO PROVIDER
 interface AuthContextType {
@@ -22,6 +23,8 @@ interface AuthContextType {
   isManagerOrAdmin: () => boolean;
   hasPermission: (requiredRole: string) => boolean;
   updateUserRole: (userId: string, newRole: string) => Promise<void>;
+  switchInstituicao: (instituicaoId: string) => Promise<{ success: boolean }>;
+  debugJWTClaims: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -119,35 +122,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ⭐ NOVA FUNÇÃO: Atualizar metadados do usuário
+  // ⭐ FUNÇÃO ATUALIZADA: Atualizar metadados do usuário
   const updateUserMetadata = async (user: User | null) => {
     if (!user) return;
     
     try {
-      // Verificar se já tem role definida
-      const currentRole = user.user_metadata?.user_role;
-      console.log('Metadados atuais do usuário:', user.user_metadata);
-       const userProfile = await fetchUserProfile(user.id);
-      if (currentRole && currentRole == userProfile?.role) {
-        console.log('Role já definida nos metadados:', currentRole);
-        localStorage.setItem('active_instituicao_id', userProfile?.instituicao_id || '');
-        localStorage.setItem('user_role', currentRole);
+      // Buscar perfil atualizado
+      const userProfile = await fetchUserProfile(user.id);
+      
+      if (!userProfile) {
+        console.warn('⚠️ Perfil do usuário não encontrado');
         return;
       }
       
-      // Definir role padrão 'user' se não existir
-      const newRole = userProfile?.role || 'user';
+      // Verificar se já tem os claims corretos
+      const currentClaims = user.user_metadata || {};
+      const expectedClaims = {
+        user_role: userProfile.role,
+        instituicao_id: userProfile.instituicao_id,
+        active_instituicao_id: userProfile.instituicao_id
+      };
       
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          user_role: newRole
+      // Verificar se precisa atualizar
+      const needsUpdate = 
+        currentClaims.user_role !== expectedClaims.user_role ||
+        currentClaims.instituicao_id !== expectedClaims.instituicao_id;
+      
+      if (needsUpdate) {
+        console.log('🔄 Atualizando claims do JWT...', {
+          current: currentClaims,
+          expected: expectedClaims
+        });
+        
+        // Chamar Edge Function para atualizar JWT
+        const success = await updateJWTClaims({
+          instituicao_id: userProfile.instituicao_id,
+          user_role: userProfile.role
+        });
+        
+        if (success) {
+          console.log('✅ JWT atualizado com novos claims');
+          
+          // Atualizar localStorage
+          if (userProfile.instituicao_id) {
+            localStorage.setItem('active_instituicao_id', userProfile.instituicao_id);
+          }
+          localStorage.setItem('user_role', userProfile.role);
+          
+          // Atualizar metadados locais no Supabase Auth
+          await supabase.auth.updateUser({
+            data: expectedClaims
+          });
+        } else {
+          console.warn('⚠️ Não foi possível atualizar JWT via Edge Function');
         }
-      });
+      } else {
+        console.log('ℹ️ Claims do JWT já estão atualizados');
+      }
       
-      if (error) throw error;
-        localStorage.setItem('active_instituicao_id', userProfile?.instituicao_id || '');
-        localStorage.setItem('user_role', currentRole);
-      console.log(`✅ Metadados atualizados com role: ${newRole}`);
     } catch (error) {
       console.error('❌ Erro ao atualizar metadados:', error);
     }
@@ -180,15 +212,130 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Chamar após login bem-sucedido
-  const handleSuccessfulLogin = async (user: User) => {
+const handleSuccessfulLogin = async (user: User) => {
+  try {
+    // 1. Buscar perfil atualizado
+    const userProfile = await fetchUserProfile(user.id);
+    
+    if (!userProfile) {
+      console.warn('⚠️ Perfil não encontrado após login');
+      return;
+    }
+    
+    // 2. Verificar/atualizar JWT com claims corretos
     await updateUserMetadata(user);
+    
+    // 3. Setup adicional
     await setupUserAfterLogin(user);
     
-    // Salvar token JWT no localStorage para sincronização offline
+    // 4. Salvar tokens no localStorage para sincronização offline
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       localStorage.setItem('supabase.auth.token', session.access_token);
       localStorage.setItem('supabase.auth.refresh_token', session.refresh_token);
+    }
+    
+    console.log('✅ Login completo, JWT sincronizado');
+    
+  } catch (error) {
+    console.error('❌ Erro no pós-login:', error);
+  }
+};
+
+  // 🔥 NOVA FUNÇÃO: Mudar instituição ativa (para usuários com múltiplas instituições)
+  const switchInstituicao = async (instituicaoId: string) => {
+    try {
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+      
+      // 1. Verificar se usuário tem acesso a esta instituição
+      const { data: instituicoes, error } = await supabase
+        .from('user_instituicoes')
+        .select('instituicao_id')
+        .eq('user_id', user.id)
+        .eq('instituicao_id', instituicaoId)
+        .single();
+      
+      if (error || !instituicoes) {
+        throw new Error('Usuário não tem acesso a esta instituição');
+      }
+      
+      // 2. Atualizar perfil com instituição ativa
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          instituicao_id: instituicaoId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
+      if (updateError) throw updateError;
+      
+      // 3. Atualizar JWT claims via Edge Function
+      const success = await updateJWTClaims({
+        instituicao_id: instituicaoId,
+        active_instituicao_id: instituicaoId
+      });
+      
+      if (!success) {
+        console.warn('⚠️ JWT não atualizado via Edge Function, usando fallback');
+      }
+      
+      // 4. Atualizar localStorage
+      localStorage.setItem('active_instituicao_id', instituicaoId);
+      
+      // 5. Atualizar estado local
+      const updatedProfile = await fetchUserProfile(user.id);
+      setProfile(updatedProfile);
+      
+      // 6. Refresh session para garantir sincronização
+      await supabase.auth.refreshSession();
+      
+      console.log(`✅ Instituição alterada para: ${instituicaoId}`);
+      
+      return { success: true };
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao mudar instituição:', error);
+      setError(error.message || 'Erro ao mudar instituição');
+      throw error;
+    }
+  };
+
+    // 🔥 FUNÇÃO DE DEBUG: Verificar claims do JWT atual
+  const debugJWTClaims = async (): Promise<void> => {
+    try {
+      const session = await supabase.auth.getSession();
+      
+      if (!session.data.session?.access_token) {
+        console.log('❌ Nenhum token JWT disponível');
+        return;
+      }
+      
+      const token = session.data.session.access_token;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      console.log('🔍 DEBUG - JWT Claims:', {
+        sub: payload.sub,
+        email: payload.email,
+        // Claims customizados
+        user_role: payload.user_role,
+        instituicao_id: payload.instituicao_id,
+        active_instituicao_id: payload.active_instituicao_id,
+        // App metadata (Edge Function)
+        app_metadata: payload.app_metadata,
+        // User metadata (Supabase Auth)
+        user_metadata: payload.user_metadata,
+        // Timestamps
+        exp: new Date(payload.exp * 1000),
+        iat: new Date(payload.iat * 1000)
+      });
+      
+      return payload;
+      
+    } catch (error) {
+      console.error('❌ Erro ao decodificar JWT:', error);
     }
   };
 
@@ -430,7 +577,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAdmin,
     isManagerOrAdmin,
     hasPermission,
-    updateUserRole
+    updateUserRole,
+    switchInstituicao, 
+    debugJWTClaims    
   };
 
   return (

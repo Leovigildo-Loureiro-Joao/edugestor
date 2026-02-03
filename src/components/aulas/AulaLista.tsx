@@ -169,7 +169,7 @@ export const ViewModeNavbar: React.FC<ViewModeNavbarProps> = ({
 interface ListaViewProps {
   aulas: Aula[];
   onEditar: (aula: Aula) => void;
-  onDeletar: (id: string) => void;
+  onDeletar: (aula: Aula) => void;
   onExpandir: (aula: Aula) => void;
 }
 
@@ -258,7 +258,7 @@ export const ListaView: React.FC<ListaViewProps> = ({ aulas, onEditar, onDeletar
                     </svg>
                   </button>
                   <button
-                    onClick={() => onDeletar(aula.id)}
+                    onClick={() => onDeletar(aula)}
                     className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                     title="Excluir"
                   >

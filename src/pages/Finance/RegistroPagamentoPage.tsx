@@ -7,12 +7,15 @@ import { transacaoService } from '../../services/database/transacaoService.ts';
 import { propinaService } from '../../services/database/propinas.ts';
 import { mesesUtils } from '../../utils/meses.ts';
 import { DadosPagamentoCash } from '../../types/transacao.ts';
+import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
+import { useAlert } from '../../components/ui/AlertBadge.tsx';
 
 
 export const RegistroPagamentoPage: React.FC = () => {
   const { alunoId } = useParams<{ alunoId: string }>();
   const navigate = useNavigate();
-  
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   const [aluno, setAluno] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
   const [pagamentoLoading, setPagamentoLoading] = useState(false);
@@ -91,7 +94,12 @@ useEffect(() => {
         }
       } catch (error) {
         console.error('❌ Erro ao carregar aluno:', error);
-        alert('Erro ao carregar dados do aluno');
+         showAlert({
+            type: 'error',
+            title: 'Erro ao carregar dados do aluno',
+            message: 'Verifique os dados e tente novamente',
+            duration: 5000
+            });
         navigate('/financeiro/pagamentos');
       } finally {
         setLoading(false);
@@ -143,7 +151,12 @@ useEffect(() => {
 
     } catch (error: any) {
       console.error('❌ Erro ao registrar pagamento:', error);
-      alert('Erro ao registrar pagamento: ' + error.message);
+       showAlert({
+            type: 'error',
+            title: 'Erro ao registrar pagamento',
+            message: 'Verifique os dados e tente novamente',
+            duration: 5000
+            });
     } finally {
       setPagamentoLoading(false);
     }
@@ -214,7 +227,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen  p-6">
       <div className="max-w-4xl mx-auto">
-        
+        <ModalComponent/>
         {/* Header */}
         <div className="mb-8">
           <button 

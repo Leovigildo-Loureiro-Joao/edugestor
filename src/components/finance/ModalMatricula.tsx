@@ -5,6 +5,8 @@ import { alunosService } from '../../services/database/alunosService.ts';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { Student } from '../../types/aluno.ts';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
+import { useAlert } from '../ui/AlertBadge.tsx';
+import toast from 'react-hot-toast';
 
 interface ModalMatriculaProps {
     alunoId: string;
@@ -19,7 +21,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
     const [processando, setProcessando] = useState(false);
     const [sucesso, setSucesso] = useState(false);
     const [configInstituicao, setConfigInstituicao] = useState<any>(null);
-    
+    const { showAlert } = useAlert(); 
     const [dadosMatricula, setDadosMatricula] = useState({
         valorMatricula: '0',
         incluirCartao: false,
@@ -133,18 +135,32 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
             }
 
             // 4. Atualizar status da matrícula do aluno
-            await alunosService.atualizarStatusMatricula(aluno.id, true);
+            await alunosService.updateStudent(aluno.id, {
+                estado:'ativo'
+            });
             
             setSucesso(true);
             
             // Aguardar para mostrar mensagem de sucesso
-            setTimeout(() => {
-                onConcluido();
-            }, 2000);
+            onConcluido();
+            showAlert({
+                type: 'success',
+                title: 'Matricula realizada',
+                message: 'Parabens o registro foi realizado com sucesso',
+                duration: 3000
+            });
+           
 
         } catch (error: any) {
             console.error('Erro ao registrar matrícula:', error);
-            alert('Erro ao registrar matrícula: ' + error.message);
+            toast.error('Erro ao registrar matrícula' + error.message);
+            showAlert({
+                type: 'error',
+                title: 'Erro ao registrar matrícula',
+                message: 'Verifique suas permissões de utilizador',
+                duration: 5000
+            });
+            
         } finally {
             setProcessando(false);
         }

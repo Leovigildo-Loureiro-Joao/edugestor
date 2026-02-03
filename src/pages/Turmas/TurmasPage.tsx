@@ -15,6 +15,7 @@ import {
   FiTarget,
   FiPlus,
   FiPlusCircle,
+  FiTrash,
 } from 'react-icons/fi';
 import { 
   FaCrown, 
@@ -38,10 +39,15 @@ import { aulaService, frequenciaService } from '../../services/database';
 import { Aula, AulaFormData } from '../../types/aula';
 import { SelectTyped } from '../../components/students/StudentForm';
 import { AulaForm } from '../../components/aulas/AulaForm';
+import {  useRef } from 'react';
+import {  FiMoreVertical } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { AulaStatus } from '../../components/aulas/AulaCard-min';
 import { ModalFrequencia } from '../../components/attendance/FrequeciaModal';
 import { RegistroFrequenciaLote } from '../../types/frequencia';
+import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
+import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import HorarioCellMenu from '../../components/turmas/HorarioCellMenu.tsx';
 
 
 // Tipos atualizados para refletir o StudentForm
@@ -63,7 +69,7 @@ const TurmaDetails = () => {
   const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
   const [aulaSelect, setAulaSelect] = useState<Aula | null>(null);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'| 'aulas'>('overview');
+  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'| 'aulas'|'horario'>('overview');
   const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
   const [filtroTipoMatricula, setFiltroTipoMatricula] = useState<'todos' | 'regular' | 'reforco_personalizado'>('todos');
   const [filtroGrupoAprendizado, setFiltroGrupoAprendizado] = useState<string>('todos');
@@ -78,6 +84,8 @@ const TurmaDetails = () => {
   const [quickAddTurma, setQuickAddTurma] = useState('');
   const [quickAddData, setQuickAddData] = useState(new Date().toISOString().split('T')[0]);
   const [aulaEditando, setAulaEditando] = useState<Aula | null>(null);
+    const { confirm, ModalComponent } = useConfirmModal();
+    const { showAlert } = useAlert(); 
 
   // Grupos de aprendizado - alinhado com StudentForm
   const gruposAprendizado = [
@@ -117,6 +125,25 @@ const registrarFrequencia = async (registros:RegistroFrequenciaLote) => {
 // Função para salvar horário
 const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): Promise<void> => {
   try {
+    // Verificar se a turma tem horários existentes
+    if (turma?.horarios) {
+      const conflito = verificarConflitoHorario(
+        turma.horarios,
+        horario,
+        !!horario.id // isEdicao
+      );
+      
+      if (conflito) {
+        showAlert({
+          type: 'error',
+          title: 'Conflito de horário',
+          message: `Não foi possível salvar: ${conflito}`,
+          duration: 5000
+        });
+        throw new Error(conflito);
+      }
+    }
+    
     if (horario.id) {
       // Atualizar horário existente
       await turmaService.updateHorario(horario.id, horario);
@@ -130,14 +157,88 @@ const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): 
     
     // Recarregar dados da turma
     loadTurmaDetails();
+    
+    showAlert({
+      type: 'success',
+      title: horario.id ? 'Horário atualizado!' : 'Horário adicionado!',
+      message: 'Horário salvo com sucesso.',
+      duration: 3000
+    });
   } catch (error) {
     console.error('Erro ao salvar horário:', error);
+    // O alerta já foi mostrado acima, não precisa mostrar novamente
     throw error;
   }
 };
+
+const verificarConflitoHorario = (
+  horariosExistentes: HorarioAula[],
+  novoHorario: HorarioAulaForm & { id?: string },
+  isEdicao: boolean
+): string | null => {
+  const { id, dia_semana, hora_inicio, hora_fim } = novoHorario;
+  
+  // Converter horas para minutos para facilitar comparação
+  const toMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  
+  const inicioNovo = toMinutes(hora_inicio);
+  const fimNovo = toMinutes(hora_fim);
+  
+  // Verificar cada horário existente
+  for (const horario of horariosExistentes) {
+    // Se for edição, ignorar o próprio horário que está sendo editado
+    if (isEdicao && horario.id === id) {
+      continue;
+    }
+    
+    // Verificar se é o mesmo dia da semana
+    if (horario.dia_semana === dia_semana) {
+      const inicioExistente = toMinutes(horario.hora_inicio);
+      const fimExistente = toMinutes(horario.hora_fim);
+      
+      // Verificar se há sobreposição de horários
+      const sobrepoe = (
+        (inicioNovo >= inicioExistente && inicioNovo < fimExistente) || // Novo começa durante existente
+        (fimNovo > inicioExistente && fimNovo <= fimExistente) || // Novo termina durante existente
+        (inicioNovo <= inicioExistente && fimNovo >= fimExistente) // Novo engloba existente
+      );
+      
+      if (sobrepoe) {
+        return `Conflito com: ${horario.disciplina} (${horario.hora_inicio} - ${horario.hora_fim})`;
+      }
+      
+      // Verificar se o novo horário começa imediatamente após ou termina imediatamente antes
+      // (opcional, para melhor organização)
+      const haIntervalo = inicioNovo >= fimExistente || fimNovo <= inicioExistente;
+      if (!haIntervalo) {
+        return `Horário se sobrepõe com: ${horario.disciplina} (${horario.hora_inicio} - ${horario.hora_fim})`;
+      }
+    }
+  }
+  
+  // Verificar se o intervalo é válido (hora fim > hora início)
+  if (inicioNovo >= fimNovo) {
+    return 'Hora de término deve ser maior que hora de início';
+  }
+  
+  // Verificar duração máxima (opcional)
+  const duracao = fimNovo - inicioNovo;
+  if (duracao > 180) { // 3 horas
+    return 'Aula não pode durar mais de 3 horas';
+  }
+  
+  return null;
+};
+
+
 // Função para excluir horário
 const handleExcluirHorario = async (horarioId: string) => {
+
   try {
+
     await turmaService.excluirHorario(horarioId);
     loadTurmaDetails();
   } catch (error) {
@@ -176,6 +277,7 @@ const handleExcluirHorario = async (horarioId: string) => {
 
   const loadTurmaDetails = async () => {
     try {
+      localStorage.setItem("last_rota","/turmas/"+id)
       setLoading(true);
       // Carregar dados da turma
       const turmaData = await turmaService.findById(id||'');
@@ -299,16 +401,35 @@ const handleExcluirHorario = async (horarioId: string) => {
     };
   
     const handleDeletarAula = async (id: string) => {
-      if (window.confirm('Tem certeza que deseja excluir esta aula?')) {
-        try {
-          await aulaService.deletarAula(id);
-          await loadTurmaDetails();
-          toast.success('Aula excluída com sucesso!');
-        } catch (error) {
-          console.error('Erro ao excluir aula:', error);
-          toast.error('Erro ao excluir aula');
+      const confirmed = await confirm({
+        type: 'delete',
+        title: 'Excluir Aula',
+        message: `Tem certeza que deseja excluir esta aula? `,
+        isDestructive: true,
+        confirmText: 'Excluir',
+        onConfirm: async () => {
+          try {
+            await aulaService.deletarAula(id);
+            setAulas(aulas.filter(a=>a.id==id))
+            toast.success('Aula excluída com sucesso!');
+            showAlert({
+              type: 'success',
+              title: 'Aula excluído!',
+              message: `Aula excluido com sucesso`,
+              duration: 3000
+            });
+            
+          } catch (error) {
+            showAlert({
+              type: 'error',
+              title: 'Erro ao excluir',
+              message: 'Não foi possível excluir a aula. Verifique sua conexão.',
+              duration: 5000
+            });
+            console.error('Erro ao excluir aula:', error);
+          }
         }
-      }
+      });
     };
   
     const handleQuickAdd = async () => {
@@ -368,6 +489,32 @@ const handleExcluirHorario = async (horarioId: string) => {
       </div>
     );
   }
+  const week = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+
+function horarios(turma: Turma): HorarioAula[][] {
+  if (!turma.horarios || turma.horarios.length === 0) {
+    return [];
+  }
+
+  // Agrupar horários por intervalo de tempo
+  const horariosPorHora: Record<string, HorarioAula[]> = {};
+  
+  turma.horarios.forEach((horario) => {
+    const chave = `${horario.hora_inicio}-${horario.hora_fim}`;
+    if (!horariosPorHora[chave]) {
+      horariosPorHora[chave] = [];
+    }
+    horariosPorHora[chave].push(horario);
+  });
+
+  // Converter para array e ordenar por hora de início
+  return Object.values(horariosPorHora)
+    .sort((a, b) => {
+      const horaA = a[0].hora_inicio;
+      const horaB = b[0].hora_inicio;
+      return horaA.localeCompare(horaB);
+    });
+}
 
   const taxaOcupacao = turma.vagas ? (turma.alunos.length / turma.vagas) * 100 : 0;
   const mediaGeral = turma.alunos.length > 0 
@@ -433,7 +580,8 @@ const handleExcluirHorario = async (horarioId: string) => {
             {[
               { id: 'overview', label: 'Visão Geral', icon: FiBarChart2 },
               { id: 'alunos', label: 'Alunos', icon: FiUsers },
-              { id: 'aulas', label: 'Aulas', icon: FiBook }
+              { id: 'aulas', label: 'Aulas', icon: FiBook },
+              { id: 'horario', label: 'Horarío', icon: FiClock }
             ].map(aba => (
               <button
                 key={aba.id}
@@ -818,6 +966,118 @@ const handleExcluirHorario = async (horarioId: string) => {
                   }
                 </div>
             )}
+            {abaAtiva === 'horario' && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3 }}
+    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+  >
+    {/* Cabeçalho com título e botão de adicionar */}
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Horário da Turma
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Gerencie os horários das aulas da turma
+        </p>
+      </div>
+      <button
+        onClick={() => {
+          setHorarioEditando(null);
+          setIsHorarioModalOpen(true);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+      >
+        <FiPlus size={18} />
+        Adicionar Horário
+      </button>
+    </div>
+
+    {/* Modal de Horário */}
+    <HorarioModal
+      isOpen={isHorarioModalOpen}
+      onClose={() => {
+        setIsHorarioModalOpen(false);
+        setHorarioEditando(null);
+      }}
+      confirm={confirm}
+      onSubmit={handleSalvarHorario}
+      onDelete={handleExcluirHorario}
+      horarioEdit={horarioEditando}
+      turmaId={turma.id}
+      title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
+    />
+    
+    {/* Tabela de Horários */}
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-max">
+        <thead className="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Hora
+            </th>
+            {week.map((dia) => (
+              <th 
+                key={dia} 
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+              >
+                {dia.charAt(0).toUpperCase() + dia.slice(1)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {horarios(turma).length > 0 ? (
+            horarios(turma).map((horario: HorarioAula[], key: number) => (
+              <motion.tr
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: key * 0.1 }}
+                key={horario[0]?.id || key}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              >
+                <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                  {horario[0]?.hora_inicio} - {horario[0]?.hora_fim}
+                </td>
+                {week.map((dia) => {
+                  const hora = horario.find(f => f.dia_semana === dia);
+                  return (
+                    <td key={dia} className="py-2">
+                      <HorarioCellMenu
+                        hora={hora}
+                        onEditar={(h) => {
+                          setHorarioEditando(h);
+                          setIsHorarioModalOpen(true);
+                        }}
+                        onExcluir={handleExcluirHorario}
+                        confirm={confirm}
+                        showAlert={showAlert}
+                        setHorarioEditando={setHorarioEditando}
+                        setIsHorarioModalOpen={setIsHorarioModalOpen}
+                      />
+                    </td>
+                  );
+                })}
+              </motion.tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={7} className="px-4 py-8 text-center">
+                <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                  <FiCalendar size={48} className="mb-2" />
+                  <p className="text-lg font-medium">Nenhum horário cadastrado</p>
+                  <p className="text-sm mt-1">Clique em "Adicionar Horário" para começar</p>
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </motion.div>
+)}
           </div>
 
           {/* Sidebar - Informações da Turma */}
@@ -912,7 +1172,7 @@ const handleExcluirHorario = async (horarioId: string) => {
             >
              <div className="flex items-center justify-between">
                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Horários da Turma
+                Proximas Aulas
               </h3>
             <button
             onClick={() => {
@@ -931,6 +1191,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                   setIsHorarioModalOpen(false);
                   setHorarioEditando(null);
                 }}
+                confirm={confirm}
                 onSubmit={handleSalvarHorario}
                 onDelete={handleExcluirHorario}
                 horarioEdit={horarioEditando}
@@ -940,8 +1201,12 @@ const handleExcluirHorario = async (horarioId: string) => {
               
               <div className="space-y-3">
                 {turma.horarios.map((horario, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <FiClock className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <motion.div
+                    initial={{opacity:0,y:-20}}
+                    animate={{opacity:1,y:0}}
+                    transition={{delay:0.1}}
+                    key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <FiClock className="text-violet-600 dark:text-violet-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {horario.disciplina}
@@ -953,7 +1218,49 @@ const handleExcluirHorario = async (horarioId: string) => {
                         {horario.sala} • {horario.professor_responsavel}
                       </p>
                     </div>
-                  </div>
+                    <button
+                    onClick={() => {
+                      setHorarioEditando(horario);
+                      setIsHorarioModalOpen(true);
+                    }}>
+                      <FiEdit className="text-blue-600 cursor-pointer hover:text-blue-800 transition-all dark:text-blue-400 flex-shrink-0" />
+                    </button>
+                     <button
+                    onClick={async () =>  {
+                      setIsHorarioModalOpen(false);
+                      await confirm({
+                          type: 'delete',
+                          title: 'Excluir Horário',
+                          message: `Tem certeza que deseja excluir o horário? `,
+                          isDestructive: true,
+                          confirmText: 'Excluir',
+                          onConfirm: async () => {
+                            try {
+                              handleExcluirHorario(horario.id)
+                              showAlert({
+                                type: 'success',
+                                title: 'Horário excluído!',
+                                message: `Tem certeza que deseja excluir este horário?`,
+                                duration: 3000
+                              });
+                              
+                            } catch (error) {
+                              showAlert({
+                                type: 'error',
+                                title: 'Erro ao excluir',
+                                message: 'Não foi possível excluir o aluno. Verifique sua conexão.',
+                                duration: 5000
+                              });
+                              console.error('Erro ao excluir horário:', error);
+                            }
+                          }
+                        });
+                      
+                    }}>
+                      <FiTrash className="text-red-600 cursor-pointer dark:text-red-400 transition-all hover:text-red-800  flex-shrink-0" />
+                    </button>
+                    
+                  </motion.div>
                 ))}
                 
                 {turma.horarios.length === 0 && (
@@ -1019,12 +1326,14 @@ const handleExcluirHorario = async (horarioId: string) => {
                   >
                     <AulaForm
                       aula={aulaEditando}
+                      comfirm={confirm}
                       turmas={[{ value: turma.id, label: turma.nome_turma }]}
                       onSubmit={aulaEditando ? handleEditarAula : handleCriarAula}
                       onCancel={() => {
                         setShowForm(false);
                         setAulaEditando(null);
                       }}
+                      turmaHorarios={turma.horarios}
                       loading={loading}
                     />
                   </motion.div>
@@ -1091,6 +1400,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                 </motion.div>
               )}
             </AnimatePresence>
+            <ModalComponent/>
             <AnimatePresence>
               {aulaSelect&&<motion.div
                 initial={{ opacity: 0 }}
@@ -1110,7 +1420,7 @@ const handleExcluirHorario = async (horarioId: string) => {
                   className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
                   onClick={e => e.stopPropagation()}
                 >
-    
+                
                 <ModalFrequencia
                   aula={aulaSelect}
                   setAulaSelect={setAulaSelect}
@@ -1126,3 +1436,4 @@ const handleExcluirHorario = async (horarioId: string) => {
 };
 
 export default TurmaDetails;
+

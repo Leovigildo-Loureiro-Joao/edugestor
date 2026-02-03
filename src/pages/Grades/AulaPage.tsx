@@ -4,7 +4,8 @@ import {
   FiPlus, FiCalendar, FiClock, FiBook, FiUsers, 
   FiEdit2, FiTrash2, FiFilter, FiRefreshCw, FiX,
   FiBarChart2, FiTarget, FiMessageSquare, FiCheckCircle,
-  FiUpload, FiDownload, FiTrendingUp, FiEye, FiStar
+  FiUpload, FiDownload, FiTrendingUp, FiEye, FiStar,
+  FiAlertCircle
 } from 'react-icons/fi';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { AulaForm } from '../../components/aulas/AulaForm.tsx';
@@ -26,6 +27,10 @@ import { Student } from '../../types/aluno.ts';
 import { frequenciaService } from '../../services/database/frequenciaService.ts';
 import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
 import { estrategiaService } from '../../services/database/estrategiaService.ts';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
+import { getPendingCount } from '../../utils/emitPendingSync.ts';
+import {  useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
+import { useAlert } from '../../components/ui/AlertBadge.tsx';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -48,6 +53,11 @@ export const AulasPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filterCount, setFilterCount] = useState(0);
   const [alunos,setAlunos]=useState<Student[]>([])
+  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
+  const [syncStats, setSyncStats] = useState(0);
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
+  const [isExpanded,setExpanded]=useState(false)
   const [metas,setMetas]=useState<{
                       label:string,
                       atual:number,
@@ -83,7 +93,12 @@ export const AulasPage = () => {
         await frequenciaService.registrarFrequenciaLote(registros);
         
         setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
-        console.log('✅ Frequência registrada e aula removida da lista');
+        showAlert({
+          type: 'success',
+          title: 'Registrado com sucesso',
+          message: 'Frequência registrada e aula removida da lista de aulas pendentes',
+          duration: 2000
+        });
         
         setTimeout(() => {
           setAulaSelect(null)
@@ -91,6 +106,12 @@ export const AulasPage = () => {
         }, 500);
         
       } catch (error) {
+        showAlert({
+          type: 'error',
+          title: 'Erro ao registrar frequências',
+          message: 'Não foi possível registrar a presença dos alunos.',
+          duration: 5000
+        });
         console.error('❌ Erro ao registrar frequência:', error);
       }
     };
@@ -248,6 +269,12 @@ export const AulasPage = () => {
       setTurmas(turmasData || []);
       setEstatisticas(stats);
     } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar os dados',
+        message: 'Não foi possivel aceder a base de dados. Verifique sua conexão.',
+        duration: 5000
+      });
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados das aulas');
     } finally {
@@ -290,11 +317,25 @@ export const AulasPage = () => {
       await aulaService.criarAula(aulaData);
       setShowForm(false);
       await loadData();
-      toast.success('Aula criada com sucesso!');
-    } catch (error: any) {
-      console.error('Erro ao criar aula:', error);
-      toast.error(error.message || 'Erro ao criar aula');
-    }
+      
+      showAlert({
+          type: 'success',
+          title: 'Aula adicionada!',
+          message: 'Uma nova aula adicionada com sucesso a base de dados.',
+          duration: 3000
+        });
+        toast.success('Aula adicionada com sucesso!');
+      
+      } catch (error) {
+        console.error("Erro ao salva",error)
+        toast.error('Aula adicionada com sucesso!');
+        showAlert({
+          type: 'error',
+          title: 'Erro ao salvar',
+          message: 'Verifica se realmente tem permissão para tal.',
+          duration: 5000
+        });
+      };
   };
 
   const handleEditarAula = async (aulaData: AulaFormData) => {
@@ -305,29 +346,67 @@ export const AulasPage = () => {
       setShowForm(false);
       setAulaEditando(null);
       await loadData();
-      toast.success('Aula atualizada com sucesso!');
-    } catch (error: any) {
-      console.error('Erro ao atualizar aula:', error);
-      toast.error(error.message || 'Erro ao atualizar aula');
-    }
+      showAlert({
+          type: 'success',
+          title: 'Aula adicionada!',
+          message: 'Uma nova aula adicionada a base de dados.',
+          duration: 3000
+        });
+        toast.success('Aula atualizada com sucesso!');
+      } catch (error:any) {
+        showAlert({
+          type: 'error',
+          title: 'Erro ao salvar',
+          message: 'Verifica se realmente tem permissão para tal.',
+          duration: 5000
+        });
+          console.error('Erro ao atualizar aula:', error);
+          toast.error(error.message || 'Erro ao atualizar aula');
+      }; 
   };
 
-  const handleDeletarAula = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta aula?')) {
-      try {
-        await aulaService.deletarAula(id);
-        await loadData();
-        toast.success('Aula excluída com sucesso!');
-      } catch (error) {
-        console.error('Erro ao excluir aula:', error);
-        toast.error('Erro ao excluir aula');
+  const handleDeletarAula = async (aula:Aula) => {
+    const confirmed = await confirm({
+      type: 'delete',
+      title: 'Excluir Aula',
+      message: `Tem certeza que deseja excluir de ${aula.disciplina}? Os dados ligados a serão eliminados.`,
+      isDestructive: true,
+      confirmText: 'Excluir',
+      onConfirm: async () => {
+        try {
+          await aulaService.deletarAula(aula.id);
+          setAulas(prev => prev.filter(s => s.id !== aula.id));
+          toast.success('Aula excluída com sucesso!');
+          showAlert({
+            type: 'success',
+            title: 'Aula excluída!',
+            message: `Aula da ${aula.disciplina} foi removida do sistema.`,
+            duration: 3000
+          });
+          
+        } catch (error) {
+          showAlert({
+            type: 'error',
+            title: 'Erro ao excluir',
+            message: 'Não foi possível excluir a aula. Verifique sua conexão.',
+            duration: 5000
+          });
+        }
       }
-    }
+    });
+
   };
+
 
   const handleQuickAdd = async () => {
     if (!quickAddTurma) {
       toast.error('Selecione uma turma');
+      showAlert({
+        type: 'warning',
+        title: 'Selecione uma turma',
+        message: 'Selecione a turma que tera a aula.',
+        duration: 3000
+      });
       return;
     }
 
@@ -345,14 +424,86 @@ export const AulasPage = () => {
       
       setShowQuickAdd(false);
       setQuickAddTurma('');
+      showAlert({
+          type: 'info',
+          title: 'Aula adicionada rapidamente!',
+          message: 'Altere o tema da aula e data caso seja necessario.',
+          duration: 3000
+        });
       await loadData();
       toast.success('Aula adicionada rapidamente!');
     } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao adicionar a aula!',
+        message: 'Verifique suas permissões',
+        duration: 3000
+      });
       toast.error('Erro ao adicionar aula rápida');
     }
   };
 
+  useEffect(() => {
+      // Monitorar status online
+      const handleOnline = () => setOnlineStatus(true);
+      const handleOffline = () => setOnlineStatus(false);
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+                  
 
+
+      // Carregar estatísticas de sincronização
+      const loadSyncStats = async () => {
+        try {
+          const turmasPendentes = await getPendingCount("aulas");
+          setSyncStats(turmasPendentes);
+        } catch (error) {
+          console.error('Erro ao carregar sync stats:', error);
+        }
+      };
+      
+      loadSyncStats();
+      
+      // Ouvir eventos de sincronização
+      const handleSyncUpdate = () => {
+        loadSyncStats();
+      };
+      
+      window.addEventListener('sync-pending', handleSyncUpdate);
+      window.addEventListener('sync-complete', handleSyncUpdate);
+      
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('sync-pending', handleSyncUpdate);
+        window.removeEventListener('sync-complete', handleSyncUpdate);
+      };
+    }, []);
+    
+    
+    const handleForceSync = async () => {
+      try {
+        await aulaService.syncAulas();
+        loadData();
+       
+        showAlert({
+          type: 'success',
+          title: 'Sincronização concluída!',
+          message: 'Os dados foram sincronizados com o servidor.',
+          duration: 3000
+        });
+      
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          title: 'Erro na sincronização',
+          message: 'Não foi possível sincronizar com o servidor.',
+          duration: 5000
+        });
+      };
+    };
+        
 
   // Dados para gráficos
   const dadosGraficoAulasPorDia = useMemo(() => {
@@ -422,9 +573,19 @@ export const AulasPage = () => {
        return ""
     }
     if(aulaSelect){
-      const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
-      setAulas(prev => prev.map(e => aula&&e.id === aula.id ? aula : e));
-      console.log(aula)
+        const operacao=(status=="adiada"?"Adiar":"Concluir");
+       const confirmed = await confirm({
+          type: 'save',
+          title: operacao+' Aula',
+          message: `Tem certeza que deseja ${operacao.toLocaleLowerCase()} esta aula?`,
+          isDestructive: false,
+          confirmText: operacao,
+          onConfirm: async () => {
+            const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
+            setAulas(prev => prev.map((e:Aula) => aula&&e.id === aula.id ? aula : e));
+            console.log(aula)
+          }
+        });
     }
     
   }
@@ -440,9 +601,10 @@ export const AulasPage = () => {
         <div className="flex items-center gap-4 mb-4">
       
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold dark:text-white text-gray-800">
-              Gestão de Aulas
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Aulas</h1>
+              <SyncStatusBadge tableName="aulas" />
+            </div>
             <p className="text-gray-600 dark:text-gray-200 mt-1">
               Planeie, ministre e analise o impacto das suas aulas
             </p>
@@ -450,7 +612,7 @@ export const AulasPage = () => {
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex flex-wrap gap-3 mb-6">
+        <div className="flex flex-wrap gap-3 mb-4">
           <button
             onClick={() => setShowQuickAdd(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-medium shadow-sm"
@@ -477,11 +639,115 @@ export const AulasPage = () => {
         </div>
       </motion.div>
 
+      {syncStats > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden mb-6"
+        >
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 
+                        border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                    <FiAlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-1">
+                    {syncStats} aula{syncStats !== 1 ? 's' : ''} pendente{syncStats !== 1 ? 's' : ''}
+                  </h3>
+                  <p className="text-sm text-orange-700 dark:text-orange-400/80">
+                    {!onlineStatus 
+                      ? 'Conecte-se à internet para sincronizar os dados.'
+                      : 'Estes registros foram modificados offline e aguardam sincronização.'}
+                  </p>
+                </div>
+              </div>
+
+              {(
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleForceSync}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white 
+                            font-medium rounded-lg text-sm transition-colors"
+                  >
+                    Sincronizar Agora
+                  </button>
+                  <button
+                    onClick={() => {setExpanded(!isExpanded)}}
+                    className="px-4 py-2 border border-orange-300 dark:border-orange-700 
+                            text-orange-700 dark:text-orange-400 font-medium rounded-lg 
+                            text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 
+                            transition-colors"
+                  >
+                    {isExpanded?"Ocultar":"Ver Detalhes"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Detalhes Expandíveis */}
+            <motion.div
+              initial={false}
+              animate={{ height: isExpanded ? 'auto' : 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
+                <div className="space-y-3">
+                  {aulas
+                    .filter(curso => curso.sync_status === 'pending')
+                    .slice(0, 3)
+                    .map((curso, index) => (
+                      <motion.div
+                        key={curso.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 
+                                rounded-lg border border-orange-100 dark:border-orange-900/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900 
+                                        flex items-center justify-center">
+                            <FiBook className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {curso.tema_aula} • {curso.disciplina}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {curso.hora_inicio} • {curso.hora_fim || 'Sem horario'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full 
+                                      bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                          {curso.id.startsWith('local_') ? 'Novo' : 'Alterado'}
+                        </span>
+                      </motion.div>
+                    ))}
+                  
+                  {syncStats > 3 && (
+                    <div className="text-center">
+                      <span className="text-sm text-orange-600 dark:text-orange-400">
+                        + {syncStats - 3} mais pendentes
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <motion.div 
           whileHover={{ scale: 1.05 }}
-            initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{delay:0.3}} 
           className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-blue-500"
@@ -669,7 +935,7 @@ export const AulasPage = () => {
                           onActualizar={(status)=>{
                             handleActualizar(status,aula)
                           }}
-                          onDeletar={() => handleDeletarAula(aula.id)}
+                          onDeletar={() => {handleDeletarAula(aula)}}
                           index={index}
                           onExpandir={() => setAulaExpandida(aula)}
                         />
@@ -1048,9 +1314,9 @@ export const AulasPage = () => {
                     Turma
                   </label>
                   <SelectTyped
-                    vect={turmas.map(t => ({value:t.id,label:t.nome_turma}))}
+                    vect={["Selecione a turma",...(turmas.map(t => ({value:t.id,label:t.nome_turma})))]}
                     value={quickAddTurma}
-                    onChange={(value:any) => setQuickAddTurma(value)}
+                    onChange={(value:any) => setQuickAddTurma(turmas.includes(value)?value:null)}
                     placeholder="Selecione a turma"
                   />
                 </div>
@@ -1085,6 +1351,8 @@ export const AulasPage = () => {
             </motion.div>
           </motion.div>
         )}
+          <ModalComponent />
+
       </AnimatePresence>
     </div>
   );

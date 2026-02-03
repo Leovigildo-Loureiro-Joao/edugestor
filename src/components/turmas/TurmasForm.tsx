@@ -9,6 +9,8 @@ import { cursosService } from '../../services/database/curso.ts';
 import { SelectTyped } from '../students/StudentForm.tsx';
 import { motion } from 'framer-motion';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
+import { useConfirmModal } from '../ui/ComfirmModal.tsx';
+import { useAlert } from '../ui/AlertBadge.tsx';
 
 // Definição de tipo para opções do Select
 interface SelectOption {
@@ -23,7 +25,8 @@ const TurmaForm = () => {
   const { id } = useParams<string>();
   const isEditing = Boolean(id);
   const [loading, setLoading] = useState(false);
-  
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert(); 
   const getStorageKey = (turma_id?: string) => 
     turma_id ? `edugestor_draft_${turma_id}` : 'edugestor_new_turma_draft';
   
@@ -47,13 +50,15 @@ const TurmaForm = () => {
     data: formData, 
     setData: setFormData, 
     clearDraft,
+    lastSave,
+    saveDraft,
     hasUnsavedChanges 
-  } = useAutoSave<TurmaFormData>(storageKey, initialData, 2000);
+  } = useAutoSave(storageKey, initialData, 2000);
 
   const loadCursos = async () => {
     formData.ano_lectivo=await instituicaoService.getAnoLectivo()
     try {
-      const res = await cursosService.getCourse();
+      const res = await cursosService.getCourses();
       setCursos(res ?? []);
       setCursoSel(res[0])
       setFormData((prev: TurmaFormData) => ({ 
@@ -144,7 +149,12 @@ const TurmaForm = () => {
       navigate('/turmas');
     } catch (error) {
       console.error('Erro ao salvar turma:', error);
-      alert('Erro ao salvar turma. Verifique os dados e tente novamente.');
+      showAlert({
+          type: 'error',
+          title: 'Erro ao salvar turma.',
+          message: 'Verifique os dados e tente novamente',
+          duration: 5000
+        });
     } finally {
       setLoading(false);
     }
@@ -394,6 +404,7 @@ const TurmaForm = () => {
         }
       
       </div>
+      <ModalComponent/>
     </div>
   );
 };
