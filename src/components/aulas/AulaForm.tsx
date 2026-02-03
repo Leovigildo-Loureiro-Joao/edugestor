@@ -12,6 +12,7 @@ import { turmaService } from '../../services/database/turmas';
 import { cursosService } from '../../services/database/curso';
 import { useAlert } from '../ui/AlertBadge';
 import { ConfirmModalProps } from '../ui/ComfirmModal';
+import { Aula } from '../../types/aula';
 
 interface AulaFormProps {
   aula: any;
@@ -20,7 +21,8 @@ interface AulaFormProps {
   onCancel: () => void;
   comfirm: (props: Omit<ConfirmModalProps, "isOpen" | "onClose">) => Promise<boolean>;
   loading?: boolean;
-  turmaHorarios?: any[]; // Nova prop para horários da turma
+  turmaHorarios?: any[]; 
+  aulaExistentes?:Aula[]
 }
 
 export const AulaForm = ({ 
@@ -30,7 +32,8 @@ export const AulaForm = ({
   onCancel, 
   comfirm,
   loading = false,
-  turmaHorarios = [] // Valor padrão
+  turmaHorarios = [],
+  aulaExistentes=[]
 }: AulaFormProps) => {
   // No estado inicial do formData no AulaForm
 const [formData, setFormData] = useState({
@@ -329,7 +332,62 @@ useEffect(() => {
     }
   }, [formData.turma_id, formData.disciplina, formData.hora_inicio, formData.hora_fim]);
 
+  const verificarAulaExistenteMesmoHorario = () => {
+  if (!formData.turma_id || !formData.data_aula || !formData.hora_inicio || !formData.hora_fim) {
+    return false;
+  }
+
+  // Se estiver editando uma aula existente, não verificar contra ela mesma
+  const aulaAtualId = aula?.id;
+
+  // Você precisa ter acesso às aulas existentes da turma
+  // Se não tiver, você pode precisar passar como prop ou buscar
+  const aulasExistente = aulaExistentes; // Array de aulas existentes - você precisa obter isso!
+  
+  for (const aulaExistente of aulasExistente) {
+    // Pular a aula atual se estiver editando
+    if (aulaAtualId && aulaExistente.id === aulaAtualId) {
+      continue;
+    }
+
+    // Verificar se é mesma turma, mesma data e horário conflitante
+    if (aulaExistente.turma_id === formData.turma_id && 
+        aulaExistente.data_aula === formData.data_aula) {
+      
+      // Converter horas para minutos para verificar conflito
+      const toMinutes = (time: string) => {
+        const [hours, minutes] = time.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      const inicioNova = toMinutes(formData.hora_inicio);
+      const fimNova = toMinutes(formData.hora_fim);
+      const inicioExistente = toMinutes(aulaExistente.hora_inicio);
+      const fimExistente = toMinutes(aulaExistente.hora_fim);
+
+      // Verificar sobreposição
+      const conflito = (
+        (inicioNova >= inicioExistente && inicioNova < fimExistente) ||
+        (fimNova > inicioExistente && fimNova <= fimExistente) ||
+        (inicioNova <= inicioExistente && fimNova >= fimExistente)
+      );
+
+      if (conflito) {
+        return {
+          conflito: true,
+          aulaConflitante: aulaExistente,
+          mensagem: `Já existe uma aula neste horário: ${aulaExistente.disciplina} (${aulaExistente.hora_inicio} - ${aulaExistente.hora_fim})`
+        };
+      }
+    }
+  }
+
+  return { conflito: false };
+};
+
+  
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault();
     
     // Validações básicas
@@ -415,6 +473,17 @@ useEffect(() => {
       });
       return;
     }
+
+    const verificarConflito = verificarAulaExistenteMesmoHorario();
+    if (verificarConflito&&verificarConflito.conflito) {
+    showAlert({
+      type: 'error',
+      title: 'Conflito de horário',
+      message: verificarConflito.mensagem,
+      duration:5000
+    });
+    return; // Bloqueia a criação
+  }
 
     // Se tudo estiver ok, submeter normalmente
     onSubmit(formData);

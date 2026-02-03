@@ -12,7 +12,7 @@ import { AulaForm } from '../../components/aulas/AulaForm.tsx';
 import { AulaCardTurma, AulaStatus } from '../../components/aulas/AulaCard-min.tsx';
 import { turmaService } from '../../services/database/turmas.ts';
 import { Aula, AulaFormData } from '../../types/aula.ts';
-import { Turma } from '../../types/turma.ts';
+import { HorarioAula, Turma } from '../../types/turma.ts';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 import { toast } from 'react-hot-toast';
 import { 
@@ -46,6 +46,7 @@ export const AulasPage = () => {
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
   const [filtroStatus, setFiltroStatus] = useState('Todos');
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [horarios, setHorarios] = useState<HorarioAula[]>([]);
   const [disciplinas, setDisciplinas] = useState<string[]>([]);
   const [estatisticas, setEstatisticas] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'timeline' | 'list'>('cards');
@@ -267,6 +268,14 @@ export const AulasPage = () => {
       setMetas(metasP)
       setAulas(aulasData);
       setTurmas(turmasData || []);
+      const horarios=[]
+      for (const turm of turmasData) {
+        if(turm.horarios)
+          for (const hora of turm.horarios) {
+            horarios.push(hora)
+          }
+      }
+      setHorarios(horarios)
       setEstatisticas(stats);
     } catch (error) {
       showAlert({
@@ -1254,6 +1263,9 @@ export const AulasPage = () => {
                   setAulaEditando(null);
                 }}
                 loading={loading}
+                comfirm={confirm}
+                aulaExistentes={aulas}
+                turmaHorarios={horarios}
               />
             </motion.div>
           </motion.div>

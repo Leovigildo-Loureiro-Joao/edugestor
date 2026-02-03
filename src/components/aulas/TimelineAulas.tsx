@@ -22,6 +22,7 @@ import {
 import { format, startOfWeek, endOfWeek, isSameWeek, parseISO, eachWeekOfInterval, subWeeks, addWeeks } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Aula } from '../../types/aula';
+import { useAlert } from '../ui/AlertBadge';
 
 interface TimelineWindowsProps {
   aulas: Aula[];

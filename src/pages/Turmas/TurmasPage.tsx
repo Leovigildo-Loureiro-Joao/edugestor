@@ -400,7 +400,7 @@ const handleExcluirHorario = async (horarioId: string) => {
       }
     };
   
-    const handleDeletarAula = async (id: string) => {
+    const handleDeletarAula = async (aula:Aula) => {
       const confirmed = await confirm({
         type: 'delete',
         title: 'Excluir Aula',
@@ -409,8 +409,8 @@ const handleExcluirHorario = async (horarioId: string) => {
         confirmText: 'Excluir',
         onConfirm: async () => {
           try {
-            await aulaService.deletarAula(id);
-            setAulas(aulas.filter(a=>a.id==id))
+            await aulaService.deletarAula(aula.id);
+            setAulas(aulas.length==1?[]:aulas.filter(a=>a.id==aula.id))
             toast.success('Aula excluída com sucesso!');
             showAlert({
               type: 'success',
@@ -515,6 +515,12 @@ function horarios(turma: Turma): HorarioAula[][] {
       return horaA.localeCompare(horaB);
     });
 }
+const getDiaSemanaFromDate = (dateString: string): string => {
+  const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+  const date = new Date(dateString);
+  return dias[date.getDay()];
+};
+
 
   const taxaOcupacao = turma.vagas ? (turma.alunos.length / turma.vagas) * 100 : 0;
   const mediaGeral = turma.alunos.length > 0 
@@ -1200,7 +1206,7 @@ function horarios(turma: Turma): HorarioAula[][] {
               />
               
               <div className="space-y-3">
-                {turma.horarios.map((horario, index) => (
+                {turma.horarios.filter(e=>  e.dia_semana==getDiaSemanaFromDate(new Date().toISOString())).map((horario, index) => (
                   <motion.div
                     initial={{opacity:0,y:-20}}
                     animate={{opacity:1,y:0}}
@@ -1335,6 +1341,7 @@ function horarios(turma: Turma): HorarioAula[][] {
                       }}
                       turmaHorarios={turma.horarios}
                       loading={loading}
+                      aulaExistentes={turma.aulas}
                     />
                   </motion.div>
                 </motion.div>

@@ -14,8 +14,8 @@ export const ConfiguracoesPage = () => {
   const [activeTab, setActiveTab] = useState('geral');
 
   return (
-    <div className="min-h-screen  p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen  p-6 ">
+      <div className="max-w-8xl mx-auto">
         
         {/* Header */}
          <motion.div 

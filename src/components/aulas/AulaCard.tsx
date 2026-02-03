@@ -26,7 +26,7 @@ interface AulaCardMinProps {
     observacoes_professor?: string;
   };
   onEditar: () => void;
-  onDeletar: () => void;
+  onDeletar: (aula:Aula) => void;
   onActualizar: (status: AulaStatus) => void;
   index: number;
 }
@@ -34,7 +34,7 @@ interface AulaCardMinProps {
 interface AulaCardMiniProps {
   aula: Aula;
   onEditar: () => void;
-  onDeletar: () => void;
+  onDeletar: (aula:Aula) => any;
   index: number;
 }
 
@@ -202,7 +202,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
             </button>
             
             <button
-              onClick={onDeletar}
+              onClick={()=>onDeletar(aula)}
               className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
               title="Excluir aula"
             >
