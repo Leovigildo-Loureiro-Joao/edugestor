@@ -56,6 +56,15 @@ export const Courses = () => {
     Reload();
   }, []);
 
+  const loadSyncStats = async () => {
+        try {
+          const turmasPendentes = await getPendingCount("cursos");
+          setSyncStats(turmasPendentes);
+        } catch (error) {
+          console.error('Erro ao carregar sync stats:', error);
+        }
+      };
+
    useEffect(() => {
       // Monitorar status online
       const handleOnline = () => setOnlineStatus(true);
@@ -65,14 +74,6 @@ export const Courses = () => {
       window.addEventListener('offline', handleOffline);
       
       // Carregar estatísticas de sincronização
-      const loadSyncStats = async () => {
-        try {
-          const turmasPendentes = await getPendingCount("cursos");
-          setSyncStats(turmasPendentes);
-        } catch (error) {
-          console.error('Erro ao carregar sync stats:', error);
-        }
-      };
       
       loadSyncStats();
       
@@ -190,6 +191,7 @@ export const Courses = () => {
             try {
               await cursosService.deleteCourse(curso.id);
               setCursos(cursos.filter(t => t.id !== curso.id));
+              await loadSyncStats()
               showAlert({
                 type: 'success',
                 title: 'Curso excluído!',

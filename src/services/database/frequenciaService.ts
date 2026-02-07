@@ -58,6 +58,28 @@ export const frequenciaService = {
     }
   },
 
+  async deleteFrequenciaByAluno(alunoId: string) {
+    try {
+      const frequencias = await this.getByAluno(alunoId);
+
+      for (const freq of frequencias) {
+        await db.frequencias.update(freq.id, {
+          deleted: true,
+          updated_at: new Date().toISOString(),
+          sync_status: 'pending'
+        });
+        
+        // Adicionar à fila de sincronização
+        await this.markForSync(freq.id, 'delete');
+      }
+      
+      console.log(`✅ Frequências deletadas para aluno ${alunoId}`);
+    } catch (error) {
+      console.error('❌ Erro ao deletar frequências do aluno:', error);
+      throw error;
+    }
+  },
+
   // ✅ Buscar todas as frequências
   async getAllFrequencias(): Promise<Frequencia[]> {
     try {

@@ -75,7 +75,7 @@ class EduGestorDatabase extends Dexie {
       alunos: '++id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
       avaliacoes:'++id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status',
       turmas: '++id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted]',
-      cursos: '++id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted, [sync_status+deleted]',
+      cursos: '++id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
       turma_horarios: '++id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana]',
       transacoes: '++id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
       propina: '++id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,

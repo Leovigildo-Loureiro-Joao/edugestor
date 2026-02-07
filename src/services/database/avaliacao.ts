@@ -405,6 +405,38 @@ export const avaliacaoService = {
     }
   },
 
+  async deleteAvaliacoesByAluno(alunoId: string) {
+    const avaliacoes = await db.avaliacoes
+      .where('aluno_id')
+      .equals(alunoId)
+      .and(av => !av.deleted)
+      .toArray();
+
+    for (const avaliacao of avaliacoes) {
+      avaliacao.deleted = true;
+      avaliacao.sync_status = 'pending';
+      avaliacao.updated_at = new Date().toISOString();
+      await db.avaliacoes.put(avaliacao);
+
+      await db.syncQueue.add({
+        table: 'avaliacao',
+        record_id: avaliacao.id,
+        operation: 'delete',
+        data: JSON.stringify({ id: avaliacao.id }),
+        status: 'pending',
+        created_at: new Date().toISOString()
+      });
+    }
+  },
+
+  async getAvaliacoesByTurma(turmaId: string) {
+    return await db.avaliacoes
+      .where('turma_id')
+      .equals(turmaId)
+      .and(av => !av.deleted)
+      .toArray();
+  },
+
   // ✅ Estatísticas avançadas
   async getEstatisticasAvancadas(options?: {
     turmaId?: string;

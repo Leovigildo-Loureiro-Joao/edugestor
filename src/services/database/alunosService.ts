@@ -21,10 +21,11 @@ export const alunosService = {
     try {
       const id = generateUniqueId();
       const now = new Date().toISOString();
-      
+      const n=await this.gerarProximoNumeroEstudante();
       const aluno = {
         ...studentData,
         id,
+        numero_estudante:n,
         created_at: now,
         updated_at: now,
         sync_status: 'pending',
@@ -238,7 +239,7 @@ async getAllStudents(): Promise<Student[]> {
   async syncAlunos() {
     if(navigator.onLine)
      return Promise.all([syncManager.uploadTableBatch('alunos'),
-      syncManager.downloadTableBatch('alunos', new Date(0))
+      syncManager.downloadTableBatch('alunos', new Date())
     ])
     throw new Error("sem net")
   },
@@ -359,6 +360,10 @@ async getAllStudents(): Promise<Student[]> {
           sync_status: 'pending_delete',
           updated_at: new Date().toISOString()
         });
+
+        await avaliacaoService.deleteAvaliacoesByAluno(id);
+        await frequenciaService.deleteFrequenciaByAluno(id);
+
         
         await db.syncQueue.add({
           table: 'alunos',
@@ -412,12 +417,13 @@ async getAllStudents(): Promise<Student[]> {
     },
   // ✅ Gerar próximo número de estudante
   async gerarProximoNumeroEstudante(): Promise<number> {
+
     try {
       const alunos = await db.alunos.toArray();
       const numeros = alunos
-        .filter(a => !a.deleted && a.numero_estudante)
+        .filter(a => !a.deleted)
         .map(a => a.numero_estudante);
-      
+      alert(numeros.length)
       const maior = numeros.length > 0 ? Math.max(...numeros) : 0;
       return maior + 1;
     } catch (error) {

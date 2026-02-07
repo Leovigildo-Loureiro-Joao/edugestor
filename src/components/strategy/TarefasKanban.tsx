@@ -19,7 +19,7 @@ import {
   FiArchive,
   FiRefreshCw
 } from 'react-icons/fi';
-import { Tarefa } from '../../types/eventos';
+import { Tarefa } from '../../types/eventos.ts';
 import { estrategiaService } from '../../services/database/estrategiaService.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';

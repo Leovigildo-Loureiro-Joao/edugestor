@@ -14,14 +14,11 @@ export function emitPendingSync(tableName: string, count: number) {
 export const getPendingCount = async (table: string): Promise<number> => {
     try {
       // Tentar do localStorage primeiro
-      const cached = localStorage.getItem(`pending_sync_${table}`);
-      if (cached) return parseInt(cached, 10);
-
-      // Se não, buscar do IndexedDB
+      
       const pendingItems = await db.syncQueue
         .where('table')
         .equals(table)
-        .and(item => item.status === 'pending'||item.status === 'pending_delete')
+        .and(item => item.status === 'pending')
         .toArray();
 
         console.log(pendingItems)

@@ -28,9 +28,16 @@ import  RotinaComponent  from '../../components/strategy/Rotina';
 import EventosPorMeta from '../../components/strategy/EventoPorMeta';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
+import { PlanejamentoAnual } from '../../components/strategy/PlaneamentoAnual';
+import { PlanejamentoSemanal } from '../../components/strategy/PlaneamentoSemanal';
+import { PlanejamentoDiario } from '../../components/strategy/PlaneamentoDiario';
+import PlanejamentoMensal from '../../components/strategy/PlaneamentoMensal';
+import PlanejamentoTrimestral from '../../components/strategy/PlaneamentoTrimestral';
+import DashboardIntegrado from '../../components/strategy/HomeDetails';
+
 
 const EstrategiaPage = () => {
-  const [activeTab, setActiveTab] = useState('metas');
+  const [activeTab, setActiveTab] = useState('home');
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [rotinas, setRotinas] = useState<Rotina[]>([]);
@@ -38,7 +45,7 @@ const EstrategiaPage = () => {
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); 
   const [newTask, setNewTask] = useState('');
-  const seccaoAtual = useParams().seccao || 'metas';
+  const seccaoAtual = useParams().seccao || 'home';
 
   const [estatisticas, setEstatisticas] = useState<{
     progressoGeral: number,
@@ -97,12 +104,20 @@ const EstrategiaPage = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
   };
 
-  const tabs = [
-    { id: 'metas', label: 'Metas', icon: <FiTarget />, count: metas.length },
-    { id: 'tarefas', label: 'Tarefas', icon: <FiList />, count: tarefas.length },
-    { id: 'rotinas', label: 'Rotinas', icon: <FiClock /> },
-    {id: 'eventos', label: 'Eventos', icon: <FiCalendar /> }
-  ];
+  // Atualize as tabs para incluir todos os níveis
+const tabs = [
+  {id:'home', label:'Home', icon:<FiHome/>},
+  { id: 'anual', label: 'Anual', icon: <FiTarget /> },
+  { id: 'trimestral', label: 'Trimestral', icon: <FiCalendar /> },
+  { id: 'mensal', label: 'Mensal', icon: <FiCalendar /> },
+  { id: 'semanal', label: 'Semanal', icon: <FiCalendar /> },
+  { id: 'diario', label: 'Diário', icon: <FiClock /> },
+  { id: 'metas', label: 'Metas', icon: <FiTarget />, count: metas.length },
+  { id: 'tarefas', label: 'Tarefas', icon: <FiList />, count: tarefas.length },
+  
+  { id: 'eventos', label: 'Eventos', icon: <FiCalendar /> }
+];
+  
 
   if (loading) {
     return (
@@ -241,6 +256,30 @@ const EstrategiaPage = () => {
           className="bg-white rounded-2xl shadow-xl overflow-hidden"
         >
           {/* Metas Tab */}
+          {activeTab === 'home' && (
+            <DashboardIntegrado metas={metas} tarefas={tarefas}/>
+          )}
+          {activeTab === 'anual' && (
+            <PlanejamentoAnual ano={2025} metasAnuais={[]}/>
+          )}
+          {activeTab === 'semanal' && (
+            <PlanejamentoSemanal/>
+          )}
+          {activeTab === 'diario' && (
+            <PlanejamentoDiario/>
+          )}
+          {activeTab === 'mensal' && (
+            <PlanejamentoMensal mes={new Date(2025, 0, 1)} metas={metas} tarefas={tarefas}/>
+          )}
+          {activeTab === 'trimestral' && (
+            <PlanejamentoTrimestral 
+              trimestre={Math.ceil((new Date().getMonth() + 1) / 3)}
+              ano={new Date().getFullYear()}
+              metas={metas}
+              tarefas={tarefas}
+              onTrimestreChange={(trimestre, ano) => console.log('Trimestre alterado:', trimestre, ano)}
+            />
+          )}
           {activeTab === 'metas' && (
             <MetaComponent metas={metas} setMetas={setMetas}/>
           )}
@@ -250,10 +289,6 @@ const EstrategiaPage = () => {
           <TarefasKanban />
           )}
 
-          {/* Rotinas Tab */}
-          {activeTab === 'rotinas' && (
-           <RotinaComponent rotinas={rotinas} />
-          )}
           {
             activeTab === 'eventos' && (
               <div className="p-6">

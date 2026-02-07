@@ -310,3 +310,56 @@ export interface Alocacao{
     tipo: 'complementar' | 'completo' | 'parcial';
     responsavel: string;
   }
+
+  // Adicionar novos tipos
+export interface PlanejamentoAnual {
+  id: string;
+  ano: number;
+  titulo: string;
+  descricao: string;
+  objetivos: string[];
+  metas_principais: string[];
+  orcamento_previsto: number;
+  responsavel: string;
+  status: 'rascunho' | 'ativo' | 'concluido' | 'cancelado';
+  progresso: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanejamentoSemanal {
+  id: string;
+  semana_numero: number;
+  data_inicio: string;
+  data_fim: string;
+  objetivos: string[];
+  prioridades: string[];
+  compromissos: CompromissoDiario[];
+  status: 'planejado' | 'em_andamento' | 'concluido';
+  progresso: number;
+}
+
+export interface CompromissoDiario {
+  id: string;
+  data: string;
+  hora_inicio: string;
+  hora_fim: string;
+  titulo: string;
+  descricao: string;
+  tipo: 'reuniao' | 'aula' | 'planejamento' | 'outro';
+  local: string;
+  participantes: string[];
+  concluido: boolean;
+}
+
+export interface TarefaDiaria {
+  id: string;
+  data: string;
+  titulo: string;
+  descricao: string;
+  prioridade: 'alta' | 'media' | 'baixa';
+  categoria: string;
+  concluido: boolean;
+  horario_previsto?: string;
+  tempo_estimado_minutos: number;
+}

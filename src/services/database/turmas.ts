@@ -296,6 +296,12 @@ export const turmaService = {
           sync_status: 'pending_delete' as SyncStatus,
           updated_at: new Date().toISOString(),
         });
+
+        await alunosService.getAlunosPorTurma(id).then(alunos => {
+          alunos.forEach(async aluno => {
+            await alunosService.deleteStudent(aluno.id);
+          });
+        });
         
         await db.syncQueue.add({
           table: 'turmas',
@@ -462,7 +468,7 @@ export const turmaService = {
 
     async syncTurmas() {
       if(navigator.onLine)
-        return Promise.all([syncManager.uploadTableBatch('turmas'),
+        return await Promise.all([syncManager.uploadTableBatch('turmas'),
           syncManager.downloadTableBatch('turmas', new Date(0))
         ])
       throw new Error("sem net")

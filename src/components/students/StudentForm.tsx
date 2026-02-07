@@ -105,6 +105,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     ano_lectivo: "",
     pagamento_em_dia: false,
     sync_status: "pending"
+
   };
   const { 
     data: formData, 

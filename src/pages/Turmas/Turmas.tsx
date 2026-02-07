@@ -48,16 +48,7 @@ const Turmas: React.FC = () => {
       Reload();
     }, []);
 
-    useEffect(() => {
-      // Monitorar status online
-      const handleOnline = () => setOnlineStatus(true);
-      const handleOffline = () => setOnlineStatus(false);
-      
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      
-      // Carregar estatísticas de sincronização
-      const loadSyncStats = async () => {
+    const loadSyncStats = async () => {
         try {
           const turmasPendentes = await getPendingCount("turmas");
           setSyncStats(turmasPendentes);
@@ -65,8 +56,14 @@ const Turmas: React.FC = () => {
           console.error('Erro ao carregar sync stats:', error);
         }
       };
+
+    useEffect(() => {
+      // Monitorar status online
+      const handleOnline = () => setOnlineStatus(true);
+      const handleOffline = () => setOnlineStatus(false);
       
-      loadSyncStats();
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
       
       // Ouvir eventos de sincronização
       const handleSyncUpdate = () => {
@@ -128,6 +125,7 @@ const Turmas: React.FC = () => {
         }
       };
       loadTurmas();
+      loadSyncStats();
     }
  
 
@@ -155,6 +153,7 @@ const Turmas: React.FC = () => {
 
   const handleDelete = async (turmaSel:Turma): Promise<void> => {
      const confirmed = await confirm({
+
           type: 'delete',
           title: 'Excluir Turma',
           message: `Tem certeza que deseja excluir ${turmaSel.nome_turma}? Todos dados ligados a ela permanecerão.`,
@@ -163,11 +162,12 @@ const Turmas: React.FC = () => {
           onConfirm: async () => {
             try {
              await turmaService.deleteTurma(turmaSel.id);
+              await loadSyncStats();
               setTurmas(turmas.filter(t => t.id !== turmaSel.id));
               showAlert({
                 type: 'success',
-                title: 'Aluno excluído!',
-                message: `${turmaSel.nome_turma} foi removido do sistema.`,
+                title: 'Turma excluída!',
+                message: `${turmaSel.nome_turma} foi removida do sistema.`,
                 duration: 3000
               });
               
@@ -175,7 +175,7 @@ const Turmas: React.FC = () => {
               showAlert({
                 type: 'error',
                 title: 'Erro ao excluir',
-                message: 'Não foi possível excluir o turma. Verifique sua conexão.',
+                message: 'Não foi possível excluir a turma. Verifique sua conexão.',
                 duration: 5000
               });
             }

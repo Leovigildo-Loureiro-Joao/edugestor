@@ -398,6 +398,12 @@ export const cursosService = {
           sync_status: 'pending_delete',
           updated_at: new Date().toISOString()
         });
+
+        await turmaService.getTurmasPorCurso(id).then(turmas => {
+          turmas.forEach(async turma => {
+            await turmaService.deleteTurma(turma.id);
+          });
+        });
         
         await db.syncQueue.add({
           table: 'cursos',

@@ -1,5 +1,7 @@
 // src/services/database/syncManager.ts
+import { alunosService, aulaService, frequenciaService, turmaService } from ".";
 import { SyncQueueItem } from "../../types/base";
+import { avaliacaoService } from "./avaliacao";
 import db, { supabase } from "./db";
 
 
@@ -16,10 +18,21 @@ interface SyncManager {
   updateLocalId(tableName: string, oldId: string, newId: string): Promise<void>;
   markAsSynced(tableName: string, recordId: string): Promise<void>;
   deleteLocalRecord(tableName: string, recordId: string): Promise<void>;
+  processarRegistrosUnicos(records: any[], tabela: string): any[];
   handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
   downloadTableBatch(tableName: string, since: Date): Promise<void>;
   uploadTableBatch(tableName: string): Promise<void>;
   processDownloadBatch(tableName: string, batch: any[]): Promise<void>;
+  prepareInsertRecords(tableName: string, items: SyncQueueItem[]): Promise<{ records: any[]; itemsToProcess: SyncQueueItem[] }>;
+  cleanRecordForSupabase(record: any): any;
+  executeUpsertToSupabase(tableName: string, records: any[]): Promise<{ data: any[] | null; error: any | null }>;
+  processSuccessResult(tableName: string, items: SyncQueueItem[], supabaseData: any[]): Promise<void>;
+  handleInsertError(tableName: string, items: SyncQueueItem[], error: any): Promise<void>;
+  markItemAsError(item: SyncQueueItem, error: Error): Promise<void>;
+  checkExistingNotificacao(record: any): Promise<any>;
+  handleDuplicateInsert(tableName: string, records: any[], items: SyncQueueItem[], authData: any): Promise<void>;
+  checkExistingUniqueConstraint(tableName: string, record: any): Promise<any>;
+  convertInsertToUpdate(tableName: string, item: SyncQueueItem, existingId: string): Promise<void>;
 }
 
 // Hook personalizado para usar dentro do manager
@@ -155,222 +168,366 @@ export const syncManager: SyncManager = {
       const inserts = items.filter(item => item.operation === 'upsert' && item.record_id.startsWith('local_'));
       const updates = items.filter(item => item.operation === 'upsert' && !item.record_id.startsWith('local_'));
       const deletes = items.filter(item => item.operation === 'delete');
-      
-      // Processar INSERTs em batch
-      if (inserts.length > 0) {
-        await this.processInsertBatch(tableName, inserts);
+
+      // Processar DELETEs em batch
+      if (deletes.length > 0) {
+        await this.processDeleteBatch(tableName, deletes);
       }
       
       // Processar UPDATEs em batch (um por um por segurança)
       for (const item of updates) {
         await this.processSingleUpdate(tableName, item);
       }
-      
-      // Processar DELETEs em batch
-      if (deletes.length > 0) {
-        await this.processDeleteBatch(tableName, deletes);
+
+      // Processar INSERTs em batch
+      if (inserts.length > 0) {
+        await this.processInsertBatch(tableName, inserts);
       }
+      
+      
       
     } catch (error) {
       console.error(`❌ Erro processando batch de ${tableName}:`, error);
       throw error;
     }
   },
-  
-  async debugCurrentJWT() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.access_token) {
-      console.error('❌ Nenhum token JWT disponível');
-      return;
-    }
-    
-    // Decodificar JWT manualmente
-    const token = session.access_token;
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.error('❌ Token JWT inválido');
-      return;
-    }
-    
-    const payload = JSON.parse(atob(parts[1]));
-    
-    console.log('🔍 JWT Claims (cru):', payload);
-    console.log('🔍 JWT Claims específicos:', {
-      // Claims padrão
-      sub: payload.sub,
-      email: payload.email,
-      role: payload.role,
-      // Claims customizados que estamos procurando
-      instituicao_id: payload.instituicao_id,
-      // App metadata (vindo da Edge Function)
-      app_metadata: payload.app_metadata,
-      // User metadata (vindo do Supabase Auth)
-      user_metadata: payload.user_metadata,
-      // Verificar se está em algum lugar
-      has_instituicao_id_in_app_metadata: payload.app_metadata?.instituicao_id,
-      has_instituicao_id_in_user_metadata: payload.user_metadata?.instituicao_id,
-      // Timestamps
-      exp: new Date(payload.exp * 1000),
-      iat: new Date(payload.iat * 1000)
-    });
-    
-    // Verificar a política RLS
-    console.log('🔍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-    
-  } catch (error) {
-    console.error('❌ Erro ao decodificar JWT:', error);
-  }
-},
 
+  // Função para processar registros duplicados
+ processarRegistrosUnicos(records: any[], tabela: string): any[] {
+  const registrosUnicos = new Map();
+  
+  records.forEach(record => {
+    let chaveUnica;
+    
+    switch(tabela) {
+      case 'alunos':
+        // Para alunos, usa numero_estudante como chave única
+        chaveUnica = record.numero_estudante;
+        break;
+        
+      case 'turmas':
+        // Para turmas, usa nome_turma + ano_letivo
+        chaveUnica = `${record.nome_turma}_${record.ano_letivo}`;
+        break;
+        
+      case 'professores':
+        // Para professores, usa email ou BI
+        chaveUnica = record.email || record.numero_bi;
+        break;
+        
+      default:
+        // Para outras tabelas, usa ID se existir
+        chaveUnica = record.id || Math.random().toString();
+    }
+    
+    // Se não tem chave única, gera uma aleatória
+    if (!chaveUnica) {
+      chaveUnica = `temp_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Verifica se já existe registro com mesma chave
+    const existente = registrosUnicos.get(chaveUnica);
+    if (existente) {
+      // Mantém o registro mais recente (compara updated_at)
+      const dataAtual = record.updated_at || record.created_at;
+      const dataExistente = existente.updated_at || existente.created_at;
+      
+      if (dataAtual && dataExistente) {
+        const isMaisRecente = new Date(dataAtual) > new Date(dataExistente);
+        if (isMaisRecente) {
+          registrosUnicos.set(chaveUnica, record);
+        }
+      } else if (dataAtual && !dataExistente) {
+        // Se o atual tem data mas o existente não, usa o atual
+        registrosUnicos.set(chaveUnica, record);
+      }
+    } else {
+      registrosUnicos.set(chaveUnica, record);
+    }
+  });
+  
+  return Array.from(registrosUnicos.values());
+},
+  
 // ✅ Processar INSERTs em batch - CORRIGIDO
   async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
-
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
-    await this.debugCurrentJWT();
+    
     if (!authData.isAuthenticated) {
       console.warn(`⚠️ Usuário não autenticado. Ignorando INSERTs em ${tableName}`);
       return;
     }
     
-    // 1. Buscar dados dos itens
+    try {
+      console.log(`🔄 Processando ${items.length} INSERTs em ${tableName}`);
+      
+      // PASSO 1: Preparar registros válidos
+      const { records, itemsToProcess } = await this.prepareInsertRecords(tableName, items);
+      
+      if (records.length === 0) {
+        console.log(`✅ Nada para sincronizar em ${tableName}`);
+        return;
+      }
+      
+      // PASSO 2: Executar upsert no Supabase
+      const supabaseResult = await this.executeUpsertToSupabase(tableName, records);
+      
+      if (!supabaseResult.data || supabaseResult.data.length === 0) {
+        throw new Error('Nenhum dado retornado do Supabase');
+      }
+      
+      // PASSO 3: Atualizar IDs locais e LIMPAR SYNC QUEUE (CRÍTICO!)
+      await this.processSuccessResult(tableName, itemsToProcess, supabaseResult.data);
+      
+      console.log(`✅ Sincronização concluída: ${records.length} registros em ${tableName}`);
+      
+    } catch (error) {
+      await this.handleInsertError(tableName, items, error);
+    }
+  }
+
+  // ============ MÉTODOS AUXILIARES ============
+
+  , async prepareInsertRecords(tableName: string, items: SyncQueueItem[]) {
     const records = [];
     const itemsToProcess = [];
     
     for (const item of items) {
-      const record = await this.getRecordFromTable(tableName, item.record_id);
-      if (record) {
-        // Verificar se já existe no Supabase (para INSERTs que podem ser UPDATEs)
-        if (!record.id || record.id.startsWith('local_')) {
-          // Remover campos internos do Dexie e ID local
-          const { id, sync_status, deleted, created_at, updated_at, ...cleanRecord } = record;
-          
-          // ✅ ADICIONAR CAMPOS NECESSÁRIOS PARA RLS
-          const recordWithRLS = {
-            ...cleanRecord,
-            // Timestamps no formato do Supabase
-            created_at: record.created_at || new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
+      try {
+        // 1. Buscar registro do IndexedDB
+        const record = await this.getRecordFromTable(tableName, item.record_id);
         
-          const existing = await this.checkExistingUniqueConstraint(recordWithRLS);
-          
-          if (existing) {
-            console.log(`⚠️ ${tableName} já existe, convertendo para UPDATE:`, {
-              category: recordWithRLS.category,
-              name: recordWithRLS.key_name
-            });
-            
-            await this.convertInsertToUpdate(tableName, item, existing.id);
-            continue;
-          }
-        
-          records.push(recordWithRLS);
-          itemsToProcess.push(item);
-        } else {
-          // Registro já tem ID do Supabase, marcar como sincronizado
-          console.log(`ℹ️ Registro já sincronizado: ${tableName} - ID: ${record.id}`);
+        if (!record) {
+          console.warn(`🗑️  Registro não encontrado, removendo: ${item.record_id}`);
           await db.syncQueue.delete(item.id!);
+          continue;
         }
+        
+        // 2. Verificar se já foi sincronizado (tem ID do Supabase)
+        if (record.id && !record.id.toString().startsWith('local_')) {
+          console.log(`✅ Já sincronizado, removendo: ${record.id}`);
+          await db.syncQueue.delete(item.id!);
+          continue;
+        }
+        
+        // 3. Preparar registro para envio
+        const cleanRecord = this.cleanRecordForSupabase(record);
+        
+        records.push(cleanRecord);
+        itemsToProcess.push(item);
+        
+      } catch (error) {
+        console.error(`❌ Erro ao preparar item ${item.id}:`, error);
+        await this.markItemAsError(item, error);
       }
     }
     
-    if (records.length === 0) return;
+    return { records, itemsToProcess };
+  }
+
+  , cleanRecordForSupabase(record: any) {
+    // Remove campos internos do Dexie
+    const { sync_status, deleted, ...cleanRecord } = record;
     
-    // Verificar se algum registro ainda tem ID local
+    // Garante timestamps no formato ISO
+    return {
+      ...cleanRecord,
+      created_at: record.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      
+      // Remove ID local se existir
+      ...(record.id && record.id.toString().startsWith('local_') 
+        ? { id: undefined } 
+        : {})
+    };
+  }
+
+  , async executeUpsertToSupabase(tableName: string, records: any[]) {
+    console.log(`📤 Enviando ${records.length} registros para ${tableName}`);
+    
+    // Define estratégia de upsert por tabela
+    let onConflict = 'id';
+    let processedRecords = records;
+    
+    switch (tableName) {
+      case 'system_config':
+        onConflict = 'category,name';
+        break;
+        
+      case 'turmas':
+        // Remove campos que não existem na tabela
+        processedRecords = records.map(record => {
+          const { aulas, horarios, ...rest } = record;
+          return rest;
+        });
+        break;
+        
+      case 'alunos':
+        // Remove avaliação (se existir)
+        processedRecords = records.map(record => {
+          const { avaliacao, ...rest } = record;
+          return rest;
+        });
+        // IMPORTANTE: Se tiver constraint unique no número do estudante
+        onConflict = 'numero_estudante';
+        break;
+        
+      default:
+        // Para outras tabelas, mantém como está
+        break;
+    }
+    
+    // Remove duplicatas dentro do batch
+    const uniqueRecords = this.removeBatchDuplicates(tableName, processedRecords);
+    
+    console.log(`🔄 Upsert config:`, { tableName, onConflict, count: uniqueRecords.length });
+    
+    const { data, error } = await supabase
+      .from(tableName)
+      .upsert(uniqueRecords, { onConflict })
+      .select();
+    
+    if (error) {
+      console.error(`❌ Erro no upsert ${tableName}:`, error);
+      
+      // Tenta upsert sem onConflict se falhar
+      if (error.code === '42501' || error.code === '23505') {
+        console.log('🔄 Tentando upsert sem onConflict...');
+        const { data: retryData, error: retryError } = await supabase
+          .from(tableName)
+          .upsert(uniqueRecords)
+          .select();
+        
+        if (retryError) throw retryError;
+        return { data: retryData, error: null };
+      }
+      
+      throw error;
+    }
+    
+    return { data, error: null };
+  }
+
+  , removeBatchDuplicates(tableName: string, records: any[]) {
+    const uniqueMap = new Map();
+    const duplicates = [];
+    
     records.forEach(record => {
-      if (record.id && record.id.startsWith('local_')) {
-        delete record.id;
+      let key = record.id;
+      
+      if (tableName === 'alunos' && record.numero_estudante) {
+        key = `aluno_${record.numero_estudante}`;
+      } else if (tableName === 'turmas' && record.nome_turma && record.ano_letivo) {
+        key = `turma_${record.nome_turma}_${record.ano_letivo}`;
+      }
+      
+      if (key && uniqueMap.has(key)) {
+        duplicates.push({ key, record });
+      } else if (key) {
+        uniqueMap.set(key, record);
       }
     });
     
-    try {
-      // 2. INSERT em batch no Supabase com configuração correta por tabela
-      let result: any;
+    if (duplicates.length > 0) {
+      console.warn(`⚠️ Removidas ${duplicates.length} duplicatas do batch ${tableName}`);
+    }
+    
+    return Array.from(uniqueMap.values());
+  }
+
+  , async processSuccessResult(tableName: string, items: SyncQueueItem[], supabaseData: any[]) {
+    console.log(`✅ Upsert bem-sucedido! Processando ${items.length} itens...`);
+    
+    const promises = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const supabaseRecord = supabaseData[i];
       
-      // ✅ CORREÇÃO: Configurar onConflict específico para cada tabela
-      if (tableName === 'system_config') {
-        const { data, error } = await supabase
-          .from(tableName)
-          .upsert(records, {
-            onConflict: 'category,name', // ✅ Apenas para system_config
-            ignoreDuplicates: false
+      if (!supabaseRecord || !supabaseRecord.id) {
+        console.warn(`⚠️ Sem dados retornados para item ${item.record_id}`);
+        continue;
+      }
+      
+      // 1. Atualizar ID local no IndexedDB
+      promises.push(
+        this.updateLocalId(tableName, item.record_id, supabaseRecord.id)
+          .catch(err => console.error(`Erro ao atualizar ID:`, err))
+      );
+      
+      // 2. Processar dependências (turmas, cursos, etc.)
+      if (tableName === 'turmas' || tableName === 'cursos') {
+        promises.push(
+          this.updateDependentRecords(tableName, supabaseRecord.id, item.record_id)
+            .catch(err => console.error(`Erro dependências:`, err))
+        );
+      }
+      
+      // 3. CRÍTICO: REMOVER DO SYNC QUEUE
+      promises.push(
+        db.syncQueue.delete(item.id!)
+          .then(() => {
+            console.log(`🗑️  Removido da fila: ${tableName} - ${item.id}`);
           })
-          .select();
-        
-        if (error) throw error;
-        result = { data };
-        
-      }  else {
-        // Para outras tabelas, upsert padrão por ID
-        var recordsToInsert = records;
-        if (tableName=="alunos") {
-          recordsToInsert=records.map(record=>{
-            const { avaliacao,id, ...rest } = record;
-            return rest;
-          });
-        }
-        const { data, error } = await supabase
-          .from(tableName)
-          .upsert(recordsToInsert, {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          })
-          .select();
-        
-        if (error) throw error;
-        result = { data };
-      }
-     
-      
-      if (result.error) {
-        console.error(`❌ Erro inserindo batch em ${tableName}:`, result.error);
-        
-        // Se for erro de duplicidade, tentar UPDATE individual
-        if (result.error.code === '23505') {
-          console.log(`🔄 Tratando duplicidade em ${tableName}, tentando UPSERT individual...`);
-          await this.handleDuplicateInsert(tableName, records, itemsToProcess, authData);
-          return;
-        }
-        
-        throw result.error;
-      }
-      
-      // 3. Atualizar IDs locais com IDs do Supabase
-      if (result.data) {
-        for (let i = 0; i < itemsToProcess.length; i++) {
-          const item = itemsToProcess[i];
-          const supabaseRecord = result.data[i];
-          
-          if (supabaseRecord) {
-            await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
-            await db.syncQueue.delete(item.id!);
-          }
-        }
-      }
-      
-      console.log(`✅ ${records.length} registros processados em ${tableName}`);
-      
-    } catch (error) {
-       if (error.code === '42501') {
-          console.error('🔍 DEBUG RLS Error:', {
-            table: tableName,
-            errorCode: error.code,
-            errorMessage: error.message,
+          .catch(async (err) => {
+            console.error(`❌ Erro ao remover ${item.id}:`, err);
             
-            // Verificar autenticação atual
-            authState: await supabase.auth.getSession().then(s => ({
-              hasSession: !!s.data.session,
-              userId: s.data.session?.user?.id,
-              // Verificar headers sendo enviados
-              tokenPresent: !!s.data.session?.access_token,
-              tokenPreview: s.data.session?.access_token?.substring(0, 20) + '...'
-            }))
-          });
+            // Se não conseguir deletar, pelo menos marca como sincronizado
+            await db.syncQueue.update(item.id!, { 
+              sync_status: 'synced',
+              synced_at: new Date(),
+              error_message: null
+            }).catch(() => {});
+          })
+      );
+    }
+    
+    // Aguarda TODAS as promessas
+    await Promise.allSettled(promises);
+    
+    console.log(`🎉 ${items.length} itens processados e removidos da fila!`);
+  }
+
+  , async updateLocalId(tableName: string, localId: string, supabaseId: string) {
+    try {
+      const table = db.table(tableName);
+      await table.update(localId, { id: supabaseId });
+      console.log(`🔄 ID atualizado: ${localId} → ${supabaseId} (${tableName})`);
+    } catch (error) {
+      console.error(`❌ Falha ao atualizar ID local ${localId}:`, error);
+    }
+  }
+
+  , async handleInsertError(tableName: string, items: SyncQueueItem[], error: any) {
+    console.error(`❌ Erro fatal em ${tableName}:`, error);
+    
+    // Para cada item, marca como erro (para retentativa posterior)
+    for (const item of items) {
+      try {
+        await db.syncQueue.update(item.id!, {
+          sync_status: 'error',
+          error_message: error.message?.substring(0, 200) || 'Erro desconhecido',
+          retry_count: (item.retry_count || 0) + 1,
+          last_attempt: new Date(),
+          synced_at: null
+        });
+      } catch (updateError) {
+        console.error(`❌ Não consegui marcar erro no item ${item.id}:`, updateError);
       }
-      console.error(`❌ Erro fatal em processInsertBatch para ${tableName}:`, error);
+    }
+  }
+
+  , async markItemAsError(item: SyncQueueItem, error: Error) {
+    try {
+      await db.syncQueue.update(item.id!, {
+        sync_status: 'error',
+        error_message: error.message?.substring(0, 200) || 'Erro ao preparar',
+        retry_count: (item.retry_count || 0) + 1,
+        last_attempt: new Date()
+      });
+    } catch (updateError) {
+      console.error(`❌ Falha ao marcar erro no item ${item.id}:`, updateError);
     }
   },
 
@@ -466,6 +623,35 @@ export const syncManager: SyncManager = {
       }
     }
   },
+
+   removeDuplicateRecords(tableName: string, records: any[]) {
+  const uniqueMap = new Map();
+  
+  records.forEach(record => {
+    let key;
+    
+    switch (tableName) {
+      case 'alunos':
+        key = `${record.instituicao_id_cached}_${record.numero_estudante}`;
+        break;
+      case 'turmas':
+        key = `${record.nome_turma}_${record.ano_letivo}`;
+        break;
+      case 'professores':
+        key = record.email || record.numero_bi;
+        break;
+      default:
+        key = record.id || JSON.stringify(record);
+    }
+    
+    if (key && !uniqueMap.has(key)) {
+      uniqueMap.set(key, record);
+    }
+  });
+  
+  return Array.from(uniqueMap.values());
+}
+,
 
   // Métodos auxiliares adicionais:
 
@@ -564,6 +750,7 @@ export const syncManager: SyncManager = {
       .filter(item => !item.record_id.startsWith('local_'))
       .map(item => item.record_id);
     
+    
     if (idsToDelete.length === 0) {
       // Apenas deletar localmente
       for (const item of items) {
@@ -617,6 +804,7 @@ export const syncManager: SyncManager = {
       await table.put({ 
         ...record, 
         id: newId,
+        sync_status:"synced",
         updated_at: new Date().toISOString()
       });
       // Deletar registro antigo
@@ -795,6 +983,462 @@ export const syncManager: SyncManager = {
       }
     });
   }
+
+
+  ,async updateDependentRecords(tableName: string, newId: string, oldId: string) {
+    try {
+      switch (tableName) {
+        case 'cursos':
+          console.log('🔄 Atualizando dependências do curso:', newId);
+          // Atualizar turmas associadas a este curso
+          const turmasDoCurso = await turmaService.getTurmasPorCurso(oldId);
+          for (const turma of turmasDoCurso) {
+            await turmaService.editTurma(turma.id, {
+              ...turma,
+              curso_id: newId
+            });
+          }
+          break;
+
+        case 'turmas':
+          console.log('🔄 Atualizando dependências da turma:', newId);
+          // Atualizar múltiplas entidades dependentes
+          await Promise.all([
+            // Alunos
+            alunosService.getAlunosPorTurma(oldId).then(alunos => {
+              const promises = alunos.map(aluno => 
+                alunosService.updateStudent(aluno.id, {
+                  ...aluno,
+                  turma_id: newId
+                })
+              );
+              return Promise.allSettled(promises);
+            }),
+            
+            // Aulas
+            aulaService.getAulasPorTurma(oldId).then(aulas => {
+              const promises = aulas.map(aula => 
+                aulaService.atualizarAula(aula.id, {
+                  ...aula,
+                  turma_id: newId
+                })
+              );
+              return Promise.allSettled(promises);
+            }),
+            
+            // Horários
+            turmaService.getHorarios(oldId).then(horarios => {
+              const promises = horarios.map(horario => 
+                turmaService.updateHorario(horario.id, {
+                  ...horario,
+                  turma_id: newId
+                })
+              );
+              return Promise.allSettled(promises);
+            }),
+            
+            // Avaliações
+            avaliacaoService.getAvaliacoesByTurma(oldId).then(avaliacoes => {
+              const promises = avaliacoes.map(avaliacao => 
+                avaliacaoService.atualizarAvaliacao(avaliacao.id, {
+                  ...avaliacao,
+                  turma_id: newId
+                })
+              );
+              return Promise.allSettled(promises);
+            }),
+            
+            // Frequências
+            frequenciaService.getFrequenciaPorTurma(oldId).then(frequencias => {
+              const promises = frequencias.map(frequencia => 
+                frequenciaService.updateFrequencia(frequencia.id, {
+                  ...frequencia,
+                  turma_id: newId
+                })
+              );
+              return Promise.allSettled(promises);
+            })
+          ]);
+          break;
+          
+        default:
+          console.log(`ℹ️ Nenhuma dependência conhecida para ${tableName}`);
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar dependências de ${tableName}:`, error);
+    }
+  },
+
+  // Função para verificar e limpar syncQueue manualmente
+  async verifyAndCleanSyncQueue() {
+    console.log('🔍 Verificando estado do syncQueue...');
+    
+    try {
+      // 1. Contar itens por status
+      const allItems = await db.syncQueue.toArray();
+      
+      const byStatus = allItems.reduce((acc: Record<string, number>, item) => {
+        const status = item.sync_status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {});
+      
+      console.log('📊 Status do syncQueue:', byStatus);
+      
+      // 2. Verificar itens "synced" que não foram removidos (BUG)
+      const syncedItems = allItems.filter(item => item.sync_status === 'synced');
+      
+      if (syncedItems.length > 0) {
+        console.warn(`⚠️ Encontrados ${syncedItems.length} itens "synced" não removidos!`);
+        
+        // Remove todos os itens marcados como synced
+        const idsToDelete = syncedItems.map(item => item.id!).filter(Boolean);
+        
+        if (idsToDelete.length > 0) {
+          await db.syncQueue.bulkDelete(idsToDelete);
+          console.log(`🗑️  Removidos ${idsToDelete.length} itens "synced" pendentes`);
+        }
+      }
+      
+      // 3. Verificar itens com muitas tentativas falhas
+      const failedItems = allItems.filter(item => 
+        (item.retry_count || 0) > 5 && 
+        item.sync_status === 'error'
+      );
+      
+      if (failedItems.length > 0) {
+        console.warn(`⚠️ ${failedItems.length} itens com +5 tentativas falhas`);
+        // Você pode decidir remover ou marcar como permanente
+        const idsToClean = failedItems.map(item => item.id!).filter(Boolean);
+        await db.syncQueue.bulkDelete(idsToClean);
+        console.log(`🧹 Limpados ${idsToClean.length} itens com muitas falhas`);
+      }
+      
+      return { total: allItems.length, byStatus, cleaned: syncedItems.length };
+      
+    } catch (error) {
+      console.error('❌ Erro ao verificar syncQueue:', error);
+      return { error: error.message };
+    }
+  },
+
+  // Debug para identificar problemas
+  async debugSyncQueueIssue(tableName: string) {
+    console.log(`🔍 DEBUG: Investigando syncQueue para ${tableName}`);
+    
+    const items = await db.syncQueue
+      .where('table').equals(tableName)
+      .toArray();
+    
+    console.log(`📋 ${items.length} itens na fila para ${tableName}:`);
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`  ${i + 1}. ID: ${item.id}, Status: ${item.sync_status}, Tentativas: ${item.retry_count || 0}, Operação: ${item.operation}`);
+      
+      // Verificar se o registro ainda existe
+      const exists = await this.checkIfRecordExists(tableName, item.record_id);
+      if (!exists) {
+        console.warn(`    ⚠️ Registro ${item.record_id} não existe mais!`);
+        // Remove item órfão
+        await db.syncQueue.delete(item.id!);
+        console.log(`    🗑️  Item removido por ser órfão`);
+      }
+    }
+  },
+
+  async checkIfRecordExists(tableName: string, recordId: string): Promise<boolean> {
+    try {
+      const table = db.table(tableName);
+      const record = await table.get(recordId);
+      return !!record;
+    } catch {
+      return false;
+    }
+  },
+
+  // Limpeza forçada do syncQueue
+  async forceCleanSyncQueue(tableName?: string) {
+    try {
+      let query = db.syncQueue;
+      
+      if (tableName) {
+        query = query.where('table').equals(tableName);
+      }
+      
+      const items = await query.toArray();
+      console.log(`🧹 Limpando ${items.length} itens do syncQueue...`);
+      
+      // Remove em batches para evitar timeout
+      const batchSize = 50;
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const ids = batch.map(item => item.id!).filter(Boolean);
+        
+        if (ids.length > 0) {
+          await db.syncQueue.bulkDelete(ids);
+          console.log(`✅ Batch ${i/batchSize + 1}: ${ids.length} itens removidos`);
+        }
+      }
+      
+      console.log(`🎉 Limpeza concluída!`);
+      
+    } catch (error) {
+      console.error('❌ Erro na limpeza forçada:', error);
+    }
+  },
+
+  // Retentativa de itens com erro
+  async retryFailedItems(maxRetries: number = 3) {
+    try {
+      const failedItems = await db.syncQueue
+        .where('sync_status').equals('error')
+        .filter(item => (item.retry_count || 0) < maxRetries)
+        .toArray();
+      
+      if (failedItems.length === 0) {
+        console.log('✅ Nenhum item para retentativa');
+        return;
+      }
+      
+      console.log(`🔄 Tentando novamente ${failedItems.length} itens com erro...`);
+      
+      // Agrupar por tabela e processar
+      const itemsByTable = this.groupByTable(failedItems);
+      
+      for (const [tableName, items] of Object.entries(itemsByTable)) {
+        // Resetar status para pending
+        const ids = items.map(item => item.id!).filter(Boolean);
+        await db.syncQueue.bulkUpdate(ids, {
+          sync_status: 'pending',
+          last_attempt: null,
+          error_message: null
+        });
+        
+        // Processar a tabela novamente
+        await this.processTableBatch(tableName, items);
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro na retentativa:', error);
+    }
+  },
+
+  // Método para obter estatísticas de sincronização
+  async getSyncStats() {
+    const allItems = await db.syncQueue.toArray();
+    
+    const stats = {
+      total: allItems.length,
+      byStatus: allItems.reduce((acc: Record<string, number>, item) => {
+        const status = item.sync_status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {}),
+      byTable: allItems.reduce((acc: Record<string, number>, item) => {
+        const table = item.table;
+        acc[table] = (acc[table] || 0) + 1;
+        return acc;
+      }, {}),
+      pendingInserts: allItems.filter(item => 
+        item.sync_status === 'pending' && 
+        item.operation === 'upsert' && 
+        item.record_id.startsWith('local_')
+      ).length,
+      pendingUpdates: allItems.filter(item => 
+        item.sync_status === 'pending' && 
+        item.operation === 'upsert' && 
+        !item.record_id.startsWith('local_')
+      ).length,
+      pendingDeletes: allItems.filter(item => 
+        item.sync_status === 'pending' && 
+        item.operation === 'delete'
+      ).length,
+    };
+    
+    return stats;
+  },
+
+  // Método para limpar itens antigos da fila
+  async cleanupOldItems(maxAgeHours: number = 24) {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setHours(cutoffDate.getHours() - maxAgeHours);
+      
+      const oldItems = await db.syncQueue
+        .filter(item => {
+          const itemDate = item.created_at ? new Date(item.created_at) : new Date(0);
+          return itemDate < cutoffDate && item.sync_status === 'synced';
+        })
+        .toArray();
+      
+      if (oldItems.length > 0) {
+        const ids = oldItems.map(item => item.id!).filter(Boolean);
+        await db.syncQueue.bulkDelete(ids);
+        console.log(`🧹 Limpados ${ids.length} itens antigos (>${maxAgeHours}h)`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao limpar itens antigos:', error);
+    }
+  },
+
+  // Método para verificar integridade da fila
+  async verifyQueueIntegrity() {
+    console.log('🔍 Verificando integridade do syncQueue...');
+    
+    const issues = [];
+    const allItems = await db.syncQueue.toArray();
+    
+    for (const item of allItems) {
+      // Verificar se tem ID
+      if (!item.id) {
+        issues.push({ item, problem: 'Sem ID' });
+        continue;
+      }
+      
+      // Verificar se tem tabela
+      if (!item.table) {
+        issues.push({ item, problem: 'Sem tabela' });
+        continue;
+      }
+      
+      // Verificar se tem record_id
+      if (!item.record_id) {
+        issues.push({ item, problem: 'Sem record_id' });
+        continue;
+      }
+      
+      // Verificar se a tabela existe no banco local
+      try {
+        const tableExists = db.tables.some(t => t.name === item.table);
+        if (!tableExists) {
+          issues.push({ item, problem: `Tabela "${item.table}" não existe` });
+        }
+      } catch {
+        issues.push({ item, problem: 'Erro ao verificar tabela' });
+      }
+    }
+    
+    if (issues.length > 0) {
+      console.warn(`⚠️ Encontrados ${issues.length} problemas de integridade:`, issues);
+      return { ok: false, issues };
+    }
+    
+    console.log('✅ Integridade do syncQueue verificada');
+    return { ok: true, issues: [] };
+  },
+
+  // Método para resetar completamente a fila (usar com cuidado!)
+  async resetSyncQueue() {
+    if (!confirm('⚠️ Tem certeza que deseja resetar completamente a fila de sincronização? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+    
+    try {
+      await db.syncQueue.clear();
+      console.log('🗑️  SyncQueue resetada completamente');
+      
+      // Opcional: marcar todos os registros como não sincronizados
+      const tables = ['alunos', 'turmas', 'cursos', 'aulas', 'professores', 'transacoes'];
+      for (const tableName of tables) {
+        const table = db.table(tableName);
+        const records = await table.toArray();
+        
+        const updates = records.map(record => ({
+          ...record,
+          sync_status: 'pending'
+        }));
+        
+        await table.bulkPut(updates);
+      }
+      
+      console.log('✅ Reset completo concluído');
+    } catch (error) {
+      console.error('❌ Erro ao resetar syncQueue:', error);
+    }
+  }
+};
+
+
+
+
+
+// Função para configurar sincronização automática
+export const setupAutoSync = () => {
+  console.log('⚙️ Configurando sincronização automática...');
+  
+  // Sincronizar quando a conexão voltar
+  window.addEventListener('online', async () => {
+    console.log('🌐 Conexão restaurada, sincronizando...');
+    await syncManager.uploadBatch();
+    await syncManager.downloadBatch();
+  });
+  
+  // Sincronizar periodicamente
+  const syncInterval = setInterval(async () => {
+    if (navigator.onLine) {
+      try {
+        await syncManager.uploadBatch();
+        // Baixar apenas a cada 5 minutos para economizar banda
+        if (Date.now() % (5 * 60 * 1000) < 5000) {
+          await syncManager.downloadBatch();
+        }
+      } catch (error) {
+        console.error('❌ Erro na sincronização periódica:', error);
+      }
+    }
+  }, 30000); // A cada 30 segundos
+  
+  // Limpar itens antigos uma vez por dia
+  const cleanupInterval = setInterval(async () => {
+    await syncManager.cleanupOldItems(24);
+    await syncManager.verifyQueueIntegrity();
+  }, 24 * 60 * 60 * 1000); // A cada 24 horas
+  
+  // Verificar integridade a cada hora
+  const integrityInterval = setInterval(async () => {
+    await syncManager.verifyQueueIntegrity();
+  }, 60 * 60 * 1000); // A cada hora
+  
+  return {
+    stop: () => {
+      clearInterval(syncInterval);
+      clearInterval(cleanupInterval);
+      clearInterval(integrityInterval);
+      console.log('🛑 Sincronização automática parada');
+    }
+  };
+};
+
+
+// Adicione também estas funções utilitárias fora do objeto:
+
+// Função para monitorar o progresso da sincronização
+export const createSyncMonitor = () => {
+  let lastStats: any = null;
+  
+  return {
+    async monitor() {
+      const stats = await syncManager.getSyncStats();
+      const changed = JSON.stringify(stats) !== JSON.stringify(lastStats);
+      
+      if (changed) {
+        console.log('📈 Stats de sincronização:', stats);
+        lastStats = stats;
+        
+        // Emitir evento customizado para UI
+        const event = new CustomEvent('sync-stats-update', { detail: stats });
+        window.dispatchEvent(event);
+      }
+      
+      return stats;
+    },
+    
+    startMonitoring(intervalMs: number = 5000) {
+      const interval = setInterval(() => this.monitor(), intervalMs);
+      return () => clearInterval(interval);
+    }
+  };
 };
 
 // Função de inicialização para usar no Sidebar
@@ -821,4 +1465,4 @@ export const initializeSyncSystem = async () => {
   } catch (error) {
     console.error('❌ Erro ao inicializar sistema de sincronização:', error);
   }
-};
+}
