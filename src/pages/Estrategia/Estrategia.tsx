@@ -34,6 +34,8 @@ import { PlanejamentoDiario } from '../../components/strategy/PlaneamentoDiario'
 import PlanejamentoMensal from '../../components/strategy/PlaneamentoMensal';
 import PlanejamentoTrimestral from '../../components/strategy/PlaneamentoTrimestral';
 import DashboardIntegrado from '../../components/strategy/HomeDetails';
+import PlaneamentoComponent from '../../components/strategy/Planeamento';
+import { FaApper, FaHandPaper, FaPaperPlane } from 'react-icons/fa';
 
 
 const EstrategiaPage = () => {
@@ -106,16 +108,11 @@ const EstrategiaPage = () => {
 
   // Atualize as tabs para incluir todos os níveis
 const tabs = [
-  {id:'home', label:'Home', icon:<FiHome/>},
-  { id: 'anual', label: 'Anual', icon: <FiTarget /> },
-  { id: 'trimestral', label: 'Trimestral', icon: <FiCalendar /> },
-  { id: 'mensal', label: 'Mensal', icon: <FiCalendar /> },
-  { id: 'semanal', label: 'Semanal', icon: <FiCalendar /> },
-  { id: 'diario', label: 'Diário', icon: <FiClock /> },
-  { id: 'metas', label: 'Metas', icon: <FiTarget />, count: metas.length },
-  { id: 'tarefas', label: 'Tarefas', icon: <FiList />, count: tarefas.length },
-  
-  { id: 'eventos', label: 'Eventos', icon: <FiCalendar /> }
+  {id:'home', label:'Estatisticas gerais', icon:FiTrendingUp},
+  { id: 'planeamento', label: 'Planeamento', icon: FaPaperPlane },
+  { id: 'metas', label: 'Metas', icon: FiTarget, count: metas.length },
+  { id: 'tarefas', label: 'Tarefas', icon: FiList, count: tarefas.length },
+  { id: 'eventos', label: 'Eventos', icon: FiCalendar }
 ];
   
 
@@ -143,106 +140,25 @@ const tabs = [
         </p>
       </motion.div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{delay:0.3}}   
-          className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-blue-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm dark:text-white">Total de Metas</p>
-              <h3 className="text-2xl dark:text-white font-bold">{metas.length}</h3>
-            </div>
-            <FiTarget className="text-3xl text-blue-500" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-            initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{delay:0.2}}  
-          className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-green-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 dark:text-white text-sm">Tarefas Pendentes</p>
-              <h3 className="text-2xl dark:text-white font-bold">
-                {tarefas.filter(t => !t.concluida).length}
-              </h3>
-            </div>
-            <FiList className="text-3xl text-green-500" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-            initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{delay:0.1}}  
-          className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border-l-4 border-purple-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm dark:text-white">Rotinas Diárias</p>
-              <h3 className="text-2xl dark:text-white font-bold">{rotinas.length}</h3>
-            </div>
-            <FiClock className="text-3xl text-purple-500" />
-          </div>
-        </motion.div>
-
-         <motion.div 
-          whileHover={{ scale: 1.02 }}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-orange-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 dark:text-gray-300 text-sm">Progresso Geral</p>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
-                {estatisticas.progressoGeral}%
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {0} alertas
-              </p>
-            </div>
-            <FiTrendingUp className="text-3xl text-orange-500" />
-          </div>
-        </motion.div>
-      </div>
-
       {/* Tabs Navigation */}
-      <div className="mb-6">
-        <div className="flex space-x-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
-          {tabs.map((tab) => (
+      
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-8">
+          {tabs.map(aba => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-blue-500 text-white  shadow-lg'
-                  : 'text-gray-600 dark:text-white dark:hover:text-gray-500 hover:bg-gray-100'
+              key={aba.id}
+              onClick={() => setActiveTab(aba.id as any)}
+              className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === aba.id
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              {tab.icon}
-              <span className="font-medium">{tab.label}</span>
-              {tab.count !== undefined && (
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600'
-                    : 'bg-gray-200'
-                }`}>
-                  {tab.count}
-                </span>
-              )}
+              <aba.icon size={18} />
+              {aba.label}
             </button>
           ))}
-        </div>
+        </nav>
       </div>
       <ModalComponent/>
       {/* Tab Content */}
@@ -259,27 +175,12 @@ const tabs = [
           {activeTab === 'home' && (
             <DashboardIntegrado metas={metas} tarefas={tarefas}/>
           )}
-          {activeTab === 'anual' && (
-            <PlanejamentoAnual ano={2025} metasAnuais={[]}/>
-          )}
-          {activeTab === 'semanal' && (
-            <PlanejamentoSemanal/>
-          )}
-          {activeTab === 'diario' && (
-            <PlanejamentoDiario/>
-          )}
-          {activeTab === 'mensal' && (
-            <PlanejamentoMensal mes={new Date(2025, 0, 1)} metas={metas} tarefas={tarefas}/>
-          )}
-          {activeTab === 'trimestral' && (
-            <PlanejamentoTrimestral 
-              trimestre={Math.ceil((new Date().getMonth() + 1) / 3)}
-              ano={new Date().getFullYear()}
-              metas={metas}
-              tarefas={tarefas}
-              onTrimestreChange={(trimestre, ano) => console.log('Trimestre alterado:', trimestre, ano)}
-            />
-          )}
+          {
+            activeTab ==='planeamento'&&(
+              <PlaneamentoComponent metas={metas} setMetas={setMetas}/>
+            )
+          }
+          
           {activeTab === 'metas' && (
             <MetaComponent metas={metas} setMetas={setMetas}/>
           )}

@@ -22,6 +22,7 @@ interface SyncManager {
   handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
   downloadTableBatch(tableName: string, since: Date): Promise<void>;
   uploadTableBatch(tableName: string): Promise<void>;
+  rentryErrorsTable(tableName: string): Promise<void>;
   processDownloadBatch(tableName: string, batch: any[]): Promise<void>;
   prepareInsertRecords(tableName: string, items: SyncQueueItem[]): Promise<{ records: any[]; itemsToProcess: SyncQueueItem[] }>;
   cleanRecordForSupabase(record: any): any;
@@ -33,6 +34,16 @@ interface SyncManager {
   handleDuplicateInsert(tableName: string, records: any[], items: SyncQueueItem[], authData: any): Promise<void>;
   checkExistingUniqueConstraint(tableName: string, record: any): Promise<any>;
   convertInsertToUpdate(tableName: string, item: SyncQueueItem, existingId: string): Promise<void>;
+  removeBatchDuplicates(tableName:string,records:any[]):any;
+  updateDependentRecords(tableName:string,supabaseId:string,record_id:string):any;
+  verifyAndCleanSyncQueue():any;
+  debugSyncQueueIssue(tableName:string):any;
+  cleanupOldItems(maxAgeHours:number):any;
+  checkIfRecordExists(tableName: string, recordId: string): Promise<boolean>;
+  forceCleanSyncQueue(tableName?: string):any
+  retryFailedItems(maxRetries: number):any
+  getSyncStats():Promise<any>
+  verifyQueueIntegrity():Promise<any>
 }
 
 // Hook personalizado para usar dentro do manager
@@ -144,6 +155,19 @@ export const syncManager: SyncManager = {
       
   },
 
+
+  async rentryErrorsTable (tableName: string) {
+     
+    const pendingItems = await db.syncQueue
+        .where('status')
+        .equals('failed')
+        .and(item => item.table === tableName )
+        .toArray();
+      console.log(`📤 Processando batch de ${pendingItems.length} ${tableName}...`);
+      await this.processTableBatch(tableName, pendingItems);
+      
+  },
+
   // ✅ Agrupar itens por tabela
   groupByTable(items: SyncQueueItem[]) {
     const groups: Record<string, SyncQueueItem[]> = {};
@@ -194,6 +218,7 @@ export const syncManager: SyncManager = {
 
   // Função para processar registros duplicados
  processarRegistrosUnicos(records: any[], tabela: string): any[] {
+  this.debugSyncQueueIssue(tabela)
   const registrosUnicos = new Map();
   
   records.forEach(record => {
@@ -317,7 +342,7 @@ export const syncManager: SyncManager = {
         records.push(cleanRecord);
         itemsToProcess.push(item);
         
-      } catch (error) {
+      } catch (error:any) {
         console.error(`❌ Erro ao preparar item ${item.id}:`, error);
         await this.markItemAsError(item, error);
       }
@@ -374,12 +399,16 @@ export const syncManager: SyncManager = {
         break;
         
       default:
+        processedRecords = records.map(record => {
+          const { id, ...rest } = record;
+          return rest;
+        });
         // Para outras tabelas, mantém como está
         break;
     }
     
     // Remove duplicatas dentro do batch
-    const uniqueRecords = this.removeBatchDuplicates(tableName, processedRecords);
+    const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
     
     console.log(`🔄 Upsert config:`, { tableName, onConflict, count: uniqueRecords.length });
     
@@ -460,7 +489,7 @@ export const syncManager: SyncManager = {
       if (tableName === 'turmas' || tableName === 'cursos') {
         promises.push(
           this.updateDependentRecords(tableName, supabaseRecord.id, item.record_id)
-            .catch(err => console.error(`Erro dependências:`, err))
+            .catch((err:any) => console.error(`Erro dependências:`, err))
         );
       }
       
@@ -475,9 +504,8 @@ export const syncManager: SyncManager = {
             
             // Se não conseguir deletar, pelo menos marca como sincronizado
             await db.syncQueue.update(item.id!, { 
-              sync_status: 'synced',
-              synced_at: new Date(),
-              error_message: null
+              status: 'synced',
+              error: ""
             }).catch(() => {});
           })
       );
@@ -506,11 +534,10 @@ export const syncManager: SyncManager = {
     for (const item of items) {
       try {
         await db.syncQueue.update(item.id!, {
-          sync_status: 'error',
-          error_message: error.message?.substring(0, 200) || 'Erro desconhecido',
-          retry_count: (item.retry_count || 0) + 1,
-          last_attempt: new Date(),
-          synced_at: null
+          status: 'failed',
+          error: error.message?.substring(0, 200) || 'Erro desconhecido',
+          retryCount: (item.retryCount || 0) + 1,
+          data: new Date().toISOString()
         });
       } catch (updateError) {
         console.error(`❌ Não consegui marcar erro no item ${item.id}:`, updateError);
@@ -521,10 +548,10 @@ export const syncManager: SyncManager = {
   , async markItemAsError(item: SyncQueueItem, error: Error) {
     try {
       await db.syncQueue.update(item.id!, {
-        sync_status: 'error',
-        error_message: error.message?.substring(0, 200) || 'Erro ao preparar',
-        retry_count: (item.retry_count || 0) + 1,
-        last_attempt: new Date()
+        status: 'failed',
+        error: error.message?.substring(0, 200) || 'Erro ao preparar',
+        retryCount: (item.retryCount || 0) + 1,
+        data: new Date().toISOString()
       });
     } catch (updateError) {
       console.error(`❌ Falha ao marcar erro no item ${item.id}:`, updateError);
@@ -624,34 +651,6 @@ export const syncManager: SyncManager = {
     }
   },
 
-   removeDuplicateRecords(tableName: string, records: any[]) {
-  const uniqueMap = new Map();
-  
-  records.forEach(record => {
-    let key;
-    
-    switch (tableName) {
-      case 'alunos':
-        key = `${record.instituicao_id_cached}_${record.numero_estudante}`;
-        break;
-      case 'turmas':
-        key = `${record.nome_turma}_${record.ano_letivo}`;
-        break;
-      case 'professores':
-        key = record.email || record.numero_bi;
-        break;
-      default:
-        key = record.id || JSON.stringify(record);
-    }
-    
-    if (key && !uniqueMap.has(key)) {
-      uniqueMap.set(key, record);
-    }
-  });
-  
-  return Array.from(uniqueMap.values());
-}
-,
 
   // Métodos auxiliares adicionais:
 
@@ -686,7 +685,7 @@ export const syncManager: SyncManager = {
       
       // Mudar o tipo de operação na fila de INSERT para UPDATE
       await db.syncQueue.update(item.id!, {
-        operation: 'UPDATE',
+        operation: 'upsert',
         record_id: existingId // Usar o ID existente
       });
       
@@ -795,23 +794,6 @@ export const syncManager: SyncManager = {
     return await table.get(recordId);
   },
   
-  async updateLocalId(tableName: string, oldId: string, newId: string) {
-    const table = db.table<any>(tableName);
-    const record = await table.get(oldId);
-    
-    if (record) {
-      // Criar novo registro com novo ID
-      await table.put({ 
-        ...record, 
-        id: newId,
-        sync_status:"synced",
-        updated_at: new Date().toISOString()
-      });
-      // Deletar registro antigo
-      await table.delete(oldId);
-    }
-  },
-  
   async markAsSynced(tableName: string, recordId: string) {
     const table = db.table<any>(tableName);
     await table.update(recordId, { 
@@ -834,14 +816,14 @@ export const syncManager: SyncManager = {
         status: 'failed',
         error: error.message,
         retryCount: novasTentativas,
-        last_attempt: new Date().toISOString()
+        data: new Date().toISOString()
       });
     } else {
       // Tentar novamente mais tarde
       await db.syncQueue.update(item.id!, {
         retryCount: novasTentativas,
         status: 'pending',
-        last_attempt: new Date().toISOString()
+        data: new Date().toISOString()
       });
     }
   },
@@ -1048,16 +1030,6 @@ export const syncManager: SyncManager = {
               return Promise.allSettled(promises);
             }),
             
-            // Frequências
-            frequenciaService.getFrequenciaPorTurma(oldId).then(frequencias => {
-              const promises = frequencias.map(frequencia => 
-                frequenciaService.updateFrequencia(frequencia.id, {
-                  ...frequencia,
-                  turma_id: newId
-                })
-              );
-              return Promise.allSettled(promises);
-            })
           ]);
           break;
           
@@ -1078,7 +1050,7 @@ export const syncManager: SyncManager = {
       const allItems = await db.syncQueue.toArray();
       
       const byStatus = allItems.reduce((acc: Record<string, number>, item) => {
-        const status = item.sync_status || 'unknown';
+        const status = item.status || 'unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {});
@@ -1086,7 +1058,7 @@ export const syncManager: SyncManager = {
       console.log('📊 Status do syncQueue:', byStatus);
       
       // 2. Verificar itens "synced" que não foram removidos (BUG)
-      const syncedItems = allItems.filter(item => item.sync_status === 'synced');
+      const syncedItems = allItems.filter(item => item.status === 'synced');
       
       if (syncedItems.length > 0) {
         console.warn(`⚠️ Encontrados ${syncedItems.length} itens "synced" não removidos!`);
@@ -1102,8 +1074,8 @@ export const syncManager: SyncManager = {
       
       // 3. Verificar itens com muitas tentativas falhas
       const failedItems = allItems.filter(item => 
-        (item.retry_count || 0) > 5 && 
-        item.sync_status === 'error'
+        (item.retryCount || 0) > 5 && 
+        item.status === 'failed'
       );
       
       if (failedItems.length > 0) {
@@ -1116,7 +1088,7 @@ export const syncManager: SyncManager = {
       
       return { total: allItems.length, byStatus, cleaned: syncedItems.length };
       
-    } catch (error) {
+    } catch (error:any) {
       console.error('❌ Erro ao verificar syncQueue:', error);
       return { error: error.message };
     }
@@ -1134,7 +1106,7 @@ export const syncManager: SyncManager = {
     
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      console.log(`  ${i + 1}. ID: ${item.id}, Status: ${item.sync_status}, Tentativas: ${item.retry_count || 0}, Operação: ${item.operation}`);
+      console.log(`  ${i + 1}. ID: ${item.id}, Status: ${item.status}, Tentativas: ${item.retryCount || 0}, Operação: ${item.operation}`);
       
       // Verificar se o registro ainda existe
       const exists = await this.checkIfRecordExists(tableName, item.record_id);
@@ -1192,8 +1164,8 @@ export const syncManager: SyncManager = {
   async retryFailedItems(maxRetries: number = 3) {
     try {
       const failedItems = await db.syncQueue
-        .where('sync_status').equals('error')
-        .filter(item => (item.retry_count || 0) < maxRetries)
+        .where('status').equals('failed')
+        .filter(item => (item.retryCount || 0) < maxRetries)
         .toArray();
       
       if (failedItems.length === 0) {
@@ -1209,10 +1181,10 @@ export const syncManager: SyncManager = {
       for (const [tableName, items] of Object.entries(itemsByTable)) {
         // Resetar status para pending
         const ids = items.map(item => item.id!).filter(Boolean);
-        await db.syncQueue.bulkUpdate(ids, {
-          sync_status: 'pending',
-          last_attempt: null,
-          error_message: null
+        await db.syncQueue.bulkUpdate(ids, {          
+          status: 'pending',
+          data: "",
+          error: ""
         });
         
         // Processar a tabela novamente
@@ -1231,7 +1203,7 @@ export const syncManager: SyncManager = {
     const stats = {
       total: allItems.length,
       byStatus: allItems.reduce((acc: Record<string, number>, item) => {
-        const status = item.sync_status || 'unknown';
+        const status = item.status || 'unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {}),
@@ -1241,17 +1213,17 @@ export const syncManager: SyncManager = {
         return acc;
       }, {}),
       pendingInserts: allItems.filter(item => 
-        item.sync_status === 'pending' && 
+        item.status === 'pending' && 
         item.operation === 'upsert' && 
         item.record_id.startsWith('local_')
       ).length,
       pendingUpdates: allItems.filter(item => 
-        item.sync_status === 'pending' && 
+        item.status === 'pending' && 
         item.operation === 'upsert' && 
         !item.record_id.startsWith('local_')
       ).length,
       pendingDeletes: allItems.filter(item => 
-        item.sync_status === 'pending' && 
+        item.status === 'pending' && 
         item.operation === 'delete'
       ).length,
     };
@@ -1268,7 +1240,7 @@ export const syncManager: SyncManager = {
       const oldItems = await db.syncQueue
         .filter(item => {
           const itemDate = item.created_at ? new Date(item.created_at) : new Date(0);
-          return itemDate < cutoffDate && item.sync_status === 'synced';
+          return itemDate < cutoffDate && item.status === 'synced';
         })
         .toArray();
       
@@ -1283,7 +1255,7 @@ export const syncManager: SyncManager = {
   },
 
   // Método para verificar integridade da fila
-  async verifyQueueIntegrity() {
+  async verifyQueueIntegrity():Promise<any> {
     console.log('🔍 Verificando integridade do syncQueue...');
     
     const issues = [];

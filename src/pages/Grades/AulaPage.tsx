@@ -459,7 +459,6 @@ export const AulasPage = () => {
       
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
-                  
 
 
       // Carregar estatísticas de sincronização
@@ -478,6 +477,8 @@ export const AulasPage = () => {
       const handleSyncUpdate = () => {
         loadSyncStats();
       };
+
+      const interval=setInterval(handleSyncUpdate,30000)    
       
       window.addEventListener('sync-pending', handleSyncUpdate);
       window.addEventListener('sync-complete', handleSyncUpdate);
@@ -487,6 +488,7 @@ export const AulasPage = () => {
         window.removeEventListener('offline', handleOffline);
         window.removeEventListener('sync-pending', handleSyncUpdate);
         window.removeEventListener('sync-complete', handleSyncUpdate);
+        clearInterval(interval)
       };
     }, []);
     

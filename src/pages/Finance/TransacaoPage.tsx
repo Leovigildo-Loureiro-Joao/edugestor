@@ -58,6 +58,70 @@ export const TransacoesPage = () => {
     carregarTransacoes();
   }, []);
 
+  useEffect(() => {
+        // Monitorar status online
+        const handleOnline = () => setOnlineStatus(true);
+        const handleOffline = () => setOnlineStatus(false);
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+  
+  
+        // Carregar estatísticas de sincronização
+        const loadSyncStats = async () => {
+          try {
+            const turmasPendentes = await getPendingCount("aulas");
+            setSyncStats(turmasPendentes);
+          } catch (error) {
+            console.error('Erro ao carregar sync stats:', error);
+          }
+        };
+        
+        loadSyncStats();
+        
+        // Ouvir eventos de sincronização
+        const handleSyncUpdate = () => {
+          loadSyncStats();
+        };
+  
+        const interval=setInterval(handleSyncUpdate,30000)    
+        
+        window.addEventListener('sync-pending', handleSyncUpdate);
+        window.addEventListener('sync-complete', handleSyncUpdate);
+        
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('sync-pending', handleSyncUpdate);
+          window.removeEventListener('sync-complete', handleSyncUpdate);
+          clearInterval(interval)
+        };
+      }, []);
+      
+      
+      const handleForceSync = async () => {
+        try {
+          await aulaService.syncAulas();
+          loadData();
+         
+          showAlert({
+            type: 'success',
+            title: 'Sincronização concluída!',
+            message: 'Os dados foram sincronizados com o servidor.',
+            duration: 3000
+          });
+        
+        } catch (error) {
+          showAlert({
+            type: 'error',
+            title: 'Erro na sincronização',
+            message: 'Não foi possível sincronizar com o servidor.',
+            duration: 5000
+          });
+        };
+      };
+    
+
   // Filtrar transações
   const transacoesFiltradas = useMemo(() => {
     return transacoes.filter(transacao => {

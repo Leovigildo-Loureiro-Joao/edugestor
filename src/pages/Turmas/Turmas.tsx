@@ -48,7 +48,15 @@ const Turmas: React.FC = () => {
       Reload();
     }, []);
 
-    const loadSyncStats = async () => {
+    
+    useEffect(() => {
+      // Monitorar status online
+      const handleOnline = () => setOnlineStatus(true);
+      const handleOffline = () => setOnlineStatus(false);
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      const loadSyncStats = async () => {
         try {
           const turmasPendentes = await getPendingCount("turmas");
           setSyncStats(turmasPendentes);
@@ -57,19 +65,11 @@ const Turmas: React.FC = () => {
         }
       };
 
-    useEffect(() => {
-      // Monitorar status online
-      const handleOnline = () => setOnlineStatus(true);
-      const handleOffline = () => setOnlineStatus(false);
-      
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      
       // Ouvir eventos de sincronização
       const handleSyncUpdate = () => {
         loadSyncStats();
       };
-      
+      const interval = setInterval(handleSyncUpdate, 30000);      
       window.addEventListener('sync-pending', handleSyncUpdate);
       window.addEventListener('sync-complete', handleSyncUpdate);
       
@@ -78,6 +78,7 @@ const Turmas: React.FC = () => {
         window.removeEventListener('offline', handleOffline);
         window.removeEventListener('sync-pending', handleSyncUpdate);
         window.removeEventListener('sync-complete', handleSyncUpdate);
+        clearInterval(interval)
       };
     }, []);
     
@@ -125,7 +126,6 @@ const Turmas: React.FC = () => {
         }
       };
       loadTurmas();
-      loadSyncStats();
     }
  
 
@@ -162,7 +162,6 @@ const Turmas: React.FC = () => {
           onConfirm: async () => {
             try {
              await turmaService.deleteTurma(turmaSel.id);
-              await loadSyncStats();
               setTurmas(turmas.filter(t => t.id !== turmaSel.id));
               showAlert({
                 type: 'success',

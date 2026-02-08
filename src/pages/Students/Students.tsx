@@ -24,7 +24,7 @@ const Students = () => {
   const [isCartao, setCartao] = useState(false);
   const [isExpanded, setExpanded] = useState(false);
   const [filtroAnoLectivo, setFiltroAnoLectivo] = useState('Todos ano lectivos');
-  
+  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const nav = useNavigate();
   const [syncStats, setSyncStats] = useState(0);
   const { confirm, ModalComponent } = useConfirmModal();
@@ -32,30 +32,43 @@ const Students = () => {
 
   // Carregar estatísticas de sincronização
   useEffect(() => {
-    const loadSyncStats = async () => {
-      try {
-        const alunosPendentes = await getPendingCount("alunos");
-        setSyncStats(alunosPendentes);
-      } catch (error) {
-        console.error('Erro ao carregar sync stats:', error);
-      }
-    };
-    
-    loadSyncStats();
-    
-    // Ouvir eventos de sincronização
-    const handleSyncUpdate = () => {
-      loadSyncStats();
-    };
-    
-    window.addEventListener('sync-pending', handleSyncUpdate);
-    window.addEventListener('sync-complete', handleSyncUpdate);
-    
-    return () => {
-      window.removeEventListener('sync-pending', handleSyncUpdate);
-      window.removeEventListener('sync-complete', handleSyncUpdate);
-    };
-  }, []);
+        // Monitorar status online
+        const handleOnline = () => setOnlineStatus(true);
+        const handleOffline = () => setOnlineStatus(false);
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        
+        // Carregar estatísticas de sincronização
+        const loadSyncStats = async () => {
+          try {
+            const turmasPendentes = await getPendingCount("alunos");
+            setSyncStats(turmasPendentes);
+          } catch (error) {
+            console.error('Erro ao carregar sync stats:', error);
+          }
+        };
+  
+        loadSyncStats();
+        
+        // Ouvir eventos de sincronização
+        const handleSyncUpdate = () => {
+          loadSyncStats();
+        };
+        const interval = setInterval(handleSyncUpdate, 30000);
+        
+        window.addEventListener('sync-pending', handleSyncUpdate);
+        window.addEventListener('sync-complete', handleSyncUpdate);
+        
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('sync-pending', handleSyncUpdate);
+          window.removeEventListener('sync-complete', handleSyncUpdate);
+          clearInterval(interval);
+        };
+      }, []);
+     
 
   const handleForceSync = async () => {
     try {
@@ -86,7 +99,7 @@ const Students = () => {
   const estadoSet = ["Todos estados", "ativo", "inativo", "transferido", "desistente"];
   const anoLectivoSet = ["Todos ano lectivos", "2024-2025", "2025-2026", "2027-2028", "2028-2029", "2030-2031"];
 
-  // Extrair professores e turmas únicos
+  // Extrair projfessores e turmas únicos
   const { professores, turmas } = useMemo(() => {
     const profsSet = new Set<string>();
     const turmsSet = new Set<string>();
@@ -128,6 +141,7 @@ const Students = () => {
   // Função para deletar aluno
   const handleDeleteStudent = async (student: Student) => {
     const confirmed = await confirm({
+
       type: 'delete',
       title: 'Excluir Aluno',
       message: `Tem certeza que deseja excluir ${student.nome_completo}? Os dados ligados a ele permanecerão.`,
@@ -137,6 +151,7 @@ const Students = () => {
         try {
           await alunosService.deleteStudent(student.id);
           setStudents(prev => prev.filter(s => s.id !== student.id));
+          await loadSyncStats()
           showAlert({
             type: 'success',
             title: 'Aluno excluído!',

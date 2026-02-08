@@ -1,4 +1,5 @@
 import db from "../services/database/db";
+import { syncManager } from "../services/database/syncManager";
 
 export function emitPendingSync(tableName: string, count: number) {
   // Salvar no localStorage para acesso global
@@ -22,8 +23,10 @@ export const getPendingCount = async (table: string): Promise<number> => {
         .toArray();
 
         console.log(pendingItems)
-      return pendingItems.length;
+      return syncManager.processarRegistrosUnicos(pendingItems,table).length;
     } catch (error) {
       return 0;
     }
   };
+
+

@@ -128,8 +128,8 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         className="mb-8"
       >
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2 flex items-center">
-          <FiHome className="mr-3 text-blue-600" />
-          Dashboard Integrado
+          <FiTrendingUp className="mr-3 text-blue-600" />
+          Estatisiticas Gerais
         </h1>
         <p className="text-gray-600">
           Visão completa do planejamento escolar em todos os níveis
@@ -193,7 +193,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                 <motion.div
                   key={compromisso.id}
                   whileHover={{ x: 5 }}
-                  className="border-l-4 border-green-500 pl-4 py-3 bg-green-50"
+                  className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 shadow-sm"
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -203,7 +203,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                         {compromisso.hora} • {compromisso.dia}
                       </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded ${
+                    <span className={`text-xs px-2 py-1 mx-2 rounded ${
                       compromisso.tipo === 'reuniao' ? 'bg-blue-100 text-blue-800' :
                       compromisso.tipo === 'visita' ? 'bg-purple-100 text-purple-800' :
                       compromisso.tipo === 'capacitacao' ? 'bg-orange-100 text-orange-800' :

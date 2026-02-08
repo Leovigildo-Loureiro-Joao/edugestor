@@ -56,15 +56,7 @@ export const Courses = () => {
     Reload();
   }, []);
 
-  const loadSyncStats = async () => {
-        try {
-          const turmasPendentes = await getPendingCount("cursos");
-          setSyncStats(turmasPendentes);
-        } catch (error) {
-          console.error('Erro ao carregar sync stats:', error);
-        }
-      };
-
+  
    useEffect(() => {
       // Monitorar status online
       const handleOnline = () => setOnlineStatus(true);
@@ -74,13 +66,22 @@ export const Courses = () => {
       window.addEventListener('offline', handleOffline);
       
       // Carregar estatísticas de sincronização
-      
+      const loadSyncStats = async () => {
+        try {
+          const turmasPendentes = await getPendingCount("cursos");
+          setSyncStats(turmasPendentes);
+        } catch (error) {
+          console.error('Erro ao carregar sync stats:', error);
+        }
+      };
+
       loadSyncStats();
       
       // Ouvir eventos de sincronização
       const handleSyncUpdate = () => {
         loadSyncStats();
       };
+      const interval = setInterval(handleSyncUpdate, 30000);
       
       window.addEventListener('sync-pending', handleSyncUpdate);
       window.addEventListener('sync-complete', handleSyncUpdate);
@@ -90,6 +91,7 @@ export const Courses = () => {
         window.removeEventListener('offline', handleOffline);
         window.removeEventListener('sync-pending', handleSyncUpdate);
         window.removeEventListener('sync-complete', handleSyncUpdate);
+        clearInterval(interval);
       };
     }, []);
     
@@ -117,20 +119,20 @@ export const Courses = () => {
         
 
   function Reload(){
-  localStorage.setItem("last_rota","/cursos")
-  const loadCursos = async () => {
-    try {
-      setLoading(true);
-      const cursosData = await cursosService.getCourses();
-      setCursos(cursosData||[]);
-       
-    } catch (error) {
-      console.error('Erro ao carregar cursos:', error);
-      }finally{
-      setLoading(false);
-    }
-  };
-      loadCursos();
+    localStorage.setItem("last_rota","/cursos")
+    const loadCursos = async () => {
+      try {
+        setLoading(true);
+        const cursosData = await cursosService.getCourses();
+        setCursos(cursosData||[]);
+        
+      } catch (error) {
+        console.error('Erro ao carregar cursos:', error);
+        }finally{
+        setLoading(false);
+      }
+    };
+    loadCursos();
   }
 
  
@@ -191,7 +193,6 @@ export const Courses = () => {
             try {
               await cursosService.deleteCourse(curso.id);
               setCursos(cursos.filter(t => t.id !== curso.id));
-              await loadSyncStats()
               showAlert({
                 type: 'success',
                 title: 'Curso excluído!',

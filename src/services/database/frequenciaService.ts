@@ -127,10 +127,6 @@ export const frequenciaService = {
         .and(freq => !freq.deleted)
         .toArray();
       
-      // Se tiver nomes de alunos já salvos, manter. Caso contrário, podemos buscar.
-      // Para performance, considerar cachear nomes de alunos em outra tabela
-      
-      // Ordenar por aluno_id para consistência
       return frequencias.sort((a, b) => 
         (a.aluno_id || '').localeCompare(b.aluno_id || '')
       );
@@ -152,8 +148,7 @@ export const frequenciaService = {
 
       const aulasDisciplina:Aula[] = []
       for (const freque of frequencias) {
-        let au:Aula=await aulaService.getAulaById(freque.aula_id);
-        aulasDisciplina.push(au)
+        aulasDisciplina.push((await aulaService.getAulaById(freque.aula_id)))
       }
       // Filtrar por período se especificado
       if (dias) {
@@ -202,7 +197,7 @@ export const frequenciaService = {
   },
 
   // ✅ Atualizar frequência individual
-  async updateFrequencia(id: string, updates: Partial<FrequenciaData>) {
+  async updateFrequencia(id: string, updates: Partial<Frequencia>) {
     try {
       const updated_at = new Date().toISOString();
       

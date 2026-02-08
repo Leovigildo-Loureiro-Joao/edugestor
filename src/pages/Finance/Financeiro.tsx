@@ -13,7 +13,8 @@ import {
   FiTag, 
   FiShare2, 
   FiTarget, 
-  FiList 
+  FiList, 
+  FiAlertCircle
 } from 'react-icons/fi';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { alunosService } from '../../services/database/alunosService.ts';
@@ -26,6 +27,7 @@ import { Meta } from '../../types/eventos.ts';
 import db from '../../services/database/db.ts';
 import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.ts';
 import { motion } from 'framer-motion';
+import { getPendingCount } from '../../utils/emitPendingSync.ts';
 
 // Interfaces/Types
 interface TabOption {
@@ -154,6 +156,8 @@ export const FinanceiroPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [select, setSelect] = useState<string>('VS'); 
   const navigate = useNavigate();
+  const [propinaPending,setPropinaPending]=useState<number>(0)
+  const [transacaoPending,setTransacaoPending]=useState<number>(0)
   const [showDescontosModal, setShowDescontosModal] = useState<boolean>(false);
   const [showDivisaoLucrosModal, setShowDivisaoLucrosModal] = useState<boolean>(false);
   const [alocacao, setAlocacao] = useState<AlocacaoRecurso[]>([]);
@@ -183,14 +187,18 @@ export const FinanceiroPage: React.FC = () => {
   const carregarDadosFinanceiros = async (): Promise<void> => {
     try {
       setLoading(true);
-      
-      const pagamentos = await transacaoService.getPagamentosPorAno(anoSelecionado);
-      const alunos = await alunosService.getAllStudents();
-      const despesas = await transacaoService.getDespesasPorAno(anoSelecionado);
+      setPropinaPending(await getPendingCount("propina"))
+      setTransacaoPending(await getPendingCount("transacoes"))
+      const [pagamentos,alunos,despesas]=await Promise.all([
+        await transacaoService.getPagamentosPorAno(anoSelecionado),
+        await alunosService.getAllStudents(),
+        await transacaoService.getDespesasPorAno(anoSelecionado)
+      ])
 
       const totalRecebido = pagamentos.reduce((sum: number, p: any) => sum + p.valor, 0);
       const totalDespesas = despesas.reduce((sum: number, d: any) => sum + d.valor, 0);
       const lucro = totalRecebido - totalDespesas;
+      
       
       const alunosPagaram = alunos.filter((a: any) => a.pagamento_em_dia).length;
       const taxaPagamento = alunos.length > 0 ? (alunosPagaram / alunos.length) * 100 : 0;
@@ -257,6 +265,10 @@ export const FinanceiroPage: React.FC = () => {
       };
     });
   };
+
+  const  getPending=async (table:string)=>{
+    return await getPendingCount(table)
+  }
 
   const calcularCategoriasDespesas = (despesas: any[]): CategoriaDespesa[] => {
     const categorias: Record<string, number> = {};
@@ -327,15 +339,26 @@ export const FinanceiroPage: React.FC = () => {
 
             <button
               onClick={() => navigate('/financeiro/transacoes')}
-              className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition-all group"
+              className="flex items-center justify-between gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition-all group"
             >
-              <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-all">
+              <div className='flex gap-3'>
+                {
+                  transacaoPending>0?<div className='bg-orange-100 gap-2   text-orange-400 px-4  w-18 flex items-center justify-center rounded-md'>
+                <FiAlertCircle className='text-xl'/>
+              </div>
+              :<div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-all">
+
                 <FiList className="text-blue-600 text-xl" />
               </div>
+                }
+                
               <div className="text-left">
                 <h3 className="font-semibold text-gray-900">Gestão de Transações</h3>
                 <p className="text-sm text-gray-600">Investimentos e despesas</p>
+               
               </div>
+              </div>
+              
             </button>
 
               {/* Novo Botão para Divisão de Lucros */}
@@ -348,21 +371,34 @@ export const FinanceiroPage: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h3 className="font-semibold text-gray-900">Divisão de Lucros</h3>
-                  <p className="text-sm text-gray-600">Distribuir lucro entre sócios</p>
+                  <p className="text-sm text-gray-600">Distribuir lucro entre as metas e planos</p>
                 </div>
               </button>
                 
               <button
                 onClick={() => navigate("/financeiro/pagamentos")}
-                className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-green-500 hover:shadow-md transition-all group"
+                className="flex justify-between items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-green-500 hover:shadow-md transition-all group"
               >
-                <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-all">
-                  <FiDollarSign className="text-green-600 text-xl" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-gray-900">Gestão de Propinas</h3>
-                  <p className="text-sm text-gray-600">Gerir pagamentos de propinas</p>
-                </div>
+              <div className='flex gap-3'>
+                {
+                  propinaPending>0?<div className='bg-orange-100 gap-2   text-orange-400 px-4  w-18 flex items-center justify-center rounded-md'>
+                <FiAlertCircle className='text-xl'/>
+              </div>
+              :<div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-all">
+                      <FiDollarSign className="text-green-600 text-xl" />
+                    </div>
+                }
+                
+              <div className="text-left">
+                
+                      <h3 className="font-semibold text-gray-900">Gestão de Propinas</h3>
+                      <p className="text-sm text-gray-600">Gerir pagamentos de propinas</p>
+
+                
+              </div>
+              </div>
+                
+                
               </button>
               
               <div className="hidden items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200">
