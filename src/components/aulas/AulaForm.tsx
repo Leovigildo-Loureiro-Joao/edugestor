@@ -13,6 +13,7 @@ import { cursosService } from '../../services/database/curso';
 import { useAlert } from '../ui/AlertBadge';
 import { ConfirmModalProps } from '../ui/ComfirmModal';
 import { Aula } from '../../types/aula';
+import { getDiaSemanaFromDate } from '../../utils/getDiaDaSemana';
 
 interface AulaFormProps {
   aula: any;
@@ -69,12 +70,6 @@ const [disciplinas, setDisciplinas] = useState<string[]>(['Selecione uma discipl
   
   const { showAlert } = useAlert();
 
-// Função para obter dia da semana a partir da data
-const getDiaSemanaFromDate = (dateString: string): string => {
-  const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
-  const date = new Date(dateString);
-  return dias[date.getDay()];
-};
 
 // Atualize o useEffect que inicializa formData
 useEffect(() => {

@@ -184,6 +184,25 @@ export const FinanceiroPage: React.FC = () => {
     carregarDadosFinanceiros();
   }, [anoSelecionado]);
 
+  useEffect(() => {
+    const handleDbChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail?.table) {
+        carregarDadosFinanceiros();
+        return;
+      }
+
+      if (['transacoes', 'propina', 'alunos', 'metas', 'alocacao'].includes(detail.table)) {
+        carregarDadosFinanceiros();
+      }
+    };
+
+    window.addEventListener('db-changed', handleDbChanged);
+    return () => {
+      window.removeEventListener('db-changed', handleDbChanged);
+    };
+  }, [anoSelecionado]);
+
   const carregarDadosFinanceiros = async (): Promise<void> => {
     try {
       setLoading(true);

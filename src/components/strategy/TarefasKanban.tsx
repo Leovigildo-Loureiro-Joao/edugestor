@@ -17,12 +17,14 @@ import {
   FiChevronUp,
   FiBarChart2,
   FiArchive,
-  FiRefreshCw
+  FiRefreshCw,
+  FiList
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos.ts';
 import { estrategiaService } from '../../services/database/estrategiaService.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
+import { SyncStatusBadge } from '../ui/SyncStatusBadge.tsx';
 
 interface TarefasKanbanProps {
   showFilters?: boolean;
@@ -142,7 +144,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
     }
   };
 
-    const concluir = async (tarefa:string, novoStatus: string) => {
+  const concluir = async (tarefa:string, novoStatus: string) => {
     if (!tarefa) return;
 
     try {
@@ -156,6 +158,62 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
       
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+    }
+  };
+
+  const salvarTarefa = async (tarefa: Partial<Tarefa>) => {
+    if (!tarefa.id) {
+      await estrategiaService.saveTarefa(tarefa as Tarefa);
+      return;
+    }
+
+    const { id, ...dadosAtualizacao } = tarefa;
+    await estrategiaService.updateTarefa(id, dadosAtualizacao);
+  };
+
+  const toggleChecklistItem = async (tarefa: Tarefa, itemIndex: number) => {
+    if (!tarefa.checklist || !tarefa.checklist.length) return;
+
+    const checklistAtualizado = tarefa.checklist.map((item, index) =>
+      index === itemIndex ? { ...item, concluido: !item.concluido } : item
+    );
+
+    const itensConcluidos = checklistAtualizado.filter((item) => item.concluido).length;
+    const percentualConclusao = Math.round((itensConcluidos / checklistAtualizado.length) * 100);
+    const statusAtualizado =
+      percentualConclusao === 100
+        ? 'concluida'
+        : tarefa.status === 'concluida'
+          ? 'em_andamento'
+          : tarefa.status;
+
+    setTarefas((prev) =>
+      prev.map((item) =>
+        item.id === tarefa.id
+          ? {
+              ...item,
+              checklist: checklistAtualizado,
+              percentual_conclusao: percentualConclusao,
+              concluida: percentualConclusao === 100,
+              status: statusAtualizado,
+            }
+          : item
+      )
+    );
+
+    try {
+      await salvarTarefa({
+        id: tarefa.id,
+        checklist: checklistAtualizado,
+        percentual_conclusao: percentualConclusao,
+        concluida: percentualConclusao === 100,
+        status: statusAtualizado,
+      });
+    } catch (error) {
+      console.error('Erro ao salvar checklist da tarefa:', error);
+      setTarefas((prev) =>
+        prev.map((item) => (item.id === tarefa.id ? tarefa : item))
+      );
     }
   };
 
@@ -204,10 +262,6 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
   const renderColumn = (status: string, title: string, icon: React.ReactNode, color: string) => {
     const tarefasColuna = tarefasPorStatus[status as keyof typeof tarefasPorStatus];
     const count = tarefasColuna.length;
-
-      function salvarTarefa(tarefa: Partial<Tarefa>): Promise<void> {
-          throw new Error('Function not implemented.');
-      }
 
     return (
       <motion.div
@@ -352,15 +406,10 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                                   type="checkbox"
                                   checked={item.concluido}
                                   className="mr-2"
-                                  onChange={() => setTarefas(prev => prev.map(t => {
-                                    if (t.id === tarefa.id) {
-                                      const novoChecklist = t.checklist!.map((chk: any, i: number) => 
-                                        i === index ? { ...chk, concluido: !chk.concluido } : chk
-                                      );
-                                      return { ...t, checklist: novoChecklist };
-                                    }
-                                    return t;
-                                  }))}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    void toggleChecklistItem(tarefa, index);
+                                  }}
                                 />
                                 <span className={item.concluido ? 'line-through text-gray-400' : ''}>
                                   {item.item}
@@ -379,6 +428,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                           ()=> navigate("/estrategia/tarefas/deletar/"+tarefa.id)
                         }
                          className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
+                          
                           <FiTrash2 className="inline mr-1" /> 
                         </button>
                         <button 
@@ -386,7 +436,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                           ()=> navigate("/estrategia/tarefas/editar/"+tarefa.id)
                         }
                          className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
-                          <FiEdit2 className="inline mr-1" /> Editar
+                          <FiEdit2 className="inline mr-1" /> 
                         </button>
                        
                            {
@@ -449,16 +499,29 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-xl shadow p-4"
         >
+          <div className='py-4 px-4'>
+            <div className="flex gap-3 items-center">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+              <FiList className="mr-2" />
+              Tarefas práticas
+            </h2>
+            <SyncStatusBadge tableName="tarefas"/>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            De forma dinâmica gere seus checklists para suas tarefas diárias
+          </p>
+          </div>
           <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
             {/* Busca */}
-            <div className="relative flex-1 md:max-w-md">
+
+            <div className="relative flex-1 md:max-w-md mr-4">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar tarefas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 

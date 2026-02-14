@@ -1,462 +1,653 @@
-// components/strategy/PlanejamentoMensal.tsx
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+// components/strategy/PlaneamentoMensal.tsx
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiCalendar, 
   FiChevronLeft, 
   FiChevronRight,
   FiTarget,
   FiCheckCircle,
-  FiBarChart2,
   FiClock,
-  FiUsers,
-  FiDollarSign,
   FiPlus,
   FiEdit2,
-  FiDownload,
-  FiShare2
+  FiTrash2,
+  FiList,
+  FiX,
+  FiBarChart2
 } from 'react-icons/fi';
-import { Meta, Tarefa } from '../../types/eventos';
+import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService';
+import { useAlert } from '../ui/AlertBadge';
+import { generateUniqueId } from '../../utils/idGenarator';
+import { ModalPlaneamento } from './modals';
+import { PlaneamentoMensal } from '../../types/planeamento';
+import { ModalSelecionarTarefas } from './modals/ModalSelecionarTarefas';
+import { ModalSelecionarMetas } from './modals/ModalSelecionarMetas';
 
-interface PlanejamentoMensalProps {
-  mes: Date;
-  metas: Meta[];
-  tarefas: Tarefa[];
-  onMesChange?: (novoMes: Date) => void;
+
+interface PlaneamentoMensalProps {
+  criarPlaneamento?: () => void;
+  planejamento?: PlaneamentoMensal;
+  setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoMensal | null>>;
+  modo: 'visualizacao' | 'criacao'|'edição';
+  setModo: React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>;
+  carregando?: boolean;
+  setCarregando?: React.Dispatch<React.SetStateAction<boolean>>;
+    dataAtual:string, 
+    setDataAtual:React.Dispatch<React.SetStateAction<string>>;
 }
 
-const PlanejamentoMensal: React.FC<PlanejamentoMensalProps> = ({ 
-  mes, 
-  metas, 
-  tarefas,
-  onMesChange 
+export const PlaneamentoMensalComponent: React.FC<PlaneamentoMensalProps> = ({ 
+  criarPlaneamento,
+  planejamento,
+  setPlanejamento,
+  modo,
+  setModo,
+  carregando,
+  dataAtual,
+  setDataAtual,
+  setCarregando
 }) => {
-  const [mesAtual, setMesAtual] = useState(mes);
-  const [viewMode, setViewMode] = useState<'calendario' | 'lista' | 'metas'>('calendario');
+  // Estados para modais
+  const [modalPlaneamento, setModalPlaneamento] = useState(false);
+  const [modalMeta, setModalMeta] = useState(false);
+  const [modalTarefa, setModalTarefa] = useState(false);
+  const [modalSemana, setModalSemana] = useState(false);
+  const [semanaSelecionada, setSemanaSelecionada] = useState<any>(null);
+  const [objetivoSemana, setObjetivoSemana] = useState('');
   
-  // Navegação de mês
+  const { showAlert } = useAlert();
+  
+  // ========== NAVEGAÇÃO ==========
   const irParaMesAnterior = () => {
-    const novoMes = new Date(mesAtual);
+    const novoMes = new Date(dataAtual);
     novoMes.setMonth(novoMes.getMonth() - 1);
-    setMesAtual(novoMes);
-    onMesChange?.(novoMes);
+    setDataAtual(novoMes);
   };
   
   const irParaMesSeguinte = () => {
-    const novoMes = new Date(mesAtual);
+    const novoMes = new Date(dataAtual);
     novoMes.setMonth(novoMes.getMonth() + 1);
-    setMesAtual(novoMes);
-    onMesChange?.(novoMes);
+    setDataAtual(novoMes);
   };
   
   const irParaMesAtual = () => {
-    const hoje = new Date();
-    setMesAtual(hoje);
-    onMesChange?.(hoje);
+    setDataAtual(new Date());
   };
-  
-  // Formatar nome do mês
-  const nomeMes = mesAtual.toLocaleDateString('pt-BR', { 
-    month: 'long',
-    year: 'numeric'
-  }).toUpperCase();
-  
-  // Calcular semanas do mês
-  const calcularSemanasDoMes = () => {
-    const primeiroDia = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), 1);
-    const ultimoDia = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 0);
+
+  // ========== ADICIONAR OBJETIVO SEMANAL ==========
+  const adicionarObjetivoSemanal = async () => {
+    if (!planejamento || !semanaSelecionada || !objetivoSemana.trim()) return;
+
+    try {
+      const novasSemanas = [...(planejamento.semanas || [])];
+      const semanaIndex = novasSemanas.findIndex(
+        s => s.numero === semanaSelecionada.numero
+      );
+      
+      if (semanaIndex !== -1) {
+        if (!novasSemanas[semanaIndex].objetivos) {
+          novasSemanas[semanaIndex].objetivos = [];
+        }
+        novasSemanas[semanaIndex].objetivos.push(objetivoSemana);
+      }
+
+      const atualizado = await estrategiaPlaneamentoService.updatePlano(planejamento.id, {
+        ...planejamento,
+        semanas: novasSemanas
+      });
+
+      setPlanejamento(atualizado.data);
+      setModalSemana(false);
+      setSemanaSelecionada(null);
+      setObjetivoSemana('');
+      
+      showAlert({
+        type: 'success',
+        title: 'Objetivo adicionado!',
+        message: 'Objetivo semanal adicionado com sucesso.',
+        duration: 2000
+      });
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro',
+        message: 'Não foi possível adicionar o objetivo.',
+        duration: 3000
+      });
+    }
+  };
+
+  // ========== DELETAR PLANEJAMENTO ==========
+  const handleDeletarPlanejamento = async () => {
+    if (!planejamento) return;
+    if (!confirm('Tem certeza que deseja excluir este planejamento mensal?')) return;
+
+    try {
+      await estrategiaPlaneamentoService.deletarPlanejamento(planejamento.id);
+      setPlanejamento(null);
+      setModo('criacao');
+      
+      showAlert({
+        type: 'success',
+        title: 'Planejamento excluído!',
+        message: 'O planejamento foi removido com sucesso.',
+        duration: 3000
+      });
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o planejamento.',
+        duration: 3000
+      });
+    }
+  };
+
+  // ========== CALCULAR SEMANAS DO MÊS ==========
+  const calcularSemanas = () => {
+    const primeiroDia = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
+    const ultimoDia = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 0);
     
     const semanas = [];
-    let dataAtual = new Date(primeiroDia);
+    let dataInicio = new Date(primeiroDia);
     
     // Ajustar para começar na segunda-feira
-    const diaSemana = dataAtual.getDay();
-    if (diaSemana !== 1) { // Se não for segunda
+    const diaSemana = dataInicio.getDay();
+    if (diaSemana !== 1) {
       const diff = diaSemana === 0 ? 6 : diaSemana - 1;
-      dataAtual.setDate(dataAtual.getDate() - diff);
+      dataInicio.setDate(dataInicio.getDate() - diff);
     }
     
-    while (dataAtual <= ultimoDia || semanas.length < 6) {
-      const semana = [];
-      for (let i = 0; i < 7; i++) {
-        semana.push(new Date(dataAtual));
-        dataAtual.setDate(dataAtual.getDate() + 1);
-      }
-      semanas.push(semana);
+    let semanaNum = 1;
+    while (dataInicio <= ultimoDia || semanas.length < 5) {
+      const dataFim = new Date(dataInicio);
+      dataFim.setDate(dataInicio.getDate() + 6);
+      
+      semanas.push({
+        numero: semanaNum,
+        data_inicio: dataInicio.toISOString().split('T')[0],
+        data_fim: (dataFim > ultimoDia ? ultimoDia : dataFim).toISOString().split('T')[0],
+        objetivos: planejamento?.semanas?.find(s => s.numero === semanaNum)?.objetivos || []
+      });
+      
+      semanaNum++;
+      dataInicio.setDate(dataInicio.getDate() + 7);
     }
     
     return semanas;
   };
+
+  const semanas = calcularSemanas();
+  const metasMensais = planejamento?.metas_mensais || ['', '', '', ''];
+  const nomeMes = dataAtual.toLocaleDateString('pt-BR', { 
+    month: 'long',
+    year: 'numeric'
+  }).toUpperCase();
+
+  if (carregando && modo === 'visualizacao') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  const conectarMetas = async (metasSelecionadas: string[]) => {
+  if (!planejamento) return;
   
-  const semanas = calcularSemanasDoMes();
+  try {
+    const atualizado = await estrategiaPlaneamentoService.updatePlano(planejamento.id, {
+      ...planejamento,
+      metas_ids: metasSelecionadas
+    });
+    
+    setPlanejamento(atualizado.data);
+    setModalMeta(false);
+    
+    showAlert({
+      type: 'success',
+      title: 'Metas conectadas!',
+      message: `${metasSelecionadas.length} meta(s) conectada(s) ao planejamento mensal.`,
+      duration: 3000
+    });
+  } catch (error) {
+    showAlert({
+      type: 'error',
+      title: 'Erro',
+      message: 'Não foi possível conectar as metas.',
+      duration: 3000
+    });
+  }
+};
+
+// ========== FUNÇÃO PARA CONECTAR TAREFAS ==========
+const conectarTarefas = async (tarefasSelecionadas: string[]) => {
+  if (!planejamento) return;
   
-  // Filtrar metas e tarefas do mês
-  const metasDoMes = metas.filter(meta => {
-    const dataFim = new Date(meta.data_fim);
-    return dataFim.getMonth() === mesAtual.getMonth() && 
-           dataFim.getFullYear() === mesAtual.getFullYear();
-  });
-  
-  const tarefasDoMes = tarefas.filter(tarefa => {
-    if (!tarefa.data_limite) return false;
-    const dataLimite = new Date(tarefa.data_limite);
-    return dataLimite.getMonth() === mesAtual.getMonth() && 
-           dataLimite.getFullYear() === mesAtual.getFullYear();
-  });
-  
-  // Calcular estatísticas
-  const estatisticas = {
-    totalMetas: metasDoMes.length,
-    metasConcluidas: metasDoMes.filter(m => m.status === 'concluida').length,
-    totalTarefas: tarefasDoMes.length,
-    tarefasConcluidas: tarefasDoMes.filter(t => t.status === 'concluida').length,
-    progressoMedio: metasDoMes.length > 0 
-      ? Math.round(metasDoMes.reduce((acc, m) => acc + m.progresso, 0) / metasDoMes.length)
-      : 0
-  };
+  try {
+    const atualizado = await estrategiaPlaneamentoService.updatePlano(planejamento.id, {
+      ...planejamento,
+      tarefas_ids: tarefasSelecionadas
+    });
+    
+    setPlanejamento(atualizado.data);
+    setModalTarefa(false);
+    
+    showAlert({
+      type: 'success',
+      title: 'Tarefas conectadas!',
+      message: `${tarefasSelecionadas.length} tarefa(s) conectada(s) ao planejamento mensal.`,
+      duration: 3000
+    });
+  } catch (error) {
+    showAlert({
+      type: 'error',
+      title: 'Erro',
+      message: 'Não foi possível conectar as tarefas.',
+      duration: 3000
+    });
+  }
+};
 
   return (
-    <div className="p-6">
-      {/* Cabeçalho */}
+    <div className="p-6 pt-0 min-h-screen">
+      {/* ========== CABEÇALHO ========== */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8">
         <div className="flex items-center space-x-4 mb-4 lg:mb-0">
-          <button
-            onClick={irParaMesAnterior}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <FiChevronLeft className="h-5 w-5" />
-          </button>
-          
-          <div className="text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
-              {nomeMes}
-            </h2>
-            <button
-              onClick={irParaMesAtual}
-              className="text-sm text-blue-600 hover:text-blue-800 mt-1"
-            >
-              Voltar para mês atual
-            </button>
+          <div>
+            <h1 className="text-md lg:text-2md font-bold text-gray-800">
+              Planejamento Mensal
+            </h1>
+            <p className="text-gray-600">
+              Organize as metas e objetivos do <span className="text-primary-700">mês</span>
+            </p>
           </div>
-          
-          <button
-            onClick={irParaMesSeguinte}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <FiChevronRight className="h-5 w-5" />
-          </button>
         </div>
         
         <div className="flex items-center space-x-3">
-          {/* Modos de visualização */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('calendario')}
-              className={`px-4 py-2 rounded-lg ${viewMode === 'calendario' ? 'bg-white shadow' : ''}`}
-            >
-              Calendário
-            </button>
-            <button
-              onClick={() => setViewMode('lista')}
-              className={`px-4 py-2 rounded-lg ${viewMode === 'lista' ? 'bg-white shadow' : ''}`}
-            >
-              Lista
-            </button>
-            <button
-              onClick={() => setViewMode('metas')}
-              className={`px-4 py-2 rounded-lg ${viewMode === 'metas' ? 'bg-white shadow' : ''}`}
-            >
-              Metas
-            </button>
-          </div>
           
-          <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            <FiPlus className="mr-2" />
-            Novo Planejamento
-          </button>
-        </div>
-      </div>
-
-      {/* Estatísticas Rápidas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl shadow p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg mr-3">
-              <FiTarget className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{estatisticas.totalMetas}</div>
-              <div className="text-sm text-gray-600">Metas</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg mr-3">
-              <FiCheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{estatisticas.metasConcluidas}</div>
-              <div className="text-sm text-gray-600">Concluídas</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg mr-3">
-              <FiBarChart2 className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{estatisticas.progressoMedio}%</div>
-              <div className="text-sm text-gray-600">Progresso</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <FiClock className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{estatisticas.totalTarefas}</div>
-              <div className="text-sm text-gray-600">Tarefas</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Conteúdo Principal */}
-      {viewMode === 'calendario' ? (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          {/* Dias da semana */}
-          <div className="grid grid-cols-7 border-b">
-            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((dia, idx) => (
-              <div key={dia} className="p-3 text-center font-semibold text-gray-700">
-                {dia}
+          {/* Navegação de meses */}
+          <div className="flex items-center bg-white rounded-lg shadow p-1">
+            <button
+              onClick={irParaMesAnterior}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <FiChevronLeft className="h-5 w-5" />
+            </button>
+            
+            <div className="px-4 text-center">
+              <div className="font-bold text-gray-800">
+                {nomeMes}
               </div>
-            ))}
+              <button
+                onClick={irParaMesAtual}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                Hoje
+              </button>
+            </div>
+            
+            <button
+              onClick={irParaMesSeguinte}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <FiChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== ESTATÍSTICAS RÁPIDAS ========== */}
+      {planejamento && (
+        <>
+          <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-800">{planejamento.titulo}</h2>
+              {/* Botões de ação */}
+          <div className="flex gap-3">
+            {modo === 'visualizacao' && planejamento && (
+              <button
+                onClick={() => criarPlaneamento?.()}
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+              >
+                <FiEdit2 className="mr-2" /> Editar
+              </button>
+            )}
+            
+            {modo === 'visualizacao' && planejamento && (
+              <button
+                onClick={handleDeletarPlanejamento}
+                className="flex items-center px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+              >
+                <FiTrash2 className="mr-2" /> Excluir
+              </button>
+            )}
+          </div>
+            </div>
+            {planejamento.descricao && (
+              <p className="mt-2 text-gray-600">{planejamento.descricao}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                <FiTarget className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {metasMensais.filter(m => m.trim() !== '').length}
+                </div>
+                <div className="text-sm text-gray-600">Metas do Mês</div>
+              </div>
+            </div>
           </div>
           
-          {/* Calendário */}
-          <div className="grid grid-cols-7">
-            {semanas.flat().map((data, index) => {
-              const isMesAtual = data.getMonth() === mesAtual.getMonth();
-              const isHoje = data.toDateString() === new Date().toDateString();
-              const diaNumero = data.getDate();
-              
-              // Contar tarefas para este dia
-              const tarefasDia = tarefasDoMes.filter(t => {
-                if (!t.data_limite) return false;
-                const tarefaData = new Date(t.data_limite);
-                return tarefaData.toDateString() === data.toDateString();
-              });
-              
-              return (
-                <div
-                  key={index}
-                  className={`min-h-[120px] border p-2 ${
-                    !isMesAtual ? 'bg-gray-50 text-gray-400' : ''
-                  } ${isHoje ? 'bg-blue-50 border-blue-200' : ''}`}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`font-semibold ${
-                      isHoje ? 'text-blue-600' : ''
-                    }`}>
-                      {diaNumero}
-                    </span>
-                    {tarefasDia.length > 0 && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                        {tarefasDia.length}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Tarefas do dia */}
-                  <div className="space-y-1">
-                    {tarefasDia.slice(0, 3).map(tarefa => (
-                      <div
-                        key={tarefa.id}
-                        className={`text-xs p-1 rounded truncate ${
-                          tarefa.status === 'concluida' 
-                            ? 'bg-green-100 text-green-800 line-through' 
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                        title={tarefa.titulo}
-                      >
-                        {tarefa.titulo}
-                      </div>
-                    ))}
-                    {tarefasDia.length > 3 && (
-                      <div className="text-xs text-gray-500 text-center">
-                        +{tarefasDia.length - 3} mais
-                      </div>
-                    )}
-                  </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg mr-3">
+                <FiCheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {planejamento.progresso || 0}%
                 </div>
-              );
-            })}
+                <div className="text-sm text-gray-600">Progresso</div>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : viewMode === 'lista' ? (
-        <div className="bg-white rounded-xl shadow">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Tarefas do Mês</h3>
-            <div className="space-y-3">
-              {tarefasDoMes.map(tarefa => (
-                <div key={tarefa.id} className="flex items-center p-3 border rounded-lg hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={tarefa.status === 'concluida'}
-                    className="mr-3"
-                    readOnly
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium">{tarefa.titulo}</div>
-                    <div className="text-sm text-gray-600">
-                      Prazo: {new Date(tarefa.data_limite!).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    tarefa.prioridade === 'alta' ? 'bg-red-100 text-red-800' :
-                    tarefa.prioridade === 'media' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {tarefa.prioridade}
-                  </span>
+          
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <FiCalendar className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{semanas.length}</div>
+                <div className="text-sm text-gray-600">Semanas</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                <FiBarChart2 className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {semanas.filter(s => s.objetivos.length > 0).length}
                 </div>
-              ))}
-              
-              {tarefasDoMes.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhuma tarefa agendada para este mês
-                </div>
-              )}
+                <div className="text-sm text-gray-600">Semanas Planejadas</div>
+              </div>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Metas do Mês</h3>
-            <div className="space-y-4">
-              {metasDoMes.map(meta => (
-                <div key={meta.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-bold text-lg">{meta.titulo}</h4>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      meta.status === 'concluida' ? 'bg-green-100 text-green-800' :
-                      meta.status === 'em_andamento' ? 'bg-blue-100 text-blue-800' :
-                      meta.status === 'atrasada' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {meta.status === 'em_andamento' ? 'Em Andamento' : 
-                       meta.status === 'concluida' ? 'Concluída' : 
-                       meta.status === 'atrasada' ? 'Atrasada' : 'Não Iniciada'}
-                    </span>
-                  </div>
-                  
-                  <p className="text-gray-600 mb-3">{meta.descricao}</p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FiUsers className="mr-1" />
-                        {meta.responsavel_principal}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FiClock className="mr-1" />
-                        Até {new Date(meta.data_fim).toLocaleDateString('pt-BR')}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <span className="font-bold mr-2">{meta.progresso}%</span>
-                      <div className="w-32 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${meta.progresso}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {metasDoMes.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhuma meta agendada para este mês
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </>
+        
       )}
 
-      {/* Resumo do Mês */}
-      <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow p-6">
-        <h3 className="font-bold text-lg mb-4">Resumo de Planejamento</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Focos Principais */}
-          <div>
-            <h4 className="font-semibold mb-2 text-blue-700">Focos do Mês</h4>
-            <ul className="space-y-2">
-              <li className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                <span>Preparar período de matrículas</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                <span>Revisar currículo pedagógico</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                <span>Capacitação de professores</span>
-              </li>
-            </ul>
+      {/* ========== MODO VISUALIZAÇÃO ========== */}
+      {planejamento && modo === 'visualizacao' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{delay:.2}}
+          className="space-y-6"
+        >
+          {/* Metas do Mês */}
+          {metasMensais.filter(m => m.trim() !== '').length > 0 && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 flex items-center">
+                  <FiTarget className="mr-2 text-blue-600" />
+                  Metas do Mês
+                </h3>
+                <button
+                  onClick={() => setModalMeta(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                >
+                  <FiPlus className="mr-1" /> Conectar Meta
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {metasMensais
+                  .filter(m => m.trim() !== '')
+                  .map((meta, index) => (
+                    <div key={index} className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                      <div className="flex items-start">
+                        <div className="flex-1">
+                          <div className="text-blue-800 font-medium">{meta}</div>
+                          <div className="text-xs text-blue-600 mt-1">
+                            Em andamento
+                          </div>
+                        </div>
+                        <div className="w-16 bg-blue-200 rounded-full h-2 mt-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${Math.floor(Math.random() * 60 + 20)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Planejamento Semanal */}
+          <div className="bg-white rounded-xl shadow-lg p-6 pt-0">
+            
+            {/* Botões para conectar metas e tarefas */}
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => setModalMeta(true)}
+              className="flex items-center px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200"
+            >
+              <FiTarget className="mr-1" /> Conectar Metas
+            </button>
+            <button
+              onClick={() => setModalTarefa(true)}
+              className="flex items-center px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200"
+            >
+              <FiList className="mr-1" /> Conectar Tarefas
+            </button>
           </div>
-          
-          {/* Marcos Importantes */}
-          <div>
-            <h4 className="font-semibold mb-2 text-purple-700">Marcos Importantes</h4>
-            <ul className="space-y-2">
-              <li className="flex items-center text-sm">
-                <FiCalendar className="text-purple-600 mr-2" size={14} />
-                <span>Dia 05: Reunião com pais</span>
-              </li>
-              <li className="flex items-center text-sm">
-                <FiCalendar className="text-purple-600 mr-2" size={14} />
-                <span>Dia 15: Entrega de boletins</span>
-              </li>
-              <li className="flex items-center text-sm">
-                <FiCalendar className="text-purple-600 mr-2" size={14} />
-                <span>Dia 25: Fechamento mensal</span>
-              </li>
-            </ul>
-          </div>
-          
-          {/* Ações Rápidas */}
-          <div>
-            <h4 className="font-semibold mb-2 text-green-700">Ações Rápidas</h4>
-            <div className="space-y-2">
-              <button className="w-full text-left p-2 bg-white rounded-lg hover:bg-gray-50 text-sm">
-                Gerar relatório mensal
-              </button>
-              <button className="w-full text-left p-2 bg-white rounded-lg hover:bg-gray-50 text-sm">
-                Revisar orçamento
-              </button>
-              <button className="w-full text-left p-2 bg-white rounded-lg hover:bg-gray-50 text-sm">
-                Planejar próximo mês
-              </button>
+
+            
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {semanas.map((semana, index) => (
+                <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-800">
+                      Semana {semana.numero}
+                    </h4>
+                    <span className="text-xs text-gray-500">
+                      {new Date(semana.data_inicio).getDate()}/{new Date(semana.data_inicio).getMonth() + 1}
+                    </span>
+                  </div>
+                  
+                  <div className="text-xs text-gray-600 mb-3">
+                    {new Date(semana.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - {new Date(semana.data_fim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                  </div>
+                  
+                  <div className="space-y-2 min-h-[80px]">
+                    {semana.objetivos?.map((obj, i) => (
+                      <div key={i} className="text-xs bg-gray-100 p-2 rounded">
+                        {obj}
+                      </div>
+                    ))}
+                    
+                    <button
+                      onClick={() => {
+                        setSemanaSelecionada(semana);
+                        setModalSemana(true);
+                      }}
+                      className="w-full p-2 border border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors text-xs"
+                    >
+                      <FiPlus className="mx-auto" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+
+          {/* Itens Conectados */}
+          {(planejamento.metas_ids?.length > 0 || planejamento.tarefas_ids?.length > 0) && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4">Itens Conectados</h3>
+              <div className="flex flex-wrap gap-3">
+                {planejamento.metas_ids?.map((metaId: string) => (
+                  <span key={metaId} className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm">
+                    <FiTarget className="inline mr-1" /> Meta #{metaId.substring(0, 6)}
+                  </span>
+                ))}
+                {planejamento.tarefas_ids?.map((tarefaId: string) => (
+                  <span key={tarefaId} className="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-full text-sm">
+                    <FiList className="inline mr-1" /> Tarefa #{tarefaId.substring(0, 6)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ========== MODO CRIAÇÃO - SEM PLANEJAMENTO ========== */}
+      {!planejamento && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-br from-blue-50 to-white border-2 border-dashed border-blue-200 rounded-2xl p-12 text-center"
+        >
+          <div className="max-w-md mx-auto">
+            <div className="w-20 h-20 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
+              <FiCalendar className="h-10 w-10 text-blue-600" />
+            </div>
+            
+            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+              Nenhum planejamento para este mês
+            </h3>
+            
+            <p className="text-gray-600 mb-8">
+              Crie um planejamento mensal para organizar suas metas e objetivos.
+            </p>
+            
+            <button
+              onClick={() => {
+                criarPlaneamento?.();
+                setModalPlaneamento(true);
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium"
+            >
+              <FiPlus className="inline mr-2" />
+              Criar Planejamento Mensal
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Adicionar os MODAIS antes do fechamento do componente */}
+          <ModalSelecionarMetas
+            isOpen={modalMeta}
+            onClose={() => setModalMeta(false)}
+            onConfirm={conectarMetas}
+            metasConectadas={planejamento?.metas_ids || []}
+            tipoPlano="mensal"
+          />
+
+          <ModalSelecionarTarefas
+            isOpen={modalTarefa}
+            onClose={() => setModalTarefa(false)}
+            onConfirm={conectarTarefas}
+            tarefasConectadas={planejamento?.tarefas_ids || []}
+            tipoPlano="mensal"
+          />
+          
+
+      
+      {/* ========== MODAL OBJETIVO SEMANAL ========== */}
+      <AnimatePresence>
+        {modalSemana && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setModalSemana(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <FiCalendar className="mr-2 text-blue-600" />
+                  Objetivo da Semana {semanaSelecionada?.numero}
+                </h3>
+                <button
+                  onClick={() => setModalSemana(false)}
+                  className="p-1 hover:bg-gray-100 rounded-lg"
+                >
+                  <FiX className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              {semanaSelecionada && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Período:</span> {new Date(semanaSelecionada.data_inicio).toLocaleDateString('pt-BR')} - {new Date(semanaSelecionada.data_fim).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Objetivo da Semana
+                  </label>
+                  <textarea
+                    placeholder="Digite o objetivo principal desta semana..."
+                    value={objetivoSemana}
+                    onChange={(e) => setObjetivoSemana(e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setModalSemana(false);
+                      setSemanaSelecionada(null);
+                      setObjetivoSemana('');
+                    }}
+                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={adicionarObjetivoSemanal}
+                    disabled={!objetivoSemana.trim()}
+                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      
     </div>
   );
 };
 
-export default PlanejamentoMensal;
+export default PlaneamentoMensalComponent;

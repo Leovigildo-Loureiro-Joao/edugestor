@@ -12,6 +12,8 @@ import { UserProfile } from "./profile";
 import { Instituicao } from ".";
 import { Notificacao } from "../services/database/notificacaoService";
 import { Avaliacao } from "./avaliacao";
+import { PlaneamentoBase } from "./planeamento";
+import type { PlanoAula } from "../services/database/planoAulasService";
 
 export type SyncStatus = 'pending' | 'synced' | 'pending_delete' | 'failed' | 'conflict';
 
@@ -25,7 +27,7 @@ export interface BaseEntity {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacao'|'turma_horarios';
+  table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacoes'|'turma_horarios'|'planeamentos'|'plano_aulas';
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
@@ -56,6 +58,8 @@ export interface EduGestorDatabase {
   alocacao:Dexie.Table<AlocacaoRecurso,string>;
   avaliacoes: Dexie.Table<Avaliacao, string>;
   turma_horarios:Dexie.Table<HorarioAula,string>
+  planeamentos:Dexie.Table<PlaneamentoBase,string>
+  plano_aulas:Dexie.Table<PlanoAula,string>;
 }
 
 // Helper para tipar o banco

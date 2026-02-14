@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Students from './pages/Students/Students.tsx';
 import { StudentNew } from './pages/Students/StudentsNew';
 import { StudentEdit } from './pages/Students/StudentsEdit';
-import { FrequenciaPage } from './pages/Attendance/Frequencia';
+import { FrequenciaPage } from './pages/Attendance/Frequencia.tsx';
 import { AulasPage } from './pages/Grades/AulaPage.tsx';
 import Turmas from './pages/Turmas/Turmas.tsx';
 import StudentPage from './pages/Students/StudentPage';
@@ -39,6 +39,7 @@ import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
 import { backgroundService } from './services/database/backgroundService.ts';
 import { notificacaoService } from './services/database/notificacaoService.ts';
 import { AlertProvider } from './components/ui/AlertBadge.tsx';
+import { NotasPage } from './pages/Grades/NotasPage.tsx';
 
 // Componente para rotas protegidas - CORRIGIDO
 const ProtectedRoute = ({ children }) => {
@@ -248,16 +249,18 @@ useEffect(() => {
                     <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
                     <Route path="/financeiro" element={<FinanceiroPage/>} />
                     <Route path="/cursos" element={<Courses/>} />
-                    <Route path="/eventos/add" element={<EventosPage />} />
+                    <Route path="/eventos/add/:date" element={<EventosPage />} />
                     <Route path="/estrategia/metas/nova" element={<MetaPage />} />
                     <Route path="/estrategia/metas/editar/:id" element={<MetaPage />} />
                     <Route path="/estrategia/tarefas/nova" element={<TarefaPage />} />
                     <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
+                    <Route path="/estrategia/:seccao/:tipo" element={<EstrategiaPage/>} />
                     <Route path="/estrategia/:seccao" element={<EstrategiaPage/>} />
                     <Route path="/estrategia" element={<EstrategiaPage/>} />
                     <Route path="/estrategia/metas/:id" element={<MetaDetailsPage />} />
                     <Route path="/cursos/novo" element={<CursoNew/>} />
                     <Route path="/cursos/editar/:id" element={<CursoEdit/>} />
+                    <Route path="/notas" element={<NotasPage/>} />
                     <Route path="/cursos/:id" element={<CourseDetails/>} />
                     <Route path="/financeiro/pagamentos" element={<PagamentosPage/>} />
                     <Route path="/financeiro/transacoes" element={<TransacoesPage/>} />

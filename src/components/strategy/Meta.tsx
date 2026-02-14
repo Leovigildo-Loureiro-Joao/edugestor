@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { 
   FiBookOpen, 
   FiCheckCircle, 
@@ -21,16 +21,86 @@ import { useConfirmModal } from "../ui/ComfirmModal";
 import { estrategiaService } from "../../services/database/estrategiaService";
 import toast from "react-hot-toast";
 import { useAlert } from "../ui/AlertBadge";
+import { SyncStatusBadge } from "../ui/SyncStatusBadge";
+import { SyncDataDetail } from "../ui/SyncDataDetail";
+import { getPendingCount } from "../../utils/emitPendingSync";
 
-const MetaComponent = ({ metas, setMetas }: { 
+const MetaComponent = ({ metas, setMetas,loadData }: { 
   metas: Meta[], 
+  loadData:any,
   setMetas: React.Dispatch<React.SetStateAction<Meta[]>> 
 }) => {
   const navigate = useNavigate();
   const { showAlert } = useAlert(); 
   const { confirm, ModalComponent } = useConfirmModal();
   const [expandedMeta, setExpandedMeta] = useState<string | null>(null);
+  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
+  const [syncStats, setSyncStats] = useState(0);
 
+  useEffect(() => {
+        // Monitorar status online
+        const handleOnline = () => setOnlineStatus(true);
+        const handleOffline = () => setOnlineStatus(false);
+        
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+  
+  
+        // Carregar estatísticas de sincronização
+        const loadSyncStats = async () => {
+          try {
+            const turmasPendentes = await getPendingCount("metas");
+            setSyncStats(turmasPendentes);
+          } catch (error) {
+            console.error('Erro ao carregar sync stats:', error);
+          }
+        };
+        
+        loadSyncStats();
+        
+        // Ouvir eventos de sincronização
+        const handleSyncUpdate = () => {
+          loadSyncStats();
+        };
+  
+        const interval=setInterval(handleSyncUpdate,30000)    
+        
+        window.addEventListener('sync-pending', handleSyncUpdate);
+        window.addEventListener('sync-complete', handleSyncUpdate);
+        
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('sync-pending', handleSyncUpdate);
+          window.removeEventListener('sync-complete', handleSyncUpdate);
+          clearInterval(interval)
+        };
+      }, []);
+      
+      
+      const handleForceSync = async () => {
+        try {
+          await estrategiaService.syncMetas();
+          loadData();
+         
+          showAlert({
+            type: 'success',
+            title: 'Sincronização concluída!',
+            message: 'Os dados foram sincronizados com o servidor.',
+            duration: 3000
+          });
+        
+        } catch (error) {
+          showAlert({
+            type: 'error',
+            title: 'Erro na sincronização',
+            message: 'Não foi possível sincronizar com o servidor.',
+            duration: 5000
+          });
+        };
+      };
+    
+  
   const toggleMeta = (id: string) => {
     setExpandedMeta(expandedMeta === id ? null : id);
   };
@@ -122,10 +192,14 @@ const MetaComponent = ({ metas, setMetas }: {
     <div className="p-6 dark:bg-gray-800">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
-            <FiTarget className="mr-2" />
-            Metas Estratégicas
-          </h2>
+          <div className="flex gap-3 items-center">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+              <FiTarget className="mr-2" />
+              Metas Estratégicas
+            </h2>
+            <SyncStatusBadge tableName="metas"/>
+          </div>
+          
           <p className="text-gray-600 dark:text-gray-300 mt-1">
             Gerencie e acompanhe o progresso das metas da escola
           </p>
@@ -205,7 +279,7 @@ const MetaComponent = ({ metas, setMetas }: {
           </div>
         </div>
       </div>
-
+      
       {/* Lista de Metas */}
       <div className="space-y-4">
         {metas.length === 0 ? (

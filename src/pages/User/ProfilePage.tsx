@@ -21,7 +21,7 @@ import { notificacaoService } from '../../services/database/notificacaoService';
 
 
 const ProfilePage: React.FC = () => {
-  const { user, updateProfile, changePassword } = useAuth();
+  const { user, profile, updateProfile, changePassword } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,10 +36,10 @@ const ProfilePage: React.FC = () => {
 
   // Estados do formulário
   const [formData, setFormData] = useState({
-    full_name: user?.full_name || '',
-    email: user?.email || '',
-    role: user?.role || 'user',
-    created_at: user?.created_at || ''
+    full_name: profile?.full_name || '',
+    email: profile?.email || user?.email || '',
+    role: profile?.role || 'user',
+    created_at: profile?.created_at || user?.created_at || ''
   });
 
   // Estados de senha
@@ -59,16 +59,16 @@ const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user || profile) {
       setFormData({
-        full_name: user.full_name || '',
-        email: user.email || '',
-        role: user.role || 'user',
-        created_at: user.created_at || ''
+        full_name: profile?.full_name || '',
+        email: profile?.email || user?.email || '',
+        role: profile?.role || 'user',
+        created_at: profile?.created_at || user?.created_at || ''
       });
       loadProfileStats();
     }
-  }, [user]);
+  }, [user, profile]);
 
   const loadProfileStats = async () => {
     try {
@@ -79,7 +79,7 @@ const ProfilePage: React.FC = () => {
       ]);
 
       // Calcular idade da conta
-      const createdDate = new Date(user?.created_at || Date.now());
+      const createdDate = new Date(profile?.created_at || user?.created_at || Date.now());
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - createdDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -298,7 +298,7 @@ const ProfilePage: React.FC = () => {
                   <div className="flex items-center space-x-4">
                     <div className="relative">
                       <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                        {getAvatarInitials(formData.full_name || user?.email || '')}
+                        {getAvatarInitials(formData.full_name || formData.email || '')}
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
                         <FiUser className="text-white text-xs" />
@@ -382,7 +382,7 @@ const ProfilePage: React.FC = () => {
                       </label>
                       <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <p className="text-gray-900 dark:text-white">
-                          {new Date(user?.created_at || '').toLocaleDateString('pt-BR', {
+                          {new Date(formData.created_at || '').toLocaleDateString('pt-BR', {
                             day: '2-digit',
                             month: 'long',
                             year: 'numeric'

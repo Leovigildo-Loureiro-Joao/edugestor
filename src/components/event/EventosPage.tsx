@@ -46,12 +46,19 @@ const EventosPage = () => {
   const [filteredEvents, setFilteredEvents] = useState<EventFormData[]>([]);
   const [metas, setMetas] = useState<any[]>([]);
   const [loadingMetas, setLoadingMetas] = useState(true);
-  
+  const [participantInput, setParticipantInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterImportance, setFilterImportance] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'upcoming'>('list');
+  const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
+  const { showAlert } = useAlert(); 
+  const {date}=useParams();
   // Form states
   const [formData, setFormData] = useState<EventFormData>({
     id:generateUniqueId(),
     title: '',
-    date: new Date().toISOString().split('T')[0],
+    date: date?date.split('T')[0]:new Date().toISOString().split('T')[0],
     time: '08:00',
     location: '',
     type: 'event',
@@ -64,13 +71,7 @@ const EventosPage = () => {
     objetivo_evento: ''
   });
   
-  const [participantInput, setParticipantInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterImportance, setFilterImportance] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'upcoming'>('list');
-  const [selectedEvent, setSelectedEvent] = useState<EventFormData | null>(null);
-  const { showAlert } = useAlert(); 
+  
   // Carregar dados
   useEffect(() => {
     loadData();
@@ -121,6 +122,7 @@ const EventosPage = () => {
       
       setEvents(eventsData);
       setMetas(metasData);
+      
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -168,7 +170,7 @@ const EventosPage = () => {
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
          showAlert({
           type: 'success',
-          title: 'Operação concluida',
+          title: 'Operação concluída',
           message: 'Evento atualizado com sucesso!',
           duration: 3000
         });
@@ -179,7 +181,7 @@ const EventosPage = () => {
         setEvents(prev => [newEvent, ...prev]);
         showAlert({
           type: 'success',
-          title: 'Operação concluida',
+          title: 'Operação concluída',
           message: 'Evento criado com sucesso!',
           duration: 3000
         });
@@ -215,7 +217,7 @@ const EventosPage = () => {
           setEvents(prev => prev.filter(e => e.id !== eventId));
           showAlert({
               type: 'success',
-              title: 'Operação concluida',
+              title: 'Operação concluída',
               message: 'Evento excluído com sucesso!',
               duration: 3000
             });
@@ -336,11 +338,11 @@ const EventosPage = () => {
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <div className="container mx-auto px-6 py-8">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/estrategia/eventos')}
             className="flex items-center font-semibold text-blue-100 hover:text-white mb-6"
           >
             <FiArrowLeft className="mr-2" />
-            Voltar para Dashboard
+            Voltar
           </button>
         <ModalComponent/>
           

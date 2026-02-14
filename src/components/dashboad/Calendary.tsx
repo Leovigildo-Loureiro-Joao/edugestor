@@ -437,7 +437,7 @@ export const CalendarWithEvents = () => {
       switch (modalMode) {
         case 'edit':
         case 'create':
-          navigate("/eventos/add");
+          navigate("/eventos/add/"+selectedDate.toISOString());
           break
         case 'list':
         default:

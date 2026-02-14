@@ -171,10 +171,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
     descricao: '',
     tipo: 'academica',
     categoria: 'estrategica',
-    especifico: '',
-    mensuravel: '',
-    atingivel: true,
-    relevante: '',
     data_inicio: new Date().toISOString().split('T')[0],
     data_fim: '',
     progresso: 0,
@@ -182,7 +178,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
     prioridade: 'media',
     responsavel_principal: 'Administrador',
     kpis: [],
-    submetas:[],
     recursos:[]
   });
 
@@ -480,7 +475,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <div className="container mx-auto px-6 py-8">
           <button
-            onClick={() => navigate('/estrategia')}
+            onClick={() => navigate('/estrategia/metas')}
             className="flex items-center text-blue-100 font-semibold hover:text-white mb-6"
           >
             <FiArrowLeft className="mr-2" />
@@ -582,65 +577,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
                   className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32"
                   placeholder="Descreva em detalhes o que esta meta pretende alcançar..."
                 />
-              </div>
-
-              {/* SMART Criteria */}
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-4 flex items-center">
-                  <FiTarget className="mr-2" />
-                  Critérios SMART
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Específico (S)</label>
-                    <input
-                      type="text"
-                      value={formData.especifico}
-                      onChange={(e) => setFormData({...formData, especifico: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      placeholder="O que exatamente será alcançado?"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Mensurável (M)</label>
-                    <input
-                      type="text"
-                      value={formData.mensuravel}
-                      onChange={(e) => setFormData({...formData, mensuravel: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      placeholder="Como será medido o sucesso?"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Atingível (A)</label>
-                    <div className="flex items-center space-x-4">
-
-                      <SelectTyped
-                        icon={RxCheckCircled}
-                        vect={[{label:"Sim, é realizável",value:true},{label:"Não, é muito ambicioso",value:false}]}
-                        onChange={(e:any) => {setFormData({...formData, atingivel: e});}}
-                    
-                        className="px-4 py-2 rounded-lg border font-medium"
-                    />
-                      
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Relevante (R)</label>
-                    <input
-                      type="text"
-                      value={formData.relevante}
-                      onChange={(e) => setFormData({...formData, relevante: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      placeholder="Por que esta meta é importante?"
-                    />
-                  </div>
-                  
-                
-                </div>
               </div>
 
               {/* Grid de Configurações */}
@@ -1103,247 +1039,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
             </div>
           </motion.div>
 
-          {/* Sub Metas */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
-          >
-            <div className="border-b p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center">
-                    <RxCommit className="mr-2" />
-                    Sub-metas
-                  </h2>
-                  <p className="text-gray-600 mt-1">Divida a meta principal em etapas menores</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSubMeta(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 flex items-center"
-                >
-                  <RxAllSides className="mr-2" />
-                  Adicionar Sub-meta
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              {/* Lista de Submetas */}
-              <div className="space-y-4 mb-6">
-                {subMetas.map((sub, index) => {
-                  const dataInicio = new Date(sub.data_inicio);
-                  const dataFim = new Date(sub.data_fim);
-                  const hoje = new Date();
-                  const atrasada = dataFim < hoje && sub.status !== 'concluida';
-                  
-                  const getStatusColor = (status: string) => {
-                    switch(status) {
-                      case 'concluida': return 'bg-green-100 text-green-800';
-                      case 'em_andamento': return 'bg-blue-100 text-blue-800';
-                      case 'atrasada': return 'bg-red-100 text-red-800';
-                      default: return 'bg-gray-100 text-gray-800';
-                    }
-                  };
-                  
-                  const getStatusIcon = (status: string) => {
-                    switch(status) {
-                      case 'concluida': return '✓';
-                      case 'em_andamento': return '↻';
-                      case 'atrasada': return '⚠';
-                      default: return '○';
-                    }
-                  };
-                  
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 group"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-medium text-lg">{sub.titulo}</h4>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(sub.status)}`}>
-                              {getStatusIcon(sub.status)} {sub.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            {atrasada && (
-                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                ATRASADA
-                              </span>
-                            )}
-                          </div>
-                          
-                          {sub.descricao && (
-                            <p className="text-gray-600 mb-3">{sub.descricao}</p>
-                          )}
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                            <div className="space-y-1">
-                              <div className="text-sm text-gray-500">Datas</div>
-                              <div className="flex items-center gap-2">
-                                <FiCalendar className="text-gray-400" />
-                                <span className="font-medium">
-                                  {dataInicio.toLocaleDateString('pt-BR')} → {dataFim.toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-gray-500">Responsável</div>
-                              <div className="flex items-center gap-2">
-                                <FiUser className="text-gray-400" />
-                                <span className="font-medium">{sub.responsavel}</span>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-sm text-gray-500">Custo</div>
-                              <div className="flex items-center gap-2">
-                                <FiDollarSign className="text-gray-400" />
-                                <span className="font-medium">
-                                  {sub.custo_real?.toLocaleString('pt-BR', { 
-                                    style: 'currency', 
-                                    currency: 'AKZ' 
-                                  }) || '0,00'}
-                                  <span className="text-gray-500 text-sm ml-1">
-                                    / {sub.custo_estimado?.toLocaleString('pt-BR', { 
-                                      style: 'currency', 
-                                      currency: 'AKZ' 
-                                    }) || '0,00'}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Progresso do custo */}
-                          {sub.custo_estimado && sub.custo_estimado > 0 && (
-                            <div className="mb-3">
-                              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                <span>Utilização do orçamento</span>
-                                <span>
-                                  {sub.custo_real 
-                                    ? Math.round((sub.custo_real / sub.custo_estimado) * 100)
-                                    : 0}%
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className={`h-2 rounded-full ${
-                                    sub.custo_real && sub.custo_estimado
-                                      ? (sub.custo_real / sub.custo_estimado) >= 1.1 
-                                        ? 'bg-red-500'
-                                        : (sub.custo_real / sub.custo_estimado) >= 0.9
-                                          ? 'bg-yellow-500'
-                                          : 'bg-green-500'
-                                      : 'bg-blue-500'
-                                  }`}
-                                  style={{ 
-                                    width: `${Math.min(
-                                      sub.custo_real && sub.custo_estimado
-                                        ? (sub.custo_real / sub.custo_estimado) * 100
-                                        : 0, 
-                                      100
-                                    )}%` 
-                                  }}
-                                ></div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {sub.notas && (
-                            <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded-r">
-                              <div className="text-sm text-yellow-700">{sub.notas}</div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Botões de ação */}
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Editar submeta
-                              setNovaSubMeta({ ...sub });
-                              setSubMetas(subMetas.filter((_, i) => i !== index));
-                              setShowSubMeta(true);
-                            }}
-                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
-                            title="Editar"
-                          >
-                            <RxHobbyKnife className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removerSubMetas(index)}
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
-                            title="Remover"
-                          >
-                            <FiTrash2 />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-                
-                {subMetas.length === 0 && (
-                  <div className="text-center py-12 text-gray-400">
-                    <RxCommit size={48} className="mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Nenhuma sub-meta definida</p>
-                    <p className="text-sm max-w-md mx-auto mt-2">
-                      Divida sua meta em etapas menores para facilitar o acompanhamento 
-                      e aumentar as chances de sucesso
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowSubMeta(true)}
-                      className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 flex items-center mx-auto"
-                    >
-                      <RxAllSides className="mr-2" />
-                      Criar Primeira Sub-meta
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {/* Resumo das Submetas */}
-              {subMetas.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-emerald-700">{subMetas.length}</div>
-                    <div className="text-sm text-emerald-600">Sub-metas</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-700">
-                      {subMetas.filter(s => s.status === 'concluida').length}
-                    </div>
-                    <div className="text-sm text-blue-600">Concluídas</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-amber-700">
-                      {subMetas.filter(s => s.status === 'em_andamento').length}
-                    </div>
-                    <div className="text-sm text-amber-600">Em andamento</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-700">
-                      {subMetas.filter(s => s.status === 'atrasada').length}
-                    </div>
-                    <div className="text-sm text-red-600">Atrasadas</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
           {/* Recursos e Observações */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1552,7 +1247,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/estrategia')}
+                onClick={() => navigate('/estrategia/metas')}
                 className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
                 disabled={salvando}
               >

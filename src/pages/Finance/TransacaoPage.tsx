@@ -63,8 +63,16 @@ export const TransacoesPage = () => {
         const handleOnline = () => setOnlineStatus(true);
         const handleOffline = () => setOnlineStatus(false);
         
+        const handleDbChanged = (event: Event) => {
+          const detail = (event as CustomEvent).detail;
+          if (!detail?.table || detail.table === 'transacoes') {
+            carregarTransacoes();
+          }
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        window.addEventListener('db-changed', handleDbChanged);
   
   
         // Carregar estatísticas de sincronização
@@ -92,6 +100,7 @@ export const TransacoesPage = () => {
         return () => {
           window.removeEventListener('online', handleOnline);
           window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('db-changed', handleDbChanged);
           window.removeEventListener('sync-pending', handleSyncUpdate);
           window.removeEventListener('sync-complete', handleSyncUpdate);
           clearInterval(interval)

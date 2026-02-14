@@ -1,5 +1,5 @@
 // components/estrategia/KPIManager.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FiBarChart2, 
@@ -28,6 +28,7 @@ import { FaTimeline } from 'react-icons/fa6';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
+import db from '../../services/database/db';
 
 interface KPIManagerProps {
   meta: Meta;
@@ -91,6 +92,12 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
   const [showForm, setShowForm] = useState(false);
   const {showAlert} = useAlert();
     const { confirm, ModalComponent } = useConfirmModal();
+  const [turmaOptions, setTurmaOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: '', label: 'Geral' }
+  ]);
+  const [disciplinaOptions, setDisciplinaOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: '', label: 'Geral' }
+  ]);
   const [novoKPI, setNovoKPI] = useState<IndicadorDesempenho>({
     id:generateUniqueId(),
     nome: '',
@@ -110,6 +117,31 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
   });
 
   const [editandoKPI, setEditandoKPI] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const turmas = await db.turmas.filter(t => !t.deleted).toArray();
+        setTurmaOptions([
+          { value: '', label: 'Geral' },
+          ...turmas.map(t => ({ value: t.id, label: t.nome_turma }))
+        ]);
+
+        const cursos = await db.cursos.filter(c => !c.deleted).toArray();
+        const disciplinas = Array.from(
+          new Set((cursos || []).flatMap(c => c.disciplinas || []).filter(Boolean))
+        );
+        setDisciplinaOptions([
+          { value: '', label: 'Geral' },
+          ...disciplinas.map(d => ({ value: d, label: d }))
+        ]);
+      } catch (error) {
+        console.error('Erro ao carregar filtros de KPI:', error);
+      }
+    };
+
+    loadOptions();
+  }, []);
 
   const handleSaveKPI = async () => {
     try {
@@ -121,7 +153,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
         });
          showAlert({
           type: 'success',
-          title: 'Operação concluida',
+          title: 'Operação concluída',
           message: 'KPI atualizado com sucesso!',
           duration: 3000
         });
@@ -134,7 +166,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
         });
           showAlert({
           type: 'success',
-          title: 'Operação concluida',
+          title: 'Operação concluída',
           message: 'KPI adicionado com sucesso!',
           duration: 3000
         });
@@ -183,7 +215,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
              await estrategiaService.removeKPI(meta.id, kpiId);
               showAlert({
                   type: 'success',
-                  title: 'Operação concluida',
+                  title: 'Operação concluída',
                   message: 'KPI excluído com sucesso!',
                   duration: 3000
                 });
@@ -239,6 +271,11 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
     return MODULOS_DISPONIVEIS.find(m => m.value === modulo)?.icone || '📊';
   };
 
+  const getFiltroLabel = (value: string | undefined, options: Array<{ value: string; label: string }>) => {
+    if (!value) return '';
+    return options.find(o => o.value === value)?.label || value;
+  };
+
   const getMetricaLabel = (modulo: string, metrica: string) => {
     return METRICAS_POR_MODULO[modulo]?.find(m => m.value === metrica)?.label || metrica;
   };
@@ -248,7 +285,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
       await estrategiaService.updateKPI(meta.id, kpi.id, {...kpi,valor_atual:novoValor});
         showAlert({
           type: 'success',
-          title: 'Operação concluida',
+          title: 'Operação concluída',
           message: 'Valor atualizado com sucesso!',
           duration: 3000
         });
@@ -297,6 +334,8 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           meta.kpis.map((kpi) => {
             const progresso = calcularProgresso(kpi.valor_atual, kpi.valor_meta);
             const fonteAutomatica = kpi.fonte_dados?.tipo === 'automatico';
+            const turmaFiltroLabel = getFiltroLabel(kpi.fonte_dados?.filtros?.turma_id, turmaOptions);
+            const disciplinaFiltroLabel = getFiltroLabel(kpi.fonte_dados?.filtros?.disciplina_id, disciplinaOptions);
             
             return (
               <motion.div
@@ -453,9 +492,10 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                       <span className="font-medium text-gray-700 dark:text-gray-300">
                         {getMetricaLabel(kpi.fonte_dados.modulo||"pessoal", kpi.fonte_dados.metrica)}
                       </span>
-                      {kpi.fonte_dados.filtros && Object.keys(kpi.fonte_dados.filtros).length > 0 && (
+                      {(turmaFiltroLabel || disciplinaFiltroLabel) && (
                         <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
-                          {Object.keys(kpi.fonte_dados.filtros).length} filtro(s)
+                          {turmaFiltroLabel ? `Turma: ${turmaFiltroLabel}` : 'Geral'}
+                          {disciplinaFiltroLabel ? ` • Disciplina: ${disciplinaFiltroLabel}` : ''}
                         </span>
                       )}
                     </div>
@@ -710,6 +750,52 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                       />
                      
                     </div>
+
+                    {['matriculas', 'frequencia', 'notas'].includes(novoKPI.fonte_dados.modulo as any) && (
+                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Turma (opcional)
+                          </label>
+                          <SelectTyped
+                            vect={turmaOptions}
+                            value={novoKPI.fonte_dados.filtros?.turma_id || ''}
+                            onChange={(e) => {
+                              const filtros = novoKPI.fonte_dados.filtros || {};
+                              setNovoKPI({
+                                ...novoKPI,
+                                fonte_dados: {
+                                  ...novoKPI.fonte_dados,
+                                  filtros: { ...filtros, turma_id: e || undefined }
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+
+                        {novoKPI.fonte_dados.modulo === 'notas' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Disciplina (opcional)
+                            </label>
+                            <SelectTyped
+                              vect={disciplinaOptions}
+                              value={novoKPI.fonte_dados.filtros?.disciplina_id || ''}
+                              onChange={(e) => {
+                                const filtros = novoKPI.fonte_dados.filtros || {};
+                                setNovoKPI({
+                                  ...novoKPI,
+                                  fonte_dados: {
+                                    ...novoKPI.fonte_dados,
+                                    filtros: { ...filtros, disciplina_id: e || undefined }
+                                  }
+                                });
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

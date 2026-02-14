@@ -104,7 +104,12 @@ export const frequenciaService = {
   },
 
     async syncFrequencias() {
-      return syncManager.downloadTableBatch('frequencias', new Date(0));
+      if(navigator.onLine)
+        return Promise.all([syncManager.uploadTableBatch('frequencias'),
+          syncManager.downloadTableBatch('frequencias', new Date(0))
+        ])
+      throw new Error("sem net")
+      
     },
   
   // ✅ Função auxiliar para marcar como pendente

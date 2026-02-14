@@ -19,6 +19,7 @@ interface StudentModalProps {
   setAlunoSelecionado: (aluno: AlunoDesempenho | null) => void;
   loadTurmaDetails?: ()=>void 
   onNotaAdicionada?: () => void;
+  initialTab?: 'overview' | 'notas' | 'analise';
 }
 
 interface DisciplinaStats {
@@ -33,7 +34,8 @@ export const StudentModal = ({
   alunoSelecionado,
   setAlunoSelecionado,
   loadTurmaDetails,
-  onNotaAdicionada
+  onNotaAdicionada,
+  initialTab = 'overview'
 }: StudentModalProps) => {
   const [abaAtiva, setAbaAtiva] = useState<'overview' | 'notas' | 'analise'>('overview');
   const [config, setConfig] = useState<string[]>([]);
@@ -69,6 +71,12 @@ export const StudentModal = ({
     setStatsDisciplinas(stats);
     setMediaGeral(mediaTotal);
   }, []);
+
+  useEffect(() => {
+    if (alunoSelecionado) {
+      setAbaAtiva(initialTab);
+    }
+  }, [alunoSelecionado, initialTab]);
 
   useEffect(() => {
     const avaliacoes= async () =>{

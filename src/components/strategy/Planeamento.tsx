@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { 
   FiBookOpen, 
   FiCheckCircle, 
@@ -16,204 +16,341 @@ import {
   FiAlertCircle
 } from "react-icons/fi";
 import { Meta } from "../../types/eventos";
-import { useNavigate } from "react-router-dom";
-import { useConfirmModal } from "../ui/ComfirmModal";
-import { estrategiaService } from "../../services/database/estrategiaService";
+import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAlert } from "../ui/AlertBadge";
-import PlanejamentoTrimestral from "./PlaneamentoTrimestral";
-import { PlanejamentoDiario } from "./PlaneamentoDiario";
-import { PlanejamentoAnual } from "./PlaneamentoAnual";
-import PlanejamentoMensal from "./PlaneamentoMensal";
-import { PlanejamentoSemanal } from "./PlaneamentoSemanal";
+import PlaneamentoMensalComponent from "./PlaneamentoMensal";
+import { PlaneamentoSemanal } from "./PlaneamentoSemanal";
 import { RxTable, RxTarget } from "react-icons/rx";
 import { FaPaperPlane, FaToiletPaper, FaTradeFederation } from "react-icons/fa";
 import { logoBlack } from "../auth/Login";
+import { ModalPlaneamento } from "./modals";
+import type {
+  PlaneamentoMensal as PlaneamentoMensalType,
+  PlaneamentoSemanal as PlaneamentoSemanalType,
+  PlaneamentoDiario as PlaneamentoDiarioType,
+} from "../../types/planeamento";
+import { es, se } from "date-fns/locale";
+import { estrategiaPlaneamentoService } from "../../services/database/estrategia/planeamentoService";
+import { generateUniqueId } from "../../utils/idGenarator";
+import { PlaneamentoDiario } from "./PlaneamentoDiario";
+import { SyncStatusBadge } from "../ui/SyncStatusBadge";
 
+// PlaneamentoComponent.tsx
 const PlaneamentoComponent = ({ metas, setMetas }: { 
   metas: Meta[], 
   setMetas: React.Dispatch<React.SetStateAction<Meta[]>> 
 }) => {
+  const { tipo } = useParams();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'semanal' | 'anual' | 'mensal' | 'trimestral'|'diaria'>('diaria');
-  const { showAlert } = useAlert(); 
-  const { confirm, ModalComponent } = useConfirmModal();
-  const [expandedMeta, setExpandedMeta] = useState<string | null>(null);
+  
+  // ========== ESTADOS ==========
+  const [viewMode, setViewMode] = useState<'diario' | 'semanal' | 'mensal'>(
+    (tipo as 'diario' | 'semanal' | 'mensal') || 'diario'
+  );
+  const [planejamento, setPlanejamento] = useState<any>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [modo, setModo] = useState<'visualizacao' | 'criacao'>('criacao');
+  const [isOpen, setOpen] = useState(false);
+  const [dataAtual, setDataAtual] = useState(new Date());
+  
+  const { showAlert } = useAlert();
 
-  const toggleMeta = (id: string) => {
-    setExpandedMeta(expandedMeta === id ? null : id);
-  };
+  // ========== EFFECT 1: SINCRONIZAR URL COM VIEWMODE ==========
+  useEffect(() => {
+    // Validar tipo da URL
+    if (tipo === 'diario' || tipo === 'semanal' || tipo === 'mensal') {
+      setViewMode(tipo);
+    } else {
+      // Redirecionar para diário se URL inválida
+      navigate('/estrategia/planeamento/diario', { replace: true });
+    }
+  }, [tipo, navigate]);
 
-  const getMetaIcon = (tipo: string) => {
-    switch(tipo) {
-      case 'academica': return <FiBookOpen className="text-blue-500" />;
-      case 'financeira': return <FiDollarSign className="text-green-500" />;
-      case 'operacional': return <FiSettings className="text-purple-500" />;
-      case 'marketing': return <FiTrendingUp className="text-orange-500" />;
-      case 'infraestrutura': return <FiSettings className="text-indigo-500" />;
-      case 'qualidade': return <FiCheckCircle className="text-teal-500" />;
-      default: return <FiTarget className="text-gray-500" />;
+  // ========== EFFECT 2: CARREGAR DADOS QUANDO MUDAR VIEWMODE OU DATA ==========
+  useEffect(() => {
+    carregarPlanejamento();
+  }, [viewMode, dataAtual]); // ← ESSENCIAL!
+
+  // ========== FUNÇÃO DE CARREGAMENTO ==========
+  const carregarPlanejamento = async () => {
+    try {
+      setCarregando(true);
+      
+      let planejamento = null;
+      const dataStr = dataAtual.toISOString().split('T')[0];
+      
+      switch(viewMode) {
+        case 'diario':
+          planejamento = await estrategiaPlaneamentoService.getPlanejamentoDiario(dataStr);
+          break;
+        case 'semanal':
+          planejamento = await estrategiaPlaneamentoService.getPlanejamentoSemanal(dataStr);
+          break;
+        case 'mensal':
+          planejamento = await estrategiaPlaneamentoService.getPlanejamentoMensal(dataStr);
+          break;
+      }
+      
+      if (planejamento) {
+        setPlanejamento(planejamento);
+        setModo('visualizacao');
+      } else {
+        setPlanejamento(null);
+        setModo('criacao');
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar',
+        message: `Não foi possível carregar o planejamento ${viewMode}.`,
+        duration: 3000
+      });
+    } finally {
+      setCarregando(false);
     }
   };
 
-  const getStatusColor = (status: Meta['status']) => {
-    switch (status) {
-      case 'concluida': return 'bg-green-100 text-green-800';
-      case 'em_andamento': return 'bg-blue-100 text-blue-800';
-      case 'atrasada': return 'bg-red-100 text-red-800';
-      case 'suspensa': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // ========== BOTÕES DE NAVEGAÇÃO - SIMPLES E LIMPOS ==========
+  const botoes = [
+    { id: 'diario', label: 'Diário' },
+    { id: 'semanal', label: 'Semanal' },
+    { id: 'mensal', label: 'Mensal' }
+  ];
+
+  function onCloseModalEstrategia(): void {
+    setOpen(false);
+
+  }
+// ========== FUNÇÃO DE SALVAR PLANEJAMENTO ==========
+async function salvarPlaneamento(
+  planejamento: Partial<PlaneamentoDiarioType | PlaneamentoSemanalType | PlaneamentoMensalType>
+) {
+  try {
+    // Validar dados mínimos
+    if (!planejamento || Object.keys(planejamento).length === 0) {
+      toast.error('Dados do planejamento inválidos');
+      return;
     }
-  };
 
-  const getPrioridadeColor = (prioridade: Meta['prioridade']) => {
-    switch (prioridade) {
-      case 'critica': return 'bg-red-500 text-white';
-      case 'alta': return 'bg-orange-500 text-white';
-      case 'media': return 'bg-yellow-500 text-black';
-      case 'baixa': return 'bg-green-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
+    // Garantir que temos um ID
+    const id = planejamento.id || generateUniqueId();
+    const agora = new Date().toISOString();
 
-  const formatarData = (dataString: string) => {
-    return new Date(dataString).toLocaleDateString('pt-AO', {
-      day: '2-digit',
-      month: 'short'
-    });
-  };
+    // Base do planejamento com campos comuns
+    const basePlanejamento = {
+      ...planejamento,
+      id,
+      tipo: viewMode, // Usar viewMode atual
+      updated_at: agora,
+      sync_status: 'pending' as const
+    };
 
-  const calcularDiasRestantes = (dataFim: string) => {
-    const hoje = new Date();
-    const fim = new Date(dataFim);
-    const diff = Math.ceil((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
+    // SE TEM ID → EDIÇÃO
+    if (planejamento.id) {
+      // Buscar dados existentes para preservar created_at
+      const existente = await estrategiaPlaneamentoService.getPlanoById(planejamento.id);
+      
+      const planejamentoAtualizado = {
+        ...basePlanejamento,
+        tipo: viewMode, // Garantir que o tipo seja atualizado
+        created_at: existente?.created_at || agora,
+        status: planejamento.status || existente?.status || 'rascunho',
+        progresso: planejamento.progresso ?? existente?.progresso ?? 0
+      };
 
-  const handleDelete = async (metaId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-      const confirmed = await confirm({
-          type: 'delete',
-          title: 'Excluir Meta',
-          message: `'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.'`,
-          isDestructive: true,
-          confirmText: 'Excluir',
-          onConfirm: async () => {
-            try {
-              await estrategiaService.deleteMeta(metaId);
-              const m=metas.find(meta => meta.id == metaId);      
-              setMetas(metas.filter(meta => meta.id !== metaId));      
-              // Fechar se estiver expandida
-              if (expandedMeta === metaId) {
-                setExpandedMeta(null);
-              }
-              toast.success('Meta excluída com sucesso!');
-              showAlert({
-                type: 'success',
-                title: 'Meta excluída!',
-                message: `Meta da ${m?.titulo} foi removida do sistema.`,
-                duration: 3000
-              });
-              
-            } catch (error) {
-              showAlert({
-                type: 'error',
-                title: 'Meta ao excluir',
-                message: 'Não foi possível excluir a meta. Verifique sua conexão.',
-                duration: 5000
-              });
-            }
-          }
+      const resultado = await estrategiaPlaneamentoService.updatePlano(
+        planejamento.id,
+        planejamentoAtualizado
+      );
+
+      if (resultado.success) {
+        // Atualizar estado local
+        setPlanejamento(planejamentoAtualizado as any);
+        setModo('visualizacao');
+        
+        toast.success('Planejamento atualizado com sucesso!');
+        showAlert({
+          type: 'success',
+          title: 'Sucesso!',
+          message: 'Planejamento atualizado.',
+          duration: 3000
         });
-  };
+      }
+
+    // SENÃO → CRIAÇÃO
+    } else {
+      const novoPlanejamento = {
+        ...basePlanejamento,
+        created_at: agora,
+        status: 'rascunho' as const,
+        progresso: 0,
+        // Campos específicos por tipo (já devem vir do modal)
+        ...(viewMode === 'diario' && {
+          horarios: planejamento.horarios || [],
+          focos: planejamento.focos || [],
+          lembretes: planejamento.lembretes || []
+        }),
+        ...(viewMode === 'semanal' && {
+          dias: planejamento.dias || [],
+          objetivos_semanais: planejamento.objetivos_semanais || [],
+          metas_prioritarias: planejamento.metas_prioritarias || []
+        }),
+        ...(viewMode === 'mensal' && {
+          semanas: planejamento.semanas || [],
+          metas_mensais: planejamento.metas_mensais || []
+        })
+      };
+
+      const novoId = await estrategiaPlaneamentoService.savePlano(novoPlanejamento);
+      
+      if (novoId) {
+        // Recarregar planejamento após criar
+        await carregarPlanejamento();
+        
+        toast.success('Planejamento criado com sucesso!');
+        showAlert({
+          type: 'success',
+          title: 'Sucesso!',
+          message: 'Novo planejamento criado.',
+          duration: 3000
+        });
+      }
+    }
+
+    // Fechar modal em ambos os casos
+    setOpen(false);
+    setTipoEstrategia(null);
+
+  } catch (error) {
+    console.error('❌ Erro ao salvar planejamento:', error);
+    
+    toast.error('Erro ao salvar planejamento');
+    showAlert({
+      type: 'error',
+      title: 'Erro!',
+      message: 'Não foi possível salvar o planejamento. Tente novamente.',
+      duration: 5000
+    });
+  }
+}
 
   return (
     <div className="p-6 dark:bg-gray-800">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8">
-              <div>
-                <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center justify-between">
         <div>
-          <h2 className="text-2xl  font-bold text-gray-800 dark:text-white flex gap-3 items-center">
-            <FaPaperPlane/>
-            Planeamento Escolar
-          </h2>
+          <div className="flex gap-3">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex gap-3 items-center">
+              <FiBarChart2 />
+              Planeamento Escolar
+            
+            </h2>
+          <SyncStatusBadge tableName="planeamentos"/>
+          </div>
+
+          
           <p className="text-gray-600 dark:text-gray-300 mt-1">
             Gerencie e acompanhe o progresso dos planos da escola
           </p>
         </div>
         
-      </div>
-        </div>
-            
-            <div className="flex items-center space-x-3">
-            {/* Modos de visualização */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
-                {[
-                {
-                id:"diaria",
-                label:"Diária"},
-                {
-                id:"semanal",
-                label:"Semanal"},
-                {
-                id:"mensal",
-                label:"Mensal"},    
-                {
-                id:"trimestral",
-                label:"Trimestral"},
-                {id:"anual",
-                label:"Anual"},
-                ]
-                .map((r)=>{
-                return <button
-                onClick={() => setViewMode(r.id)}
-                className={`px-4 py-2 rounded-lg ${viewMode === r.id ? 'bg-white shadow' : ''}`}
-                >
+        {/* ✅ BOTÕES SIMPLES - SÓ NAVEGAM! */}
+        <div className="flex items-center space-x-3">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            {botoes.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => {navigate(`/estrategia/planeamento/${r.id}`);setPlanejamento(null);}}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  viewMode === r.id 
+                    ? 'bg-white shadow font-medium' 
+                    : 'hover:bg-gray-200'
+                }`}
+              >
                 {r.label}
-                </button>
-                
-                })
-                }
-                
-            </div>
-            
+              </button>
+            ))}
+          </div>
         </div>
-    </div>
-
-      {/* Lista de Metas */}
-      <div className="space-y-4">
-        {metas.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
-            <FiTarget className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Nenhuma meta cadastrada
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Comece criando sua primeira meta estratégica
-            </p>
-            <button 
-              onClick={() => navigate("/estrategia/metas/nova")}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Criar Primeira Meta
-            </button>
+      </div>
+      
+      {/* Modal - sem mudanças */}
+      {isOpen && (
+        <ModalPlaneamento 
+          isOpen={isOpen} 
+          tipo={viewMode}
+          onClose={onCloseModalEstrategia} 
+          planeamentoExistente={planejamento} 
+          onSave={(planeamento) => salvarPlaneamento(planeamento)}
+          userNome={localStorage.getItem('usuario_nome') || 'Usuário'}
+        />
+      )}
+      
+      {/* Lista de Metas / Planejamento */}
+      <div className="space-y-4 mt-6">
+        {carregando ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          viewMode==="semanal"?(
-            <PlanejamentoSemanal/>
-          )
-          :
-        viewMode==="trimestral"?<PlanejamentoTrimestral 
-              trimestre={Math.ceil((new Date().getMonth() + 1) / 3)}
-              ano={new Date().getFullYear()}
-              metas={metas}
-              tarefas={[]}
-              onTrimestreChange={(trimestre, ano) => console.log('Trimestre alterado:', trimestre, ano)}
-            />
-        :viewMode ==="diaria"?<PlanejamentoDiario/>
-        :viewMode==="anual"?<PlanejamentoAnual ano={2025} metasAnuais={[]}/>
-        :viewMode==="mensal"&&<PlanejamentoMensal mes={new Date(2025, 0, 1)} metas={metas} tarefas={[]}/>
-        
+          <>
+            {metas.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-700 rounded-xl">
+                <FiTarget className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Nenhuma meta cadastrada
+                </h3>
+                <button 
+                  onClick={() => navigate("/estrategia/metas/nova")}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Criar Primeira Meta
+                </button>
+              </div>
+            ) : (
+              <>
+                {viewMode === 'diario' && (
+                  <PlaneamentoDiario 
+                    carregando={carregando}
+                    setCarregando={setCarregando}
+                    criarPlaneamento={() => setOpen(true)}
+                    planejamento={planejamento as PlaneamentoDiarioType}
+                    setPlanejamento={setPlanejamento}
+                    modo={modo}
+                    setModo={setModo}
+                    dataAtual={dataAtual}
+                    setDataAtual={setDataAtual}
+                  />
+                )}
+                {viewMode === 'semanal' && (
+                  <PlaneamentoSemanal 
+                    carregando={carregando}
+                    setCarregando={setCarregando}
+                    criarPlaneamento={() => setOpen(true)}
+                    planejamento={planejamento as PlaneamentoSemanalType}
+                    setPlanejamento={setPlanejamento}
+                    modo={modo}
+                    setModo={setModo}
+                    dataAtual={dataAtual}
+                    setDataAtual={setDataAtual}
+                  />
+                )}
+                {viewMode === 'mensal' && (
+                  <PlaneamentoMensalComponent 
+                    carregando={carregando}
+                    setCarregando={setCarregando}
+                    criarPlaneamento={() => setOpen(true)}
+                    planejamento={planejamento as PlaneamentoMensalType}
+                    setPlanejamento={setPlanejamento}
+                    modo={modo}
+                    setModo={setModo}
+                    dataAtual={dataAtual}
+                    setDataAtual={setDataAtual}
+                  />
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

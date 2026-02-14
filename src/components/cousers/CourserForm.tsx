@@ -66,7 +66,7 @@ export const CourseForm = () => {
     try {
       if (isEditing) {;
         showAlert({
-          title:"Operação concluida",
+          title:"Operação concluída",
           type:"success",
           duration:3000,
           message:"Curso atualizado com sucesso"
@@ -75,7 +75,7 @@ export const CourseForm = () => {
         cursosService.updateCourse(id||"",formData)
       } else {
          showAlert({
-          title:"Operação concluida",
+          title:"Operação concluída",
           type:"success",
           duration:3000,
           message:"Curso criado com sucesso"

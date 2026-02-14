@@ -19,6 +19,7 @@ import { KPIManager } from '../../components/strategy/KPIManager';
 import { SubMetasManager } from '../../components/strategy/SubMetasManager';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
+import { estrategiaMetaService } from '../../services/database/estrategia/metaService';
 
 export const MetaDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +42,7 @@ export const MetaDetailsPage: React.FC = () => {
   const carregarMeta = async () => {
     try {
       setLoading(true);
-      const metaData = await estrategiaService.getMetasID(id!);
+      const metaData = await estrategiaMetaService.getMetasID(id!);
       console.log(metaData)
       setMeta(metaData);
     } catch (error) {
@@ -181,7 +182,6 @@ export const MetaDetailsPage: React.FC = () => {
   const tabs = [
     { id: 'overview', label: 'Visão Geral', icon: FiTarget },
     { id: 'kpis', label: 'Indicadores', icon: FiBarChart2, count: meta.kpis?.length },
-    { id: 'submetas', label: 'Sub-metas', icon: FiCheckSquare, count: meta.submetas?.length },
     { id: 'financas', label: 'Finanças', icon: FiDollarSign }
   ];
 
@@ -230,14 +230,16 @@ export const MetaDetailsPage: React.FC = () => {
                 <FiRefreshCw className={`h-4 w-4 ${atualizando ? 'animate-spin' : ''}`} />
                 {atualizando ? 'Atualizando...' : 'Atualizar'}
               </button>
-              
-              <button
+              {
+                (meta.orcamento_previsto&&meta.orcamento_previsto>0)&&<button
                 onClick={() => setShowAlocacaoModal(true)}
                 className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:opacity-90 flex items-center gap-2"
               >
                 <FiDollarSign className="h-4 w-4" />
                 Alocar Recursos
               </button>
+              }
+              
               
               <button
                 onClick={() => navigate(`/estrategia/metas/editar/${meta.id}`)}
@@ -345,24 +347,7 @@ export const MetaDetailsPage: React.FC = () => {
             </div>
           </motion.div>
           
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{delay:0.2}} className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-100 dark:bg-green-800 rounded-lg">
-                <FiCheckSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {subMetasCompletas}/{meta.submetas?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">
-                  Sub-metas Concluídas
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          
           
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
@@ -448,28 +433,10 @@ export const MetaDetailsPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <FiTarget className="text-blue-500" />
-                    Critérios SMART
+                    Descricao
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Específico</h4>
-                      <p className="text-gray-900 dark:text-white">{meta.especifico}</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Mensurável</h4>
-                      <p className="text-gray-900 dark:text-white">{meta.mensuravel}</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Atingível</h4>
-                      <p className="text-gray-900 dark:text-white">
-                        {meta.atingivel ? 'Sim' : 'Não'}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Relevante</h4>
-                      <p className="text-gray-900 dark:text-white">{meta.relevante}</p>
-                    </div>
-                   
+                    {meta.descricao}
                   </div>
                 </div>
 
@@ -520,10 +487,7 @@ export const MetaDetailsPage: React.FC = () => {
               <KPIManager meta={meta} onUpdate={carregarMeta} />
             )}
 
-            {/* Sub-metas */}
-            {activeTab === 'submetas' && (
-              <SubMetasManager meta={meta} onUpdate={carregarMeta} />
-            )}
+            
 
             {/* Finanças */}
             {activeTab === 'financas' && (

@@ -5,7 +5,9 @@ import {
   FiEdit2, FiTrash2, FiFilter, FiRefreshCw, FiX,
   FiBarChart2, FiTarget, FiMessageSquare, FiCheckCircle,
   FiUpload, FiDownload, FiTrendingUp, FiEye, FiStar,
-  FiAlertCircle
+  FiCopy,
+  FiAlertCircle,
+  FiTrendingDown
 } from 'react-icons/fi';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { AulaForm } from '../../components/aulas/AulaForm.tsx';
@@ -31,6 +33,12 @@ import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
 import { getPendingCount } from '../../utils/emitPendingSync.ts';
 import {  useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import { getDiaSemanaFromDate } from '../../utils/getDiaDaSemana.ts';
+import { HeatmapHorarios } from '../../components/aulas/HeatmapHorarios.tsx';
+import { ModalPlanoAula } from '../../components/aulas/PlanoAulasModal.tsx';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail.tsx';
+import { planoAulaService, PlanoAula } from '../../services/database/planoAulasService.ts';
+import CalendarioMini from '../../components/aulas/CalendarioMin.tsx';
 
 export const AulasPage = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -56,19 +64,192 @@ export const AulasPage = () => {
   const [alunos,setAlunos]=useState<Student[]>([])
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const [syncStats, setSyncStats] = useState(0);
+  const [showPlaneamento, setShowPlaneamento] = useState(false);
+  const [periodoPlaneamento, setPeriodoPlaneamento] = useState('Esta semana');
+  const [planosAula, setPlanosAula] = useState<PlanoAula[]>([]);
+  const [planoDetalhes, setPlanoDetalhes] = useState<PlanoAula | null>(null);
+  const [planoTemplate, setPlanoTemplate] = useState<Partial<PlanoAula> | null>(null);
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); 
   const [isExpanded,setExpanded]=useState(false)
   const [metas,setMetas]=useState<{
                       label:string,
                       atual:number,
-                      meta:{
+                      meta:number,
+                      kpi:{
                         label:string,
                         atual:number,
                         meta:number
                       }[]|undefined
                     }[]>([])
     // Atualizar contador de filtros
+  const [periodoAnalise, setPeriodoAnalise] = useState('30dias');
+
+  // No seu AulasPage.tsx
+
+
+// Adicione esta função para preparar os dados:
+const prepararDadosHeatmap = useMemo(() => {
+  return aulas.map(aula => ({
+    dia: getDiaSemanaFromDate(aula.data_aula),
+    horario: aula.hora_inicio?.split(':')[0] + ':00',
+    aulas: 1,
+    turmas: [aula.turmas?.nome_turma].filter(Boolean)
+  }));
+}, [aulas]);
+  // Gerar dados para análise
+  const dadosEvolucaoSemanal = useMemo(() => {
+    // Implementar lógica para gerar dados semanais
+    return Array.from({ length: 4 }, (_, i) => ({
+      semana: `Sem ${i + 1}`,
+      aulas: Math.floor(Math.random() * 20) + 10,
+      participacao: Math.floor(Math.random() * 30) + 60
+    }));
+  }, [aulas]);
+
+  const periodoPlaneamentoRange = useMemo(() => {
+    const hoje = new Date();
+    const inicio = new Date(hoje);
+    inicio.setHours(0, 0, 0, 0);
+    const fim = new Date(hoje);
+    fim.setHours(23, 59, 59, 999);
+
+    if (periodoPlaneamento === 'Próxima semana') {
+      inicio.setDate(inicio.getDate() + 7);
+      fim.setDate(fim.getDate() + 13);
+      return { inicio, fim };
+    }
+
+    if (periodoPlaneamento === 'Este mês') {
+      return {
+        inicio: new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0),
+        fim: new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999)
+      };
+    }
+
+    fim.setDate(fim.getDate() + 6);
+    return { inicio, fim };
+  }, [periodoPlaneamento]);
+
+  const proximasAulas = useMemo(() => {
+    const hoje = new Date();
+    return aulas
+      .filter((aula) => {
+        const data = new Date(aula.data_aula);
+        return data >= hoje && !aula.deleted;
+      })
+      .sort((a, b) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
+  }, [aulas]);
+
+  const dadosDesempenhoTurmas = useMemo(() => {
+    const turmasUnicas = [...new Set(aulas.map(a => a.turmas?.nome_turma))].filter(Boolean);
+    return turmasUnicas.slice(0, 5).map(turma => ({
+      turma,
+      aulas: aulas.filter(a => a.turmas?.nome_turma === turma).length,
+      participacao: Math.floor(Math.random() * 30) + 60
+    }));
+  }, [aulas]);
+
+  const metricasPorDisciplina = useMemo(() => {
+    const disciplinasUnicas = [...new Set(aulas.map(a => a.disciplina))];
+    return disciplinasUnicas.map(disciplina => ({
+      disciplina,
+      aulas: aulas.filter(a => a.disciplina === disciplina).length,
+      participacao: Math.floor(Math.random() * 30) + 60,
+      atividades: Math.floor(Math.random() * 10) + 5,
+      mediaNotas: Math.random() * 5 + 10,
+      tendencia: Math.random() > 0.5 ? Math.floor(Math.random() * 20) : -Math.floor(Math.random() * 10)
+    }));
+  }, [aulas]);
+
+  const planeamentoSemanal = useMemo(() => {
+    return aulas
+      .filter((aula) => {
+        const data = new Date(aula.data_aula);
+        return data >= periodoPlaneamentoRange.inicio && data <= periodoPlaneamentoRange.fim;
+      })
+      .sort((a, b) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime())
+      .map((aula) => ({
+        id: aula.id,
+        dia: new Date(aula.data_aula).toLocaleDateString('pt-AO', { weekday: 'long' }),
+        data: new Date(aula.data_aula).toLocaleDateString('pt-AO'),
+        horario: `${aula.hora_inicio || '--:--'} - ${aula.hora_fim || '--:--'}`,
+        disciplina: aula.disciplina,
+        turma: aula.turmas?.nome_turma || 'Sem turma',
+        tema: aula.tema_aula || aula.conteudo_ministrado || 'Sem tema definido',
+        status: aula.status
+      }));
+  }, [aulas, periodoPlaneamentoRange]);
+
+  const progressoMetas = useMemo(() => {
+    const totalMeta = metas.reduce((acc, item) => acc + (item.meta || 0), 0);
+    const totalAtual = metas.reduce((acc, item) => acc + (item.atual || 0), 0);
+    if (!totalMeta) return 0;
+    return Math.min(100, Math.round((totalAtual / totalMeta) * 100));
+  }, [metas]);
+
+  const insights = useMemo(() => {
+    const totalAulasPeriodo = planeamentoSemanal.length;
+    const ministradas = planeamentoSemanal.filter((aula) => aula.status === 'ministrada').length;
+    const adiada = planeamentoSemanal.filter((aula) => aula.status === 'adiada').length;
+    const planeadas = planeamentoSemanal.filter((aula) => aula.status === 'planeada').length;
+    const taxaExecucao = totalAulasPeriodo > 0 ? Math.round((ministradas / totalAulasPeriodo) * 100) : 0;
+
+    return [
+      {
+        icone: <FiBarChart2 className="text-blue-600" />,
+        titulo: 'Taxa de execução',
+        descricao: `${taxaExecucao}% das aulas do período já foram ministradas`
+      },
+      {
+        icone: <FiAlertCircle className="text-orange-600" />,
+        titulo: 'Aulas adiadas',
+        descricao: `${adiada} aula(s) adiada(s) no período selecionado`
+      },
+      {
+        icone: <FiTarget className="text-green-600" />,
+        titulo: 'Aulas pendentes',
+        descricao: `${planeadas} aula(s) planeada(s) por executar`
+      }
+    ];
+  }, [planeamentoSemanal]);
+
+  const checklist = useMemo(() => {
+    const hoje = new Date();
+    const aulasHoje = aulas.filter((aula) => new Date(aula.data_aula).toDateString() === hoje.toDateString());
+    const aulasHojeMinistradas = aulasHoje.filter((aula) => aula.status === 'ministrada').length;
+    const proximas7 = aulas.filter((aula) => {
+      const data = new Date(aula.data_aula);
+      const fim = new Date();
+      fim.setDate(fim.getDate() + 7);
+      return data >= hoje && data <= fim;
+    });
+
+    return [
+      {
+        tarefa: 'Aulas de hoje ministradas',
+        concluido: aulasHoje.length > 0 && aulasHojeMinistradas === aulasHoje.length,
+        prazo: 'Hoje'
+      },
+      {
+        tarefa: 'Planeamento dos próximos 7 dias',
+        concluido: proximas7.length > 0,
+        prazo: 'Esta semana'
+      },
+      {
+        tarefa: 'Metas académicas atualizadas',
+        concluido: metas.length > 0 && progressoMetas >= 50,
+        prazo: 'Mês atual'
+      },
+      {
+        tarefa: 'Planos de aula criados',
+        concluido: planosAula.length > 0,
+        prazo: 'Contínuo'
+      }
+    ];
+  }, [aulas, metas, planosAula, progressoMetas]);
+
+  
   useEffect(() => {
     let count = 0;
     if (filtroData) count++;
@@ -118,49 +299,7 @@ export const AulasPage = () => {
     };
 
 
-  const CustomLegend = ({ payload }:{payload:any}) => {
-    console.log(payload)
-    return <div className="flex flex-wrap justify-center gap-2 mt-4">
-      {payload.map((entry:any, index:any) => (
-        <div
-          key={`legend-${index}`}
-          className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-500  rounded-full text-xs cursor-pointer hover:bg-gray-100 transition-colors"
-        >
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span>
-            {entry.payload.nome}
-          </span>
-        </div>
-      ))}
-    </div>
-  };
-
-  const CustomTooltip = ({ active, payload }:{active:any,payload:any}) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800  p-4 border border-gray-200 rounded-lg shadow-xl">
-          <p className="font-bold text-gray-900 mb-2 dark:text-gray-300">{data.name}</p>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-600 dark:text-gray-50">Disciplina:</span>
-              <span className="font-semibold dark:text-white">{data.nome}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-green-600 ">Total:</span>
-              <span className="font-semibold dark:text-white">{data.value || 0}</span>
-            </div>
-          
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
+  
 
   // Filtros expandíveis
   const renderFilters = () => {
@@ -242,7 +381,7 @@ export const AulasPage = () => {
   };
 
   // Estado para controlar a aba ativa
-  const [activeTab, setActiveTab] = useState<'lista' | 'graficos' | 'planeamento'>('lista');
+  const [activeTab, setActiveTab] = useState<'lista' | 'graficos' | 'planeamento' | 'planos'>('lista');
 
   // Carregar dados
   useEffect(() => {
@@ -259,15 +398,17 @@ export const AulasPage = () => {
     try {
       setLoading(true);
     
-      const [aulasData, turmasData, stats,metasP] = await Promise.all([
+      const [aulasData, turmasData, stats, metasP, planosData] = await Promise.all([
         aulaService.getAulasRecentes(),
         turmaService.getTurmas(),
         aulaService.getEstatisticas(),
-        estrategiaService.getMetasAdemicas()
+        estrategiaService.getMetasAdemicas(),
+        planoAulaService.getPlanos()
       ]);
       setMetas(metasP)
       setAulas(aulasData);
       setTurmas(turmasData || []);
+      setPlanosAula(planosData || []);
       const horarios=[]
       for (const turm of turmasData) {
         if(turm.horarios)
@@ -420,6 +561,7 @@ export const AulasPage = () => {
     }
 
     try {
+      
       await aulaService.criarAula({
         turma_id: quickAddTurma,
         data_aula: quickAddData,
@@ -428,7 +570,8 @@ export const AulasPage = () => {
         hora_fim: '09:30',
         tema_aula: 'Aula do dia',
         status: 'planeada',
-        turmas: turmas.find(t => t.id === quickAddTurma)
+        turmas: turmas.find(t => t.id === quickAddTurma),
+        dia_semana:getDiaSemanaFromDate(quickAddData)
       });
       
       setShowQuickAdd(false);
@@ -457,8 +600,16 @@ export const AulasPage = () => {
       const handleOnline = () => setOnlineStatus(true);
       const handleOffline = () => setOnlineStatus(false);
       
+      const handleDbChanged = (event: Event) => {
+        const detail = (event as CustomEvent).detail;
+        if (!detail?.table || ['aulas', 'turmas', 'frequencias'].includes(detail.table)) {
+          loadData();
+        }
+      };
+
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
+      window.addEventListener('db-changed', handleDbChanged);
 
 
       // Carregar estatísticas de sincronização
@@ -486,6 +637,7 @@ export const AulasPage = () => {
       return () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('db-changed', handleDbChanged);
         window.removeEventListener('sync-pending', handleSyncUpdate);
         window.removeEventListener('sync-complete', handleSyncUpdate);
         clearInterval(interval)
@@ -566,6 +718,12 @@ export const AulasPage = () => {
       id: 'planeamento' as const, 
       label: 'Planeamento', 
       icon: <FiTarget /> 
+    },
+    { 
+      id: 'planos' as const, 
+      label: 'Planos de Aula', 
+      icon: <FiTarget />,
+      count: planosAula.length
     }
   ];
 
@@ -594,12 +752,61 @@ export const AulasPage = () => {
           onConfirm: async () => {
             const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
             setAulas(prev => prev.map((e:Aula) => aula&&e.id === aula.id ? aula : e));
-            console.log(aula)
+            console.log(status+""+aula)
           }
         });
     }
     
   }
+
+  const handleVerDetalhesPlano = async (planoId: string) => {
+    const detalhes = await planoAulaService.getPlano(planoId);
+    if (!detalhes) {
+      showAlert({
+        type: 'warning',
+        title: 'Plano não encontrado',
+        message: 'Não foi possível carregar os detalhes do plano selecionado.',
+        duration: 3000
+      });
+      return;
+    }
+    setPlanoDetalhes(detalhes);
+  };
+
+  const handleUsarTemplatePlano = async (planoId: string) => {
+    try {
+      const template = await planoAulaService.usarComoTemplate(planoId);
+      setPlanoTemplate(template);
+      setShowPlaneamento(true);
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar template',
+        message: 'Não foi possível usar este plano como template.',
+        duration: 4000
+      });
+    }
+  };
+
+  const handleGerarAulasDoPlano = async (planoId: string) => {
+    try {
+      const aulasIds = await planoAulaService.gerarAulasDoPlano(planoId);
+      showAlert({
+        type: 'success',
+        title: 'Aulas geradas com sucesso',
+        message: `${aulasIds.length} aula(s) gerada(s) a partir do plano.`,
+        duration: 4000
+      });
+      await loadData();
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao gerar aulas',
+        message: 'Não foi possível gerar aulas a partir deste plano.',
+        duration: 4000
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen rounded-md dark:bg-gray-900 p-4 md:p-6">
@@ -650,110 +857,15 @@ export const AulasPage = () => {
         </div>
       </motion.div>
 
-      {syncStats > 0 && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="overflow-hidden mb-6"
-        >
-          <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 
-                        border border-orange-200 dark:border-orange-800 rounded-xl p-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
-                  <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
-                    <FiAlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-1">
-                    {syncStats} aula{syncStats !== 1 ? 's' : ''} pendente{syncStats !== 1 ? 's' : ''}
-                  </h3>
-                  <p className="text-sm text-orange-700 dark:text-orange-400/80">
-                    {!onlineStatus 
-                      ? 'Conecte-se à internet para sincronizar os dados.'
-                      : 'Estes registros foram modificados offline e aguardam sincronização.'}
-                  </p>
-                </div>
-              </div>
-
-              {(
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleForceSync}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white 
-                            font-medium rounded-lg text-sm transition-colors"
-                  >
-                    Sincronizar Agora
-                  </button>
-                  <button
-                    onClick={() => {setExpanded(!isExpanded)}}
-                    className="px-4 py-2 border border-orange-300 dark:border-orange-700 
-                            text-orange-700 dark:text-orange-400 font-medium rounded-lg 
-                            text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 
-                            transition-colors"
-                  >
-                    {isExpanded?"Ocultar":"Ver Detalhes"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Detalhes Expandíveis */}
-            <motion.div
-              initial={false}
-              animate={{ height: isExpanded ? 'auto' : 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
-                <div className="space-y-3">
-                  {aulas
-                    .filter(curso => curso.sync_status === 'pending')
-                    .slice(0, 3)
-                    .map((curso, index) => (
-                      <motion.div
-                        key={curso.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 
-                                rounded-lg border border-orange-100 dark:border-orange-900/50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900 
-                                        flex items-center justify-center">
-                            <FiBook className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {curso.tema_aula} • {curso.disciplina}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {curso.hora_inicio} • {curso.hora_fim || 'Sem horario'}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-medium px-2.5 py-1 rounded-full 
-                                      bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
-                          {curso.id.startsWith('local_') ? 'Novo' : 'Alterado'}
-                        </span>
-                      </motion.div>
-                    ))}
-                  
-                  {syncStats > 3 && (
-                    <div className="text-center">
-                      <span className="text-sm text-orange-600 dark:text-orange-400">
-                        + {syncStats - 3} mais pendentes
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
+      {syncStats > 0 && 
+        <SyncDataDetail 
+          syncStats={syncStats} 
+          onlineStatus={onlineStatus} 
+          handleForceSync={handleForceSync}
+          table="aulas"
+          data={aulas}
+        />
+      }
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <motion.div 
@@ -991,220 +1103,528 @@ export const AulasPage = () => {
           {/* Gráficos Tab */}
           {activeTab === 'graficos' && (
             <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center mb-6">
-                <FiBarChart2 className="mr-2" />
-                Análise de Aulas
-              </h2>
-              
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                  <FiBarChart2 className="mr-2" />
+                  Análise e Estatísticas
+                </h2>
+                <div className="flex gap-2">
+                  <button className="px-4 py-2 bg-white dark:bg-gray-700 border rounded-lg flex items-center gap-2">
+                    <FiDownload /> Exportar
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                    Período: Últimos 30 dias
+                  </button>
+                </div>
+              </div>
+
+              {/* KPIs Principais */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: 'Aulas Ministradas', value: estatisticas?.ministradas || 0, icon: FiCheckCircle, color: 'green' },
+                  { label: 'Taxa Participação', value: estatisticas?.mediaParticipacao ? `${estatisticas.mediaParticipacao}%` : '0%', icon: FiUsers, color: 'blue' },
+                  { label: 'Horas de Aula', value: estatisticas?.horasTotais ? `${estatisticas.horasTotais}h` : '0h', icon: FiClock, color: 'purple' },
+                  { label: 'Alunos Presentes', value: estatisticas?.alunosPresentes || 0, icon: FiUsers, color: 'orange' }
+                ].map((kpi, idx) => (
+                  <div key={idx} className="bg-white dark:bg-gray-800 p-4 rounded-xl border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500">{kpi.label}</p>
+                        <p className="text-2xl font-bold mt-1">{kpi.value}</p>
+                      </div>
+                      <div className={`p-2 bg-${kpi.color}-100 dark:bg-${kpi.color}-900 rounded-lg`}>
+                        <kpi.icon className={`text-${kpi.color}-600`} />
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      {idx === 0 && 'No período atual'}
+                      {idx === 1 && 'Média de participação'}
+                      {idx === 2 && 'Total de horas'}
+                      {idx === 3 && 'Total de presenças'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Gráficos em Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Gráfico 1: Evolução Semanal */}
                 <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <FiCalendar className="text-blue-600" />
-                    Distribuição por Dia da Semana
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      Evolução Semanal de Aulas
+                    </h3>
+                    <span className="text-sm text-gray-500">Últimas 4 semanas</span>
+                  </div>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dadosEvolucaoSemanal}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="semana" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip />
+                        <Line 
+                          type="monotone" 
+                          dataKey="aulas" 
+                          stroke="#3B82F6" 
+                          strokeWidth={3}
+                          dot={{ r: 4 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="participacao" 
+                          stroke="#10B981" 
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Gráfico 2: Comparativo Turmas */}
+                <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                    Desempenho por Turma
                   </h3>
                   <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dadosGraficoAulasPorDia}>
+                      <BarChart data={dadosDesempenhoTurmas}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="dia" stroke="#9CA3AF" />
+                        <XAxis dataKey="turma" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px'
-                          }}
-                        />
-                        <Bar 
-                          dataKey="aulas" 
-                          fill="#3B82F6" 
-                          radius={[4, 4, 0, 0]}
-                        />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="aulas" fill="#3B82F6" name="Total Aulas" />
+                        <Bar dataKey="participacao" fill="#10B981" name="Participação (%)" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <FiBook className="text-green-600" />
-                    Distribuição por Disciplina
-                  </h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dadosGraficoDisciplinas}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={(entry) => `${entry.nome}: ${entry.value}`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {dadosGraficoDisciplinas.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip/>} />
-                        <Legend content={<CustomLegend  />} />
-                      </PieChart>
-                    </ResponsiveContainer>
+               
+               
+              </div>
+
+              {/* Tabela de Métricas Detalhadas */}
+              <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  Métricas Detalhadas por Disciplina
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3">Disciplina</th>
+                        <th className="text-left py-3">Aulas</th>
+                        <th className="text-left py-3">Participação</th>
+                        <th className="text-left py-3">Atividades</th>
+                        <th className="text-left py-3">Média Notas</th>
+                        <th className="text-left py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metricasPorDisciplina.map((metrica, idx) => (
+                        <tr key={idx} className="border-b hover:bg-gray-100 dark:hover:bg-gray-700">
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
+                                <FiBook className="text-blue-600" />
+                              </div>
+                              {metrica.disciplina}
+                            </div>
+                          </td>
+                          <td className="py-3">{metrica.aulas}</td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${metrica.participacao}%` }}
+                                />
+                              </div>
+                              {metrica.participacao}%
+                            </div>
+                          </td>
+                          <td className="py-3">{metrica.atividades}</td>
+                          <td className="py-3">{metrica.mediaNotas.toFixed(1)}</td>
+                          <td className="py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs flex w-min flex-nowrap ${
+                              metrica.tendencia > 0 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {metrica.tendencia > 0 ? <FiTrendingDown/> : <FiTrendingUp/>} {Math.abs(metrica.tendencia)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Planeamento Tab */}
+          {activeTab === 'planeamento' && (
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <FiTarget className="mr-2" />
+                Planeamento e Monitoramento
+              </h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowPlaneamento(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2"
+                >
+                  <FiCalendar /> Novo Planeamento
+                </button>
+              </div>
+            </div>
+            
+            {/* Cards de Visão Geral */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Card 1: Próximas Aulas */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Próximas Aulas</h3>
+                  <span className="text-sm text-gray-500">{periodoPlaneamento}</span>
+                </div>
+                <div className="space-y-3">
+                  {proximasAulas.slice(0, 3).map(aula => (
+                    <div key={aula.id} className="p-3 border rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">{aula.disciplina}</div>
+                          <div className="text-sm text-gray-600">{aula.turmas?.nome_turma}</div>
+                        </div>
+                        <span className="text-sm font-semibold">{aula.hora_inicio || '--:--'}-{aula.hora_fim || '--:--'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                          {aula.dia_semana}
+                        </span>
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                          {aula.disciplina}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="w-full mt-4 text-center text-blue-600 hover:text-blue-800 text-sm">
+                  Ver todas ({proximasAulas.length})
+                </button>
+              </div>
+
+              {/* Card 2: Metas do Mês */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Metas do Mês</h3>
+                  <span className="text-sm text-green-600">{progressoMetas}% concluído</span>
+                </div>
+                <div className="space-y-4">
+                  {metas.slice(0, 3).map((meta, idx) => (
+                    <div key={idx}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>{meta.label}</span>
+                        <span>{meta.atual}/{meta.meta}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${
+                            meta.atual >= meta.meta ? 'bg-green-600' : 
+                            meta.atual >= meta.meta * 0.7 ? 'bg-yellow-500' : 
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${(meta.atual / meta.meta) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span>Progresso Geral</span>
+                    <span className="font-semibold">{progressoMetas}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full" style={{ width: `${progressoMetas}%` }} />
                   </div>
                 </div>
               </div>
 
-              {/* Estatísticas Detalhadas */}
-              {estatisticas && (
-                <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                    <FiTrendingUp className="text-purple-600" />
-                    Estatísticas Avançadas
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white">Status das Aulas</h4>
-                      <div className="space-y-3">
-                        {Object.entries(estatisticas.porStatus || {}).map(([status, count]) => (
-                          <div key={status} className="flex justify-between items-center">
-                            <span className="text-gray-700 dark:text-gray-300 capitalize">{status}</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">{count as number}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white">Top Turmas</h4>
-                      <div className="space-y-3">
-                        {estatisticas.topTurmas?.slice(0, 5).map((turma: any) => (
-                          <div key={turma.id} className="flex justify-between items-center">
-                            <span className="text-gray-700 dark:text-gray-300 truncate">{turma.nome_turma}</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">{turma.aulas.length} aulas</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white">Indicadores</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-700 dark:text-gray-300">Média Duração</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {estatisticas.mediaDuracao || '0'} min
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-700 dark:text-gray-300">Taxa Cancelamento</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {estatisticas.taxaCancelamento || '0'}%
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-700 dark:text-gray-300">Aulas/Mês</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {estatisticas.aulasPorMes || '0'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Card 3: Calendário Mini */}
+              <CalendarioMini aulas={aulas} />
             </div>
-          )}
 
-          {/* Planeamento Tab */}
-          {activeTab === 'planeamento' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center mb-6">
-                <FiTarget className="mr-2" />
-                Planeamento
-              </h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <FiCalendar className="text-red-600" />
-                    Próximas Aulas Agendadas
-                  </h3>
-                  <div className="space-y-3">
-                    {aulas
-                      .filter(a => {
-                        console.log(new Date(a.data_aula).getUTCDate())
-                        console.log(new Date().getUTCDate())
-                        return new Date(a.data_aula).getUTCDate() >= new Date().getUTCDate() && a.status === 'planeada'
-                      })
-                      .sort((a, b) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime())
-                      .slice(0, 5)
-                      .map(aula => (
-                        <div key={aula.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-lg">
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">{aula.disciplina}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-300">
-                              {aula.turmas?.nome_turma} • {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
-                            </div>
-                          </div>
+            {/* Tabela de Planeamento Detalhado */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6">
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  Planeamento Detalhado da Semana
+                </h3>
+                <div className="w-44">
+                  <SelectTyped
+                    value={periodoPlaneamento}
+                    vect={['Esta semana', 'Próxima semana', 'Este mês']}
+                    onChange={(value: string) => setPeriodoPlaneamento(value)}
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="py-3 px-4 text-left">Dia</th>
+                      <th className="py-3 px-4 text-left">Horário</th>
+                      <th className="py-3 px-4 text-left">Disciplina</th>
+                      <th className="py-3 px-4 text-left">Turma</th>
+                      <th className="py-3 px-4 text-left">Tema</th>
+                      <th className="py-3 px-4 text-left">Status</th>
+                      <th className="py-3 px-4 text-left">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planeamentoSemanal.map((aula) => (
+                      <tr key={aula.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="py-3 px-4">
+                          <div className="font-medium">{aula.dia}</div>
+                          <div className="text-sm text-gray-500">{aula.data}</div>
+                        </td>
+                        <td className="py-3 px-4">{aula.horario}</td>
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 dark:text-gray-300">{aula.hora_inicio}</span>
+                            <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
+                              <FiBook className="text-blue-600" />
+                            </div>
+                            {aula.disciplina}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">{aula.turma}</td>
+                        <td className="py-3 px-4">
+                          <div className="max-w-xs truncate" title={aula.tema}>
+                            {aula.tema}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            aula.status === 'planeada' ? 'bg-blue-100 text-blue-800' :
+                            aula.status === 'ministrada' ? 'bg-green-100 text-green-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {aula.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
                             <button
+                              className="p-1 text-blue-600 hover:text-blue-800"
                               onClick={() => {
-                                setAulaEditando(aula);
+                                const aulaEncontrada = aulas.find((item) => item.id === aula.id);
+                                if (!aulaEncontrada) return;
+                                setAulaEditando(aulaEncontrada);
                                 setShowForm(true);
                               }}
-                              className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               <FiEdit2 size={16} />
                             </button>
+                            <button
+                              className="p-1 text-red-600 hover:text-red-800"
+                              onClick={() => {
+                                const aulaEncontrada = aulas.find((item) => item.id === aula.id);
+                                if (!aulaEncontrada) return;
+                                handleDeletarAula(aulaEncontrada);
+                              }}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
                           </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <FiStar className="text-yellow-600" />
-                    Metas do Mês
-                  </h3>
-                  <div className="space-y-4">
-                    {metas.map((op, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium text-gray-900 dark:text-white">{op.label}</span>
-                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                          <div 
-                            className="bg-green-600 h-2 rounded-full" 
-                            style={{ width: `${Math.min((op.atual / 100) * 100, 100)}%` }}
-                          />
-                        </div>
-                        {
-                          op.meta?.map((m,i)=>(
-                             <div key={index} className="ml-8 space-y-2">
-                             <div className="flex justify-between text-sm">
-                              <span className="font-medium text-gray-900 dark:text-white">{m.label}</span>
-                              
-                              <span className="text-gray-600 dark:text-gray-300">{m.atual}/{m.meta}</span>
-                            </div>
-                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                              <div 
-                                className="bg-green-600 h-2 rounded-full" 
-                                style={{ width: `${Math.min((m.atual / m.meta) * 100, 100)}%` }}
-                              />
-                            </div>
-                            </div>
-                          ))
-                        }
-                      </div>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
+                    {planeamentoSemanal.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-gray-500">
+                          Nenhuma aula encontrada para o período selecionado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          )}
+
+            {/* Seção de Insights e Recomendações */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Insights */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <FiTrendingUp /> Insights Automáticos
+                </h3>
+                <div className="space-y-4">
+                  {insights.map((insight, idx) => (
+                    <div key={idx} className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        {insight.icone}
+                        <div>
+                          <div className="font-medium">{insight.titulo}</div>
+                          <div className="text-sm text-gray-600">{insight.descricao}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Checklist de Preparação */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Checklist de Aula</h3>
+                <div className="space-y-3">
+                  {checklist.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={item.concluido} onChange={() => {}} />
+                        <span className={item.concluido ? 'line-through text-gray-500' : ''}>
+                          {item.tarefa}
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-500">{item.prazo}</span>
+                    </div>
+                  ))}
+                </div>
+                <button className="w-full mt-4 px-4 py-2 border border-dashed rounded-lg text-gray-600 hover:text-gray-800">
+                  + Adicionar nova tarefa
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Planos de Aula Tab */}
+        {activeTab === 'planos' && (
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <FiTarget className="mr-2" />
+                Planos de Aula
+              </h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPlanoTemplate(null);
+                    setShowPlaneamento(true);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2"
+                >
+                  <FiPlus /> Novo Plano
+                </button>
+              </div>
+            </div>
+
+            {planosAula.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {planosAula.map((plano) => (
+                  <div key={plano.id} className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 border">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          {plano.titulo}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {plano.disciplina}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        plano.status === 'ativo' ? 'bg-green-100 text-green-800' :
+                        plano.status === 'rascunho' ? 'bg-yellow-100 text-yellow-800' :
+                        plano.status === 'arquivado' ? 'bg-gray-100 text-gray-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {plano.status}
+                      </span>
+                    </div>
+
+                    {plano.descricao && (
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 line-clamp-2">
+                        {plano.descricao}
+                      </p>
+                    )}
+
+                    <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center justify-between">
+                        <span>Tipo</span>
+                        <span className="font-medium">{plano.tipo}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Aulas planeadas</span>
+                        <span className="font-medium">{plano.aulas_planeadas}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Aulas geradas</span>
+                        <span className="font-medium">{plano.aulas_geradas?.length || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Turmas</span>
+                        <span className="font-medium">{plano.turma_ids?.length || 0}</span>
+                      </div>
+                    </div>
+
+                    {(plano.data_inicio || plano.data_fim) && (
+                      <div className="mt-4 text-xs text-gray-500">
+                        {plano.data_inicio && (
+                          <div>Início: {new Date(plano.data_inicio).toLocaleDateString('pt-AO')}</div>
+                        )}
+                        {plano.data_fim && (
+                          <div>Fim: {new Date(plano.data_fim).toLocaleDateString('pt-AO')}</div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleVerDetalhesPlano(plano.id)}
+                        className="px-3 py-1.5 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1"
+                      >
+                        <FiEye /> Ver detalhes
+                      </button>
+                      <button
+                        onClick={() => handleUsarTemplatePlano(plano.id)}
+                        className="px-3 py-1.5 text-xs rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1"
+                      >
+                        <FiCopy /> Usar como template
+                      </button>
+                      <button
+                        onClick={() => handleGerarAulasDoPlano(plano.id)}
+                        className="px-3 py-1.5 text-xs rounded-md bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-1"
+                      >
+                        <FiUpload /> Gerar aulas
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FiTarget className="mx-auto h-16 w-16 text-gray-400" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+                  Nenhum plano de aula encontrado
+                </h3>
+                <p className="text-gray-500 dark:text-gray-300 mt-2 max-w-md mx-auto">
+                  Crie um plano de aula para organizar as suas aulas por série ou módulo.
+                </p>
+                <button
+                  onClick={() => {
+                    setPlanoTemplate(null);
+                    setShowPlaneamento(true);
+                  }}
+                  className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Criar Primeiro Plano
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         </motion.div>
       </AnimatePresence>
 
@@ -1236,7 +1656,106 @@ export const AulasPage = () => {
       </motion.div>
 
       {/* Modal Form */}
+      <ModalPlanoAula
+              isOpen={showPlaneamento}
+              onClose={() => {
+                setShowPlaneamento(false);
+                setPlanoTemplate(null);
+              }}
+              onPlanoCriado={(plano) => {
+                setShowPlaneamento(false);
+                setPlanoTemplate(null);
+                loadData();
+              }}
+              templateParaCopiar={planoTemplate}
+            />
+
       <AnimatePresence>
+        {planoDetalhes && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setPlanoDetalhes(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {planoDetalhes.titulo}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{planoDetalhes.disciplina}</p>
+                </div>
+                <button onClick={() => setPlanoDetalhes(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <FiX />
+                </button>
+              </div>
+
+              {planoDetalhes.descricao && (
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">{planoDetalhes.descricao}</p>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                  <span className="text-gray-500">Tipo</span>
+                  <div className="font-medium">{planoDetalhes.tipo}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                  <span className="text-gray-500">Status</span>
+                  <div className="font-medium">{planoDetalhes.status}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                  <span className="text-gray-500">Aulas planeadas</span>
+                  <div className="font-medium">{planoDetalhes.aulas_planeadas}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                  <span className="text-gray-500">Aulas geradas</span>
+                  <div className="font-medium">{planoDetalhes.aulas_geradas?.length || 0}</div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Objetivos de Aprendizagem</h4>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  {(planoDetalhes.objetivos_aprendizagem || []).map((objetivo, index) => (
+                    <li key={`${planoDetalhes.id}-objetivo-${index}`}>{objetivo}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Conteúdos</h4>
+                <div className="space-y-2">
+                  {(planoDetalhes.conteudos || []).map((conteudo, index) => (
+                    <div key={`${planoDetalhes.id}-conteudo-${index}`} className="border rounded-lg p-3">
+                      <div className="font-medium text-sm">{conteudo.titulo}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">{conteudo.descricao}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setPlanoDetalhes(null)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        
         {showForm && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1330,7 +1849,7 @@ export const AulasPage = () => {
                   <SelectTyped
                     vect={["Selecione a turma",...(turmas.map(t => ({value:t.id,label:t.nome_turma})))]}
                     value={quickAddTurma}
-                    onChange={(value:any) => setQuickAddTurma(turmas.includes(value)?value:null)}
+                    onChange={(value:any) => setQuickAddTurma(value)}
                     placeholder="Selecione a turma"
                   />
                 </div>

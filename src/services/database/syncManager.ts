@@ -3,6 +3,7 @@ import { alunosService, aulaService, frequenciaService, turmaService } from ".";
 import { SyncQueueItem } from "../../types/base";
 import { avaliacaoService } from "./avaliacao";
 import db, { supabase } from "./db";
+import { emitDbChanged } from "../../utils/emitPendingSync";
 
 
 // Interface para o serviço de sincronização
@@ -39,11 +40,14 @@ interface SyncManager {
   verifyAndCleanSyncQueue():any;
   debugSyncQueueIssue(tableName:string):any;
   cleanupOldItems(maxAgeHours:number):any;
+  executeDeleteToSupabase(tableName: string, recordId: string): Promise<{ data: any | null; error: any | null }>;
+  executeUpdateToSupabase(tableName: string, records: any[],record_id:string): Promise<{ data: any[] | null; error: any | null }>;
   checkIfRecordExists(tableName: string, recordId: string): Promise<boolean>;
   forceCleanSyncQueue(tableName?: string):any
   retryFailedItems(maxRetries: number):any
   getSyncStats():Promise<any>
   verifyQueueIntegrity():Promise<any>
+  processedRecords(records:any[],tableName:string):any[]
 }
 
 // Hook personalizado para usar dentro do manager
@@ -55,7 +59,13 @@ const useSyncAuthInManager = () => {
     const token = localStorage.getItem('jwt_token') || 
                   localStorage.getItem('supabase.auth.token');
     const userRole = localStorage.getItem('user_role') || 'user';
-    const userId = localStorage.getItem('user_id');
+    const localProfile = localStorage.getItem('user_profile');
+    let userId=localStorage.getItem("user_id") || null;
+    if (localProfile) {
+      const profile =JSON.parse(localProfile);
+      userId= profile.id;  
+    }  
+    
     
     return {
       authToken: token,
@@ -373,39 +383,7 @@ export const syncManager: SyncManager = {
     
     // Define estratégia de upsert por tabela
     let onConflict = 'id';
-    let processedRecords = records;
-    
-    switch (tableName) {
-      case 'system_config':
-        onConflict = 'category,name';
-        break;
-        
-      case 'turmas':
-        // Remove campos que não existem na tabela
-        processedRecords = records.map(record => {
-          const { aulas, horarios, ...rest } = record;
-          return rest;
-        });
-        break;
-        
-      case 'alunos':
-        // Remove avaliação (se existir)
-        processedRecords = records.map(record => {
-          const { avaliacao, ...rest } = record;
-          return rest;
-        });
-        // IMPORTANTE: Se tiver constraint unique no número do estudante
-        onConflict = 'numero_estudante';
-        break;
-        
-      default:
-        processedRecords = records.map(record => {
-          const { id, ...rest } = record;
-          return rest;
-        });
-        // Para outras tabelas, mantém como está
-        break;
-    }
+     const processedRecords = this.processedRecords(records,tableName);
     
     // Remove duplicatas dentro do batch
     const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
@@ -419,6 +397,73 @@ export const syncManager: SyncManager = {
     
     if (error) {
       console.error(`❌ Erro no upsert ${tableName}:`, error);
+      
+      // Tenta upsert sem onConflict se falhar
+      if (error.code === '42501' || error.code === '23505') {
+        console.log('🔄 Tentando upsert sem onConflict...');
+        const { data: retryData, error: retryError } = await supabase
+          .from(tableName)
+          .upsert(uniqueRecords)
+          .select();
+        
+        if (retryError) throw retryError;
+        return { data: retryData, error: null };
+      }
+      
+      throw error;
+    }
+    
+    return { data, error: null };
+  },
+
+  processedRecords(records:any[],tableName:string){
+    switch (tableName) {
+      case 'turmas':
+        // Remove campos que não existem na tabela
+        return records.map(record => {
+          const { id,aulas, horarios, ...rest } = record;
+          return rest;
+        });
+        
+      case 'alunos':
+        // Remove avaliação (se existir)
+        return records.map(record => {
+          const { id,avaliacao, ...rest } = record;
+          return rest;
+        });
+        // IMPORTANTE: Se tiver constraint unique no número do estudante
+        
+      case 'aulas':
+        // Remove avaliação (se existir)
+        return records.map(record => {
+          const {id, registro,turmas, ...rest } = record;
+          return rest;
+        });
+        
+      default:
+        return records.map(record => {
+          const {id, ...rest } = record;
+          return rest;
+        });
+    }
+  } 
+
+  , async executeUpdateToSupabase(tableName: string, records: any[],record_id:string) {
+    
+    const processedRecords = this.processedRecords(records,tableName);
+    // Remove duplicatas dentro do batch
+    const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
+    
+    console.log(`🔄 Update config:`, { tableName, count: uniqueRecords.length });
+    
+    const { data, error } = await supabase
+      .from(tableName)
+      .update(uniqueRecords)
+      .eq('id', record_id)
+      .select();
+    
+    if (error) {
+      console.error(`❌ Erro no update ${tableName}:`, error);
       
       // Tenta upsert sem onConflict se falhar
       if (error.code === '42501' || error.code === '23505') {
@@ -711,21 +756,15 @@ export const syncManager: SyncManager = {
       const { id, sync_status, deleted, createdAt, updated_at, ...cleanRecord } = record;
       
       // ✅ ADICIONAR CAMPOS PARA RLS
+
       const recordWithRLS = {
         ...cleanRecord,
-        updated_by: authData.userId || record.updated_by,
         updated_at: new Date().toISOString(),
-        instituicao_id: record.instituicao_id || localStorage.getItem('active_instituicao_id'),
-
         created_at: createdAt || record.created_at || new Date().toISOString(),
-         };
+        };
+      const supabaseResult = await this.executeUpdateToSupabase(tableName, [recordWithRLS], item.record_id);
       
-      const { error } = await supabase
-        .from(tableName)
-        .update(recordWithRLS)
-        .eq('id', item.record_id);
-      
-      if (error) throw error;
+      if (supabaseResult.error) throw supabaseResult.error;
       
       // Marcar como sincronizado
       await this.markAsSynced(tableName, item.record_id);
@@ -790,7 +829,7 @@ export const syncManager: SyncManager = {
   
   // ✅ Funções auxiliares
   async getRecordFromTable(tableName: string, recordId: string) {
-    const table = db.table<any>(tableName);
+    const table = db.table(tableName);
     return await table.get(recordId);
   },
   
@@ -850,7 +889,7 @@ export const syncManager: SyncManager = {
       const tables = [
         'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
-        'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios'
+        'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios',"planeamentos","plano_aulas"
       ];
       
       for (const tableName of tables) {
@@ -863,7 +902,9 @@ export const syncManager: SyncManager = {
         }
         
         console.log(`📥 Baixando ${tableName}...`);
-        await this.downloadTableBatch(tableName, lastSyncDate);
+        const tableLastSync = localStorage.getItem(`last_sync_${tableName}`);
+        const tableLastSyncDate = tableLastSync ? new Date(tableLastSync) : lastSyncDate;
+        await this.downloadTableBatch(tableName, tableLastSyncDate);
         await new Promise(resolve => setTimeout(resolve, 300)); // Pausa entre tabelas
       }
       
@@ -889,6 +930,10 @@ export const syncManager: SyncManager = {
         .select('*')
         .order('updated_at', { ascending: true })
         .limit(500);
+
+      if (since && Number.isFinite(since.getTime()) && since.getTime() > 0) {
+        query = query.gt('updated_at', since.toISOString());
+      }
       
       // Filtrar por instituição se não for admin
       if (tableName !== 'profiles' && tableName !== 'instituicao' && !hasPermission('admin')) {
@@ -907,6 +952,7 @@ export const syncManager: SyncManager = {
       
       if (!remoteData || remoteData.length === 0) {
         console.log(`📭 Nenhum dado novo em ${tableName}`);
+        localStorage.setItem(`last_sync_${tableName}`, new Date().toISOString());
         return;
       }
       
@@ -919,6 +965,18 @@ export const syncManager: SyncManager = {
         await this.processDownloadBatch(tableName, batch);
         console.log(`   Processado ${Math.min(i + batchSize, remoteData.length)}/${remoteData.length}`);
       }
+
+      const latestUpdatedAt = remoteData.reduce((acc, record) => {
+        const updatedAt = new Date(record.updated_at || record.created_at || 0);
+        return updatedAt > acc ? updatedAt : acc;
+      }, new Date(0));
+
+      localStorage.setItem(
+        `last_sync_${tableName}`,
+        (latestUpdatedAt.getTime() > 0 ? latestUpdatedAt : new Date()).toISOString()
+      );
+
+      emitDbChanged(tableName, 'download');
       
     } catch (error) {
       console.error(`❌ Erro baixando ${tableName}:`, error);

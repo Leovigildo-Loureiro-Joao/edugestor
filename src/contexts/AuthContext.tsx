@@ -23,6 +23,8 @@ interface AuthContextType {
   isManagerOrAdmin: () => boolean;
   hasPermission: (requiredRole: string) => boolean;
   updateUserRole: (userId: string, newRole: string) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   switchInstituicao: (instituicaoId: string) => Promise<{ success: boolean }>;
   debugJWTClaims: () => Promise<void>;
 }
@@ -57,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         await profileService.saveProfile(data);
       }
-
+      
       return data as UserProfile;
     } catch (error) {
       console.error('❌ Erro ao buscar perfil:', error);
@@ -561,6 +563,76 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const now = new Date().toISOString();
+    const payload = {
+      ...updates,
+      updated_at: now
+    };
+
+    try {
+      if (navigator.onLine) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(payload)
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        if (updates.full_name) {
+          await supabase.auth.updateUser({
+            data: { full_name: updates.full_name }
+          });
+        }
+      }
+
+      const mergedProfile = {
+        ...(profile || { id: user.id, email: user.email || '', role: 'user' }),
+        ...updates,
+        updated_at: now
+      } as UserProfile;
+
+      await profileService.saveProfile(mergedProfile);
+      setProfile(mergedProfile);
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar perfil:', error);
+      throw new Error(error?.message || 'Erro ao atualizar perfil');
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user?.email) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    try {
+      // Reautenticar para validar senha atual
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      });
+
+      if (signInError) {
+        throw new Error('Senha atual incorreta');
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao alterar senha:', error);
+      throw new Error(error?.message || 'Erro ao alterar senha');
+    }
+  };
+
   // 🔥 ADICIONE AO VALUE DO CONTEXT
   const value: AuthContextType = {
     user,
@@ -578,6 +650,8 @@ const handleSuccessfulLogin = async (user: User) => {
     isManagerOrAdmin,
     hasPermission,
     updateUserRole,
+    updateProfile,
+    changePassword,
     switchInstituicao, 
     debugJWTClaims    
   };

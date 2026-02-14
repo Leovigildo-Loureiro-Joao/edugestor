@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
+import { ProgressBar } from "../../pages/Grades/NotasPage";
 
-  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend,funcion}) => {
+  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend,funcion=()=>{},progress=false,percent=-1}) => {
     const colorClasses = {
         blue: { bg: 'bg-white dark:bg-gray-800',bordBg:'bg-blue-500', iconBg: 'bg-blue-100', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
         green: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-green-500',iconBg: 'bg-green-100', text: 'text-green-600', value: 'text-green-600' },
@@ -28,16 +29,22 @@ import { motion, AnimatePresence } from 'framer-motion';
        
         <div className="flex items-center justify-between">
             <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-50">{title}</p>
-            <p className={`text-2xl font-bold ${colors.value} mt-1`}>{value}</p>
-            <div className="text-xs text-gray-500 dark:text-gray-50 mt-1">
-                {subtitle}
-            </div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-50">{title}</p>
+                <p className={`text-2xl font-bold ${colors.value} mt-1`}>{value}</p>
+                <div className="text-xs text-gray-500 dark:text-gray-50 mt-1">
+                    {subtitle}
+                </div>
             </div>
             <div className={`${colors.iconBg} p-3 rounded-xl`}>
-            <Icon className={`${colors.text} text-lg`} />
+                <Icon className={`${colors.text} text-lg`} />
             </div>
+            
         </div>
+        {progress?<>
+                <div className="mt-2 w-full">
+                    <ProgressBar value={percent} />
+                </div>
+            </>:<></>}
        </motion.div>
         </motion.div>
     );

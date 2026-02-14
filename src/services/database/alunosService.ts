@@ -239,7 +239,7 @@ async getAllStudents(): Promise<Student[]> {
   async syncAlunos() {
     if(navigator.onLine)
      return Promise.all([syncManager.uploadTableBatch('alunos'),
-      syncManager.downloadTableBatch('alunos', new Date())
+      syncManager.downloadTableBatch('alunos', new Date(0))
     ])
     throw new Error("sem net")
   },

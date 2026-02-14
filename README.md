@@ -1,96 +1,75 @@
-# 🎓 EduGestor - Sistema de Gestão Acadêmica
+# EduGestor
 
-Sistema completo para gestão de alunos, finanças, frequência e desempenho académico.
+Sistema de gestao escolar com foco em:
+- gestao academica (alunos, turmas, aulas, frequencia, avaliacoes);
+- gestao financeira (transacoes, propinas, alocacoes);
+- planejamento estrategico (metas, tarefas, rotinas, eventos);
+- operacao offline-first com sincronizacao.
 
-## 🚀 Tecnologias Utilizadas
+## Stack Atual
+- Frontend: React 19 + Vite 7
+- UI: Tailwind CSS, MUI, Framer Motion
+- Estado/Formularios: Zustand, React Hook Form, Zod
+- Banco local: Dexie (IndexedDB)
+- Backend e auth: Supabase (Auth, Postgres, Edge Functions)
+- Graficos: Recharts e Chart.js
 
-- **Frontend:** React 18 + Vite
-- **Estilização:** Tailwind CSS 3
-- **Animações:** Framer Motion
-- **Ícones:** React Icons
-- **Gráficos:** Recharts
-- **Backend:** Firebase (Firestore, Auth, Storage)
-- **Formulários:** React Hook Form + Zod
-- **Estado:** Zustand
-- **Roteamento:** React Router DOM
+## Arquitetura (Resumo)
+- `src/pages`: telas de cada modulo
+- `src/components`: componentes de UI e dominio
+- `src/services/database`: acesso a dados, sincronizacao e cache
+- `src/contexts`: estado global de autenticacao
+- `src/types`: modelos de dominio TypeScript
+- `src/utils`: utilitarios
 
-## 📦 Estrutura do Projeto
-``` text
-src/
-├── components/ # Componentes reutilizáveis
-│ ├── ui/ # Componentes de interface
-│ ├── layout/ # Layout principal
-│ ├── students/ # Componentes de alunos
-│ ├── finance/ # Componentes financeiros
-│ ├── attendance/ # Componentes de frequência
-│ └── grades/ # Componentes de notas
-├── pages/ # Páginas da aplicação
-├── contexts/ # Contexts do React
-├── hooks/ # Custom hooks
-├── services/ # Serviços externos
-│ ├── firebase/ # Configuração Firebase
-│ ├── supabase/ # Configuração Supabase
-│ ├── database/ # Operações de BD
-| ├── dashboard/# Operações do Dasboadr
-│ └── auth/ # Autenticação
+## Modulos Principais
+- Dashboard
+- Alunos
+- Turmas e Cursos
+- Frequencia e Aulas
+- Financeiro (pagamentos, propinas, transacoes)
+- Estrategia (metas, tarefas, planejamento, eventos)
+- Administracao de usuarios
 
-├── types/ # Tipos TypeScript
-└── utils/ # Utilitários
+## Requisitos
+- Node.js 20+ (recomendado para Vite 7)
+- npm 10+
+- Projeto Supabase configurado
+
+## Configuracao de Ambiente
+Crie um arquivo `.env` na raiz com:
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
 ```
 
-## 🛠 Configuração do Firebase
-
-1. Crie um projeto em [Firebase Console](https://console.firebase.google.com)
-2. Ative Authentication, Firestore e Storage
-3. Substitua as credenciais em `src/services/firebase/config.js`
-4. Configure as regras de segurança no Firestore
-
-## 📋 Funcionalidades
-
-- [-] Dashboard com estatísticas
-    - [x] Stats para dashboard
-    - [ ] Mostar actividades para hoje
-- [x] Gestão de Alunos
-    - [x] Add Aluno 
-    - [x] Edita Aluno
-    - [x] Elimina Aluno
-    - [x] Registra matricula e cartão
-- [-] Controle Financeiro (Propinas)
-    - [ ] Testes 
-- [x] Registro de Frequência
-- [-] Gestão de turmas
-    - [x] Add/Edit/Del Curso
-    - [x] Add turma
-    - [x] Edita Turma 
-    - [x] Elimina Turma
-    - [x] Add horario
-    - [x] Ja tem stats cards para ux
-    - [ ] Encerrar Turma
-- [ ] Lançamento de Notas
-- [ ] Relatórios Automáticos
-- [ ] Backup em Cloud
-- [ ] Modo Offline
-
-## 🚀 Como Executar
-
+## Scripts
 ```bash
-# Instalar dependências
 npm install
-
-# Executar em desenvolvimento
 npm run dev
-
-# Build para produção
 npm run build
+npm run preview
+npm run lint
 ```
 
-🔧 Configuração do Ambiente
-Node.js 16+ instalado
+## Fluxo de Dados (alto nivel)
+1. Escrita local em IndexedDB (Dexie)
+2. Registro em fila (`syncQueue`)
+3. Upload/download com Supabase quando online
+4. Atualizacao de status de sincronizacao por entidade
 
-Conta Firebase configurada
+## Estado do Projeto
+- Base funcional ampla e modular
+- Em evolucao de hardening tecnico (auth/roles, sync e qualidade de codigo)
 
-Variáveis de ambiente (se necessário)
+## Roadmap Tecnico Curto
+- estabilizar fluxo de autenticacao e permissao por role
+- reduzir erros de lint e padronizar tipos
+- reforcar sincronizacao offline/online e tratamento de conflitos
+- melhorar performance de bundle com code splitting
+- adicionar testes automatizados de servicos criticos
 
-📞 Suporte
-Para dúvidas sobre configuração ou desenvolvimento, consulte a documentação das tecnologias utilizadas.
-firebase login --token "4/0Ab32j914EG6jCYHBCEPpkcuhver04MMwg2vv7DwmAlTVkPRP0g-1onXxNNSQEqHemkZURg"
+## Seguranca
+- nunca comitar tokens, chaves privadas ou credenciais reais
+- manter variaveis sensiveis apenas em `.env`/cofre de segredos

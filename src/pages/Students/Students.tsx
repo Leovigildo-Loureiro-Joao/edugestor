@@ -13,6 +13,7 @@ import { getPendingCount } from '../../utils/emitPendingSync';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge'; // ✅ Use useAlert
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
 
 const Students = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -36,8 +37,16 @@ const Students = () => {
         const handleOnline = () => setOnlineStatus(true);
         const handleOffline = () => setOnlineStatus(false);
         
+        const handleDbChanged = (event: Event) => {
+          const detail = (event as CustomEvent).detail;
+          if (!detail?.table || detail.table === 'alunos') {
+            reload();
+          }
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        window.addEventListener('db-changed', handleDbChanged);
         
         // Carregar estatísticas de sincronização
         const loadSyncStats = async () => {
@@ -63,6 +72,7 @@ const Students = () => {
         return () => {
           window.removeEventListener('online', handleOnline);
           window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('db-changed', handleDbChanged);
           window.removeEventListener('sync-pending', handleSyncUpdate);
           window.removeEventListener('sync-complete', handleSyncUpdate);
           clearInterval(interval);
@@ -293,108 +303,13 @@ const Students = () => {
 
         {/* Banner de Alerta - Aparece apenas se houver pendentes */}
         {syncStats > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 
-                          border border-orange-200 dark:border-orange-800 rounded-xl p-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
-                      <FiAlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-1">
-                      {syncStats} aluno{syncStats !== 1 ? 's' : ''} pendente{syncStats !== 1 ? 's' : ''}
-                    </h3>
-                    <p className="text-sm text-orange-700 dark:text-orange-400/80">
-                      Conecte-se à internet para sincronizar os dados.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleForceSync}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white 
-                            font-medium rounded-lg text-sm transition-colors"
-                  >
-                    Sincronizar Agora
-                  </button>
-                  <button
-                    onClick={() => setExpanded(!isExpanded)}
-                    className="px-4 py-2 border border-orange-300 dark:border-orange-700 
-                            text-orange-700 dark:text-orange-400 font-medium rounded-lg 
-                            text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 
-                            transition-colors"
-                  >
-                    {isExpanded ? 'Ocultar' : 'Ver Detalhes'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Detalhes Expandíveis */}
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
-                      <div className="space-y-3">
-                        {students
-                          .filter(student => student.sync_status === 'pending')
-                          .slice(0, 3)
-                          .map((student, index) => (
-                            <motion.div
-                              key={student.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 
-                                      rounded-lg border border-orange-100 dark:border-orange-900/50"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900 
-                                              flex items-center justify-center">
-                                  <FiUser className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                                </div>
-                                <div>
-                                  <div className="font-medium text-gray-900 dark:text-white">
-                                    {student.nome_completo}
-                                  </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    {student.numero_estudante} • {student.turma_nome || 'Sem turma'}
-                                  </div>
-                                </div>
-                              </div>
-                              <span className="text-xs font-medium px-2.5 py-1 rounded-full 
-                                            bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
-                                {student.id.startsWith('local_') ? 'Novo' : 'Alterado'}
-                              </span>
-                            </motion.div>
-                          ))}
-                        
-                        {syncStats > 3 && (
-                          <div className="text-center">
-                            <span className="text-sm text-orange-600 dark:text-orange-400">
-                              + {syncStats - 3} mais pendentes
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
+          <SyncDataDetail
+            syncStats={syncStats}
+            onlineStatus={onlineStatus}
+            handleForceSync={handleForceSync}
+            table="alunos"
+            data={students.filter(s => s.id.startsWith('local_'))}
+          />
         )}
 
         {/* Cards de Estatísticas */}
@@ -406,7 +321,6 @@ const Students = () => {
             icon={FaPeopleGroup}
             color="blue"
             trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
-            funcion={null}
           />
           
           <StatCard 
@@ -416,7 +330,6 @@ const Students = () => {
             icon={FaGraduationCap}
             color="green"
             trend={estatisticas.ativos > 0 ? 'positive' : 'neutral'}
-            funcion={null}
           />
           
           <StatCard 
@@ -432,7 +345,6 @@ const Students = () => {
             icon={FiUser}
             color="red"
             trend="neutral"
-            funcion={null}
           />
           
           <StatCard 

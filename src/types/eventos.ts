@@ -10,53 +10,6 @@ export interface VisaoEstrategica extends BaseEntity {
   status: 'ativa' | 'concluida' | 'arquivada';
 }
 
-// Nível 3: PLANOS DE AÇÃO (Curto Prazo - Mensal/Semanal)
-export interface PlanoAcao extends BaseEntity {
-  id: string;
-  meta_id: string; // Relaciona com a Meta
-  titulo: string;
-  descricao: string;
-  tipo: 'calendario' | 'evento' | 'projeto' | 'rotina';
-  
-  // Temporalidade
-  data_inicio: string;
-  data_fim: string;
-  recorrencia?: 'diaria' | 'semanal' | 'mensal' | 'anual' | 'personalizada';
-  dias_recorrencia?: number[]; // [1,3,5] para seg,qua,sex
-  horario_inicio?: string;
-  horario_fim?: string;
-  duracao_minutos?: number;
-  
-  // Localização
-  local?: string;
-  sala?: string;
-  
-  // Participantes
-  participantes: Array<{
-    id: string;
-    nome: string;
-    tipo: 'professor' | 'aluno' | 'encarregado' | 'staff';
-    confirmado: boolean;
-  }>;
-  
-  // Status
-  status: 'agendado' | 'em_andamento' | 'concluido' | 'cancelado' | 'adiado';
-  visibilidade: 'publico' | 'privado' | 'restrito';
-  
-  // Recursos
-  recursos_necessarios?: string[];
-  orcamento?: number;
-  
-  // Resultados
-  resultado_esperado?: string;
-  resultado_obtido?: string;
-  notas?: string;
-  
-  created_at: string;
-  updated_at: string;
-}
-
-
 // Nível 4: TAREFAS (Execução - Diária)
 export interface Tarefa extends BaseEntity {
   id: string;
@@ -117,53 +70,6 @@ export interface Tarefa extends BaseEntity {
   updated_at: string;
 }
 
-// Nível 5: ROTINAS (Processos Padronizados)
-export interface Rotina extends BaseEntity {
-  id: string;
-  nome: string;
-  descricao: string;
-  tipo: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
-  fase: 'abertura' | 'operacao' | 'encerramento' | 'administrativa';
-  
-  // Execução
-  passos: Array<{
-    ordem: number;
-    atividade: string;
-    descricao?: string;
-    responsavel: string;
-    tempo_estimado_minutos: number;
-    obrigatorio: boolean;
-    checklist_item?: string;
-  }>;
-  
-  // Horário
-  horario_ideal?: string;
-  tolerancia_minutos?: number;
-  dias_semana?: number[]; // 0=Domingo, 1=Segunda...
-  
-  // Controle
-  status: 'ativa' | 'inativa' | 'suspensa'|'concluida'|'em_andamento' ;
-  versao: number;
-  data_implementacao: string;
-  data_revisao?: string;
-  
-  // Métricas
-  tempo_medio_execucao_minutos?: number;
-  taxa_conformidade?: number; // %
-  incidentes?: Array<{
-    data: string;
-    descricao: string;
-    resolvido: boolean;
-  }>;
-  
-  // Relacionamentos
-  tarefas_relacionadas?: string[];
-  responsavel_criacao: string;
-  
-  created_at: string;
-  updated_at: string;
-}
-
 export interface EventFormData  {
   id: string;
   title: string;
@@ -193,13 +99,6 @@ export interface Meta extends BaseEntity {
   tipo: 'academica' | 'financeira' | 'operacional' | 'marketing' | 'infraestrutura' | 'qualidade';
   categoria: 'estrategica' | 'tatica' | 'operacional';
   
-  // SMART Criteria
-  especifico: string;
-  mensuravel: string;
-  atingivel: boolean;
-  relevante: string;
-
-  
   // Controle
   data_inicio: string;
   data_fim: string;
@@ -225,9 +124,6 @@ export interface Meta extends BaseEntity {
     observacoes: string
   }>;
   
-  // Sub-metas (MINI-METAS / AÇÕES)
-  submetas?: Array<SubMeta>;
-  
   // Recursos
   orcamento_previsto?: number;
   orcamento_alocado?: number; // Dinheiro já alocado
@@ -241,6 +137,25 @@ export interface Meta extends BaseEntity {
   
   created_at: string;
   updated_at: string;
+}
+
+export interface Fonte{
+  tipo: 'automatico' | 'manual' | 'integracao';
+      modulo?: 
+        | 'matriculas'
+        | 'frequencia' 
+        | 'notas'
+        | 'financeiro'
+        | 'infraestrutura'
+      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      filtros?: {
+        turma_id?: string;
+        disciplina_id?: string;
+        periodo_id?: string;
+        nivel_id?: string;
+        // ... outros filtros contextuais
+      };
+      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
 }
 
 
@@ -264,11 +179,7 @@ export interface IndicadorDesempenho {
         | 'matriculas'
         | 'frequencia' 
         | 'notas'
-        | 'financeiro'
-        | 'pessoal'
-        | 'biblioteca'
-        | 'infraestrutura'
-        | 'avaliacoes';
+        | 'financeiro',
       metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
       filtros?: {
         turma_id?: string;
@@ -288,19 +199,6 @@ export interface IndicadorDesempenho {
     }>;
 }
 
-export interface SubMeta{
-    id: string;
-    titulo: string;
-    descricao: string;
-    data_inicio: string;
-    data_fim: string;
-    status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
-    responsavel: string;
-    custo_estimado?: number;
-    custo_real?: number;
-    kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
-    notas?: string;
-}
 
 export interface Alocacao{
     id: string;

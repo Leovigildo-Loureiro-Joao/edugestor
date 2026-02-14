@@ -144,9 +144,12 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       'turmas': 'Turmas',
       'cursos': 'Cursos',
       'aulas': 'Aulas',
+      'avaliacoes': 'Avaliações',
+      'frequencias': 'Frequências',
       'notificacao': 'Notificações',
       'transacoes': 'Transações',
-      'propina': 'Propinas'
+      'propina': 'Propinas',
+      'metas': 'Metas'
     };
     
     return names[tableName] || tableName;

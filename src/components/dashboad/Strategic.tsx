@@ -87,8 +87,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
     const [resumo, tarefas, metas, rotinas] = await Promise.all([
       estrategiaService.getResumoEstrategico(),
       estrategiaService.getTarefas(),
-      estrategiaService.getMetas(),
-      estrategiaService.getRotinasDiarias()
+      estrategiaService.getMetas()
     ]);
 
     // Calcular totais

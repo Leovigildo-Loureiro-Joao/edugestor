@@ -12,6 +12,13 @@ export function emitPendingSync(tableName: string, count: number) {
   window.dispatchEvent(event);
 }
 
+export function emitDbChanged(tableName: string, action?: string) {
+  const event = new CustomEvent('db-changed', {
+    detail: { table: tableName, action }
+  });
+  window.dispatchEvent(event);
+}
+
 export const getPendingCount = async (table: string): Promise<number> => {
     try {
       // Tentar do localStorage primeiro
@@ -28,5 +35,4 @@ export const getPendingCount = async (table: string): Promise<number> => {
       return 0;
     }
   };
-
 

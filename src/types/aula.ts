@@ -17,6 +17,7 @@ export interface Aula extends BaseEntity{
   tema_aula: string;
   turmas?: Turma,
   registro?:Frequencia[]
+  dia_semana: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado' | 'domingo';
 }
 
 export type AulaFormData = Omit<Aula, 

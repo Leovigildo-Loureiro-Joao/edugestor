@@ -77,51 +77,65 @@ const TarefaPage = () => {
   });
 
   // Carregar dados iniciais
-  useEffect(() => {
-    const carregarDados = async () => {
-      setLoading(true);
-      try {
-        // Carregar metas para relacionamento
-        const metasData = await estrategiaService.getMetas();
-        setMetas(metasData.map((m:any) => ({ id: m.id, titulo: m.titulo })));
+  const carregarDados = async () => {
+    setLoading(true);
+    try {
+      // Carregar metas para relacionamento
+      const metasData = await estrategiaService.getMetas();
+      setMetas(metasData.map((m:any) => ({ id: m.id, titulo: m.titulo })));
+      
+      // Se for edição, carregar a tarefa
+      if (isEdicao && id) {
+        const tarefaData = await db.tarefas.get(id);
+        setTarefa(tarefaData);
+        setFormData({
+          ...tarefaData,
+          data_limite: (tarefaData&&tarefaData.data_limite) || ''
+        });
         
-        // Se for edição, carregar a tarefa
-        if (isEdicao && id) {
-          const tarefaData = await db.tarefas.get(id);
-          setTarefa(tarefaData);
-          setFormData({
-            ...tarefaData,
-            data_limite: (tarefaData&&tarefaData.data_limite) || ''
-          });
-          
-          // Carregar checklist
-          if (tarefaData&&tarefaData.checklist) {
-            try {
-              const parsed = tarefaData.checklist;
-              setChecklistItems(Array.isArray(parsed) ? parsed : []);
-            } catch {
-              setChecklistItems([]);
-            }
+        // Carregar checklist
+        if (tarefaData&&tarefaData.checklist) {
+          try {
+            const parsed = tarefaData.checklist;
+            setChecklistItems(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setChecklistItems([]);
           }
-          
-          // Carregar histórico (mock)
-          setComentarios([
-            {
-              autor: 'Administrador',
-              texto: 'Tarefa criada',
-              data: new Date().toISOString(),
-              tipo: 'atualizacao'
-            }
-          ]);
         }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-      } finally {
-        setLoading(false);
+        
+        // Carregar histórico (mock)
+        setComentarios([
+          {
+            autor: 'Administrador',
+            texto: 'Tarefa criada',
+            data: new Date().toISOString(),
+            tipo: 'atualizacao'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarDados();
+  }, [id, isEdicao]);
+
+  useEffect(() => {
+    const handleDbChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail?.table || ['tarefas', 'metas'].includes(detail.table)) {
+        carregarDados();
       }
     };
-    
-    carregarDados();
+
+    window.addEventListener('db-changed', handleDbChanged);
+    return () => {
+      window.removeEventListener('db-changed', handleDbChanged);
+    };
   }, [id, isEdicao]);
 
   // Configurações disponíveis
@@ -204,7 +218,7 @@ const TarefaPage = () => {
       setComentarios([novoHistorico, ...comentarios]);
       
       // Redirecionar para lista
-      navigate('/tarefas');
+      navigate('/estrategia/tarefas');
     } catch (error) {
       console.error('Erro ao salvar tarefa:', error);
         showAlert({
@@ -236,7 +250,7 @@ const TarefaPage = () => {
                   message: `Tarefa foi removida do sistema.`,
                   duration: 3000
                 });
-                navigate('/tarefas');
+                navigate('/estrategia/tarefas');
               }
             
               
@@ -714,7 +728,7 @@ const TarefaPage = () => {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/tarefas')}
+                onClick={() => navigate('/estrategia/tarefas')}
                 className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
                 disabled={salvando}
               >

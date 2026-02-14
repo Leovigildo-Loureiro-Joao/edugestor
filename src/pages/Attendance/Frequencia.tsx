@@ -8,7 +8,6 @@ import {
   FiBarChart2, 
   FiClock, 
   FiCheckSquare,
-  FiChevronRight,
   FiBook,
   FiTarget
 } from 'react-icons/fi';
@@ -20,101 +19,208 @@ import { Select } from '../../components/ui/Select.jsx';
 import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx';
 import { EstatisticasView } from '../../components/attendance/EstatisticasView.jsx';
 import { FrequenciasRegistradasView } from '../../components/attendance/FrequenciasRegistradasView.jsx';
+import { Aula } from '../../types/aula.ts';
+import { Student } from '../../types/aluno.ts';
+import { Turma } from '../../types/turma.ts';
+import { SelectTyped } from '../../components/students/StudentForm.tsx';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail.tsx';
+import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import { frequenciaService } from '../../services/database/frequenciaService.ts';
+import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
+import { getPendingCount } from '../../utils/emitPendingSync.ts';
 
-export const FrequenciaPage = () => {
-  const [aulas, setAulas] = useState([]);
-  const [alunos, setAlunos] = useState([]);
-  const [turmas, setTurmas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [filtroData, setFiltroData] = useState('');
-  const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
-  const [view, setView] = useState('pendentes');
-  const [estatisticas, setEstatisticas] = useState(null);
-  const [frequenciasRegistradas, setFrequenciasRegistradas] = useState([]);
-  const [modalAberta, setModalAberta] = useState(false);
-  const [aulaSelecionada, setAulaSelecionada] = useState(null);
+// Tipos de dados
 
+interface Estatisticas {
+  // Defina a estrutura das estatísticas conforme necessário
+  totalAulas?: number;
+  frequenciaMedia?: number;
+  // ...
+}
+
+
+// Tipos para as abas
+type ViewType = 'pendentes' | 'registradas' | 'estatisticas';
+
+interface TabConfig {
+  id: ViewType;
+  icon: React.ComponentType;
+  label: string;
+  count: number | null;
+  color: string;
+}
+
+export const FrequenciaPage: React.FC = () => {
+  const [aulas, setAulas] = useState<Aula[]>([]);
+  const [alunos, setStudents] = useState<Student[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [filtroData, setFiltroData] = useState<string>('');
+  const [filtroTurma, setFiltroTurma] = useState<string>('Todas Turmas');
+  const [view, setView] = useState<ViewType>('pendentes');
+  const [estatisticas, setEstatisticas] = useState<Estatisticas | null>(null);
+  const [frequenciasRegistradas, setFrequenciasRegistradas] = useState<Aula[]>([]);
+  const [modalAberta, setModalAberta] = useState<boolean>(false);
+  const [aulaSelecionada, setAulaSelecionada] = useState<Aula | null>(null);
+ const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
+  const [syncStats, setSyncStats] = useState(0);
+  const { showAlert } = useAlert();  
   useEffect(() => {
     carregarDados();
     carregarTurmas();
   }, []);
 
-  const carregarDados = async () => {
+
+    useEffect(() => {
+        // Monitorar status online
+        const handleOnline = () => setOnlineStatus(true);
+        const handleOffline = () => setOnlineStatus(false);
+        
+        const handleDbChanged = (event: Event) => {
+          const detail = (event as CustomEvent).detail;
+          if (!detail?.table || ['frequencias', 'aulas', 'alunos'].includes(detail.table)) {
+            carregarDados();
+          }
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('db-changed', handleDbChanged);
+  
+  
+        // Carregar estatísticas de sincronização
+        const loadSyncStats = async () => {
+          try {
+            const frequenciasPendentes = await getPendingCount("frequencias");
+            setSyncStats(frequenciasPendentes);
+          } catch (error) {
+            console.error('Erro ao carregar sync stats:', error);
+          }
+        };
+        
+        loadSyncStats();
+        
+        // Ouvir eventos de sincronização
+        const handleSyncUpdate = () => {
+          loadSyncStats();
+        };
+  
+        const interval=setInterval(handleSyncUpdate,30000)    
+        
+        window.addEventListener('sync-pending', handleSyncUpdate);
+        window.addEventListener('sync-complete', handleSyncUpdate);
+        
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+          window.removeEventListener('db-changed', handleDbChanged);
+          window.removeEventListener('sync-pending', handleSyncUpdate);
+          window.removeEventListener('sync-complete', handleSyncUpdate);
+          clearInterval(interval)
+        };
+      }, []);
+
+      
+  const carregarDados = async (): Promise<void> => {
     try {
       setLoading(true);
       console.log('🔄 Carregando dados...');
       
-      const aulasRecentes = await aulaService.getAulasRecentes(30);
-      const alunosData = await alunosService.getAllStudents();
-      setAlunos(alunosData);
+      const aulasRecentes: Aula[] = await aulaService.getAulasRecentes(30);
+      const alunosData: Student[] = await alunosService.getAllStudents();
+      setStudents(alunosData);
 
       // Filtrar apenas aulas ministradas sem frequência
-      const aulasSemFrequencia = aulasRecentes.filter(aula => 
+      const aulasSemFrequencia: Aula[] = aulasRecentes.filter(aula => 
         aula.status === 'ministrada' && (!aula.registro || aula.registro.length === 0)
       );
       setAulas(aulasSemFrequencia);
 
       // Filtrar aulas com frequência já registrada
-      const aulasComFrequencia = aulasRecentes.filter(aula => 
+      const aulasComFrequencia: Aula[] = aulasRecentes.filter(aula => 
         aula.status === 'ministrada' && aula.registro && aula.registro.length > 0
       );
       setFrequenciasRegistradas(aulasComFrequencia);
 
     } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar dados',
+        message: 'Não foi possível carregar os dados. Tente novamente mais tarde.',
+        duration: 5000
+      });
       console.error('❌ Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const carregarTurmas = async () => {
+  const carregarTurmas = async (): Promise<void> => {
     try {
-      const turmasData = await turmaService.getTurmas();
+      const turmasData: Turma[] = await turmaService.getTurmas();
       setTurmas(turmasData || []);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
   };
 
-  const handleRegistrarFrequencia = async (registros) => {
+  const handleRegistrarFrequencia = async (registros: RegistroFrequenciaLote): Promise<void> => {
     try {
       console.log('📝 Registrando frequência:', registros);
+      
       await frequenciaService.registrarFrequenciaLote(registros);
       setAulas(prev => prev.filter(a => a.id !== registros.aula_id));
       setModalAberta(false);
       carregarDados();
-      
+      showAlert({
+        type: 'success',
+        title: 'Frequência registrada!',
+        message: 'A frequência foi registrada com sucesso.',
+        duration: 3000
+      });
     } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao registrar frequência',
+        message: 'Não foi possível registrar a frequência.',
+        duration: 3000
+      });
       console.error('❌ Erro ao registrar:', error);
     }
   };
 
-  const abrirModalRegistro = (aula) => {
+  const abrirModalRegistro = (aula: Aula): void => {
     setAulaSelecionada(aula);
     setModalAberta(true);
   };
 
   // Filtrar aulas
-  const aulasFiltradas = aulas.filter(aula => {
-    const matchData = filtroData ? aula.data_aula === filtroData : true;
-    const matchTurma = filtroTurma !== 'Todas Turmas' 
+  const aulasFiltradas: Aula[] = aulas.filter(aula => {
+    const matchData: boolean = filtroData ? aula.data_aula === filtroData : true;
+    const matchTurma: boolean = filtroTurma !== 'Todas Turmas' 
       ? aula.turmas?.nome_turma === filtroTurma
       : true;
     return matchData && matchTurma;
   });
 
   // Filtrar frequências registradas
-  const frequenciasFiltradas = frequenciasRegistradas.filter(aula => {
-    const matchData = filtroData ? aula.data_aula === filtroData : true;
-    const matchTurma = filtroTurma !== 'Todas Turmas' 
+  const frequenciasFiltradas: Aula[] = frequenciasRegistradas.filter(aula => {
+    const matchData: boolean = filtroData ? aula.data_aula === filtroData : true;
+    const matchTurma: boolean = filtroTurma !== 'Todas Turmas' 
       ? aula.turmas?.nome_turma === filtroTurma
       : true;
     return matchData && matchTurma;
   });
 
-  
+  const turmasSelect: string[] = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
 
-  const turmasSelect = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
+  // Configuração das abas
+  const tabs: TabConfig[] = [
+    { id: 'pendentes', icon: FiClock, label: 'Pendentes', count: aulasFiltradas.length, color: 'blue' },
+    { id: 'registradas', icon: FiCheckSquare, label: 'Registradas', count: frequenciasFiltradas.length, color: 'green' },
+    { id: 'estatisticas', icon: FiBarChart2, label: 'Estatísticas', count: null, color: 'purple' }
+  ];
 
   // Animations
   const containerVariants = {
@@ -153,6 +259,28 @@ export const FrequenciaPage = () => {
     }
   };
 
+  const handleForceSync = async () => {
+    try {
+      await frequenciaService.syncFrequencias();
+      carregarDados();
+      
+      showAlert({
+        type: 'success',
+        title: 'Sincronização concluída!',
+        message: 'Os dados foram sincronizados com o servidor.',
+        duration: 3000
+      });
+    
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro na sincronização',
+        message: 'Não foi possível sincronizar com o servidor.',
+        duration: 5000
+      });
+    };
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -166,35 +294,29 @@ export const FrequenciaPage = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8"
+          className="mb-8 "
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 flex-wrap">
             <div className="flex items-center gap-3 px-4">
-             
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
+                <div className='flex gap-3 items-center'>
+                  <h1 className="text-3xl font-bold text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
                   Controle de Frequência
                 </h1>
+                  <SyncStatusBadge tableName='frequencias'/>
+                </div>
+                
                 <p className="text-gray-600">Gerencie a presença dos alunos de forma eficiente</p>
               </div>
             </div>
-          </div>
-
-          {/* Navegação */}
-          <motion.div
+            <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
             className="p-2"
           >
-          
-           
             <div className="flex space-x-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
-              {[
-                { id: 'pendentes', icon: FiClock, label: 'Pendentes', count: aulasFiltradas.length, color: 'blue' },
-                { id: 'registradas', icon: FiCheckSquare, label: 'Registradas', count: frequenciasFiltradas.length, color: 'green' },
-                { id: 'estatisticas', icon: FiBarChart2, label: 'Estatísticas', count: null, color: 'purple' }
-              ].map((tab) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setView(tab.id)}
@@ -204,9 +326,9 @@ export const FrequenciaPage = () => {
                       : 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600'
                   }`}
                 >
-                  {tab.icon}
+                  <tab.icon />
                   <span className="font-medium">{tab.label}</span>
-                  {tab.count !== undefined && (
+                  {tab.count !== null && (
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       view === tab.id
                         ? 'bg-blue-600'
@@ -218,11 +340,21 @@ export const FrequenciaPage = () => {
                 </button>
               ))}
             </div>
-            
-          
           </motion.div>
-        </motion.div>
+          </div>
 
+          
+          
+        </motion.div>
+          {syncStats > 0 && 
+            <SyncDataDetail 
+              syncStats={syncStats} 
+              onlineStatus={onlineStatus} 
+              handleForceSync={handleForceSync}
+              table="frequencias"
+              data={frequenciasRegistradas}
+            />
+          }            
         {/* Filtros */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -237,7 +369,7 @@ export const FrequenciaPage = () => {
             <h3 className="font-semibold text-gray-900 text-lg">Filtros</h3>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -250,7 +382,7 @@ export const FrequenciaPage = () => {
                   whileFocus={{ scale: 1.01 }}
                   type="date"
                   value={filtroData}
-                  onChange={(e) => setFiltroData(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroData(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
               </div>
@@ -262,11 +394,10 @@ export const FrequenciaPage = () => {
                     Turma
                   </span>
                 </label>
-                <Select 
+                <SelectTyped 
                   vect={turmasSelect} 
                   onChange={setFiltroTurma}
                   value={filtroTurma}
-                  className="p-3 border border-gray-300 rounded-xl"
                 />
               </div>
               
@@ -275,7 +406,7 @@ export const FrequenciaPage = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
-                  className="w-full p-3 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-300 rounded-xl hover:from-gray-200 hover:to-gray-100 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                  className="w-full mt-6 h-12 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-300 rounded-xl hover:from-gray-200 hover:to-gray-100 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
                 >
                   <FiRefreshCw size={16} />
                   Limpar Filtros
@@ -297,7 +428,7 @@ export const FrequenciaPage = () => {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <motion.div
-                  animate={{ rotate: 360 }}
+                  
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full mb-4"
                 />
@@ -318,7 +449,6 @@ export const FrequenciaPage = () => {
                         variants={itemVariants}
                         whileHover="hover"
                         custom={index}
-                        variants={{ ...itemVariants, hover: cardHoverVariants.hover }}
                         className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
                       >
                         <div className="p-6">

@@ -36,6 +36,7 @@ export const profileService = {
       if (localProfile) {
         const profile =JSON.parse(localProfile);
         localStorage.setItem("active_instituicao_id",profile.instituicao_id)
+        localStorage.setItem("user_id",profile.id)
         return JSON.parse(localProfile);
       }
       

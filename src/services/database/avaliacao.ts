@@ -3,6 +3,7 @@ import db from './db';
 import { BaseEntity } from "./base";
 import { alunosService } from './alunosService';
 import { syncManager } from './syncManager';
+import { emitDbChanged } from '../../utils/emitPendingSync';
 import { toast } from 'react-hot-toast';
 import { turmaService } from './turmas';
 import { cursosService } from '.';
@@ -91,10 +92,11 @@ export const avaliacaoService = {
       });
 
       await db.avaliacoes.put(avaliacao);
+      emitDbChanged('avaliacoes', 'create');
       
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
-        table: 'avaliacao',
+        table: 'avaliacoes',
         record_id: id,
         operation: 'upsert',
         data: JSON.stringify(avaliacao),
@@ -124,7 +126,10 @@ export const avaliacaoService = {
       const avaliacao = await db.avaliacoes.get(id);
       if (!avaliacao || avaliacao.sync_status === 'synced') return;
 
-      await syncManager.downloadTableBatch('avaliacoes');
+      await Promise.all([
+        syncManager.uploadTableBatch('avaliacoes'),
+        syncManager.downloadTableBatch('avaliacoes', new Date(0))
+      ]);
       toast.success('Avaliação sincronizada com sucesso!');
     } catch (error) {
       console.log('⚠️ Sincronização imediata falhou, mantendo em fila');
@@ -210,12 +215,16 @@ export const avaliacaoService = {
       const syncDate = lastSync || new Date(0);
       console.log('🔄 Sincronizando avaliações desde:', syncDate.toISOString());
       
-      await syncManager.downloadTableBatch('avaliacao', syncDate);
+      if(navigator.onLine){
+       await Promise.all([syncManager.uploadTableBatch('avaliacoes'),
+        syncManager.downloadTableBatch('avaliacoes', new Date(0))
+        ])
+        await this.cleanupOldData();
+        return { success: true, timestamp: new Date() };
+      }
       
-      // Limpar cache local antigo se necessário
-      await this.cleanupOldData();
+      else throw new Error("sem net")
       
-      return { success: true, timestamp: new Date() };
     } catch (error) {
       console.error('❌ Erro ao sincronizar avaliações:', error);
       throw error;
@@ -419,7 +428,7 @@ export const avaliacaoService = {
       await db.avaliacoes.put(avaliacao);
 
       await db.syncQueue.add({
-        table: 'avaliacao',
+        table: 'avaliacoes',
         record_id: avaliacao.id,
         operation: 'delete',
         data: JSON.stringify({ id: avaliacao.id }),
@@ -673,9 +682,10 @@ export const avaliacaoService = {
         updated_at,
         sync_status: 'pending',
       });
+      emitDbChanged('avaliacoes', 'update');
 
       await db.syncQueue.add({
-        table: 'avaliacao',
+        table: 'avaliacoes',
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -702,9 +712,10 @@ export const avaliacaoService = {
         sync_status: 'pending_delete',
         updated_at: new Date().toISOString()
       });
+      emitDbChanged('avaliacoes', 'delete');
       
       await db.syncQueue.add({
-        table: 'avaliacao',
+        table: 'avaliacoes',
         record_id: id,
         operation: 'delete',
         status: 'pending',
@@ -736,7 +747,7 @@ export const avaliacaoService = {
       const ativas = avaliacoes.filter(a => !a.deleted);
       const pendentes = await db.syncQueue
         .where('table')
-        .equals('avaliacao')
+        .equals('avaliacoes')
         .and(item => item.status === 'pending')
         .count();
 

@@ -8,8 +8,8 @@ import {
   FiHome, FiCheckSquare, FiPercent, FiTrendingDown,
   FiFileText, FiLink, FiDownload, FiEye
 } from 'react-icons/fi';
-import { IndicadorDesempenho, Meta } from '../../types/eventos';
-import { estrategiaService } from '../../services/database/estrategiaService';
+import { IndicadorDesempenho, Meta } from '../../../types/eventos';
+import { estrategiaService } from '../../../services/database/estrategiaService';
 import { toast } from 'react-hot-toast';
 
 interface MetaDetailsModalProps {

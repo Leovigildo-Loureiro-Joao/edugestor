@@ -115,7 +115,7 @@ export const aulaService = {
     async syncAulas() {
       if(navigator.onLine)
         return Promise.all([syncManager.uploadTableBatch('aulas'),
-          syncManager.downloadTableBatch('turmas', new Date(0))
+          syncManager.downloadTableBatch('aulas', new Date(0))
         ])
       throw new Error("sem net")
     },
