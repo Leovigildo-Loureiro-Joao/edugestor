@@ -5,6 +5,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import { UserProfile } from '../types/profile';
 import { profileService } from '../services/database/profileService';
 import { updateJWTClaims } from '../utils/update_claims_jwt';
+import { auditLogService } from '../services/audit/auditLogService';
 
 // 🔥 INTERFACE E CONTEXTO DEVEM VIR ANTES DO PROVIDER
 interface AuthContextType {
@@ -68,6 +69,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearError = () => setError('');
+
+  const clearLocalAuthState = () => {
+    localStorage.removeItem('supabase.auth.session');
+    localStorage.removeItem('active_instituicao_id');
+    localStorage.removeItem('user_profile');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('jwt_token');
+  };
+
+  const persistAuthBootstrap = (profileData?: Partial<UserProfile> | null) => {
+    if (!profileData) return;
+    if (profileData.id) localStorage.setItem('user_id', profileData.id);
+    if (profileData.role) localStorage.setItem('user_role', profileData.role);
+    if (profileData.instituicao_id) {
+      localStorage.setItem('active_instituicao_id', profileData.instituicao_id);
+    }
+  };
 
   // 🔥 VERIFICAR SE É ADMIN
   const isAdmin = (): boolean => {
@@ -221,8 +240,11 @@ const handleSuccessfulLogin = async (user: User) => {
     
     if (!userProfile) {
       console.warn('⚠️ Perfil não encontrado após login');
+      localStorage.setItem('user_id', user.id);
       return;
     }
+
+    persistAuthBootstrap(userProfile);
     
     // 2. Verificar/atualizar JWT com claims corretos
     await updateUserMetadata(user);
@@ -230,17 +252,11 @@ const handleSuccessfulLogin = async (user: User) => {
     // 3. Setup adicional
     await setupUserAfterLogin(user);
     
-    // 4. Salvar tokens no localStorage para sincronização offline
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      localStorage.setItem('supabase.auth.token', session.access_token);
-      localStorage.setItem('supabase.auth.refresh_token', session.refresh_token);
-    }
-    
     console.log('✅ Login completo, JWT sincronizado');
     
   } catch (error) {
     console.error('❌ Erro no pós-login:', error);
+    localStorage.setItem('user_id', user.id);
   }
 };
 
@@ -374,6 +390,7 @@ const handleSuccessfulLogin = async (user: User) => {
         if (session?.user) {
           const userProfile = await fetchUserProfile(session.user.id);
           setProfile(userProfile);
+          persistAuthBootstrap(userProfile);
           
           // Se não tem perfil, criar um com role padrão 'user'
           if (!userProfile) {
@@ -400,13 +417,18 @@ const handleSuccessfulLogin = async (user: User) => {
         if (newSession?.user) {
           const userProfile = await fetchUserProfile(newSession.user.id);
           setProfile(userProfile);
+          persistAuthBootstrap(userProfile);
+          localStorage.setItem('user_id', newSession.user.id);
           
-          // Salvar sessão no localStorage
-          localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
+          // Salvar sessão no localStorage (fallback offline) sem quebrar em quota.
+          try {
+            localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
+          } catch {
+            console.warn('⚠️ Não foi possível salvar sessão local (quota/storage indisponível)');
+          }
         } else {
           setProfile(null);
-          localStorage.removeItem('supabase.auth.session');
-          localStorage.removeItem('active_instituicao_id');
+          clearLocalAuthState();
         }
         
         setLoading(false);
@@ -435,6 +457,10 @@ const handleSuccessfulLogin = async (user: User) => {
       return data;
     } catch (error: any) {
       console.error('❌ Erro no login:', error);
+      await auditLogService.log('AUTH_LOGIN_FAILED', {
+        email,
+        reason: error?.message || 'unknown'
+      });
       const errorMessage = getSupabaseErrorMessage(error);
       setError(errorMessage);
       throw new Error(errorMessage);
@@ -508,34 +534,39 @@ const handleSuccessfulLogin = async (user: User) => {
     try {
       setError('');
       console.log('🚪 Fazendo logout...');
-      
-      // Limpar dados locais
-      localStorage.removeItem('supabase.auth.session');
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('supabase.auth.refresh_token');
-      localStorage.removeItem('active_instituicao_id');
-      
-      // Fazer logout no Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      // Limpar estados
+
+      // Tenta encerrar sessão remota, mas não bloqueia o logout local se falhar.
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) {
+        console.warn('⚠️ Falha ao encerrar sessão no Supabase, limpando sessão local:', error);
+      }
+
+      // Limpeza local sempre
+      clearLocalAuthState();
       setUser(null);
       setProfile(null);
       setSession(null);
-      
-      console.log('✅ Logout bem-sucedido');
+
+      console.log('✅ Logout concluído');
     } catch (error: any) {
       console.error('❌ Erro no logout:', error);
-      const errorMessage = getSupabaseErrorMessage(error);
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      // Mesmo com erro inesperado, garantimos limpeza local para não prender sessão.
+      clearLocalAuthState();
+      setUser(null);
+      setProfile(null);
+      setSession(null);
     }
   };
 
   // 🔥 ATUALIZAR ROLE DO USUÁRIO (SÓ ADMIN)
   const updateUserRole = async (userId: string, newRole: string) => {
     if (!isAdmin()) {
+      await auditLogService.log('PERMISSION_DENIED_OPERATION', {
+        area: 'AuthContext',
+        operation: 'update_user_role',
+        target_user_id: userId,
+        requested_role: newRole
+      });
       throw new Error('Apenas administradores podem alterar roles');
     }
 

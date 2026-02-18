@@ -7,7 +7,6 @@ import { Avaliacao } from "../../types/avaliacao";
 import { Propina } from "../../types/propina";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { profileService } from "./profileService";
-import { get } from "http";
 import { getPendingCount } from "../../utils/emitPendingSync";
 
 // Tipos
@@ -57,6 +56,7 @@ export interface Notificacao {
   meta: NotificacaoMeta;
   instituicao_id: string;
   aluno_id?: string;
+  link?:string;
   turma_id?: string;
   user_id?: string;
   destinatario_tipo?: 'aluno' | 'professor' | 'admin' | 'responsavel' | 'todos';
@@ -116,6 +116,7 @@ export const notificacaoService = {
         tipo: notificacaoData.tipo || TipoNotificacao.INFO,
         prioridade: notificacaoData.prioridade || PrioridadeNotificacao.BAIXA,
         lida: false,
+        link:notificacaoData.link||'',
         data_envio: notificacaoData.data_envio || now,
         meta: notificacaoData.meta || {},
         instituicao_id: notificacaoData.instituicao_id || instituicaoIdValue() || "",
@@ -153,6 +154,7 @@ export const notificacaoService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'notificacao',
+        instituicao_id:instituicaoIdValue(),
         record_id: notificacao.id,
         operation: 'upsert',
         status: 'pending',
@@ -203,10 +205,13 @@ export const notificacaoService = {
       // 5. Metas com prazo
       await this.verificarMetasProximas();
 
-      // 5. Metas com prazo
+      // 6. Qualidade de estrutura das turmas
       await this.verificarTurmasEstado();
 
+      // 7. Planos de aula pendentes por turma/curso
+      await this.verificarPlanosAulaPendentes();
 
+      // 8. Dados pendentes de sincronização
       await this.verificarPending();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
@@ -224,11 +229,61 @@ export const notificacaoService = {
           corpo:`Adicione um horario a turma ${turma.nome_turma} de forma a teres mais controle`,
           titulo:"Horarios das turmas",
           prioridade:PrioridadeNotificacao.MEDIA,
-          tipo:TipoNotificacao.SISTEMA
+          tipo:TipoNotificacao.SISTEMA,
+          link:"/turmas/"+turma.id
         })
       })
      
   },
+
+  async verificarPlanosAulaPendentes() {
+    const [turmas, cursos, planos] = await Promise.all([
+      db.turmas.filter((turma) => !turma.deleted).toArray(),
+      db.cursos.filter((curso) => !curso.deleted && curso.ativo).toArray(),
+      db.plano_aulas.filter((plano) => !plano.deleted).toArray()
+    ]);
+
+    const turmasComPlano = new Set<string>();
+
+    planos.forEach((plano: any) => {
+      if (Array.isArray(plano.turma_ids)) {
+        plano.turma_ids.forEach((turmaId: string) => turmasComPlano.add(turmaId));
+      }
+    });
+
+    // Turmas sem nenhum plano de aula associado
+    for (const turma of turmas) {
+      if (turmasComPlano.has(turma.id)) continue;
+
+      await this.criarNotificacaoAdmin({
+        titulo: 'Plano de aula em falta',
+        corpo: `A turma ${turma.nome_turma} ainda não possui plano de aula.`,
+        prioridade: PrioridadeNotificacao.MEDIA,
+        tipo: TipoNotificacao.SISTEMA,
+        link: '/aulas/planos',
+        meta: { turma_id: turma.id, curso_id: turma.curso_id }
+      });
+    }
+
+    // Cursos sem plano (nenhuma turma do curso com plano)
+    for (const curso of cursos) {
+      const turmasDoCurso = turmas.filter((turma) => turma.curso_id === curso.id);
+      if (turmasDoCurso.length === 0) continue;
+
+      const cursoTemPlano = turmasDoCurso.some((turma) => turmasComPlano.has(turma.id));
+      if (cursoTemPlano) continue;
+
+      await this.criarNotificacaoAdmin({
+        titulo: 'Curso sem plano de aula',
+        corpo: `Crie plano(s) de aula para o curso ${curso.nome}.`,
+        prioridade: PrioridadeNotificacao.MEDIA,
+        tipo: TipoNotificacao.SISTEMA,
+        link: '/aulas/planos',
+        meta: { curso_id: curso.id, turmas_ids: turmasDoCurso.map((turma) => turma.id) }
+      });
+    }
+  },
+
   async verificarPending(){
       const tables = [
         'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
@@ -281,6 +336,7 @@ export const notificacaoService = {
             user_id: aula.professor_id,
             destinatario_tipo: 'professor',
             referencia_id: aula.id,
+            link: '/frequencia',
             meta: { aula_id: aula.id, turma_id: aula.turma_id }
           });
         }
@@ -328,6 +384,7 @@ export const notificacaoService = {
           aluno_id: aluno.id,
           destinatario_tipo: 'aluno',
           turma_id: turmaId,
+          link: '/notas',
           meta: { avaliacoes_ids: avaliacoes.map(a => a.id) }
         });
       }
@@ -341,7 +398,8 @@ export const notificacaoService = {
           prioridade: PrioridadeNotificacao.MEDIA,
           user_id: avaliacoes[0].professor_id,
           destinatario_tipo: 'professor',
-          turma_id: turmaId
+          turma_id: turmaId,
+          link: '/notas'
         });
       }
     }
@@ -383,6 +441,7 @@ export const notificacaoService = {
         aluno_id: alunoId,
         
         destinatario_tipo: 'responsavel',
+        link: '/financeiro/pagamentos',
         meta: { 
           propinas_ids: propinas.map(p => p.id),
           valor_total: total,
@@ -399,6 +458,7 @@ export const notificacaoService = {
         tipo: TipoNotificacao.ADMIN_FINANCEIRO,
         prioridade: PrioridadeNotificacao.BAIXA,
         destinatario_tipo: 'admin',
+        link: '/financeiro',
         meta: { total_pagamentos: propinasVencendo.length }
       });
     }
@@ -431,6 +491,7 @@ export const notificacaoService = {
             aluno_id: aluno.id,
             destinatario_tipo: 'aluno',
             turma_id: evento.turma_id,
+            link: '/estrategia/eventos',
             meta: { evento_id: evento.id }
           });
         }
@@ -442,6 +503,7 @@ export const notificacaoService = {
           tipo: TipoNotificacao.INFO,
           prioridade: PrioridadeNotificacao.BAIXA,
           destinatario_tipo: 'todos',
+          link: '/estrategia/eventos',
           meta: { evento_id: evento.id }
         });
       }
@@ -472,6 +534,7 @@ export const notificacaoService = {
         user_id: meta.responsavel_id,
         destinatario_tipo: 'admin',
         referencia_id: meta.id,
+        link: `/estrategia/metas/${meta.id}`,
         meta: { 
           meta_id: meta.id,
           dias_restantes: diasRestantes,
@@ -519,6 +582,7 @@ export const notificacaoService = {
             prioridade: PrioridadeNotificacao.ALTA,
             aluno_id: alunoId,
             destinatario_tipo: 'responsavel',
+            link: '/frequencia',
             meta: { 
               frequencia_percentual: percentual,
               total_aulas: dados.total,
@@ -534,7 +598,8 @@ export const notificacaoService = {
             prioridade: PrioridadeNotificacao.MEDIA,
             destinatario_tipo: 'admin',
             aluno_id: alunoId,
-            turma_id: aluno.turma_id
+            turma_id: aluno.turma_id,
+            link: '/frequencia'
           });
         }
       }
@@ -585,6 +650,7 @@ export const notificacaoService = {
     tipo?: TipoNotificacao;
     prioridade?: PrioridadeNotificacao;
     meta?: NotificacaoMeta;
+    link?:string
   }): Promise<Notificacao> {
     const instituicao_id=instituicaoIdValue()||""
     const profile=await profileService.getLocalProfile()
@@ -594,7 +660,8 @@ export const notificacaoService = {
         user_id:profile.id,
         tipo: params.tipo || TipoNotificacao.ADMIN_RELATORIO,
         prioridade: params.prioridade || PrioridadeNotificacao.MEDIA,
-        destinatario_tipo: 'admin'
+        destinatario_tipo: 'admin',
+        link:params.link||""
       });
     
   },
@@ -750,6 +817,7 @@ export const notificacaoService = {
       await db.syncQueue.add({
         table: 'notificacao',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: now
@@ -788,6 +856,7 @@ export const notificacaoService = {
           await db.syncQueue.add({
             table: 'notificacao',
             record_id: notif.id,
+            instituicao_id:instituicaoIdValue(),
             operation: 'upsert',
             status: 'pending',
             created_at: now
@@ -846,6 +915,7 @@ export const notificacaoService = {
         
         await db.syncQueue.add({
           table,
+          instituicao_id:instituicaoIdValue(),
           record_id: id,
           operation: 'delete',
           status: 'pending',

@@ -6,6 +6,7 @@ import { UserProfile } from "../../types/profile";
 import { emitPendingSync } from "../../utils/emitPendingSync";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
+import { generateUniqueId } from "../../utils/idGenarator";
 import { supabase } from "../database/db";
 import { cacheManager } from "./cacheManager";
 import db from "./db";
@@ -13,18 +14,22 @@ import { profileService } from "./profileService";
 import { syncManager } from "./syncManager";
 import { turmaService } from "./turmas";
 
-const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
 export const cursosService = {
   // ✅ Criar curso localmente
   async create(course: CourseFormData): Promise<string> {
     try {
       const id = generateUniqueId();
       const now = new Date().toISOString();
+      const instituicao_id = instituicaoIdValue() || course.instituicao_id || "";
+
+      if (!instituicao_id) {
+        throw new Error("instituicao_id ausente. Defina a instituição ativa antes de criar cursos.");
+      }
       
       const curso = {
         ...course,
         id,
+        instituicao_id,
         created_at: now,
         updated_at: now,
         sync_status: 'pending',
@@ -38,6 +43,7 @@ export const cursosService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'cursos',
+        instituicao_id,
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -55,9 +61,11 @@ export const cursosService = {
 
     // ✅ Buscar todos os cursos
   async getCourses(): Promise<Course[]> {
+    const activeInstituicaoId = instituicaoIdValue() || "";
+    const cacheScope = activeInstituicaoId || 'global';
+    const CACHE_KEY = `cursos_all_${cacheScope}`;
     try {
       console.log('📋 Buscando cursos...');
-      const CACHE_KEY = 'cursos_all';
       
       // 1. Criar versão de cache baseada em múltiplos fatores
       const [cursoCount, turmaCount, alunoCount, lastModified] = await Promise.all([
@@ -68,7 +76,7 @@ export const cursosService = {
       ]);
       
       // 2. Criar chave de cache com versão
-      const cacheVersion = `v${cursoCount}_${turmaCount}_${alunoCount}_${lastModified}`;
+      const cacheVersion = `v${cursoCount}_${turmaCount}_${alunoCount}_${activeInstituicaoId}_${lastModified}`;
       const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
       // 3. Tentar cache primeiro
@@ -81,7 +89,7 @@ export const cursosService = {
       console.log('🔄 Cache MISS para cursos, buscando do banco...');
       
       // 4. Buscar dados em paralelo com otimizações
-      const instituicaoId = instituicaoIdValue() || "";
+      const instituicaoId = activeInstituicaoId;
       
       const [todosCursos, todasTurmas, todosAlunos] = await Promise.all([
         // Buscar cursos filtrados diretamente do banco
@@ -261,19 +269,15 @@ export const cursosService = {
 
   // Método para buscar um curso específico com cache individual
   async getCoursesById(id: string): Promise<Course | null> {
-    const CACHE_KEY = `curso_${id}`;
-    
-    // Verificar cache individual primeiro
+    const activeInstituicaoId = instituicaoIdValue() || "global";
+    const CACHE_KEY = `curso_${activeInstituicaoId}_${id}`;
     const cached = cacheManager.get(CACHE_KEY);
-    if (cached) {
-      return cached;
-    }
     
     try {
-      // Buscar curso específico
+      // Buscar sempre do Dexie primeiro para evitar stale cache na UI
       const curso = await db.cursos.get(id);
       if (!curso || curso.deleted || curso.instituicao_id !== instituicaoIdValue()) {
-        return null;
+        return cached || null;
       }
       
       // Buscar informações relacionadas
@@ -305,7 +309,7 @@ export const cursosService = {
       return cursoCompleto;
     } catch (error) {
       console.error(`❌ Erro ao buscar curso ${id}:`, error);
-      return null;
+      return cached || null;
     }
   }
 
@@ -372,6 +376,7 @@ export const cursosService = {
       await db.syncQueue.add({
         table: 'cursos',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at
@@ -408,6 +413,7 @@ export const cursosService = {
         await db.syncQueue.add({
           table: 'cursos',
           record_id: id,
+          instituicao_id:instituicaoIdValue(),
           operation: 'delete',
           status: 'pending',
           created_at: new Date().toISOString()
@@ -434,6 +440,7 @@ export const cursosService = {
   },
 
  async syncCursos() {
+  
    if(navigator.onLine)
       return Promise.all([syncManager.uploadTableBatch('cursos'),
         syncManager.downloadTableBatch('cursos', new Date(0))
@@ -446,6 +453,7 @@ export const cursosService = {
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'cursos',
+      instituicao_id:instituicaoIdValue(),
       record_id: recordId,
       operation,
       status: 'pending',
@@ -459,9 +467,9 @@ export const cursosService = {
     try {
       const cursoCount = await db.cursos.count();
       const queueCount = await db.syncQueue
-        .where('table')
-        .equals('cursos')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and(item => item.table === 'cursos' && item.status === 'pending')
         .count();
       
       const cursosAtivos = (await this.getCourses()).length;

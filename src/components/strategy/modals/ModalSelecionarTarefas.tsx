@@ -83,18 +83,18 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
       'alta': 'bg-orange-100 text-orange-800',
       'critica': 'bg-red-100 text-red-800'
     };
-    return colors[prioridade as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[prioridade as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:text-gray-100';
   };
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'pendente': 'bg-gray-100 text-gray-800',
+      'pendente': 'bg-gray-100 text-gray-800 dark:text-gray-100',
       'em_andamento': 'bg-blue-100 text-blue-800',
       'concluida': 'bg-green-100 text-green-800',
       'atrasada': 'bg-red-100 text-red-800',
-      'cancelada': 'bg-gray-100 text-gray-800'
+      'cancelada': 'bg-gray-100 text-gray-800 dark:text-gray-100'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:text-gray-100';
   };
 
   const tarefasFiltradas = tarefas.filter(tarefa => {
@@ -124,7 +124,7 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -154,10 +154,10 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
             </div>
             
             {/* Filtros */}
-            <div className="px-6 py-3 bg-gray-50 border-b flex flex-wrap gap-2">
+            <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b flex flex-wrap gap-2">
               <div className="flex items-center mr-2">
-                <FiFlag className="text-gray-500 mr-1" size={14} />
-                <span className="text-sm text-gray-600 mr-2">Prioridade:</span>
+                <FiFlag className="text-gray-500 dark:text-gray-400 mr-1" size={14} />
+                <span className="text-sm text-gray-600 dark:text-gray-400 mr-2">Prioridade:</span>
               </div>
               {['todas', 'baixa', 'media', 'alta', 'critica'].map(prioridade => (
                 <button
@@ -166,7 +166,7 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
                     filtroPrioridade === prioridade
                       ? 'bg-orange-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
                   }`}
                 >
                   {prioridade === 'todas' ? 'Todas' : 
@@ -177,8 +177,8 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
               <div className="w-full h-px bg-gray-200 my-2" />
               
               <div className="flex items-center mr-2">
-                <FiClock className="text-gray-500 mr-1" size={14} />
-                <span className="text-sm text-gray-600 mr-2">Status:</span>
+                <FiClock className="text-gray-500 dark:text-gray-400 mr-1" size={14} />
+                <span className="text-sm text-gray-600 dark:text-gray-400 mr-2">Status:</span>
               </div>
               {['todas', 'pendente', 'em_andamento', 'concluida', 'atrasada'].map(status => (
                 <button
@@ -187,7 +187,7 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
                     filtroStatus === status
                       ? 'bg-orange-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
                   }`}
                 >
                   {status === 'todas' ? 'Todas' :
@@ -206,7 +206,7 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
               ) : tarefasFiltradas.length === 0 ? (
                 <div className="text-center py-8">
                   <FiList className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                  <p className="text-gray-500">Nenhuma tarefa encontrada</p>
+                  <p className="text-gray-500 dark:text-gray-400">Nenhuma tarefa encontrada</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -217,13 +217,13 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
                       className={`p-4 border rounded-xl cursor-pointer transition-all ${
                         selecionadas.includes(tarefa.id)
                           ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-orange-300 hover:bg-gray-50 dark:bg-gray-900'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-medium text-gray-900">{tarefa.titulo}</h3>
+                            <h3 className="font-medium text-gray-900 dark:text-white">{tarefa.titulo}</h3>
                             <span className={`px-2 py-0.5 text-xs rounded-full ${getPrioridadeColor(tarefa.prioridade)}`}>
                               {tarefa.prioridade}
                             </span>
@@ -236,12 +236,12 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
                           </div>
                           
                           {tarefa.descricao && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                               {tarefa.descricao}
                             </p>
                           )}
                           
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <FiUser className="mr-1" size={12} />
                               {tarefa.responsavel_nome}
@@ -261,7 +261,7 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
                               <FiCheckCircle className="h-4 w-4 text-white" />
                             </div>
                           ) : (
-                            <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
+                            <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded-full" />
                           )}
                         </div>
                       </div>
@@ -272,14 +272,14 @@ export const ModalSelecionarTarefas: React.FC<ModalSelecionarTarefasProps> = ({
             </div>
             
             {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">{selecionadas.length}</span> tarefas selecionadas
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100"
                 >
                   Cancelar
                 </button>

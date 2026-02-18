@@ -47,8 +47,8 @@ export const ConfiguracoesBackup = () => {
   return (
      <motion.div 
           initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Backup e Restauração</h2>
+          animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Backup e Restauração</h2>
       
       <div className="space-y-8">
         
@@ -92,16 +92,16 @@ export const ConfiguracoesBackup = () => {
         </div>
 
         {/* Configurações de Backup Automático */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Backup Automático</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Backup Automático</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Backup automático
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Realiza backup automático dos dados do sistema
                 </p>
               </div>
@@ -109,14 +109,14 @@ export const ConfiguracoesBackup = () => {
                 type="checkbox"
                 checked={config.backupAutomatico}
                 onChange={(e) => setConfig(prev => ({...prev, backupAutomatico: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
 
             {config.backupAutomatico && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ml-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Frequência
                   </label>
                    <SelectTyped
@@ -127,14 +127,14 @@ export const ConfiguracoesBackup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Manter backups (dias)
                   </label>
                   <input
                     type="number"
                     value={config.manterBackups}
                     onChange={(e) => setConfig(prev => ({...prev, manterBackups: parseInt(e.target.value)}))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                     min="1"
                     max="365"
                   />
@@ -147,9 +147,9 @@ export const ConfiguracoesBackup = () => {
                       id="backupNotificacoes"
                       checked={config.backupNotificacoes}
                       onChange={(e) => setConfig(prev => ({...prev, backupNotificacoes: e.target.checked}))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                     />
-                    <label htmlFor="backupNotificacoes" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="backupNotificacoes" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Enviar notificação por email após backup
                     </label>
                   </div>
@@ -160,8 +160,8 @@ export const ConfiguracoesBackup = () => {
         </div>
 
         {/* Restauração */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Restauração de Dados</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Restauração de Dados</h3>
           
           <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
             <div className="flex items-center gap-2 text-yellow-700">
@@ -184,32 +184,32 @@ export const ConfiguracoesBackup = () => {
 
         {/* Informações do Sistema */}
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Informações do Sistema</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Informações do Sistema</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
             <div>
-              <label className="text-sm font-medium text-gray-700">Versão do Sistema</label>
-              <p className="text-gray-900">1.0.0</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Versão do Sistema</label>
+              <p className="text-gray-900 dark:text-white">1.0.0</p>
             </div>
             
             <div>
-              <label className="text-sm font-medium text-gray-700">Última Atualização</label>
-              <p className="text-gray-900">22/11/2024</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Última Atualização</label>
+              <p className="text-gray-900 dark:text-white">22/11/2024</p>
             </div>
             
             <div>
-              <label className="text-sm font-medium text-gray-700">Tamanho da Base de Dados</label>
-              <p className="text-gray-900">15.2 MB</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tamanho da Base de Dados</label>
+              <p className="text-gray-900 dark:text-white">15.2 MB</p>
             </div>
             
             <div>
-              <label className="text-sm font-medium text-gray-700">Backups Armazenados</label>
-              <p className="text-gray-900">3 arquivos</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Backups Armazenados</label>
+              <p className="text-gray-900 dark:text-white">3 arquivos</p>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-gray-200">
+        <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"

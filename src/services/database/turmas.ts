@@ -6,6 +6,7 @@ import { HorarioAula, HorarioAulaForm, Turma, TurmaFormData } from '../../types/
 import { emitPendingSync } from '../../utils/emitPendingSync';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
+import { generateUniqueId } from '../../utils/idGenarator';
 import { supabase } from '../database/db';
 import { alunosService } from './alunosService';
 import { cacheManager } from './cacheManager';
@@ -13,7 +14,89 @@ import db from './db';
 import { notificacaoService, PrioridadeNotificacao, TipoNotificacao } from './notificacaoService';
 import { syncManager } from './syncManager';
 
-const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+const normalizeHorarioText = (value?: string) => (value || '').trim().toLowerCase();
+const normalizeHorarioTime = (value?: string) => (value || '').trim().slice(0, 5);
+const normalizeDisciplinaIdentity = (value?: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+const getHorarioIdentityKey = (
+  horario: Pick<HorarioAula, 'turma_id' | 'dia_semana' | 'hora_inicio' | 'hora_fim' | 'disciplina'>
+) => {
+  return [
+    horario.turma_id,
+    horario.dia_semana,
+    normalizeHorarioTime(horario.hora_inicio),
+    normalizeHorarioTime(horario.hora_fim),
+    normalizeHorarioText(horario.disciplina)
+  ].join('|');
+};
+
+const deduplicateHorariosByIdentity = (horarios: HorarioAula[]) => {
+  const uniqueMap = new Map<string, HorarioAula>();
+
+  for (const horario of horarios) {
+    const key = getHorarioIdentityKey(horario);
+    const existente = uniqueMap.get(key);
+
+    if (!existente) {
+      uniqueMap.set(key, horario);
+      continue;
+    }
+
+    const existenteTime = new Date(existente.updated_at || existente.created_at || 0).getTime();
+    const atualTime = new Date(horario.updated_at || horario.created_at || 0).getTime();
+    if (atualTime > existenteTime) {
+      uniqueMap.set(key, horario);
+    }
+  }
+
+  return Array.from(uniqueMap.values());
+};
+
+const ensureDisciplinaInCursoDaTurma = async (turmaId: string, disciplina?: string): Promise<boolean> => {
+  const disciplinaLimpa = (disciplina || '').trim();
+  if (!disciplinaLimpa) return false;
+
+  const turma = await db.turmas.get(turmaId);
+  if (!turma || turma.deleted || !turma.curso_id) return false;
+
+  const curso = await db.cursos.get(turma.curso_id);
+  if (!curso || curso.deleted) return false;
+
+  const disciplinasAtuais = Array.isArray(curso.disciplinas) ? curso.disciplinas : [];
+  const disciplinaJaExiste = disciplinasAtuais.some(
+    (item) => normalizeDisciplinaIdentity(item) === normalizeDisciplinaIdentity(disciplinaLimpa)
+  );
+
+  if (disciplinaJaExiste) return false;
+
+  const updated_at = new Date().toISOString();
+  await db.cursos.update(curso.id, {
+    disciplinas: [...disciplinasAtuais, disciplinaLimpa],
+    sync_status: 'pending',
+    updated_at
+  });
+
+  await db.syncQueue.add({
+    table: 'cursos',
+    instituicao_id: curso.instituicao_id || instituicaoIdValue(),
+    record_id: curso.id,
+    operation: 'upsert',
+    status: 'pending',
+    created_at: updated_at
+  });
+
+  const cacheScope = curso.instituicao_id || instituicaoIdValue() || 'global';
+  cacheManager.delete(`curso_${cacheScope}_${curso.id}`);
+  cacheManager.invalidate(`^cursos_all_${cacheScope}_`);
+  cacheManager.emitCacheInvalidated('courses');
+
+  return true;
+};
 
 export const turmaService = {
   // ✅ Criar turma localmente
@@ -21,10 +104,12 @@ export const turmaService = {
     try {
       const id = generateUniqueId();
       const now = new Date().toISOString();
+      const instituicao_id = instituicaoIdValue() || '';
       
       const turma = {
         ...turmaData,
         id,
+        instituicao_id,
         created_at: now,
         updated_at: now,
         sync_status: 'pending',
@@ -38,6 +123,7 @@ export const turmaService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'turmas',
+        instituicao_id:instituicaoIdValue(),
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -56,7 +142,9 @@ export const turmaService = {
 
   // ✅ Buscar todas as turmas
   async getTurmas(): Promise<Turma[]> {
-    const CACHE_KEY = 'turmas_all';
+    const activeInstituicaoId = instituicaoIdValue() || '';
+    const cacheScope = activeInstituicaoId || 'global';
+    const CACHE_KEY = `turmas_all_${cacheScope}`;
     try {
       console.log('📋 Buscando turmas...');
       
@@ -70,7 +158,7 @@ export const turmaService = {
       ]);
       
       // Criar uma chave de versão baseada em contagens e timestamps
-      const cacheVersion = `${turmaCount}_${cursoCount}_${aulaCount}_${alunoCount}_${lastModified}`;
+      const cacheVersion = `${turmaCount}_${cursoCount}_${aulaCount}_${alunoCount}_${activeInstituicaoId}_${lastModified}`;
       const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
       // 2. Tentar obter do cache com a nova chave
@@ -89,9 +177,9 @@ export const turmaService = {
           .equals(instituicaoIdValue() || "")
           .filter(curso => !curso.deleted)
           .toArray(),
-        db.aulas.filter(aula => !aula.deleted).toArray(),
-        db.alunos.filter(aluno => !aluno.deleted).toArray(),
-        db.turmas.filter(turma => !turma.deleted).toArray() ,
+        db.aulas.filter(aula => !aula.deleted && (!activeInstituicaoId || aula.instituicao_id === activeInstituicaoId)).toArray(),
+        db.alunos.filter(aluno => !aluno.deleted && (!activeInstituicaoId || aluno.instituicao_id === activeInstituicaoId)).toArray(),
+        db.turmas.filter(turma => !turma.deleted && (!activeInstituicaoId || turma.instituicao_id === activeInstituicaoId)).toArray() ,
       ]);
       
       // 4. Otimizar: buscar horários em batch em vez de um por um
@@ -174,12 +262,14 @@ export const turmaService = {
   // Métodos auxiliares recomendados:
   , async getHorariosBatch(turmaIds: string[]): Promise<HorarioAula[]> {
     if (turmaIds.length === 0) return [];
-    
-    return db.turma_horarios
+
+    const horarios = await db.turma_horarios
       .where('turma_id')
       .anyOf(turmaIds)
       .filter(horario => !horario.deleted)
       .toArray();
+
+    return deduplicateHorariosByIdentity(horarios);
   }
 
   , cleanOldCacheVersions(baseKey: string, currentVersion: string) {
@@ -305,6 +395,7 @@ export const turmaService = {
         
         await db.syncQueue.add({
           table: 'turmas',
+          instituicao_id:instituicaoIdValue(),
           record_id: id,
           operation: 'delete',
           status: 'pending',
@@ -345,6 +436,7 @@ export const turmaService = {
       // Adicionar/atualizar na fila
       await db.syncQueue.add({
         table: 'turmas',
+        instituicao_id:instituicaoIdValue(),
         record_id: id,
         operation: 'upsert',
         status: 'pending',
@@ -362,22 +454,11 @@ export const turmaService = {
   // ✅ Obter horários da turma
   async getHorarios(turmaId: string): Promise<HorarioAula[]> {
     try {
-      const horarios=await db.turma_horarios.filter(f=>!f.deleted&&f.turma_id==turmaId)
-                    .toArray()
+      const horarios = await db.turma_horarios
+        .filter(f => !f.deleted && f.turma_id == turmaId)
+        .toArray();
 
-      
-      if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from('turma_horarios')
-          .select("*")
-          .eq('turma_id', turmaId);
-          
-        if (!error && data) {
-          return data as HorarioAula[];
-        }
-      }
-      
-      return horarios;
+      return deduplicateHorariosByIdentity(horarios);
       
     } catch (error) {
       console.error('Erro ao buscar horários:', error);
@@ -385,9 +466,36 @@ export const turmaService = {
     }
   },
 
+  async findDuplicateHorario(
+    turmaId: string,
+    horario: Pick<HorarioAulaForm, 'dia_semana' | 'hora_inicio' | 'hora_fim' | 'disciplina'>,
+    ignoreId?: string
+  ): Promise<HorarioAula | undefined> {
+    const horariosDaTurma = await db.turma_horarios
+      .where('turma_id')
+      .equals(turmaId)
+      .and(item => !item.deleted && item.id !== ignoreId)
+      .toArray();
+
+    const newKey = getHorarioIdentityKey({
+      turma_id: turmaId,
+      dia_semana: horario.dia_semana,
+      hora_inicio: horario.hora_inicio,
+      hora_fim: horario.hora_fim,
+      disciplina: horario.disciplina
+    } as Pick<HorarioAula, 'turma_id' | 'dia_semana' | 'hora_inicio' | 'hora_fim' | 'disciplina'>);
+
+    return horariosDaTurma.find((item) => getHorarioIdentityKey(item) === newKey);
+  },
+
   // ✅ Criar horário
   async createHorario(horario: HorarioAulaForm, turmaId: string) {
     try {
+      const duplicado = await this.findDuplicateHorario(turmaId, horario);
+      if (duplicado) {
+        throw new Error('Já existe um horário com a mesma turma, dia, hora e disciplina.');
+      }
+
       const id = generateUniqueId();
       const now = new Date().toISOString();
       
@@ -404,12 +512,13 @@ export const turmaService = {
       console.log('💾 Salvando horario:', horarios.dia_semana);
       
       await db.turma_horarios.put(horarios);
-    
-      this.markForSync(id,'upsert')
+      const disciplinaAdicionadaAoCurso = await ensureDisciplinaInCursoDaTurma(turmaId, horario.disciplina);
+
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'turma_horarios',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: now
@@ -417,7 +526,7 @@ export const turmaService = {
 
       console.log('✅ Turma salva com ID:', id);
     
-      return id;
+      return { id, disciplinaAdicionadaAoCurso };
     } catch (error) {
       console.error('Erro ao criar horário:', error);
       throw error;
@@ -427,20 +536,41 @@ export const turmaService = {
   // ✅ Atualizar horário
   async updateHorario(id: string, horario: Partial<HorarioAulaForm>) {
     try {
+      const horarioAtual = await db.turma_horarios.get(id);
+      if (!horarioAtual || horarioAtual.deleted) {
+        throw new Error('Horário não encontrado para atualização.');
+      }
+
+      const turmaId = horario.turma_id || horarioAtual.turma_id;
+      const candidato = {
+        dia_semana: horario.dia_semana || horarioAtual.dia_semana,
+        hora_inicio: horario.hora_inicio || horarioAtual.hora_inicio,
+        hora_fim: horario.hora_fim || horarioAtual.hora_fim,
+        disciplina: horario.disciplina || horarioAtual.disciplina
+      };
+
+      const duplicado = await this.findDuplicateHorario(turmaId, candidato, id);
+      if (duplicado) {
+        throw new Error('Já existe um horário com a mesma turma, dia, hora e disciplina.');
+      }
+
       await db.turma_horarios.update(id,{
         ...horario,
         sync_status:"pending",
         updated_at:new Date().toISOString()        
       })
+      const disciplinaAdicionadaAoCurso = await ensureDisciplinaInCursoDaTurma(turmaId, candidato.disciplina);
 
       await db.syncQueue.add({
         table: 'turma_horarios',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: new Date().toISOString()        
       });
       console.timeLog('Horario editado com sucesso');
+      return { disciplinaAdicionadaAoCurso };
     }catch(error){
       console.error('Erro ao editar horário:', error);
       throw error;
@@ -455,6 +585,7 @@ export const turmaService = {
       await db.syncQueue.add({
         table: 'turma_horarios',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'delete',
         status: 'pending_delete',
         created_at: new Date().toISOString()        
@@ -478,6 +609,7 @@ export const turmaService = {
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'turmas',
+      instituicao_id:instituicaoIdValue(),
       record_id: recordId,
       operation,
       status: 'pending',
@@ -490,9 +622,9 @@ export const turmaService = {
     try {
       const turmaCount = await db.turmas.count();
       const queueCount = await db.syncQueue
-        .where('table')
-        .equals('turmas')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and(item => item.table === 'turmas' && item.status === 'pending')
         .count();
       
       const turmasAtivas = (await this.getTurmas()).length;

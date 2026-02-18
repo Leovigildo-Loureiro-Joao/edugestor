@@ -16,8 +16,10 @@ import { instituicaoService } from '../../services/database/insitituicao';
 import { transacaoService } from '../../services/database';
 
 const StudentPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const tabSections = ['overview', 'propinas', 'frequencia', 'desempenho', 'informacoes'] as const;
+  type StudentSection = (typeof tabSections)[number];
   const [activeTab, setActiveTab] = useState(0);
   const [aluno, setAluno] = useState<Student | undefined>(undefined);
   const [propinas, setPropinas] = useState<Propina[]>([]);
@@ -50,6 +52,22 @@ const StudentPage: React.FC = () => {
       carregarDadosAluno();
     }
   }, [id]);
+
+  useEffect(() => {
+    const secaoAtual = seccao as StudentSection | undefined;
+    if (secaoAtual && tabSections.includes(secaoAtual)) {
+      setActiveTab(tabSections.indexOf(secaoAtual));
+      return;
+    }
+    setActiveTab(0);
+  }, [seccao]);
+
+  const handleTabChange = (index: number) => {
+    if (!id) return;
+    const section = tabSections[index] || 'overview';
+    setActiveTab(index);
+    navigate(`/alunos/${id}/${section}`);
+  };
 
   const carregarDadosAluno = async () => {
     try {
@@ -173,7 +191,7 @@ const StudentPage: React.FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{aluno.nome_completo}</h1>
                 <p className="text-gray-600 text-lg">
-                  {aluno.numero_estudante} • {aluno.curso}
+                  {aluno.numero_estudante} • {aluno.turma_nome || 'Sem turma'}
                 </p>
               </div>
             </div>
@@ -217,7 +235,7 @@ const StudentPage: React.FC = () => {
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-white'
                 }`}
-                onClick={() => setActiveTab(index)}
+                onClick={() => handleTabChange(index)}
               >
                 {tab}
               </button>
@@ -509,16 +527,12 @@ const StudentPage: React.FC = () => {
                   <h3 className="text-lg font-semibold  text-primary-800 mb-4">Informações Acadêmicas</h3>
                   <div className="space-y-3">
                     <div>
-                      <strong className="text-gray-700">Curso:</strong>{' '}
-                      <span className="text-gray-600">{aluno.curso}</span>
+                      <strong className="text-gray-700">Turma:</strong>{' '}
+                      <span className="text-gray-600">{aluno.turma_nome || 'Não definida'}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Propina:</strong>{' '}
                       <span className="text-gray-600">{aluno.propina}</span>
-                    </div>
-                    <div>
-                      <strong className="text-gray-700">Turma:</strong>{' '}
-                      <span className="text-gray-600">{aluno.turma_nome || 'Não definida'}</span>
                     </div>
                     <div>
                       <strong className="text-gray-700">Professor:</strong>{' '}

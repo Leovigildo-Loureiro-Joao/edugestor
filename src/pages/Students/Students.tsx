@@ -1,19 +1,26 @@
 // Students.tsx - VERSÃO ATUALIZADA
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { FiPlus, FiEdit, FiTrash2, FiUser, FiSearch, FiLayers, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { FiPlus, FiUser, FiSearch, FiLayers } from 'react-icons/fi';
 import { alunosService } from '../../services/database/alunosService';
+import { turmaService } from '../../services/database/turmas';
+import { cursosService } from '../../services/database/curso';
 import { FaBookAtlas, FaGraduationCap, FaPeopleGroup } from 'react-icons/fa6';
 import { RxPerson } from 'react-icons/rx';
 import { StatCard } from '../../components/students/StatCard';
 import { Student } from '../../types';
+import { Course } from '../../types/curso';
+import { Turma } from '../../types/turma';
 import { SelectTyped } from '../../components/students/StudentForm';
 import { getPendingCount } from '../../utils/emitPendingSync';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge'; // ✅ Use useAlert
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { StudentsTable } from '../../components/students/StudentsTable';
+import { ReforcoSectionModal } from '../../components/students/ReforcoSectionModal';
 
 const Students = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -28,6 +35,19 @@ const Students = () => {
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const nav = useNavigate();
   const [syncStats, setSyncStats] = useState(0);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [showSectionModal, setShowSectionModal] = useState(false);
+  const [creatingSection, setCreatingSection] = useState(false);
+  const [availableTurmas, setAvailableTurmas] = useState<Turma[]>([]);
+  const [sectionForm, setSectionForm] = useState({
+    modo: 'nova' as 'nova' | 'existente',
+    turmaExistenteId: '',
+    nomeTurma: '',
+    professor: '',
+    turno: 'manhã' as 'manhã' | 'tarde' | 'noite',
+    cursoId: '',
+    anoLectivo: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+  });
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); // ✅ Hook correto
 
@@ -161,7 +181,7 @@ const Students = () => {
         try {
           await alunosService.deleteStudent(student.id);
           setStudents(prev => prev.filter(s => s.id !== student.id));
-          await loadSyncStats()
+          reload();
           showAlert({
             type: 'success',
             title: 'Aluno excluído!',
@@ -232,6 +252,204 @@ const Students = () => {
     });
   }, [students, searchTerm, filtroProfessor, filtroTurma, filtroAnoLectivo, filtroEstado, isCartao]);
 
+  const reforcoStudents = useMemo(
+    () => filteredStudents.filter((student) => student.tipo_matricula === 'reforco_personalizado'),
+    [filteredStudents]
+  );
+
+  const reforcoSelectedCount = useMemo(
+    () => selectedStudentIds.filter((id) => reforcoStudents.some((student) => student.id === id)).length,
+    [selectedStudentIds, reforcoStudents]
+  );
+
+  useEffect(() => {
+    setSelectedStudentIds((prev) => prev.filter((id) => students.some((student) => student.id === id)));
+  }, [students]);
+
+  const handleToggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const handleToggleSelectAllReforco = () => {
+    const reforcoIds = reforcoStudents.map((student) => student.id);
+    const allSelected = reforcoIds.length > 0 && reforcoIds.every((id) => selectedStudentIds.includes(id));
+    setSelectedStudentIds((prev) => {
+      if (allSelected) {
+        return prev.filter((id) => !reforcoIds.includes(id));
+      }
+      const merged = new Set([...prev, ...reforcoIds]);
+      return Array.from(merged);
+    });
+  };
+
+  const normalizeNome = (value: string) =>
+    (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+
+  const getOrCreateReforcoCourseId = async (): Promise<string> => {
+    const instituicaoId = instituicaoIdValue() || '';
+    if (!instituicaoId) {
+      throw new Error('instituicao_id ausente para criar/usar curso Reforço.');
+    }
+
+    const cursos = await cursosService.getCourses();
+    const cursoExistente = (cursos || []).find((curso) => normalizeNome(curso.nome) === 'reforço');
+    if (cursoExistente?.id) return cursoExistente.id;
+
+    const novoCursoId = await cursosService.create({
+      nome: 'Reforço',
+      preco: 2500,
+      duracao: '3 meses',
+      disciplinas: ['Reforço'],
+      vagas: 99,
+      descricao: 'Curso padrao para turmas ficticias de reforco personalizado',
+      ativo: true,
+      instituicao_id: instituicaoId,
+    });
+
+    return novoCursoId;
+  };
+
+  const ensureTurmaHasCurso = async (turmaId: string): Promise<void> => {
+    const turma = await turmaService.getTurmaById(turmaId);
+    if (!turma) return;
+
+    if (!turma.curso_id || !turma.curso_id.trim()) {
+      const reforcoCourseId = await getOrCreateReforcoCourseId();
+      await turmaService.editTurma(turmaId, { curso_id: reforcoCourseId });
+    }
+  };
+
+  const openSectionModal = async () => {
+    if (reforcoSelectedCount === 0) {
+      showAlert({
+        type: 'warning',
+        title: 'Selecione alunos de reforço',
+        message: 'Escolha pelo menos um aluno de reforço personalizado na lista.',
+        duration: 3500,
+      });
+      return;
+    }
+
+    try {
+      const listaTurmas = await turmaService.getTurmas();
+      setAvailableTurmas((listaTurmas || []).filter((turma) => !turma.deleted && turma.estado === 'ativa'));
+      setSectionForm((prev) => ({
+        ...prev,
+        turmaExistenteId: prev.turmaExistenteId || listaTurmas?.[0]?.id || '',
+      }));
+      setShowSectionModal(true);
+    } catch {
+      setAvailableTurmas([]);
+      setShowSectionModal(true);
+    }
+  };
+
+  const handleCreateSection = async () => {
+    if (sectionForm.modo === 'nova' && !sectionForm.nomeTurma.trim()) {
+      showAlert({
+        type: 'warning',
+        title: 'Nome obrigatório',
+        message: 'Informe o nome da seção/turma fictícia.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (sectionForm.modo === 'nova' && !sectionForm.professor.trim()) {
+      showAlert({
+        type: 'warning',
+        title: 'Professor obrigatório',
+        message: 'Informe o nome do professor responsável.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (sectionForm.modo === 'existente' && !sectionForm.turmaExistenteId) {
+      showAlert({
+        type: 'warning',
+        title: 'Turma obrigatória',
+        message: 'Selecione uma turma existente para vincular os alunos.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    const selectedIds = selectedStudentIds.filter((id) =>
+      students.some((student) => student.id === id && student.tipo_matricula === 'reforco_personalizado')
+    );
+
+    if (selectedIds.length === 0) {
+      showAlert({
+        type: 'warning',
+        title: 'Sem alunos válidos',
+        message: 'Selecione alunos de reforço personalizado para criar a seção.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      setCreatingSection(true);
+      let turmaId = sectionForm.turmaExistenteId;
+
+      if (sectionForm.modo === 'nova') {
+        const reforcoCourseId = await getOrCreateReforcoCourseId();
+        turmaId = await turmaService.createTurma({
+          nome_turma: sectionForm.nomeTurma.trim(),
+          professor: sectionForm.professor.trim(),
+          turno: sectionForm.turno,
+          curso_id: reforcoCourseId,
+          ano_lectivo: sectionForm.anoLectivo,
+          capacidade_maxima: Math.max(selectedIds.length, 10),
+          estado: 'ativa',
+          descricao: 'Turma de apoio para reforço personalizado',
+        });
+      }
+
+      await ensureTurmaHasCurso(turmaId);
+
+      await Promise.all(
+        selectedIds.map((alunoId) =>
+          alunosService.updateStudent(alunoId, {
+            turma_id: turmaId,
+            tipo_matricula: 'reforco_personalizado',
+          })
+        )
+      );
+
+      setSelectedStudentIds((prev) => prev.filter((id) => !selectedIds.includes(id)));
+      setShowSectionModal(false);
+      setSectionForm((prev) => ({ ...prev, nomeTurma: '', professor: '' }));
+      await reload();
+
+      showAlert({
+        type: 'success',
+        title: sectionForm.modo === 'nova' ? 'Seção criada com sucesso' : 'Alunos vinculados com sucesso',
+        message:
+          sectionForm.modo === 'nova'
+            ? `${selectedIds.length} aluno(s) foram adicionados à nova seção.`
+            : `${selectedIds.length} aluno(s) foram adicionados à turma selecionada.`,
+        duration: 3500,
+      });
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Erro ao criar seção',
+        message: 'Não foi possível criar a seção e vincular os alunos.',
+        duration: 5000,
+      });
+    } finally {
+      setCreatingSection(false);
+    }
+  };
+
   // Se estiver carregando
   if (loading) {
     return (
@@ -286,6 +504,16 @@ const Students = () => {
 
               {/* Botões de Ação */}
               <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={openSectionModal}
+                  className="inline-flex items-center px-4 py-2.5 rounded-lg font-medium border
+                          border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100
+                          dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700
+                          transition-all duration-200"
+                >
+                  <FiLayers className="mr-2" size={18} />
+                  <span>Criar Seção Reforço ({reforcoSelectedCount})</span>
+                </button>
                 <Link
                   to="/alunos/novo"
                   className="inline-flex items-center px-4 py-2.5 rounded-lg font-medium
@@ -404,121 +632,30 @@ const Students = () => {
           </div>
         </div>
 
-        {/* Lista de Alunos */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-blue-600 dark:bg-blue-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Aluno</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Professor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nº Estudante</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Turma</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Cartão</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredStudents.map((student, index) => (
-                  <motion.tr
-                    key={student.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div 
-                          onClick={() => abrirAluno(student.id)} 
-                          className={`${student.sync_status === 'pending' ? "text-orange-600 hover:text-white hover:bg-orange-700 bg-orange-200 dark:bg-orange-900" : "text-blue-600 hover:text-white hover:bg-blue-700 bg-blue-100 dark:bg-blue-900"} flex-shrink-0 cursor-pointer transition-colors h-10 w-10 rounded-full flex items-center justify-center`}
-                        >
-                          {student.sync_status === 'pending' ? <FiAlertCircle /> : <FiUser />}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {student.nome_completo}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-300">
-                            {student.contacto_principal}
-                          </div>
-                          {!student.pagamento_em_dia && (
-                            <div className="text-sm text-red-800 dark:text-red-300">
-                              Pagamentos em atraso
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {student.professor || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {student.numero_estudante}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {student.turma_nome || 'Sem turma'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        student.estado === 'ativo' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                          : student.estado === 'transferido'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                      }`}>
-                        {student.estado}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        student.cartao_pago
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                      }`}>
-                        {student.cartao_pago ? "possui" : 'ñ possui'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <Link
-                        to={`/alunos/editar/${student.id}`}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <FiEdit size={16} className="inline" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteStudent(student)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-2"
-                      >
-                        <FiTrash2 size={16} className="inline" />
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredStudents.length === 0 && (
-            <div className="text-center py-12">
-              <FiUser className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum aluno encontrado</h3>
-              <button 
-                className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium"
-                onClick={reload}
-              >
-                Recarregar página
-              </button>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {searchTerm ? 'Tente ajustar os termos da busca.' : 'Comece adicionando um novo aluno.'}
-              </p>
-            </div>
-          )}
-        </div>
+        <StudentsTable
+          filteredStudents={filteredStudents}
+          reforcoStudents={reforcoStudents}
+          selectedStudentIds={selectedStudentIds}
+          searchTerm={searchTerm}
+          onToggleSelectAllReforco={handleToggleSelectAllReforco}
+          onToggleStudentSelection={handleToggleStudentSelection}
+          onOpenStudent={abrirAluno}
+          onDeleteStudent={handleDeleteStudent}
+          onReload={reload}
+        />
       </div>
       
       <ModalComponent />
+      <ReforcoSectionModal
+        show={showSectionModal}
+        creating={creatingSection}
+        selectedCount={reforcoSelectedCount}
+        availableTurmas={availableTurmas}
+        form={sectionForm}
+        onClose={() => setShowSectionModal(false)}
+        onChange={(patch) => setSectionForm((prev) => ({ ...prev, ...patch }))}
+        onSubmit={handleCreateSection}
+      />
     </>
   );
 };

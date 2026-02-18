@@ -89,9 +89,9 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
   const alunosParticiparam = Object.values(registros).filter(r => r.participou).length;
 
   return (
-    <div className="bg-white rounded-lg">
+    <div className="bg-white dark:bg-gray-800 rounded-lg">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b p-6">
+      <div className="sticky top-0 bg-white dark:bg-gray-800 border-b p-6">
         <div className="flex justify-between items-start">
           <div className="flex items-start gap-4">
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
@@ -99,10 +99,10 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
             </div>
             <div>
               <h2 className="font-semibold text-primary-700 text-xl">{aula.tema_aula}</h2>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 {aula.disciplina || 'Aula Sem Disciplina'}
               </h3>
-              <div className="flex items-center gap-4 mt-2 text-gray-600">
+              <div className="flex items-center gap-4 mt-2 text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                   <FiCalendar className="h-5 w-5" />
                   <span className="font-medium">
@@ -124,7 +124,7 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
           </div>
           <button
             onClick={() => setAulaSelect(null)}
-            className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100"
           >
             <FiX className="w-6 h-6" />
           </button>
@@ -146,12 +146,12 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
       {/* Lista de Alunos */}
       <div className="p-6">
         <div className="mb-6">
-          <h4 className="font-medium text-gray-900 mb-4">Registro de Frequência</h4>
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+          <h4 className="font-medium text-gray-900 dark:text-white mb-4">Registro de Frequência</h4>
+          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
             {alunos.map(aluno => {
               const registro = registros[aluno.id];
               return (
-                <div key={aluno.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={aluno.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 font-medium">
@@ -159,8 +159,8 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
                       </span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-900">{aluno.nome_completo}</span>
-                      <p className="text-sm text-gray-500">{aluno.numero_estudante}</p>
+                      <span className="font-medium text-gray-900 dark:text-white">{aluno.nome_completo}</span>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{aluno.numero_estudante}</p>
                     </div>
                   </div>
                   
@@ -199,7 +199,7 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
         <div className="flex gap-3">
           <button
             onClick={() => setAulaSelect(null)}
-            className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+            className="flex-1 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-900 font-medium"
           >
             Cancelar
           </button>

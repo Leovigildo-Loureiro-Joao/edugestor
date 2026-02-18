@@ -2,16 +2,15 @@ import db from "./db";
 import { Instituicao } from "../../types";
 import { profileService } from "./profileService";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
-import { generateKey } from "crypto";
 import { generateUniqueId } from "../../utils/idGenarator";
 
 export const instituicaoService = {
   // ============ OBTER CONFIGURAÇÃO ============
   async getConfig(): Promise<Instituicao> {
     try {
-      // Sempre usar ID fixo '1' para a instituição principal
-      const profile=await profileService.getLocalProfile()
-      const instituicao = await db.instituicao.get(profile.instituicao_id);
+      const profile = await profileService.getLocalProfile();
+      const activeId = instituicaoIdValue() || profile?.instituicao_id || '';
+      const instituicao = activeId ? await db.instituicao.get(activeId) : undefined;
       
       if (!instituicao || instituicao.deleted) {
         // Se não existir, criar configuração padrão minimalista
@@ -31,8 +30,8 @@ export const instituicaoService = {
       const now = new Date().toISOString();
       
       // Buscar configuração atual
-      let id=instituicaoIdValue()
-      const existingConfig = await db.instituicao.get(id||"");
+      const id = instituicaoIdValue() || config.id || '';
+      const existingConfig = id ? await db.instituicao.get(id) : undefined;
       
       const instituicaoAtualizada: Instituicao = {
         // Manter dados existentes ou usar padrão
@@ -49,7 +48,7 @@ export const instituicaoService = {
         
         // Aplicar atualizações
         ...config,
-        id:existingConfig?.id||"",
+        id: existingConfig?.id || id || generateUniqueId(),
         sync_status:existingConfig?.sync_status||"pending",
 
         // Campos fixos
@@ -64,7 +63,8 @@ export const instituicaoService = {
       // Adicionar à fila de sincronização se necessário
       await db.syncQueue.add({
         table: 'instituicao',
-        record_id: '1',
+        instituicao_id:instituicaoIdValue(),
+        record_id: instituicaoAtualizada.id,
         operation: 'upsert',
         status: 'pending',
         created_at: now
@@ -109,6 +109,7 @@ export const instituicaoService = {
       await db.syncQueue.add({
         table: 'instituicao',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: now
@@ -132,7 +133,8 @@ export const instituicaoService = {
   // ============ SINCRONIZAÇÃO SIMPLIFICADA ============
   async syncInstituicao(): Promise<void> {
     try {
-      const instituicao = await db.instituicao.get('1');
+      const id = instituicaoIdValue() || "";
+      const instituicao = await db.instituicao.get(id);
       
       if (!instituicao) {
         console.log('📭 Nenhuma instituição para sincronizar');
@@ -156,7 +158,7 @@ export const instituicaoService = {
         // Remover da fila de sincronização após sucesso
         await db.syncQueue
           .where('record_id')
-          .equals('1')
+          .equals(id)
           .delete();
 
         console.log('✅ Instituição sincronizada com sucesso');
@@ -175,7 +177,8 @@ export const instituicaoService = {
   // Verificar se a instituição está configurada
   async isConfigured(): Promise<boolean> {
     try {
-      const instituicao = await db.instituicao.get('1');
+      const id = instituicaoIdValue() || '';
+      const instituicao = id ? await db.instituicao.get(id) : undefined;
       return !!instituicao?.nome_escola;
     } catch (error) {
       console.error('Erro ao verificar configuração:', error);
@@ -252,10 +255,12 @@ export const instituicaoService = {
   // Limpar configuração (apenas para desenvolvimento)
   async clearConfig(): Promise<void> {
     if (confirm('TEM CERTEZA? Isso apaga a configuração da instituição!')) {
-      await db.instituicao.delete('1');
+      const id = instituicaoIdValue() || '';
+      if (!id) return;
+      await db.instituicao.delete(id);
       await db.syncQueue
         .where('record_id')
-        .equals('1')
+        .equals(id)
         .delete();
       console.log('🧹 Configuração da instituição removida');
     }
@@ -264,7 +269,8 @@ export const instituicaoService = {
   // Método rápido para obter nome da escola
   async getNomeEscola(): Promise<string> {
     try {
-      const instituicao = await db.instituicao.get('1');
+      const id = instituicaoIdValue() || '';
+      const instituicao = id ? await db.instituicao.get(id) : undefined;
       return instituicao?.nome_escola || 'CETE';
     } catch {
       return 'CETE';

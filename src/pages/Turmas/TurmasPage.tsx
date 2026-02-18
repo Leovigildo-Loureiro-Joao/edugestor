@@ -16,6 +16,8 @@ import {
   FiPlus,
   FiPlusCircle,
   FiTrash,
+  FiCheckCircle,
+  FiX
 } from 'react-icons/fi';
 import { 
   FaCrown, 
@@ -48,6 +50,7 @@ import { RegistroFrequenciaLote } from '../../types/frequencia';
 import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
 import HorarioCellMenu from '../../components/turmas/HorarioCellMenu.tsx';
+import { planoAulaService, PlanoAula } from '../../services/database/planoAulasService.ts';
 
 
 // Tipos atualizados para refletir o StudentForm
@@ -62,14 +65,19 @@ interface TurmaDetailsData extends Turma {
   horarios: HorarioAula[];
   vagas?: number;
 }
+interface PlanoComAulasTurma extends PlanoAula {
+  aulas_turma: Aula[];
+}
 
 const TurmaDetails = () => {
-  const { id } = useParams();
+  const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const secoesTurma = ['overview', 'alunos', 'aulas', 'horario'] as const;
+  type SecaoTurma = (typeof secoesTurma)[number];
   const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
   const [aulaSelect, setAulaSelect] = useState<Aula | null>(null);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState<'overview' | 'alunos'| 'aulas'|'horario'>('overview');
+  const [abaAtiva, setAbaAtiva] = useState<SecaoTurma>('overview');
   const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
   const [filtroTipoMatricula, setFiltroTipoMatricula] = useState<'todos' | 'regular' | 'reforco_personalizado'>('todos');
   const [filtroGrupoAprendizado, setFiltroGrupoAprendizado] = useState<string>('todos');
@@ -81,6 +89,9 @@ const TurmaDetails = () => {
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoDesempenho|null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showPlanoModal, setShowPlanoModal] = useState(false);
+  const [loadingPlanos, setLoadingPlanos] = useState(false);
+  const [planosTurma, setPlanosTurma] = useState<PlanoComAulasTurma[]>([]);
   const [quickAddTurma, setQuickAddTurma] = useState('');
   const [quickAddData, setQuickAddData] = useState(new Date().toISOString().split('T')[0]);
   const [aulaEditando, setAulaEditando] = useState<Aula | null>(null);
@@ -125,6 +136,8 @@ const registrarFrequencia = async (registros:RegistroFrequenciaLote) => {
 // Função para salvar horário
 const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): Promise<void> => {
   try {
+    let disciplinaAdicionadaAoCurso = false;
+
     // Verificar se a turma tem horários existentes
     if (turma?.horarios) {
       const conflito = verificarConflitoHorario(
@@ -146,13 +159,15 @@ const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): 
     
     if (horario.id) {
       // Atualizar horário existente
-      await turmaService.updateHorario(horario.id, horario);
+      const resultado = await turmaService.updateHorario(horario.id, horario);
+      disciplinaAdicionadaAoCurso = !!resultado?.disciplinaAdicionadaAoCurso;
     } else {
       // Criar novo horário
-      await turmaService.createHorario(
+      const resultado = await turmaService.createHorario(
         horario as HorarioAulaForm,
         id || ''
       );
+      disciplinaAdicionadaAoCurso = !!resultado?.disciplinaAdicionadaAoCurso;
     }
     
     // Recarregar dados da turma
@@ -164,9 +179,23 @@ const handleSalvarHorario = async (horario: HorarioAulaForm & { id?: string }): 
       message: 'Horário salvo com sucesso.',
       duration: 3000
     });
+
+    if (disciplinaAdicionadaAoCurso && horario.disciplina?.trim()) {
+      showAlert({
+        type: 'info',
+        title: 'Disciplina adicionada ao curso',
+        message: `A disciplina "${horario.disciplina}" foi adicionada automaticamente ao curso da turma.`,
+        duration: 4500
+      });
+    }
   } catch (error) {
     console.error('Erro ao salvar horário:', error);
-    // O alerta já foi mostrado acima, não precisa mostrar novamente
+    showAlert({
+      type: 'error',
+      title: 'Erro ao salvar horário',
+      message: error instanceof Error ? error.message : 'Não foi possível salvar o horário.',
+      duration: 5000
+    });
     throw error;
   }
 };
@@ -253,6 +282,15 @@ const handleExcluirHorario = async (horarioId: string) => {
   }, [id]);
 
   useEffect(() => {
+    const secaoParam = seccao as SecaoTurma | undefined;
+    if (secaoParam && secoesTurma.includes(secaoParam)) {
+      setAbaAtiva(secaoParam);
+      return;
+    }
+    setAbaAtiva('overview');
+  }, [seccao]);
+
+  useEffect(() => {
     if (turma?.alunos) {
       let filtered = turma.alunos;
 
@@ -315,7 +353,74 @@ const handleExcluirHorario = async (horarioId: string) => {
     }
   };
 
-  const getTipoMatriculaLabel = (tipo: string) => {
+  const carregarPlanosDaTurma = async () => {
+    if (!id) return;
+    try {
+      setLoadingPlanos(true);
+      const planos = await planoAulaService.getPlanos({ turma_id: id });
+
+      const planosComAulas = await Promise.all(
+        planos.map(async (plano) => {
+          const aulasDoPlano = await Promise.all(
+            (plano.aulas_geradas || []).map((aulaId) => aulaService.getAulaById(aulaId))
+          );
+
+          const aulasTurma = aulasDoPlano
+            .filter((aula): aula is Aula => Boolean(aula && aula.turma_id === id && !aula.deleted))
+            .sort((a, b) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
+
+          return {
+            ...plano,
+            aulas_turma: aulasTurma
+          };
+        })
+      );
+
+      setPlanosTurma(planosComAulas);
+    } catch (error) {
+      console.error('Erro ao carregar planos da turma:', error);
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar planos',
+        message: 'Não foi possível carregar os planos de aula da turma.',
+        duration: 4000
+      });
+    } finally {
+      setLoadingPlanos(false);
+    }
+  };
+
+  const abrirPlanoModal = async () => {
+    setShowPlanoModal(true);
+    await carregarPlanosDaTurma();
+  };
+
+  const atualizarStatusAulaPlano = async (aula: Aula, status: AulaStatus) => {
+    try {
+      await aulaService.atualizarAula(aula.id, {
+        status,
+        turmas: aula.turmas
+      });
+      await carregarPlanosDaTurma();
+      await loadTurmaDetails();
+    } catch (error) {
+      console.error('Erro ao atualizar status da aula:', error);
+      showAlert({
+        type: 'error',
+        title: 'Erro ao atualizar aula',
+        message: 'Não foi possível sinalizar o estado da aula.',
+        duration: 3500
+      });
+    }
+  };
+
+const handleSecaoChange = (novaSecao: SecaoTurma) => {
+  setAbaAtiva(novaSecao);
+  if (!id) return;
+  navigate(`/turmas/${id}/${novaSecao}`);
+};
+
+const getTipoMatriculaLabel = (tipo: string) => {
     switch (tipo) {
       case 'regular': return 'Turma Regular';
       case 'reforco_personalizado': return 'Reforço Personalizado';
@@ -441,6 +546,7 @@ const handleExcluirHorario = async (horarioId: string) => {
       try {
         await aulaService.criarAula({
           turma_id: quickAddTurma,
+          dia_semana: getDiaSemanaFromDate(quickAddData),
           data_aula: quickAddData,
           disciplina: turmas.find(t => t.id === quickAddTurma)?.curso_nome || '',
           hora_inicio: '08:00',
@@ -491,15 +597,16 @@ const handleExcluirHorario = async (horarioId: string) => {
   }
   const week = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 
-function horarios(turma: Turma): HorarioAula[][] {
-  if (!turma.horarios || turma.horarios.length === 0) {
+ function horarios(turma: Turma): HorarioAula[][] {
+  const horarios = turma.horarios;
+  if (!horarios || horarios.length === 0) {
     return [];
   }
 
   // Agrupar horários por intervalo de tempo
   const horariosPorHora: Record<string, HorarioAula[]> = {};
   
-  turma.horarios.forEach((horario) => {
+  horarios.forEach((horario) => {
     const chave = `${horario.hora_inicio}-${horario.hora_fim}`;
     if (!horariosPorHora[chave]) {
       horariosPorHora[chave] = [];
@@ -570,13 +677,22 @@ const getDiaSemanaFromDate = (dateString: string): string => {
               </div>
             </div>
             
-            <Link
-              to={`/turmas/editar/${turma.id}`}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              <FiEdit size={18} />
-              Editar Turma
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={abrirPlanoModal}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+              >
+                <FiBook size={18} />
+                Plano de Aula
+              </button>
+              <Link
+                to={`/turmas/editar/${turma.id}`}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                <FiEdit size={18} />
+                Editar Turma
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -589,10 +705,10 @@ const getDiaSemanaFromDate = (dateString: string): string => {
               { id: 'aulas', label: 'Aulas', icon: FiBook },
               { id: 'horario', label: 'Horarío', icon: FiClock }
             ].map(aba => (
-              <button
-                key={aba.id}
-                onClick={() => setAbaAtiva(aba.id as any)}
-                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                <button
+                  key={aba.id}
+                  onClick={() => handleSecaoChange(aba.id as SecaoTurma)}
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
                   abaAtiva === aba.id
                     ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1035,7 +1151,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {horarios(turma).length > 0 ? (
+          { horarios(turma).length > 0 ? (
             horarios(turma).map((horario: HorarioAula[], key: number) => (
               <motion.tr
                 initial={{ opacity: 0, y: 20 }}
@@ -1180,16 +1296,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Proximas Aulas
               </h3>
-            <button
-            onClick={() => {
-              setHorarioEditando(null);
-              setIsHorarioModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            <FiPlus size={18} />
-     
-          </button>
+            
              </div>
               <HorarioModal
                 isOpen={isHorarioModalOpen}
@@ -1347,6 +1454,282 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            <AnimatePresence>
+              {showPlanoModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  onClick={() => setShowPlanoModal(false)}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header com animação */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-750"
+                    >
+                      <motion.div
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                          <FiBook className="text-blue-500" />
+                          Planos de Aula da Turma
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Visualize e sinalize aulas ministradas ou não ministradas.
+                        </p>
+                      </motion.div>
+                      
+                      <motion.button
+                        onClick={() => setShowPlanoModal(false)}
+                        className="px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        <FiX className="inline mr-1" />
+                        Fechar
+                      </motion.button>
+                    </motion.div>
+
+                    {/* Conteúdo com scroll */}
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="p-6 overflow-y-auto max-h-[78vh] space-y-4"
+                    >
+                      {/* Estado de loading */}
+                      {loadingPlanos && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col items-center justify-center py-12"
+                        >
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"
+                          />
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Carregando planos...</p>
+                        </motion.div>
+                      )}
+
+                      {/* Estado vazio */}
+                      {!loadingPlanos && planosTurma.length === 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="text-center py-12"
+                        >
+                          <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <FiBook className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                              Nenhum plano encontrado
+                            </h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Esta turma ainda não possui planos de aula.
+                            </p>
+                          </motion.div>
+                        </motion.div>
+                      )}
+
+                      {/* Lista de planos */}
+                      {!loadingPlanos && planosTurma.map((plano, planoIndex) => {
+                        const ministradas = plano.aulas_turma.filter((aula) => aula.status === 'ministrada').length;
+                        const naoMinistradas = plano.aulas_turma.length - ministradas;
+
+                        return (
+                          <motion.div
+                            key={plano.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 + planoIndex * 0.1 }}
+                            whileHover={{ scale: 1.01 }}
+                            className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50 dark:bg-gray-900/30 shadow-sm hover:shadow-md transition-all"
+                          >
+                            {/* Cabeçalho do plano */}
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                              <motion.div
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: 0.5 + planoIndex * 0.1 }}
+                              >
+                                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                  <span className="w-1.5 h-5 bg-blue-500 rounded-full"></span>
+                                  {plano.titulo}
+                                </h4>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                  {plano.disciplina} • {plano.tipo} • {plano.frequencia || 'diaria'}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Aulas planeadas: {plano.aulas_planeadas} • Geradas: {plano.aulas_turma.length}
+                                </p>
+                              </motion.div>
+                              
+                              <motion.div 
+                                initial={{ x: 10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: 0.5 + planoIndex * 0.1 }}
+                                className="text-xs flex gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg"
+                              >
+                                <motion.span 
+                                  whileHover={{ scale: 1.05 }}
+                                  className="text-green-700 dark:text-green-400 flex items-center gap-1"
+                                >
+                                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                  Ministradas: {ministradas}
+                                </motion.span>
+                                <motion.span 
+                                  whileHover={{ scale: 1.05 }}
+                                  className="text-amber-700 dark:text-amber-400 flex items-center gap-1"
+                                >
+                                  <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                                  Não ministradas: {naoMinistradas}
+                                </motion.span>
+                              </motion.div>
+                            </div>
+
+                            {/* Aulas do plano */}
+                            {plano.aulas_turma.length === 0 ? (
+                              <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.6 + planoIndex * 0.1 }}
+                                className="text-sm text-gray-500 dark:text-gray-400 italic"
+                              >
+                                Nenhuma aula gerada deste plano para esta turma.
+                              </motion.p>
+                            ) : (
+                              <motion.div 
+                                initial="hidden"
+                                animate="visible"
+                                variants={{
+                                  hidden: { opacity: 0 },
+                                  visible: {
+                                    opacity: 1,
+                                    transition: {
+                                      staggerChildren: 0.05,
+                                      delayChildren: 0.7 + planoIndex * 0.1
+                                    }
+                                  }
+                                }}
+                                className="space-y-2"
+                              >
+                                {plano.aulas_turma.map((aula, aulaIndex) => (
+                                  <motion.div
+                                    key={aula.id}
+                                    variants={{
+                                      hidden: { opacity: 0, x: -20 },
+                                      visible: { opacity: 1, x: 0 }
+                                    }}
+                                    whileHover={{ scale: 1.01, backgroundColor: 'rgba(59, 130, 246, 0.02)' }}
+                                    className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                        <FiBook className="text-blue-500 text-xs" />
+                                        {aula.tema_aula}
+                                      </p>
+                                      
+                                      <div className="flex flex-wrap items-center gap-3 mt-1">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                          <FiCalendar size={10} />
+                                          {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
+                                        </span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                          <FiClock size={10} />
+                                          {aula.dia_semana} • {aula.hora_inicio} - {aula.hora_fim}
+                                        </span>
+                                      </div>
+
+                                      {aula.conteudo_ministrado && (
+                                        <motion.p 
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          transition={{ delay: 0.8 + aulaIndex * 0.1 }}
+                                          className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2 bg-gray-50 dark:bg-gray-900/30 p-2 rounded"
+                                        >
+                                          <span className="font-medium">Conteúdo:</span> {aula.conteudo_ministrado}
+                                        </motion.p>
+                                      )}
+
+                                      {!!aula.objetivos_aprendizagem?.length && (
+                                        <div className="mt-2">
+                                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                            Objetivos ({aula.objetivos_aprendizagem.length}):
+                                          </p>
+                                          <ul className="list-disc list-inside text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                            {aula.objetivos_aprendizagem.slice(0, 2).map((obj, i) => (
+                                              <li key={i} className="truncate">{obj}</li>
+                                            ))}
+                                            {aula.objetivos_aprendizagem.length > 2 && (
+                                              <li className="text-blue-500">+{aula.objetivos_aprendizagem.length - 2} mais</li>
+                                            )}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <motion.span 
+                                        whileHover={{ scale: 1.05 }}
+                                        className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                                          aula.status === 'ministrada'
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                        }`}
+                                      >
+                                        {aula.status === 'ministrada' ? <FiCheckCircle size={10} /> : <FiClock size={10} />}
+                                        {aula.status}
+                                      </motion.span>
+                                      
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => atualizarStatusAulaPlano(aula, 'ministrada')}
+                                        className="px-2.5 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1"
+                                      >
+                                        <FiCheckCircle size={12} />
+                                        Ministrada
+                                      </motion.button>
+                                      
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => atualizarStatusAulaPlano(aula, 'planeada')}
+                                        className="px-2.5 py-1.5 text-xs rounded-md bg-gray-600 text-white hover:bg-gray-700 transition-colors flex items-center gap-1"
+                                      >
+                                        <FiClock size={12} />
+                                        Não ministrada
+                                      </motion.button>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
       
             {/* Modal Quick Add */}
             <AnimatePresence>
@@ -1443,4 +1826,3 @@ const getDiaSemanaFromDate = (dateString: string): string => {
 };
 
 export default TurmaDetails;
-

@@ -77,25 +77,25 @@ const PromoteToAdmin = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
      <section className='flex'>
         <img src={jpg} alt="" />
-         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">👑</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Tornar-se Administrador
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               Digite a chave secreta para se tornar administrador do sistema
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Chave Secreta
               </label>
               <input
@@ -103,7 +103,7 @@ const PromoteToAdmin = () => {
                 value={secretKey}
                 onChange={(e) => setSecretKey(e.target.value)}
                 placeholder="Digite a chave secreta"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
@@ -133,14 +133,14 @@ const PromoteToAdmin = () => {
 
             <button
               onClick={() => navigate('/dashboard')}
-              className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 transition-colors"
             >
               Voltar ao Dashboard
             </button>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-            <p className="text-sm text-gray-500">
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Se perdeu a chave, contate o desenvolvedor.
             </p>
           </div>

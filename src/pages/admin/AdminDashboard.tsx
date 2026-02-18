@@ -7,30 +7,23 @@ import {
   FiShield, 
   FiBarChart2, 
   FiDatabase,
-  FiBell,
   FiActivity,
   FiAlertCircle,
   FiCheckCircle,
   FiXCircle,
   FiEdit,
   FiTrash2,
-  FiEye,
   FiSearch,
-  FiFilter,
   FiDownload,
   FiRefreshCw,
   FiUserPlus
 } from 'react-icons/fi';
-import { 
-  FaUserGraduate, 
-  FaChalkboardTeacher,
-  FaMoneyBillWave 
-} from 'react-icons/fa';
-import { supabase } from '../../services/database/db';
+import db, { supabase } from '../../services/database/db';
 import { useAuth } from '../../contexts/AuthContext';
 import { AddUserModal } from './AddUserModal';
-import { syncManager } from '../../services/database/syncManager';
 import { profileService } from '../../services/database/profileService';
+import { useNavigate, useParams } from 'react-router-dom';
+import { auditLogService } from '../../services/audit/auditLogService';
 
 interface User {
   id: string;
@@ -64,8 +57,15 @@ interface AuditLog {
 }
 
 const AdminDashboard = () => {
-  const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState('users');
+  const { seccao } = useParams<{ seccao?: string }>();
+  const navigate = useNavigate();
+  const secoesAdmin = ['users', 'audit', 'settings', 'backup'] as const;
+  type SecaoAdmin = (typeof secoesAdmin)[number];
+  const { profile, loading: authLoading } = useAuth();
+  
+  // Estados
+  const [isAdminVerified, setIsAdminVerified] = useState(false);
+  const [activeTab, setActiveTab] = useState<SecaoAdmin>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -82,7 +82,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState({
     users: true,
     logs: true,
-    stats: true
+    stats: true,
+    initial: true
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -102,25 +103,78 @@ const AdminDashboard = () => {
     type: 'success' | 'error' | 'info';
     message: string;
   } | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Verificar se é admin
+  // ✅ 1. VERIFICAR ADMIN
   useEffect(() => {
-    if (profile?.role !== 'admin') {
-      window.location.href = '/dashboard';
+    let isMounted = true;
+    
+    const verifyAdmin = async () => {
+      if (authLoading) return;
+      
+      if (!profile) {
+        window.location.href = '/dashboard';
+        return;
+      }
+      
+      if (profile.role !== 'admin') {
+        window.location.href = '/dashboard';
+        return;
+      }
+      
+      if (isMounted) {
+        setIsAdminVerified(true);
+        setLoading(prev => ({ ...prev, initial: false }));
+      }
+    };
+    
+    verifyAdmin();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [profile, authLoading]);
+
+  // ✅ 2. CARREGAR DADOS
+  useEffect(() => {
+    if (!isAdminVerified) return;
+    
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          loadUsers(),
+          loadAuditLogs(),
+          loadStats(),
+          loadPendingUsers()
+        ]);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        setDataLoaded(true);
+      }
+    };
+    
+    loadData();
+  }, [isAdminVerified]);
+
+  // ✅ 3. SINCRONIZAR TAB COM URL
+  useEffect(() => {
+    if (!isAdminVerified) return;
+    
+    const secaoParam = seccao as SecaoAdmin | undefined;
+    if (secaoParam && secoesAdmin.includes(secaoParam)) {
+      setActiveTab(secaoParam);
+    } else {
+      setActiveTab('users');
     }
-  }, [profile]);
+  }, [seccao, isAdminVerified]);
 
-  // Carregar dados
+  // ✅ 4. FILTRAR USUÁRIOS
   useEffect(() => {
-    loadAllData();
-    loadPendingUsers();
-  }, []);
+    if (!users.length) return;
+    
+    let filtered = [...users];
 
-  // Filtrar usuários
-  useEffect(() => {
-    let filtered = users;
-
-    // Filtrar por busca
     if (searchTerm) {
       filtered = filtered.filter(user =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,12 +182,10 @@ const AdminDashboard = () => {
       );
     }
 
-    // Filtrar por role
     if (roleFilter !== 'all') {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
 
-    // Filtrar por status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(user => 
         statusFilter === 'active' ? user.is_active : !user.is_active
@@ -143,89 +195,54 @@ const AdminDashboard = () => {
     setFilteredUsers(filtered);
   }, [users, searchTerm, roleFilter, statusFilter]);
 
-  const loadAllData = async () => {
-    await Promise.all([
-      loadUsers(),
-      loadAuditLogs(),
-      loadStats()
-    ]);
+  const handleTabChange = (tab: SecaoAdmin) => {
+    setActiveTab(tab);
+    navigate(`/admin/dashboard/${tab}`);
   };
 
   const loadUsers = async () => {
-  try {
-    setLoading(prev => ({ ...prev, users: true }));
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      setLoading(prev => ({ ...prev, users: true }));
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('instituicao_id', profile?.instituicao_id)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // ❌ REMOVA esta parte - não funciona sem Service Role Key
-    // const { data: authUsers } = await supabase.auth.admin.listUsers();
-    
-    // ✅ Use apenas os dados da tabela profiles
-    const usersWithStatus = data.map(profile => ({
-      ...profile,
-      // Adicione status baseado em campos existentes
-      is_active: profile.status === 'active' || profile.status === 'ativo'
-    }));
+      const usersWithStatus = data.map(profile => ({
+        ...profile,
+        is_active: profile.status === 'active' || profile.status === 'ativo'
+      }));
 
-    setUsers(usersWithStatus);
-    setFilteredUsers(usersWithStatus);
-  } catch (error) {
-    console.error('Erro ao carregar usuários:', error);
-    showNotification('error', 'Erro ao carregar usuários');
-  } finally {
-    setLoading(prev => ({ ...prev, users: false }));
-  }
-};
-
-  const handleUserAdded = () => {
-    loadPendingUsers(); // Recarregar lista de pendentes
-    loadUsers(); // Recarregar lista geral
-    showNotification('success', 'Usuário adicionado com sucesso!');
-};
-
-const loadPendingUsers = async () => {
-  try {
-    // Supondo que você tem um service para usuários pendentes
-    // Se não, vamos criar uma versão simples:
-    const pendingUsersJson = localStorage.getItem('pending_users');
-    if (pendingUsersJson) {
-      setPendingUsers(JSON.parse(pendingUsersJson));
+      setUsers(usersWithStatus);
+      setFilteredUsers(usersWithStatus);
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      showNotification('error', 'Erro ao carregar usuários');
+    } finally {
+      setLoading(prev => ({ ...prev, users: false }));
     }
-  } catch (error) {
-    console.error('Erro ao carregar usuários pendentes:', error);
-  }
-};
+  };
 
-
-// Adicione esta função para sincronizar usuários:
-const handleSyncUsers = async () => {
-  setSyncLoading(true);
-  try {
-    // Aqui você chamaria o service de sincronização
-    // Por enquanto, vamos simular:
-    await profileService.syncPendingUsers();
-    
-    // Limpar usuários pendentes após sincronização
-    localStorage.removeItem('pending_users');
-    setPendingUsers([]);
-    
-    showNotification('success', 'Usuários sincronizados com sucesso!');
-    loadUsers(); // Recarregar lista de usuários
-  } catch (error) {
-    showNotification('error', 'Erro ao sincronizar usuários');
-  } finally {
-    setSyncLoading(false);
-  }
-};
+  const loadPendingUsers = async () => {
+    try {
+      const pending = await db.profiles
+        .where('sync_status')
+        .equals('pending')
+        .toArray();
+      setPendingUsers(pending);
+    } catch (error) {
+      console.error('Erro ao carregar usuários pendentes:', error);
+    }
+  };
 
   const loadAuditLogs = async () => {
     try {
       setLoading(prev => ({ ...prev, logs: true }));
+      await auditLogService.flushPendingLogs();
       
       const { data, error } = await supabase
         .from('audit_logs')
@@ -247,20 +264,25 @@ const handleSyncUsers = async () => {
     try {
       setLoading(prev => ({ ...prev, stats: true }));
 
-      const { data: users } = await supabase.from('profiles').select('role');
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('instituicao_id', profile?.instituicao_id);
+        
       const { data: logs } = await supabase
         .from('audit_logs')
         .select('created_at')
+        .eq('instituicao_id', profile?.instituicao_id)
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       const statsData: SystemStats = {
-        totalUsers: users?.length || 0,
-        activeUsers: users?.filter(u => u.role !== 'inactive').length || 0,
-        inactiveUsers: users?.filter(u => u.role === 'inactive').length || 0,
-        admins: users?.filter(u => u.role === 'admin').length || 0,
-        managers: users?.filter(u => u.role === 'manager').length || 0,
-        teachers: users?.filter(u => u.role === 'teacher').length || 0,
-        students: users?.filter(u => u.role === 'user').length || 0,
+        totalUsers: usersData?.length || 0,
+        activeUsers: usersData?.filter(u => u.role !== 'inactive').length || 0,
+        inactiveUsers: usersData?.filter(u => u.role === 'inactive').length || 0,
+        admins: usersData?.filter(u => u.role === 'admin').length || 0,
+        managers: usersData?.filter(u => u.role === 'manager').length || 0,
+        teachers: usersData?.filter(u => u.role === 'teacher').length || 0,
+        students: usersData?.filter(u => u.role === 'user').length || 0,
         recentLogins: logs?.length || 0
       };
 
@@ -269,6 +291,31 @@ const handleSyncUsers = async () => {
       console.error('Erro ao carregar estatísticas:', error);
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
+    }
+  };
+
+  const handleUserAdded = () => {
+    loadPendingUsers();
+    loadUsers();
+    showNotification('success', 'Usuário adicionado com sucesso!');
+  };
+
+  const handleSyncUsers = async () => {
+    setSyncLoading(true);
+    try {
+      const result = await profileService.syncPendingUsers();
+      
+      if (result.success) {
+        showNotification('success', result.message || 'Usuários sincronizados com sucesso!');
+        await Promise.all([loadUsers(), loadPendingUsers()]);
+      } else {
+        showNotification('error', result.message || 'Erro ao sincronizar usuários');
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+      showNotification('error', 'Erro ao sincronizar usuários');
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -285,7 +332,6 @@ const handleSyncUsers = async () => {
     if (!selectedUser) return;
 
     try {
-      // Atualizar perfil
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -296,12 +342,10 @@ const handleSyncUsers = async () => {
 
       if (profileError) throw profileError;
 
-      // Se for desativar, remover sessão
       if (!editForm.is_active && selectedUser.is_active) {
         await supabase.auth.admin.signOut(selectedUser.id);
       }
 
-      // Registrar no log de auditoria
       await logAuditAction('UPDATE_USER', {
         user_id: selectedUser.id,
         old_role: selectedUser.role,
@@ -311,7 +355,7 @@ const handleSyncUsers = async () => {
       });
 
       showNotification('success', 'Usuário atualizado com sucesso!');
-      loadAllData();
+      await Promise.all([loadUsers(), loadAuditLogs(), loadStats()]);
       setShowEditModal(false);
       setSelectedUser(null);
     } catch (error) {
@@ -324,22 +368,17 @@ const handleSyncUsers = async () => {
     if (!userToDelete) return;
 
     try {
-      // Não permitir deletar a si mesmo
       if (userToDelete === profile?.id) {
         showNotification('error', 'Você não pode deletar sua própria conta');
         return;
       }
 
-      // Deletar do auth (isso deleta em cascata do profiles devido à foreign key)
       const { error } = await supabase.auth.admin.deleteUser(userToDelete);
-
       if (error) throw error;
 
-      // Registrar no log de auditoria
       await logAuditAction('DELETE_USER', { user_id: userToDelete });
-
       showNotification('success', 'Usuário deletado com sucesso!');
-      loadAllData();
+      await Promise.all([loadUsers(), loadAuditLogs(), loadStats()]);
       setShowConfirmDelete(false);
       setUserToDelete(null);
     } catch (error) {
@@ -425,8 +464,42 @@ const handleSyncUsers = async () => {
       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   };
 
-  if (profile?.role !== 'admin') {
-    return null; // Ou componente de acesso negado
+  // ✅ LOADING INICIAL
+  if (loading.initial || authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ SE NÃO FOR ADMIN
+  if (!isAdminVerified) {
+    return null;
+  }
+
+  // ✅ LOADING DOS DADOS
+  if (!dataLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+        <div className="mb-6">
+          <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-4 w-96 bg-gray-200 dark:bg-gray-700 rounded mt-2 animate-pulse"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded mt-2 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -571,7 +644,7 @@ const handleSyncUsers = async () => {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id as SecaoAdmin)}
                 className={`flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
@@ -626,7 +699,6 @@ const handleSyncUsers = async () => {
                     <option value="inactive">Inativos</option>
                   </select>
                   
-                  {/* BOTÃO ADICIONAR USUÁRIO */}
                   <button
                     onClick={() => setShowAddUserModal(true)}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -683,7 +755,7 @@ const handleSyncUsers = async () => {
                     {pendingUsers.map((user, index) => (
                       <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded">
                         <div>
-                          <span className="font-medium">{user.nome}</span>
+                          <span className="font-medium">{user.full_name || user.nome}</span>
                           <span className="text-gray-500 ml-2">({user.email})</span>
                         </div>
                         <span className="px-2 py-1 text-xs rounded bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
@@ -1044,17 +1116,18 @@ const handleSyncUsers = async () => {
         </div>
       )}
 
-      {/* Modal de Confirmação de Deleção */}
-  {showAddUserModal && (
-      <AddUserModal
-        isOpen={showAddUserModal}
-        onClose={() => setShowAddUserModal(false)}
-        onSuccess={handleUserAdded}
-        adminId={profile?.id || ''}
-        instituicaoId={profile?.instituicao_id || ''}
-      />
-    )}
+      {/* Modal de Adição de Usuário */}
+      {showAddUserModal && (
+        <AddUserModal
+          isOpen={showAddUserModal}
+          onClose={() => setShowAddUserModal(false)}
+          onSuccess={handleUserAdded}
+          adminId={profile?.id || ''}
+          instituicaoId={profile?.instituicao_id || ''}
+        />
+      )}
 
+      {/* Modal de Confirmação de Deleção */}
       {showConfirmDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div
@@ -1096,7 +1169,6 @@ const handleSyncUsers = async () => {
           </motion.div>
         </div>
       )}
-      
     </div>
   );
 };

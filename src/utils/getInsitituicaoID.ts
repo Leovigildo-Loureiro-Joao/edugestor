@@ -1,14 +1,27 @@
-
 import { profileService } from "../services/database/profileService"
 
 export const instituicaoIdValue = () => {
-    if(localStorage.getItem("active_instituicao_id")){
-        return localStorage.getItem("active_instituicao_id")
+    const active = localStorage.getItem("active_instituicao_id");
+    if (active) return active;
+
+    const profileRaw = localStorage.getItem("user_profile");
+    if (profileRaw) {
+        try {
+            const profile = JSON.parse(profileRaw);
+            if (profile?.instituicao_id) {
+                localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+                return profile.instituicao_id;
+            }
+        } catch {
+            // ignora erro de parse e segue fallback
+        }
     }
-    setTimeout(()=>{
-        profileService.getLocalProfile();
-    },5000)
-     if(localStorage.getItem("active_instituicao_id"))
-        return localStorage.getItem("active_instituicao_id")
-    
+
+    void profileService.getLocalProfile().then((profile) => {
+        if (profile?.instituicao_id) {
+            localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+        }
+    });
+
+    return "";
 }

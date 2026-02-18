@@ -13,9 +13,7 @@ import { Student, StudentFormData, StudentFormProps } from "../../types";
 import { useState, useEffect } from "react";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import { turmaService } from "../../services/database/turmas.ts";
-import { cursosService } from "../../services/database/curso.ts";
 import { Turma } from "../../types/turma";
-import { Course } from "../../types/curso";
 import { Select } from "../ui/Select.jsx";
 import { configService } from "../../services/database/config.ts";
 import { useNavigate } from "react-router-dom";
@@ -33,9 +31,7 @@ export const SelectTyped = Select as unknown as React.ComponentType<any>;
 export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: StudentFormProps) => {
   const isEditing = !!student;
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [cursos, setCursos] = useState<Course[]>([]);
   const navigate=useNavigate()
-  const [turmasFiltradas, setTurmasFiltradas] = useState<Turma[]>([]);
   const [tipoMatricula, setTipoMatricula] = useState<'regular' | 'reforco_personalizado'>(
     student?.tipo_matricula || 'regular'
   );
@@ -64,7 +60,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     propina: student.propina || 0,
     estado: student.estado || 'ativo',
     sexo: student.sexo || 'M',
-    curso: student.curso || '',
     classe_escolar: student.classe_escolar || '',
     cartao_pago: student.cartao_pago || false,
     tipo_matricula: student.tipo_matricula || 'regular',
@@ -92,7 +87,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     data_matricula: '',
     estado: 'ativo',
     sexo: 'M',
-    curso: '',
     classe_escolar: '',
     cartao_pago: false,
     tipo_matricula: 'regular',
@@ -119,136 +113,41 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   // ✅ Carregar cursos e turmas
   useEffect(() => {
     const loadData = async () => {
-      await loadCursos();
       await loadTurmas();
       setIsInitialLoad(false);
     };
     loadData();
   }, []);
 
-  // ✅ Atualizar turma quando curso mudar E quando turmas forem carregadas
+  // ✅ Definir turma padrão para matrícula regular
   useEffect(() => {
-    if (!isInitialLoad && formData.curso && turmas.length > 0 && tipoMatricula === 'regular') {
-      const turmasDoCurso = turmas.filter(turma => turma.curso_nome === formData.curso);
-      setTurmasFiltradas(turmasDoCurso);
-      
-      // Se não há turma selecionada OU a turma atual não pertence ao curso selecionado
-      if (!formData.turma_id || !turmasDoCurso.some(t => t.id === formData.turma_id)) {
-        const primeiraTurmaId = turmasDoCurso[0]?.id || '';
-        if (primeiraTurmaId) {
-          setFormData((prev: StudentFormData) => ({ 
-            ...prev, 
-            turma_id: primeiraTurmaId 
-          }));
-        }
-      }
-    } else if (tipoMatricula !== 'regular') {
-      setTurmasFiltradas([]);
-      setFormData((prev: StudentFormData) => ({ 
-        ...prev, 
-        turma_id: '' 
-      }));
-    }
-  }, [formData.curso, turmas, tipoMatricula, isInitialLoad]);
-
-  // ✅ Efeito especial para setar turma_id inicial quando o curso já vem preenchido
-  useEffect(() => {
-    if (!isInitialLoad && turmas.length > 0 && formData.curso && !formData.turma_id && tipoMatricula === 'regular') {
-      const turmasDoCurso = turmas.filter(turma => turma.curso_nome === formData.curso);
-      if (turmasDoCurso.length > 0) {
-        const primeiraTurmaId = turmasDoCurso[0].id;
+    if (!isInitialLoad && turmas.length > 0 && tipoMatricula === 'regular') {
+      if (!formData.turma_id || !turmas.some(turma => turma.id === formData.turma_id)) {
+        const primeiraTurmaId = turmas[0].id;
         setFormData((prev: StudentFormData) => ({ 
           ...prev, 
           turma_id: primeiraTurmaId 
         }));
-       
-        console.log(`🏫 Turma inicial definida: ${primeiraTurmaId} para curso ${formData.curso}`);
       }
+    } else if (tipoMatricula !== 'regular' && formData.turma_id) {
+      setFormData((prev: StudentFormData) => ({ ...prev, turma_id: '' }));
     }
-  }, [isInitialLoad, turmas, formData.curso, tipoMatricula]);
+  }, [isInitialLoad, turmas, tipoMatricula, formData.turma_id]);
 
   useEffect(() => {
     setTipoMatricula(formData.tipo_matricula || 'regular');
   }, [formData.tipo_matricula]);
 
-  const loadCursos = async () => {
-    try {
-      const res = await cursosService.getCourses();
-      setCursos(res ?? []);
-      setFormData((prev: StudentFormData) => ({ ...prev, curso: res?.[0]?.nome || '' }));
-    } catch (error) {
-      console.error('Erro ao carregar cursos:', error);
-    }
-  };
-
   const loadTurmas = async () => {
     try {
       const res = await turmaService.getTurmas();
       setTurmas(res ?? []);
-      
-      // ✅ Se já temos um curso no formData, buscar ano letivo
-      if (formData.curso) {
-        setAno(await configService.getConfigValue("academic", "academic_year"));
-        
-        // ✅ Se é edição e já tem turma_id, não fazer nada
-        // ✅ Se é novo ou não tem turma_id, vamos definir
-        if (!isEditing || !formData.turma_id) {
-          const turmasDoCurso = res?.filter(turma => turma.curso_nome === formData.curso) || [];
-          if (turmasDoCurso.length > 0) {
-            // Usar a turma do student se existir, senão pegar a primeira
-            const turmaIdParaUsar = student?.turma_id || turmasDoCurso[0].id;
-            if (turmaIdParaUsar && !formData.turma_id) {
-              setFormData((prev: StudentFormData) => ({ 
-                ...prev, 
-                turma_id: turmaIdParaUsar 
-              }));
-            }
-          }
-        }
-      }
+      const anoLetivo = await configService.getConfigValue("academic", "academic_year");
+      setAno(anoLetivo);
+      setFormData((prev: StudentFormData) => ({ ...prev, ano_lectivo: prev.ano_lectivo || anoLetivo }));
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
-  };
-
-  // ✅ Função específica para quando o curso for alterado
-  const handleCursoChange = (cursoValue: string) => {
-    setFormData((prev: StudentFormData) => {
-      const newFormData = { 
-        ...prev, 
-        curso: cursoValue 
-      };
-      
-      // Se for matrícula regular e há turmas carregadas
-      if (tipoMatricula === 'regular' && turmas.length > 0) {
-        const turmasDoCurso = turmas.filter(turma => turma.curso_nome === cursoValue);
-        setTurmasFiltradas(turmasDoCurso);
-        
-        if (turmasDoCurso.length > 0) {
-          // Verificar se a turma atual pertence ao novo curso
-          const turmaAtual = prev.turma_id ? turmas.find(t => t.id === prev.turma_id) : null;
-          const turmaPertenceAoCurso = turmaAtual && turmaAtual.curso_nome === cursoValue;
-          
-          // Se não pertence ou não tem turma, pegar a primeira do novo curso
-          if (!turmaPertenceAoCurso) {
-            newFormData.turma_id = turmasDoCurso[0].id;
-            console.log(`🔄 Turma definida automaticamente: ${turmasDoCurso[0].id}`);
-          }
-        } else {
-          newFormData.turma_id = '';
-        }
-      } else if (tipoMatricula !== 'regular') {
-        newFormData.turma_id = '';
-        setTurmasFiltradas([]);
-      }
-      
-      return newFormData;
-    });
-    if(!formData.propina)
-    setFormData((prev:any)=> ({
-      ...prev,
-      propina:cursos.find((curs)=>curs.nome==cursoValue)?.preco
-    }))
   };
 
   // ✅ Limpar rascunho após submit bem-sucedido
@@ -265,27 +164,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setUpdate(true)
     const { name, value, type } = e.target;
-    if (name === 'curso') {
-      handleCursoChange(value);
-    } else {
-      setFormData((prev: any) => ({
-        ...prev,
-        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
-                type === 'number' ? Number(value) : value
-      }));
-    }
+    setFormData((prev: any) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+              type === 'number' ? Number(value) : value
+    }));
   };
 
   const handleChangeSel = (field: string, value: any) => {
     setUpdate(true)
-    if (field === 'curso') {
-      handleCursoChange(value);
-    } else {
-      setFormData((prev: StudentFormData) => ({ 
-        ...prev, 
-        [field]: value 
-      }));
-    }
+    setFormData((prev: StudentFormData) => ({ 
+      ...prev, 
+      [field]: value 
+    }));
   };
 
   const handleMultiSelect = (field: string, value: string[]) => {
@@ -453,10 +344,10 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           </div>
         </div>
         
-        <div className={tipoMatricula=="regular"&&(cursos.length==0||turmas.length==0)?"flex justify-center":"grid grid-cols-1 lg:grid-cols-2 gap-8"}>
+        <div className={tipoMatricula=="regular"&&turmas.length==0?"flex justify-center":"grid grid-cols-1 lg:grid-cols-2 gap-8"}>
           
           {
-          tipoMatricula=="regular"&&(cursos.length==0||turmas.length==0)?
+          tipoMatricula=="regular"&&turmas.length==0?
           <>
              <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -466,14 +357,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <div className='flex flex-col items-center w-96 text-center'>
                     <img src={logoBlack} alt="" />
                     
-                    <h3 className="mt-2 text-md font-medium text-gray-900 dark:text-white">Adicione um curso para adicionar alunos</h3>
+                    <h3 className="mt-2 text-md font-medium text-gray-900 dark:text-white">Adicione uma turma para adicionar alunos</h3>
                     <p className="mt-1 text-wrap text-m text-gray-500 dark:text-gray-400">
-                      Adicione todos dados antes de adicionar um aluno regular pois todos cursos e todas turma estão neste sistema esta
-                      vinculados um ao outro, e cada aluno a uma turma excepto os alunos personalizados,
-                      caso deseje adicionar um personalisado troque o tipo de matricula
+                      Para aluno regular é obrigatório selecionar uma turma. 
+                      Caso deseje adicionar um personalizado, troque o tipo de matrícula.
                     </p>
                       <button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium "
-                      onClick={()=> {setSubmit(false);navigate(cursos.length==0?"/cursos/novo":"/turmas/nova")}}>{cursos.length==0?"Adicionar um Curso":"Adicionar Turma"}</button>
+                      onClick={()=> {setSubmit(false);navigate("/turmas/nova")}}>Adicionar Turma</button>
                 </div>
             </motion.div>
           </>
@@ -710,53 +600,24 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               {/* ✅ CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
               {tipoMatricula === 'regular' ? (
                 <>
-                  {/* CURSO */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Curso *
-                    </label>
-                    <SelectTyped 
-                      vect={cursos.map(curso => curso.nome)} 
-                      icon={FiFileText}
-                      
-                      onChange={(value: string) => handleChangeSel('curso', value)}
-                      value={formData.curso}
-                      placeholder="Selecione o curso"
-                      disabled={cursos.length === 0}
-                    />
-                    {cursos.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Carregando cursos...</p>
-                    )}
-                  </div>
-
                   {/* TURMA */}
                   <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-gray-700">
                       Turma *
                     </label>
                     <SelectTyped 
-                      vect={formData.curso 
-                        ? turmasFiltradas.map(turma => ({
-                            value: turma.id,
-                            label: turma.nome_turma
-                          }))
-                        : turmas.map(turma => ({
-                            value: turma.id,
-                            label: `${turma.nome_turma} - ${turma.curso_nome}`,
-                            disabled: true // Desabilita se não tiver curso selecionado
-                          }))
-                      } 
+                      vect={turmas.map(turma => ({
+                        value: turma.id,
+                        label: `${turma.nome_turma} - ${turma.curso_nome || 'Sem curso'}`
+                      }))} 
                       icon={FiUsers}
                       onChange={(value: string) => handleChangeSel('turma_id', value)}
                       value={formData.turma_id}
-                      placeholder={formData.curso 
-                        ? 'Selecione uma turma disponível' 
-                        : '↖️ Selecione um curso primeiro'
-                      }
-                      disabled={!formData.curso}
+                      placeholder="Selecione uma turma disponível"
+                      disabled={turmas.length === 0}
                     />
-                    {!formData.curso && (
-                      <p className="text-xs text-gray-500 mt-1">Selecione um curso para ver as turmas</p>
+                    {turmas.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">Nenhuma turma disponível</p>
                     )}
                   </div>
 

@@ -1,5 +1,6 @@
 // services/dashboard/dashboardService.ts
 import db, { supabase } from '../database/db';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 // Tipos
 import { DashboardStats } from '../../types';
@@ -20,6 +21,26 @@ export const dashboardService = {
  async getDashboardStats(): Promise<DashboardStats> {
   try {
     console.log('🟡 Iniciando busca de estatísticas...');
+    const activeInstituicaoId = instituicaoIdValue() || '';
+    if (!activeInstituicaoId) {
+      return {
+        totalAlunos: 0,
+        totalAlunosAnterior: 0,
+        alunosAtivos: 0,
+        propinaPagas: 0,
+        propinaPagasAnterior: 0,
+        propinaPendentes: 0,
+        propinaPendentesAnterior: 0,
+        propinaPagasCount: 0,
+        propinaPagasCountAnterior: 0,
+        propinaPendentesCount: 0,
+        propinaPendentesCountAnterior: 0,
+        frequencias: 0,
+        frequenciasP: 0,
+        aulasMinistradas: 0,
+        aulasMinistradasP: 0
+      };
+    }
 
     // Calcular mês atual e anterior
     const mesAtualIndex = mes_actual; // 0-11
@@ -28,64 +49,63 @@ export const dashboardService = {
     const mesAtual = mapaMeses[Object.keys(mapaMeses)[mesAtualIndex]];
     const mesAnterior = mapaMeses[Object.keys(mapaMeses)[mesAnteriorIndex]];
 
-    // Execute todas as queries em paralelo
-    const [
-      aulasPromise,
-      aulasPromiseA,
-      totalAlunosPromise,
-      alunosAnteriorPromise,
-      alunosAtivosPromise,
-      propinaPromiseComparativo,
-      frequenciasPromise,
-      frequenciasPromiseP
-    ] = await Promise.all([
-      (await db.aulas.toArray())
-      .filter(
-        (aula)=> !aula.deleted && 
-        new Date(aula.data_aula).getMonth()==new Date().getMonth() &&
-        new Date(aula.data_aula).getFullYear()==new Date().getFullYear()
-      ).length,
-      (await db.aulas.toArray())
-      .filter(
-        (aula)=> !aula.deleted && 
-        new Date(aula.data_aula).setMonth(new Date(aula.data_aula).getMonth()-1)==new Date().getMonth()-1 &&
-        new Date(aula.data_aula).getFullYear()==new Date().getFullYear()
-      ).length
-      ,
-      // Total de alunos do ano atual
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const previousMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const previousMonth = previousMonthDate.getMonth();
+    const previousMonthYear = previousMonthDate.getFullYear();
+
+    const [aulasAll, alunosAll, frequenciasAll, instituicaoAtual] = await Promise.all([
+      db.aulas.toArray(),
+      db.alunos.toArray(),
+      db.frequencias.toArray(),
+      activeInstituicaoId ? db.instituicao.get(activeInstituicaoId) : Promise.resolve(undefined)
+    ]);
+
+    const aulasInstituicao = aulasAll.filter(
+      (aula) => !aula.deleted && aula.instituicao_id === activeInstituicaoId
+    );
+
+    const aulasMesAtual = aulasInstituicao.filter((aula) => {
+      const dataAula = new Date(aula.data_aula);
+      return dataAula.getMonth() === currentMonth && dataAula.getFullYear() === currentYear;
+    }).length;
+
+    const aulasMesAnterior = aulasInstituicao.filter((aula) => {
+      const dataAula = new Date(aula.data_aula);
+      return dataAula.getMonth() === previousMonth && dataAula.getFullYear() === previousMonthYear;
+    }).length;
+
+    const alunosInstituicao = alunosAll.filter(
+      (aluno) => !aluno.deleted && aluno.instituicao_id === activeInstituicaoId
+    );
+
+    const alunosAtivosCount = alunosInstituicao.filter((aluno) => aluno.estado === 'ativo').length;
+
+    const aulaIdsInstituicao = new Set(aulasInstituicao.map((aula) => aula.id));
+    const frequenciasInstituicao = frequenciasAll.filter(
+      (frequencia) => !frequencia.deleted && aulaIdsInstituicao.has(frequencia.aula_id)
+    );
+
+    const frequenciasMesAtual = frequenciasInstituicao.filter((frequencia) => {
+      const data = new Date(frequencia.data_aula);
+      return data.getMonth() === currentMonth && data.getFullYear() === currentYear;
+    });
+
+    const frequenciasMesAnterior = frequenciasInstituicao.filter((frequencia) => {
+      const data = new Date(frequencia.data_aula);
+      return data.getMonth() === previousMonth && data.getFullYear() === previousMonthYear;
+    });
+
+    const [totalAlunosPromise, alunosAnteriorPromise, propinaPromiseComparativo] = await Promise.all([
       this.get_alunos_ano_lectivo_actual(),
-      
-      // Alunos do ano anterior
-     this.alunos_ano_lectivo_anterior(),
-      
-
-      // Alunos ativos
-
-      (await db.alunos
-        .toArray())
-        .filter(
-          (aluno)=> !aluno.deleted&&aluno.estado=='ativo'
-        ).length
-      ,this.obterComparativoPropinas(mesAtual, mesAnterior, '2025-2026'),
-      async function frequencias() {
-        return (await db.frequencias
-        .toArray())
-        .filter(
-          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true &&
-         new Date(frequencia.data_aula).getMonth()==new Date().getMonth() &&
-        new Date(frequencia.data_aula).getFullYear()==new Date().getFullYear()
-        )
-      }(),
-        async function frequenciasP() {
-        return (await db.frequencias
-        .toArray())
-        .filter(
-          (frequencia)=> frequencia.deleted!=false&&frequencia.presente==true &&
-         new Date(frequencia.data_aula).getMonth()==new Date().getMonth() &&
-        new Date(frequencia.data_aula).getFullYear()==new Date().getFullYear()
-        )
-      }()
-      
+      this.alunos_ano_lectivo_anterior(),
+      this.obterComparativoPropinas(
+        mesAtual,
+        mesAnterior,
+        instituicaoAtual?.ano_lectivo || '2025-2026'
+      )
     ]);
 
     // Desestruturação com tipos
@@ -108,11 +128,13 @@ export const dashboardService = {
     // ✅ Calcular frequência média
     let frequenciaMedia: number = 0;
     let frequenciaMediaP: number = 0;
-    if (frequenciasPromise && frequenciasPromise.length > 0) {
-      const totalPresentes: number = frequenciasPromise.filter(f => f.presente).length;
-      const totalPresentesP: number = frequenciasPromiseP.filter(f => f.presente).length;
-      frequenciaMedia = (totalPresentes / frequenciasPromise.length) * 100;
-      frequenciaMediaP = (totalPresentesP / frequenciasPromiseP.length) * 100;
+    if (frequenciasMesAtual.length > 0) {
+      const totalPresentes: number = frequenciasMesAtual.filter(f => f.presente).length;
+      frequenciaMedia = (totalPresentes / frequenciasMesAtual.length) * 100;
+    }
+    if (frequenciasMesAnterior.length > 0) {
+      const totalPresentesP: number = frequenciasMesAnterior.filter(f => f.presente).length;
+      frequenciaMediaP = (totalPresentesP / frequenciasMesAnterior.length) * 100;
     }
 
   
@@ -121,7 +143,7 @@ export const dashboardService = {
     const stats: DashboardStats = {
       totalAlunos,
       totalAlunosAnterior,
-      alunosAtivos: alunosAtivosPromise || 0,
+      alunosAtivos: alunosAtivosCount || 0,
       
       // Propinas pagas (VALOR em dinheiro)
       propinaPagas: comparativo.mes_atual.pagas.valor,
@@ -141,8 +163,8 @@ export const dashboardService = {
       frequencias: parseFloat(frequenciaMedia.toFixed(1)),
       frequenciasP: parseFloat(frequenciaMediaP.toFixed(1)),
 
-      aulasMinistradas:aulasPromise,
-      aulasMinistradasP:aulasPromiseA
+      aulasMinistradas:aulasMesAtual,
+      aulasMinistradasP:aulasMesAnterior
     };
 
     console.log('📊 Estatísticas finais:', stats);
@@ -159,8 +181,10 @@ export const dashboardService = {
   // Métodos adicionais com tipagem
   async getAlunosPorMes(): Promise<{ mes: string; total: number }[]> {
     try {
+      const activeInstituicaoId = instituicaoIdValue() || '';
+      if (!activeInstituicaoId) return [];
       const { data, error } = await supabase
-        .rpc('get_alunos_por_mes');
+        .rpc('get_alunos_por_mes', { p_instituicao_id: activeInstituicaoId });
       
       if (error) throw error;
       
@@ -174,9 +198,12 @@ export const dashboardService = {
   // Exemplo de método com parâmetros tipados
   async getPropinasPorEstado(estado: 'pago' | 'pendente' | 'atrasado'): Promise<number> {
     try {
+      const activeInstituicaoId = instituicaoIdValue() || '';
+      if (!activeInstituicaoId) return 0;
       const { count, error } = await supabase
         .from('propina')
         .select('id', { count: 'exact', head: true })
+        .eq('instituicao_id', activeInstituicaoId)
         .eq('estado', estado);
       
       if (error) throw error;
@@ -189,22 +216,31 @@ export const dashboardService = {
   }
 
   ,async get_alunos_ano_lectivo_actual(){
+     const activeInstituicaoId = instituicaoIdValue() || '';
+     if (!activeInstituicaoId) return 0;
      const alunos= await db.alunos.toArray() 
-     const instituicao=(await db.instituicao.toArray()).at(0) 
-     const totalAlunos=alunos.filter((aluno)=> !aluno.deleted&&aluno.ano_lectivo==instituicao?.ano_lectivo)
+     const instituicao = activeInstituicaoId ? await db.instituicao.get(activeInstituicaoId) : undefined;
+     const totalAlunos=alunos.filter((aluno)=>
+      !aluno.deleted &&
+      aluno.ano_lectivo==instituicao?.ano_lectivo &&
+      aluno.instituicao_id === activeInstituicaoId
+     )
      return totalAlunos.length
   },
 
 
 async alunos_ano_lectivo_anterior(){
+    const activeInstituicaoId = instituicaoIdValue() || '';
+    if (!activeInstituicaoId) return 0;
     const alunos = await db.alunos.toArray();
-    const instituicao = (await db.instituicao.toArray()).at(0);
+    const instituicao = activeInstituicaoId ? await db.instituicao.get(activeInstituicaoId) : undefined;
     
     const anoAnterior = obterAnoLetivoAnterior(instituicao?.ano_lectivo || '');
     
     const totalAlunos = alunos.filter((aluno) => 
         !aluno.deleted && 
-        aluno.ano_lectivo == anoAnterior
+        aluno.ano_lectivo == anoAnterior &&
+        aluno.instituicao_id === activeInstituicaoId
     );
     
     return totalAlunos.length;
@@ -215,18 +251,44 @@ async  obterComparativoPropinas(
   p_mes_anterior: string,
   p_ano_lectivo: string
 ): Promise<ComparativoPropinasMensal> {
+  const activeInstituicaoId = instituicaoIdValue() || '';
+  if (!activeInstituicaoId) {
+    return {
+      mes_atual: { pagas: { count: 0, valor: 0 }, pendentes: { count: 0, valor: 0 } },
+      mes_anterior: { pagas: { count: 0, valor: 0 }, pendentes: { count: 0, valor: 0 } }
+    };
+  }
+  const alunosPermitidos = await db.alunos
+    .toArray()
+    .then((alunos) =>
+      alunos
+        .filter((aluno) => !aluno.deleted && aluno.instituicao_id === activeInstituicaoId)
+        .map((aluno) => aluno.id)
+    );
+  const alunosPermitidosSet = new Set(alunosPermitidos);
+
   // Resumo do MÊS ATUAL
   const propinasAtual = await db.propina
     .where('mes_referencia')
     .equals(p_mes_atual)
-    .and(propina => propina.ano_lectivo === p_ano_lectivo)
+    .and(
+      (propina) =>
+        propina.instituicao_id === activeInstituicaoId &&
+        propina.ano_lectivo === p_ano_lectivo &&
+        alunosPermitidosSet.has(propina.aluno_id)
+    )
     .toArray();
 
   // Resumo do MÊS ANTERIOR
   const propinasAnterior = await db.propina
     .where('mes_referencia')
     .equals(p_mes_anterior)
-    .and(propina => propina.ano_lectivo === p_ano_lectivo)
+    .and(
+      (propina) =>
+        propina.instituicao_id === activeInstituicaoId &&
+        propina.ano_lectivo === p_ano_lectivo &&
+        alunosPermitidosSet.has(propina.aluno_id)
+    )
     .toArray();
 
   // Função auxiliar para calcular estatísticas
@@ -267,5 +329,3 @@ function obterAnoLetivoAnterior(anoAtual:string) {
     const [inicio, fim] = anoAtual.split('-').map(Number);
     return `${inicio - 1}-${fim - 1}`;
 }
-
-

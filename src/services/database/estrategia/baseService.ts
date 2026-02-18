@@ -1,4 +1,5 @@
 import db from "../db";
+import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
 
 type EstrategiaTable = "metas" | "tarefas" | "planeamentos" | "rotinas";
 
@@ -16,6 +17,7 @@ export const estrategiaBaseService = {
         });
 
         await db.syncQueue.add({
+          instituicao_id: instituicaoIdValue(),
           table,
           record_id: id,
           operation: "delete",
@@ -27,7 +29,12 @@ export const estrategiaBaseService = {
       } else {
         await db[table].delete(id);
 
-        await db.syncQueue.where("record_id").equals(id).delete();
+        const instituicaoId = instituicaoIdValue();
+        await db.syncQueue
+          .where("record_id")
+          .equals(id)
+          .and((item) => item.instituicao_id === instituicaoId)
+          .delete();
 
         console.log(`🗑️ ${table} ${id} deletado localmente`);
       }

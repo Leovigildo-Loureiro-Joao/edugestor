@@ -6,7 +6,7 @@ export type {
   PlaneamentoDiario,
   Atividades,
   DiaAtividades,
-  PlaneamentoSemanal,
+  PlaneamentoSemanal as PlaneamentoSemanalType,
   Semanas,
   PlaneamentoMensal,
 } from './planeamento';

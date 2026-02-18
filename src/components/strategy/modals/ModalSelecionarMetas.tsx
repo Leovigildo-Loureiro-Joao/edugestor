@@ -89,13 +89,13 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'nao_iniciada': 'bg-gray-100 text-gray-800',
+      'nao_iniciada': 'bg-gray-100 text-gray-800 dark:text-gray-100',
       'em_andamento': 'bg-blue-100 text-blue-800',
       'concluida': 'bg-green-100 text-green-800',
       'atrasada': 'bg-red-100 text-red-800',
       'suspensa': 'bg-yellow-100 text-yellow-800'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:text-gray-100';
   };
 
   if (!isOpen) return null;
@@ -116,7 +116,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -147,7 +147,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
             </div>
             
             {/* Filtros */}
-            <div className="px-6 py-3 bg-gray-50 border-b flex gap-2 overflow-x-auto">
+            <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b flex gap-2 overflow-x-auto">
               {['todas', 'nao_iniciada', 'em_andamento', 'concluida', 'atrasada'].map(status => (
                 <button
                   key={status}
@@ -155,7 +155,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
                   className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
                     filtroStatus === status
                       ? 'bg-purple-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
                   }`}
                 >
                   {status === 'todas' ? 'Todas' : 
@@ -175,7 +175,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
               ) : metasFiltradas.length === 0 ? (
                 <div className="text-center py-8">
                   <FiTarget className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                  <p className="text-gray-500">Nenhuma meta encontrada</p>
+                  <p className="text-gray-500 dark:text-gray-400">Nenhuma meta encontrada</p>
                   <button 
                     onClick={() => window.location.href = '/estrategia/metas/nova'}
                     className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -192,13 +192,13 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
                       className={`p-4 border rounded-xl cursor-pointer transition-all ${
                         selecionadas.includes(meta.id)
                           ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 hover:bg-gray-50 dark:bg-gray-900'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-medium text-gray-900">{meta.titulo}</h3>
+                            <h3 className="font-medium text-gray-900 dark:text-white">{meta.titulo}</h3>
                             <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(meta.status)}`}>
                               {meta.status === 'nao_iniciada' ? 'Não Iniciada' :
                                meta.status === 'em_andamento' ? 'Em Andamento' :
@@ -207,11 +207,11 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
                             </span>
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                             {meta.descricao}
                           </p>
                           
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <FiUser className="mr-1" size={12} />
                               {meta.responsavel_principal}
@@ -233,7 +233,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
                               <FiCheckCircle className="h-4 w-4 text-white" />
                             </div>
                           ) : (
-                            <div className="w-6 h-6 border-2 border-gray-300 rounded-full" />
+                            <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded-full" />
                           )}
                         </div>
                       </div>
@@ -244,14 +244,14 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
             </div>
             
             {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">{selecionadas.length}</span> metas selecionadas
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100"
                 >
                   Cancelar
                 </button>

@@ -8,52 +8,154 @@ import { frequenciaService, turmaService } from '.';
 import { emitPendingSync } from '../../utils/emitPendingSync';
 import { cacheManager } from './cacheManager';
 import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { generateUniqueId } from '../../utils/idGenarator';
 
-const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const normalizeAulaField = (value?: string) => (value || '').trim().toLowerCase();
+const normalizeAulaHora = (value?: string) => (value || '').trim().slice(0, 5);
+const getAulaIdentityKey = (aulaData: AulaFormData, instituicaoId: string) =>
+  [
+    instituicaoId,
+    aulaData.turma_id,
+    (aulaData.data_aula || '').slice(0, 10),
+    normalizeAulaHora(aulaData.hora_inicio),
+    normalizeAulaHora(aulaData.hora_fim),
+    normalizeAulaField(aulaData.disciplina)
+  ].join('|');
+
+const inFlightCriarAula = new Map<string, Promise<string>>();
 
 export const aulaService = {
+  async removerAulaDosPlanos(aulaId: string) {
+    try {
+      const planos = await db.plano_aulas
+        .filter((plano) =>
+          !plano.deleted &&
+          Array.isArray(plano.aulas_geradas) &&
+          plano.aulas_geradas.includes(aulaId)
+        )
+        .toArray();
+
+      if (planos.length === 0) return;
+
+      const now = new Date().toISOString();
+
+      for (const plano of planos) {
+        const aulasAtualizadas = (plano.aulas_geradas || []).filter((id) => id !== aulaId);
+
+        await db.plano_aulas.update(plano.id, {
+          aulas_geradas: aulasAtualizadas,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        const hasPendingUpsert = await db.syncQueue
+          .where('table')
+          .equals('plano_aulas')
+          .filter(
+            (item) =>
+              item.instituicao_id === instituicaoIdValue() &&
+              item.record_id === plano.id &&
+              item.operation === 'upsert' &&
+              item.status === 'pending'
+          )
+          .first();
+
+        if (!hasPendingUpsert) {
+          await db.syncQueue.add({
+            table: 'plano_aulas',
+            record_id: plano.id,
+            instituicao_id:instituicaoIdValue(),
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+        }
+      }
+
+      console.log(`🧩 Aula ${aulaId} removida de ${planos.length} plano(s) de aula`);
+    } catch (error) {
+      console.error('Erro ao remover aula dos planos:', error);
+    }
+  },
+
   // ✅ Criar aula localmente
   async criarAula(aulaData: AulaFormData): Promise<string> {
-    try {
-      const id = generateUniqueId();
-      const now = new Date().toISOString();
-      
-      const aula = {
-        ...aulaData,
-        id,
-        created_at: now,
-        updated_at: now,
-        sync_status: 'pending',
-        deleted: false,
-      } as Aula;
+    const instituicao_id = instituicaoIdValue() || '';
+    const identityKey = getAulaIdentityKey(aulaData, instituicao_id);
 
-      console.log('💾 Salvando aula:', aula.tema_aula || `Aula ${aula.data_aula}`);
-      
-      await db.aulas.put(aula);
-      
-      // Adicionar à fila de sincronização
-      await db.syncQueue.add({
-        table: 'aulas',
-        record_id: id,
-        operation: 'upsert',
-        status: 'pending',
-        created_at: now
-      });
+    const pending = inFlightCriarAula.get(identityKey);
+    if (pending) return pending;
 
-      console.log('✅ Aula salva com ID:', id);
-      return id;
-      
-    } catch (error) {
-      console.error('❌ Erro ao salvar aula:', error);
-      throw error;
-    }
+    const createPromise = (async () => {
+      try {
+        const existente = await db.aulas
+          .where('turma_id')
+          .equals(aulaData.turma_id)
+          .and(
+            (aula) =>
+              !aula.deleted &&
+              aula.instituicao_id === instituicao_id &&
+              (aula.data_aula || '').slice(0, 10) === (aulaData.data_aula || '').slice(0, 10) &&
+              normalizeAulaHora(aula.hora_inicio) === normalizeAulaHora(aulaData.hora_inicio) &&
+              normalizeAulaHora(aula.hora_fim) === normalizeAulaHora(aulaData.hora_fim) &&
+              normalizeAulaField(aula.disciplina) === normalizeAulaField(aulaData.disciplina)
+          )
+          .first();
+
+        if (existente?.id) {
+          console.warn('⚠️ Aula duplicada detectada, reutilizando registro existente:', existente.id);
+          return existente.id;
+        }
+
+        const id = generateUniqueId();
+        const now = new Date().toISOString();
+
+        const aula = {
+          ...aulaData,
+          id,
+          instituicao_id,
+          created_at: now,
+          updated_at: now,
+          sync_status: 'pending',
+          deleted: false,
+        } as Aula;
+
+        console.log('💾 Salvando aula:', aula.tema_aula || `Aula ${aula.data_aula}`);
+
+        await db.aulas.put(aula);
+
+        // Adicionar à fila de sincronização
+        await db.syncQueue.add({
+          table: 'aulas',
+          record_id: id,
+          instituicao_id: instituicaoIdValue(),
+          operation: 'upsert',
+          status: 'pending',
+          created_at: now
+        });
+
+        console.log('✅ Aula salva com ID:', id);
+        return id;
+      } catch (error) {
+        console.error('❌ Erro ao salvar aula:', error);
+        throw error;
+      } finally {
+        inFlightCriarAula.delete(identityKey);
+      }
+    })();
+
+    inFlightCriarAula.set(identityKey, createPromise);
+    return createPromise;
   },
 
   // ✅ Buscar todas as aulas
   async getAllAulas(): Promise<Aula[]> {
     try {
       console.log('📋 Buscando aulas...');
-      const CACHE_KEY = 'aulas_all';
+      const activeInstituicaoId = instituicaoIdValue() || '';
+      const cacheScope = activeInstituicaoId || 'global';
+      const CACHE_KEY = `aulas_all_${cacheScope}`;
             
       // 1. Criar versão de cache baseada em múltiplos fatores
       const [cursoCount, turmaCount, aulasCount, lastModified] = await Promise.all([
@@ -64,7 +166,7 @@ export const aulaService = {
       ]);
       
       // 2. Criar chave de cache com versão
-      const cacheVersion = `v${cursoCount}_${turmaCount}_${aulasCount}_${lastModified}`;
+      const cacheVersion = `v${cursoCount}_${turmaCount}_${aulasCount}_${activeInstituicaoId}_${lastModified}`;
       const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
       // 3. Tentar cache primeiro
@@ -85,7 +187,10 @@ export const aulaService = {
       // Filtrar as não deletadas
       const turmaMap = new Map(todasTurmas.filter(turma => !turma.deleted).map(t => [t.id, t]));
 
-      const aulasAtivas =todasAulas.filter(aula => !aula.deleted)
+      const aulasAtivas =todasAulas.filter(aula =>
+        !aula.deleted &&
+        (!activeInstituicaoId || aula.instituicao_id === activeInstituicaoId)
+      )
       .sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       )
@@ -105,9 +210,19 @@ export const aulaService = {
       if (pendentesCount > 0) {
         emitPendingSync('aulas', pendentesCount);
       }
+      cacheManager.set(cacheKeyWithVersion, aulasAtivas, {
+        ttl: 5 * 60 * 1000,
+        version: cacheVersion
+      });
       return aulasAtivas
     } catch (error) {
       console.error('❌ Erro ao buscar aulas:', error);
+      const activeInstituicaoId = instituicaoIdValue() || '';
+      const cacheScope = activeInstituicaoId || 'global';
+      const fallback = cacheManager.getLatest(`aulas_all_${cacheScope}`);
+      if (fallback) {
+        return fallback;
+      }
       return [];
     }
   },
@@ -124,6 +239,7 @@ export const aulaService = {
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'aulas',
+      instituicao_id:instituicaoIdValue(),
       record_id: recordId,
       operation,
       status: 'pending',
@@ -148,7 +264,7 @@ export const aulaService = {
   },
 
   // ✅ Atualizar aula localmente e marcar para sincronização
-  async atualizarAula(id: string, updates: Partial<AulaFormData>) {
+  async atualizarAula(id: string, updates: Partial<AulaFormData>):Promise<Aula> {
     try {
       const updated_at = new Date().toISOString();
       
@@ -162,6 +278,7 @@ export const aulaService = {
       await db.syncQueue.add({
         table: 'aulas',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at
@@ -185,6 +302,7 @@ export const aulaService = {
     try {
       const aula = await db.aulas.get(id);
       if (!aula) return;
+      await this.removerAulaDosPlanos(id);
 
       if (aula.sync_status === 'synced' && !aula.id.startsWith('local_')) {
         await db.aulas.update(id, { 
@@ -195,7 +313,7 @@ export const aulaService = {
         
         await db.syncQueue.add({
           table: 'aulas',
-          record_id: id,
+          record_id: id,instituicao_id:instituicaoIdValue(),
           operation: 'delete',
           status: 'pending',
           created_at: new Date().toISOString()
@@ -371,9 +489,9 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     try {
       const aulaCount = await db.aulas.count();
       const queueCount = await db.syncQueue
-        .where('table')
-        .equals('aulas')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and(item => item.table === 'aulas' && item.status === 'pending')
         .count();
       
       const aulasAtivas = (await this.getAllAulas()).length;

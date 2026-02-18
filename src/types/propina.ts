@@ -2,6 +2,7 @@ import { BaseEntity } from "./base";
 
 export interface Propina extends BaseEntity{
   id: string;
+  instituicao_id: string;
   aluno_id: string;
   mes_referencia: 'Set' | 'Out' | 'Nov' | 'Dez' | 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago';
   valor_falta: number;
@@ -18,7 +19,7 @@ export interface Propina extends BaseEntity{
 }
 
 export type PropinaFormData = Omit<Propina, 
-  'id' | 'created_at' | 'updated_at'|'sync_status'
+  'id' | 'created_at' | 'updated_at'|'sync_status' | 'instituicao_id'
 >;
 
 export interface ResumoPropinasDetalhado {

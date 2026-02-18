@@ -4,18 +4,21 @@ import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
 import { Student } from '../../types/aluno.ts';
 import { Turma } from '../../types/turma.ts';
-import { propinaService, alunosService, turmaService } from '../../services/database'
-import { DadosPagamentoCash, Transacao } from '../../types/transacao.ts';
+import { Course } from '../../types/curso.ts';
+import { propinaService, alunosService, turmaService, cursosService } from '../../services/database'
 import { HistoricoPagamentos } from '../../components/finance/historicoPagamento.jsx';
 import { useNavigate } from 'react-router-dom';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 import { configService } from '../../services/database/config.ts';
 import { motion } from 'framer-motion';
 import { RxPerson } from 'react-icons/rx';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
+import { financeRulesService } from '../../services/finance/financeRulesService.ts';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [cursos, setCursos] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
@@ -53,81 +56,36 @@ export const PagamentosPage = () => {
 
   // ✅ Função corrigida para extrair mês abreviado
   const extrairMesAbreviado = (mesCompleto: string): string => {
-    if (!mesCompleto) return '';
-    
-    const mapaMeses: { [key: string]: string } = {
-      'Setembro': 'Set', 'Outubro': 'Out', 'Novembro': 'Nov', 'Dezembro': 'Dez',
-      'Janeiro': 'Jan', 'Fevereiro': 'Fev', 'Março': 'Mar', 'Abril': 'Abr',
-      'Maio': 'Mai', 'Junho': 'Jun', 'Julho': 'Jul', 'Agosto': 'Ago'
-      
-    };
-
-    // Extrair apenas o nome do mês (remover ano se existir)
-    const partes = mesCompleto.split(' ');
-    const mesNome = partes[0]; // Pega o primeiro elemento (Setembro, Outubro, etc.)
-    
-    return mapaMeses[mesNome] || mesNome.substring(0, 3);
+    return financeRulesService.toMonthAbbr(mesCompleto);
   };
 
-  // ✅ Função corrigida para obter meses pendentes do aluno
+  const getMesesCobrancaPorAluno = (
+    aluno: Student,
+    mesesBase: string[],
+    turmasSource: Turma[],
+    cursosSource: Course[]
+  ): string[] => {
+    if (!mesesBase.length) return [];
+
+    return financeRulesService.getBillingMonthsForStudent(
+      aluno,
+      mesesBase,
+      turmasSource,
+      cursosSource
+    );
+  };
+
+  const getMesesPagosAluno = (aluno: Student): string[] => {
+    return mesesPagamentos[aluno.id] || [];
+  };
+
   const getMesesPendentesAluno = (aluno: Student): string[] => {
-    if (!aluno.meses_em_aberto || !Array.isArray(aluno.meses_em_aberto)) {
-      return [];
-    }
-    
-    // Retorna os meses pendentes já no formato abreviado
-    return aluno.meses_em_aberto.map(extrairMesAbreviado);
+    return mesesPendente[aluno.id]||[];
   };
 
-const getMesesPagosAluno = (aluno: Student): string[] => {
-  if (!aluno.data_matricula || !mesesDoAno.length) return [];
-  
-  const todosMeses = mesesDoAno
-    .filter(mes => mes !== "Todos os Meses")
-    .map(extrairMesAbreviado);
-
-  // 1. Obter meses pendentes uma única vez
-  const mesesPendentes = getMesesPendentesAluno(aluno);
-  
-  // 2. Determinar ponto de partida (primeiro mês pago)
-  let startIndex = 0;
-  console.log("Histórico de pagamentos do aluno:", aluno.propina);
-   propinaService.getByAluno(aluno.id).then((value)=>{
-        // Tentar usar histórico de pagamentos primeiro
-      if (value.length) {
-        // Encontrar o pagamento mais antigo
-        const primeiroPagamento = value.reduce((maisAntigo, atual) => {
-          if (!maisAntigo) return atual;
-          if (!atual.data_pagamento || !maisAntigo.data_pagamento) return maisAntigo;
-          return new Date(atual.data_pagamento) < new Date(maisAntigo.data_pagamento) 
-            ? atual : maisAntigo;
-        });
-        
-        if (primeiroPagamento?.mes_referencia) {
-          const mesAbreviado = extrairMesAbreviado(primeiroPagamento.mes_referencia);
-          startIndex = todosMeses.indexOf(mesAbreviado);
-        }
-      }
-   })
- 
-  
-  // Fallback para data de matrícula se histórico não existir ou mês não encontrado
-  if (startIndex < 0) {
-    const mesMatricula = new Date(aluno.data_matricula).getMonth() + 1;
-    
-    if (mesMatricula >= 9 && mesMatricula <= 12) {
-      startIndex = mesMatricula - 9; // Set(0), Out(1), Nov(2), Dez(3)
-    } else if (mesMatricula >= 1 && mesMatricula <= 6) {
-      startIndex = mesMatricula + 3; // Jan(4), Fev(5), Mar(6), etc.
-    } else {
-      startIndex = 0; // Julho/Agosto → começar em Setembro
-    }
-  }
-  startIndex = Math.max(0, startIndex);
-
-  const mesesEsperados = todosMeses.slice(startIndex);
-  return mesesEsperados.filter(mes => !mesesPendentes.includes(mes));
-};
+  const Pendente = (aluno: Student): boolean => {
+    return getMesesPagosAluno(aluno).includes(financeRulesService.getCurrentMonthAbbr());
+  };
 
 const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
   const mesesPagos = getMesesPagosAluno(aluno);
@@ -178,27 +136,15 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
     return mesesPendentes.includes(mesAbreviado);
   };
 
-  // ✅ Função corrigida para calcular meses pagos e pendentes para estatísticas
-  const calcularMesesPorAluno = (alunosData: Student[]) => {
-    const mesesPagamentosObj: { [alunoId: string]: string[] } = {};
-    const mesesPendentesObj: { [alunoId: string]: string[] } = {};
-
-    alunosData.forEach(aluno => {
-      mesesPagamentosObj[aluno.id] = getMesesPagosAluno(aluno);
-      mesesPendentesObj[aluno.id] = getMesesPendentesAluno(aluno);
-    });
-
-    setMesesPagamentos(mesesPagamentosObj);
-    setMesesPendentes(mesesPendentesObj);
-  };
-
   const carregarDados = async () => {
     try {
       setLoading(true);
 
-      const [alunosData, turmasData] = await Promise.all([
+      const [alunosData, turmasData, cursosData, propinasData] = await Promise.all([
         alunosService.getAllStudents(),
-        turmaService.getTurmas()
+        turmaService.getTurmas(),
+        cursosService.getCourses(),
+        propinaService.getAllPropinas()
       ]);
 
       // Processar alunos
@@ -207,11 +153,26 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
         turmas: Array.isArray(a.turmas) ? (a.turmas[0] ?? null) : (a.turmas ?? null),
       })) as Student[];
       const resulst =await configService.getPaymentConfig()
-      setMesesDoano(["Todos os Meses",...resulst.mesesPagamento]) // <-- aqui estava
+      const mesesConfig = ["Todos os Meses",...resulst.mesesPagamento];
+      const mesesBase = mesesConfig
+        .filter((mes: string) => mes !== 'Todos os Meses')
+        .map(extrairMesAbreviado);
+      setMesesDoano(mesesConfig) // <-- aqui estava
       setAlunos(alunosNormalized);
       setTurmas(turmasData || []);
+      setCursos(cursosData || []);
 
-      calcularMesesPorAluno(alunosNormalized);
+      const mesesPagosMap = financeRulesService.buildPaidMonthsMap(propinasData);
+      const mesesPendentesMap = financeRulesService.buildPendingMonthsMap(
+        alunosNormalized,
+        mesesBase,
+        turmasData || [],
+        cursosData || [],
+        mesesPagosMap
+      );
+
+      setMesesPagamentos(mesesPagosMap);
+      setMesesPendentes(mesesPendentesMap);
 
     } catch (error) {
       console.error('❌ Erro ao carregar dados:', error);
@@ -259,11 +220,11 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
     return matchBusca && matchTurma && matchStatus && matchMes;
   });
 
-    const estatistica = useMemo(() => {
+  const estatistica = useMemo(() => {
     const alunos=alunosFiltrados
     const totalEstudantes=alunos.length
-    const totalPendentes=alunos.filter(a => !a.pagamento_em_dia).length
-    const totalEmDia=alunos.filter(a => a.pagamento_em_dia).length
+    const totalPendentes=alunos.filter(a => getMesesPendentesAluno(a).length > 0).length
+    const totalEmDia=alunos.filter(a => getMesesPendentesAluno(a).length === 0).length
     const totalMesePagos=Object.values(mesesPagamentos).flat().length
      return {
       totalEstudantes,
@@ -308,10 +269,15 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <FiDollarSign className="h-8 w-8 text-green-600" />
-                <div>
+
+                <data  className='flex items-center gap-2'>
+
+                  <div>
                   <h1 className="text-3xl font-bold text-gray-900">Pagamento de Propinas</h1>
                   <p className="text-gray-600">Gerencie os pagamentos dos estudantes por mês</p>
                 </div>
+                <SyncStatusBadge tableName='propina'   />
+                </data>
               </div>
               <div className='flex gap-2'>
                 <div className="relative ">
@@ -544,12 +510,15 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
                         </div>
 
                         <div className="col-span-2">
+                          {(() => {
+                            const pagamentoEmDia = Pendente(aluno);
+                            return (
                           <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                            aluno.pagamento_em_dia
+                            pagamentoEmDia
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                             }`}>
-                            {aluno.pagamento_em_dia ? (
+                            {pagamentoEmDia ? (
                               <>
                                 <FiCheckCircle size={14} />
                                 Em Dia
@@ -561,6 +530,8 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
                               </>
                             )}
                           </span>
+                            );
+                          })()}
                         </div>
 
                       <div className="col-span-2 text-center justify-center flex items-center">

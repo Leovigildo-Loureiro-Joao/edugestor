@@ -11,13 +11,10 @@ interface DadosGrafico {
   tarefasConcluidas: number;
   metasConcluidas: number;
   metasPendentes: number;
-  rotinasExecutadas: number;
-  rotinasPendentes: number;
   tendencia: {
     datas: string[];
     tarefas: number[];
     metas: number[];
-    rotinas: number[];
   };
 }
 
@@ -84,7 +81,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
 
   const carregarDados = async (): Promise<DadosGrafico> => {
     // Carregar dados do service
-    const [resumo, tarefas, metas, rotinas] = await Promise.all([
+    const [resumo, tarefas, metas] = await Promise.all([
       estrategiaService.getResumoEstrategico(),
       estrategiaService.getTarefas(),
       estrategiaService.getMetas()
@@ -97,8 +94,6 @@ export const GraficoDesempenho: React.FC<Props> = ({
     const totalMetas = metas.length;
     const metasConcluidas = metas.filter(m => m.status === 'concluida').length;
     
-    const totalRotinas = rotinas.length;
-    const rotinasExecutadas = rotinas.filter(r => r.status === 'suspensa').length;
 
     // Gerar dados de tendência para os últimos 7 dias
     const datasTendencia = Array.from({ length: 7 }, (_, i) => {
@@ -115,22 +110,17 @@ export const GraficoDesempenho: React.FC<Props> = ({
       Math.floor(Math.random() * (totalMetas * 0.3)) + (totalMetas * 0.5)
     );
 
-    const rotinasTendencia = Array.from({ length: 7 }, (_, i) => 
-      Math.floor(Math.random() * (totalRotinas * 0.3)) + (totalRotinas * 0.5)
-    );
+    
 
     return {
       tarefasPendentes: totalTarefas - tarefasConcluidas,
       tarefasConcluidas,
       metasConcluidas,
       metasPendentes: totalMetas - metasConcluidas,
-      rotinasExecutadas,
-      rotinasPendentes: totalRotinas - rotinasExecutadas,
       tendencia: {
         datas: datasTendencia,
         tarefas: tarefasTendencia,
         metas: metasTendencia,
-        rotinas: rotinasTendencia
       }
     };
   };

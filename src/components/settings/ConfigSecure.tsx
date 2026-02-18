@@ -35,51 +35,51 @@ export const ConfiguracoesSeguranca = () => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Configurações de Segurança</h2>
+      animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Segurança</h2>
       
       <div className="space-y-8">
         
         {/* Alteração de Senha */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Alterar Senha</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Alterar Senha</h3>
           <form onSubmit={alterarSenha} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Senha Atual
               </label>
               <input
                 type="password"
                 value={novaSenha.atual}
                 onChange={(e) => setNovaSenha(prev => ({...prev, atual: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nova Senha
               </label>
               <input
                 type="password"
                 value={novaSenha.nova}
                 onChange={(e) => setNovaSenha(prev => ({...prev, nova: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
                 minLength={8}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Confirmar Nova Senha
               </label>
               <input
                 type="password"
                 value={novaSenha.confirmar}
                 onChange={(e) => setNovaSenha(prev => ({...prev, confirmar: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
@@ -97,53 +97,53 @@ export const ConfiguracoesSeguranca = () => {
         </div>
 
         {/* Configurações de Sessão */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Sessão e Autenticação</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Sessão e Autenticação</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tempo de Sessão (minutos)
               </label>
               <input
                 type="number"
                 value={config.tempoSessao}
                 onChange={(e) => setConfig(prev => ({...prev, tempoSessao: parseInt(e.target.value)}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 min="15"
                 max="480"
               />
-              <p className="text-sm text-gray-500 mt-1">Tempo até logout automático</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tempo até logout automático</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tentativas de Login
               </label>
               <input
                 type="number"
                 value={config.tentativasLogin}
                 onChange={(e) => setConfig(prev => ({...prev, tentativasLogin: parseInt(e.target.value)}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 min="1"
                 max="10"
               />
-              <p className="text-sm text-gray-500 mt-1">Tentativas antes de bloquear</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tentativas antes de bloquear</p>
             </div>
           </div>
         </div>
 
         {/* Políticas de Segurança */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Políticas de Segurança</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Políticas de Segurança</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Bloquear conta após tentativas falhadas
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Bloqueia a conta temporariamente após múltiplas tentativas falhadas
                 </p>
               </div>
@@ -151,16 +151,16 @@ export const ConfiguracoesSeguranca = () => {
                 type="checkbox"
                 checked={config.bloquearConta}
                 onChange={(e) => setConfig(prev => ({...prev, bloquearConta: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Forçar senha forte
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Exige senhas com mínimo 8 caracteres, números e símbolos
                 </p>
               </div>
@@ -168,16 +168,16 @@ export const ConfiguracoesSeguranca = () => {
                 type="checkbox"
                 checked={config.forcarSenhaForte}
                 onChange={(e) => setConfig(prev => ({...prev, forcarSenhaForte: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Logs de atividade
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Registra todas as atividades importantes do sistema
                 </p>
               </div>
@@ -185,7 +185,7 @@ export const ConfiguracoesSeguranca = () => {
                 type="checkbox"
                 checked={config.logsAtividade}
                 onChange={(e) => setConfig(prev => ({...prev, logsAtividade: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -193,8 +193,8 @@ export const ConfiguracoesSeguranca = () => {
 
         {/* IPs Permitidos */}
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">IPs Permitidos (Opcional)</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">IPs Permitidos (Opcional)</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Adicione endereços IP específicos para acesso restrito. Deixe vazio para permitir de qualquer local.
           </p>
           
@@ -202,7 +202,7 @@ export const ConfiguracoesSeguranca = () => {
             <input
               type="text"
               placeholder="Ex: 192.168.1.100"
-              className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="button"
@@ -214,7 +214,7 @@ export const ConfiguracoesSeguranca = () => {
 
           <div className="space-y-2">
             {config.ipPermitidos.map((ip, index) => (
-              <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+              <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 p-3 rounded">
                 <span className="font-mono text-sm">{ip}</span>
                 <button
                   type="button"
@@ -227,7 +227,7 @@ export const ConfiguracoesSeguranca = () => {
           </div>
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-gray-200">
+        <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium"

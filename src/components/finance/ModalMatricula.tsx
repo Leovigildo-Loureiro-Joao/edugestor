@@ -7,6 +7,7 @@ import { Student } from '../../types/aluno.ts';
 import { instituicaoService } from '../../services/database/insitituicao.ts';
 import { useAlert } from '../ui/AlertBadge.tsx';
 import toast from 'react-hot-toast';
+import { motion, MotionConfig } from 'framer-motion';
 
 interface ModalMatriculaProps {
     alunoId: string;
@@ -176,11 +177,11 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
     if (loading) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
                     <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
-                    <p className="text-center mt-4 text-gray-600">Carregando dados...</p>
+                    <p className="text-center mt-4 text-gray-600 dark:text-gray-400">Carregando dados...</p>
                 </div>
             </div>
         );
@@ -188,11 +189,11 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
 
     if (sucesso) {
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center">
+            <motion.div className="fixed inset-0 shadow-xl bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 text-center">
                     <FiCheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Matrícula Concluída!</h2>
-                    <p className="text-gray-600 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Matrícula Concluída!</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
                         Todas as transações foram registradas com sucesso.
                     </p>
                     <div className="bg-green-50 rounded-lg p-4 mb-6">
@@ -210,23 +211,23 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                         Continuar
                     </button>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Completar Matrícula</h2>
-                        <p className="text-gray-600 mt-1">Registre os pagamentos iniciais do aluno</p>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Completar Matrícula</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Registre os pagamentos iniciais do aluno</p>
                     </div>
                     <button
                         onClick={onCancelado}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        className="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors"
                     >
                         <FiX size={24} />
                     </button>
@@ -280,8 +281,8 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                         <div className="lg:col-span-2 space-y-6">
                             
                             {/* Taxa de Matrícula */}
-                            <div className="bg-white border border-gray-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                                     <FiDollarSign className="text-blue-600" />
                                     Taxa de Matrícula
                                 </h4>
@@ -293,20 +294,20 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                             ...prev, 
                                             valorMatricula: e.target.value 
                                         }))}
-                                        className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full pl-4 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         min="0"
                                         step="0.01"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     Valor sugerido: {formatarMoeda(configInstituicao?.valor_matricula || 5000)}
                                 </p>
                             </div>
 
                             {/* Cartão de Estudante */}
-                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                         <FiCreditCard className="text-purple-600" />
                                         Cartão de Estudante
                                     </h4>
@@ -320,7 +321,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                             }))}
                                             className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                                         />
-                                        <span className="text-sm text-gray-700">Incluir cartão</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Incluir cartão</span>
                                     </label>
                                 </div>
                                 
@@ -334,13 +335,13 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                                     ...prev, 
                                                     valorCartao: e.target.value 
                                                 }))}
-                                                className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                className="w-full pl-4 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="Valor do cartão"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Valor padrão: {formatarMoeda(configInstituicao?.valor_cartao || 1000)}
                                         </p>
                                     </div>
@@ -348,9 +349,9 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                             </div>
 
                             {/* Propina */}
-                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                         <FiCalendar className="text-green-600" />
                                         Propina do Mês
                                     </h4>
@@ -364,7 +365,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                             }))}
                                             className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
                                         />
-                                        <span className="text-sm text-gray-700">Incluir propina</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Incluir propina</span>
                                     </label>
                                 </div>
                                 
@@ -378,13 +379,13 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                                     ...prev, 
                                                     valorPropina: e.target.value 
                                                 }))}
-                                                className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                                className="w-full pl-4 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="Valor da propina"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Valor cadastrado: {formatarMoeda(aluno?.propina || 0)}
                                         </p>
                                     </div>
@@ -393,7 +394,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
 
                             {/* Observações */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Observações
                                 </label>
                                 <textarea
@@ -402,37 +403,37 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                         ...prev, 
                                         observacao: e.target.value 
                                     }))}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                                     rows={2}
                                     placeholder="Observações sobre estes pagamentos..."
                                 />
                             </div>
 
                             {/* Resumo */}
-                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <h4 className="font-semibold text-gray-900 mb-3">Resumo dos Pagamentos</h4>
+                            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Resumo dos Pagamentos</h4>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">Taxa de Matrícula:</span>
+                                        <span className="text-gray-600 dark:text-gray-400">Taxa de Matrícula:</span>
                                         <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorMatricula))}</span>
                                     </div>
                                     
                                     {dadosMatricula.incluirCartao && (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Cartão de Estudante:</span>
+                                            <span className="text-gray-600 dark:text-gray-400">Cartão de Estudante:</span>
                                             <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorCartao))}</span>
                                         </div>
                                     )}
                                     
                                     {dadosMatricula.incluirPropina && (
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Propina:</span>
+                                            <span className="text-gray-600 dark:text-gray-400">Propina:</span>
                                             <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorPropina))}</span>
                                         </div>
                                     )}
                                     
-                                    <div className="flex justify-between border-t border-gray-200 pt-2">
-                                        <span className="text-gray-800 font-semibold">Total a Pagar:</span>
+                                    <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
+                                        <span className="text-gray-800 dark:text-gray-100 font-semibold">Total a Pagar:</span>
                                         <span className="text-green-600 font-bold text-lg">
                                             {formatarMoeda(calcularTotal())}
                                         </span>
@@ -443,10 +444,10 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <button
                             onClick={onPular}
-                            className="flex-1 px-4 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:bg-gray-900 transition-colors font-medium"
                             disabled={processando}
                         >
                             Pular Pagamentos
@@ -471,7 +472,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                         </button>
                     </div>
 
-                    <p className="text-xs text-gray-500 text-center mt-4">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
                         Você pode registrar os pagamentos individualmente mais tarde na página de finanças.
                     </p>
                 </div>

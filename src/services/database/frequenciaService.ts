@@ -6,22 +6,100 @@ import { syncManager } from './syncManager';
 import { alunosService } from './alunosService';
 import { aulaService } from './aulaService';
 import { Aula } from '../../types/aula';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const frequenciaService = {
+  async ensureInstituicaoIdNasFrequencias() {
+    const instituicao_id = instituicaoIdValue();
+    if (!instituicao_id) return { atualizadas: 0 };
+
+    const now = new Date().toISOString();
+    const frequenciasSemInstituicao = await db.frequencias
+      .filter((freq) => !freq.deleted && !freq.instituicao_id)
+      .toArray();
+
+    if (frequenciasSemInstituicao.length === 0) return { atualizadas: 0 };
+
+    await db.transaction('rw', db.frequencias, db.syncQueue, async () => {
+      for (const freq of frequenciasSemInstituicao) {
+        await db.frequencias.update(freq.id, {
+          instituicao_id,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        const hasPendingDelete = await db.syncQueue
+          .where('table')
+          .equals('frequencias')
+          .filter(
+            (item) =>
+              item.record_id === freq.id &&
+              item.operation === 'delete' &&
+              item.status === 'pending' &&
+              item.instituicao_id === instituicao_id
+          )
+          .first();
+
+        if (hasPendingDelete) continue;
+
+        const hasPendingUpsert = await db.syncQueue
+          .where('table')
+          .equals('frequencias')
+          .filter(
+            (item) =>
+              item.record_id === freq.id &&
+              item.operation === 'upsert' &&
+              item.status === 'pending' &&
+              item.instituicao_id === instituicao_id
+          )
+          .first();
+
+        if (!hasPendingUpsert) {
+          await db.syncQueue.add({
+            table: 'frequencias',
+            record_id: freq.id,
+            instituicao_id,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+        }
+      }
+    });
+
+    return { atualizadas: frequenciasSemInstituicao.length };
+  },
+
   // ✅ Registrar frequência em lote (com suporte offline)
   async registrarFrequenciaLote(registro: RegistroFrequenciaLote): Promise<string[]> {
     try {
       const ids: string[] = [];
       const now = new Date().toISOString();
       const dataAula = registro.data_aula || new Date().toISOString().split('T')[0];
-      
+
+      const instituicao_id = instituicaoIdValue();
+      if (!instituicao_id) {
+        throw new Error('instituicao_id ausente ao registrar frequência.');
+      }
+      const frequenciasToSave: Frequencia[] = [];
+      const queueToSave: Array<{
+        table: string;
+        record_id: string;
+        instituicao_id: string;
+        operation: 'upsert';
+        status: 'pending';
+        created_at: string;
+      }> = [];
+
       for (const registroAluno of registro.registros) {
         const id = generateUniqueId();
-        
-        const frequencia = {
+        ids.push(id);
+
+        frequenciasToSave.push({
           id,
+          instituicao_id,
           aula_id: registro.aula_id,
           aluno_id: registroAluno.aluno_id,
           data_aula: dataAula,
@@ -29,25 +107,24 @@ export const frequenciaService = {
           justificativa: registroAluno.justificativa || '',
           created_at: now,
           updated_at: now,
-          sync_status: 'pending' as const,
+          sync_status: 'pending',
           deleted: false,
-        } as Frequencia;
+        } as Frequencia);
 
-        console.log(`📝 Registrando frequência para aluno ${registroAluno.aluno_id}: ${registroAluno.presente ? 'presente' : 'ausente'}`);
-        
-        await db.frequencias.put(frequencia);
-        
-        // Adicionar à fila de sincronização
-        await db.syncQueue.add({
+        queueToSave.push({
           table: 'frequencias',
           record_id: id,
+          instituicao_id,
           operation: 'upsert',
           status: 'pending',
           created_at: now
         });
-        
-        ids.push(id);
       }
+
+      await db.transaction('rw', db.frequencias, db.syncQueue, async () => {
+        await db.frequencias.bulkPut(frequenciasToSave);
+        await db.syncQueue.bulkAdd(queueToSave);
+      });
 
       console.log(`✅ ${ids.length} frequências registradas localmente para aula ${registro.aula_id}`);
       return ids;
@@ -104,10 +181,12 @@ export const frequenciaService = {
   },
 
     async syncFrequencias() {
-      if(navigator.onLine)
+      if(navigator.onLine) {
+        await this.ensureInstituicaoIdNasFrequencias();
         return Promise.all([syncManager.uploadTableBatch('frequencias'),
           syncManager.downloadTableBatch('frequencias', new Date(0))
         ])
+      }
       throw new Error("sem net")
       
     },
@@ -117,6 +196,7 @@ export const frequenciaService = {
     await db.syncQueue.add({
       table: 'frequencias',
       record_id: recordId,
+      instituicao_id:instituicaoIdValue(),
       operation,
       status: 'pending',
       created_at: new Date().toISOString()
@@ -216,6 +296,7 @@ export const frequenciaService = {
       await db.syncQueue.add({
         table: 'frequencias',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at
@@ -248,6 +329,7 @@ export const frequenciaService = {
         await db.syncQueue.add({
           table: 'frequencias',
           record_id: id,
+          instituicao_id:instituicaoIdValue(),
           operation: 'delete',
           status: 'pending',
           created_at: new Date().toISOString()
@@ -523,9 +605,9 @@ export const frequenciaService = {
     try {
       const frequenciaCount = await db.frequencias.count();
       const queueCount = await db.syncQueue
-        .where('table')
-        .equals('frequencias')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and(item => item.table === 'frequencias' && item.status === 'pending')
         .count();
       
       const frequenciasAtivas = (await this.getAllFrequencias()).length;

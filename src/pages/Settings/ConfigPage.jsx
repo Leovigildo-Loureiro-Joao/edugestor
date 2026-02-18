@@ -6,12 +6,30 @@ import { ConfiguracoesFinanceiras } from '../../components/settings/ConfigFinanc
 import { ConfiguracoesAcademicas } from '../../components/settings/ConfigAcademy';
 import { ConfiguracoesSeguranca } from '../../components/settings/ConfigSecure';
 import { ConfiguracoesBackup } from '../../components/settings/ConfigBackup';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import ConfiguracoesNotificacoes from '../../components/settings/ConfigNotif';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 
 export const ConfiguracoesPage = () => {
+  const { seccao } = useParams();
+  const navigate = useNavigate();
+  const secoes = ['geral', 'financeiro', 'academico', 'notificacoes', 'seguranca'];
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('geral');
+
+  useEffect(() => {
+    if (seccao && secoes.includes(seccao)) {
+      setActiveTab(seccao);
+      return;
+    }
+    setActiveTab('geral');
+  }, [seccao]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    navigate(`/configuracoes/${tab}`);
+  };
 
   return (
     <div className="min-h-screen  p-6 ">
@@ -23,9 +41,12 @@ export const ConfiguracoesPage = () => {
             animate={{ opacity: 1, y: 0 }}
            transition={{delay:0.1}}
               className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+          <div className='flex gap-3 items-center'>
+            <div className="flex items-center gap-3 mb-2">
             <FiSettings className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold dark:text-white text-gray-900">Configurações do Sistema</h1>
+          </div>
+          <SyncStatusBadge tableName='system_config' />
           </div>
           <p className="text-gray-600 dark:text-gray-100">Gerencie as configurações da sua escola</p>
         </motion.div>
@@ -40,7 +61,7 @@ export const ConfiguracoesPage = () => {
             <div className="bg-white dark:bg-gray-800 dark:border-gray-600 rounded-lg border border-gray-200 shadow-sm p-4">
               <nav className="space-y-2">
                 <button
-                  onClick={() => setActiveTab('geral')}
+                  onClick={() => handleTabChange('geral')}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === 'geral' 
                       ? 'bg-blue-100 text-blue-700 border border-blue-200' 
@@ -52,7 +73,7 @@ export const ConfiguracoesPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('financeiro')}
+                  onClick={() => handleTabChange('financeiro')}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === 'financeiro' 
                       ? 'bg-green-100 text-green-700 border border-green-200' 
@@ -64,7 +85,7 @@ export const ConfiguracoesPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('academico')}
+                  onClick={() => handleTabChange('academico')}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === 'academico' 
                       ? 'bg-purple-100 text-purple-700 border border-purple-200' 
@@ -76,7 +97,7 @@ export const ConfiguracoesPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('notificacoes')}
+                  onClick={() => handleTabChange('notificacoes')}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === 'notificacoes' 
                       ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' 
@@ -88,7 +109,7 @@ export const ConfiguracoesPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('seguranca')}
+                  onClick={() => handleTabChange('seguranca')}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === 'seguranca' 
                       ? 'bg-gray-100 text-gray-700 border border-gray-200' 

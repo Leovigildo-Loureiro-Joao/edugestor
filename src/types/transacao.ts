@@ -1,6 +1,7 @@
 import { BaseEntity } from "./base";
 
 export interface Transacao extends BaseEntity{
+  instituicao_id: string;
   data: string;
   tipo: 'entrada' | 'saida';
   valor: number;
@@ -9,7 +10,7 @@ export interface Transacao extends BaseEntity{
 }
 
 export type TransacaoFormData = Omit<Transacao, 
-  'id' | 'created_at' | 'updated_at' | 'turmas'|'sync_status'
+  'id' | 'created_at' | 'updated_at' | 'turmas'|'sync_status' | 'instituicao_id'
 >;
 
 

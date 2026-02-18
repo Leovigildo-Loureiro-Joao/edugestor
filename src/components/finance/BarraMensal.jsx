@@ -34,38 +34,38 @@ export const GraficoBarrasLucro = ({ dados }) => {
   const getCorTexto = (valor) => {
     if (valor > 0) return 'text-green-600';
     if (valor < 0) return 'text-red-600';
-    return 'text-gray-600';
+    return 'text-gray-600 dark:text-gray-400';
   };
 
   return (
-    <div className="bg-white rounded-lg p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
       {/* Cabeçalho com Estatísticas */}
       <div className="flex flex-wrap justify-between items-start mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Evolução do Lucro Mensal</h3>
-          <p className="text-sm text-gray-600">Performance financeira por mês</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Evolução do Lucro Mensal</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Performance financeira por mês</p>
         </div>
         
         <div className="flex flex-wrap gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalLucro)}
             </div>
-            <div className="text-xs text-gray-500">Lucro Total</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Lucro Total</div>
           </div>
           
           <div className="text-center">
             <div className={`text-lg font-semibold ${mediaLucro >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(mediaLucro)}
             </div>
-            <div className="text-xs text-gray-500">Média Mensal</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Média Mensal</div>
           </div>
           
           <div className="text-center">
             <div className="text-lg font-semibold text-blue-600">
               {percentualPositivo.toFixed(0)}%
             </div>
-            <div className="text-xs text-gray-500">Meses Positivos</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Meses Positivos</div>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@ export const GraficoBarrasLucro = ({ dados }) => {
       {/* Gráfico de Barras */}
       <div className="h-80 relative">
         {/* Linha do zero */}
-        <div className="absolute left-0 right-0 top-1/2 border-t-2 border-gray-300 z-0"></div>
+        <div className="absolute left-0 right-0 top-1/2 border-t-2 border-gray-300 dark:border-gray-600 z-0"></div>
         
         {/* Grade de fundo */}
         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
@@ -128,13 +128,13 @@ export const GraficoBarrasLucro = ({ dados }) => {
                 >
                   {/* Efeito de brilho no hover */}
                   <div className={`absolute inset-0 rounded-t opacity-0 group-hover:opacity-20 transition-opacity ${
-                    isPositivo ? 'bg-white' : 'bg-gray-100'
+                    isPositivo ? 'bg-white dark:bg-gray-800' : 'bg-gray-100'
                   }`}></div>
                 </div>
 
                 {/* Label do mês */}
                 <div className={`text-xs font-medium transition-colors ${
-                  isAtivo ? 'text-gray-900 font-semibold' : 'text-gray-500'
+                  isAtivo ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {item.mes}
                 </div>
@@ -149,7 +149,7 @@ export const GraficoBarrasLucro = ({ dados }) => {
           <div>+{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.75)}</div>
           <div>+{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.5)}</div>
           <div>+{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.25)}</div>
-          <div className="text-gray-600 font-medium">Kz 0</div>
+          <div className="text-gray-600 dark:text-gray-400 font-medium">Kz 0</div>
           <div>-{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.25)}</div>
           <div>-{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.5)}</div>
           <div>-{new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(maxAbsoluto * 0.75)}</div>
@@ -192,11 +192,11 @@ export const GraficoBarrasLucro = ({ dados }) => {
       <div className="mt-4 flex justify-center gap-6 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-green-500 rounded"></div>
-          <span className="text-gray-700">Lucro Positivo</span>
+          <span className="text-gray-700 dark:text-gray-300">Lucro Positivo</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span className="text-gray-700">Prejuízo</span>
+          <span className="text-gray-700 dark:text-gray-300">Prejuízo</span>
         </div>
       </div>
     </div>

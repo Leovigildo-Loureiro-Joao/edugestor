@@ -48,7 +48,7 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
             key={item.id || index}
             variants={itemVariants}
             whileHover={{ x: 4 }}
-            className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all duration-300"
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-all duration-300"
           >
             <div className="flex justify-between items-start">
               <div className="flex-1">
@@ -56,7 +56,7 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
                   <div className="p-2 bg-gradient-to-br from-green-100 to-emerald-50 rounded-xl">
                     <FiCheckCircle className="h-5 w-5 text-green-600" />
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg">{item.disciplina}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg">{item.disciplina}</h3>
                   <motion.span
                     initial={{ scale: 0.9 }}
                     animate={{ scale: 1 }}
@@ -66,7 +66,7 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
                   </motion.span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 ml-11">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400 ml-11">
                   <span className="flex items-center gap-2">
                     <FiCalendar size={14} className="text-gray-400" />
                     <span className="font-medium">
@@ -114,15 +114,15 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-16 bg-white rounded-2xl border border-gray-200 shadow-sm"
+          className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm"
         >
           <div className="inline-flex p-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-full mb-4">
             <FiCalendar className="h-12 w-12 text-gray-400" />
           </div>
-          <h3 className="mt-4 text-xl font-bold text-gray-900">
+          <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
             Nenhuma frequência registrada
           </h3>
-          <p className="text-gray-600 mt-2 max-w-md mx-auto">
+          <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-md mx-auto">
             {filtroData || filtroTurma !== 'Todas Turmas' 
               ? 'Tente ajustar os filtros para encontrar registros' 
               : 'Comece registrando a frequência das aulas pendentes'

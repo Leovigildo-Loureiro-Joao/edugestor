@@ -1,5 +1,6 @@
-import db from "../services/database/db";
+import db, { supabase } from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
+import { instituicaoIdValue } from "./getInsitituicaoID";
 
 export function emitPendingSync(tableName: string, count: number) {
   // Salvar no localStorage para acesso global
@@ -21,12 +22,17 @@ export function emitDbChanged(tableName: string, action?: string) {
 
 export const getPendingCount = async (table: string): Promise<number> => {
     try {
+      
+      
+
+      const instituicaoId = instituicaoIdValue();
+      if (!instituicaoId) return 0;
       // Tentar do localStorage primeiro
       
       const pendingItems = await db.syncQueue
-        .where('table')
-        .equals(table)
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.table === table && item.status === 'pending')
         .toArray();
 
         console.log(pendingItems)
@@ -35,4 +41,3 @@ export const getPendingCount = async (table: string): Promise<number> => {
       return 0;
     }
   };
-

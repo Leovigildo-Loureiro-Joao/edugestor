@@ -17,7 +17,6 @@ export interface Student extends BaseEntity {
   sexo: 'M' | 'F';
   numero_estudante: number;
   ano_lectivo: string;
-  curso: string;
   classe_escolar: string;
 
   turma_id: string;
@@ -56,5 +55,4 @@ export interface StudentFormProps {
   onCancel: () => void;
   loading?: boolean;
 }
-
 

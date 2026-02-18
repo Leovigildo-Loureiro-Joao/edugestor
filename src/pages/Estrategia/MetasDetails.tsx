@@ -22,12 +22,14 @@ import { useAlert } from '../../components/ui/AlertBadge';
 import { estrategiaMetaService } from '../../services/database/estrategia/metaService';
 
 export const MetaDetailsPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const secoesMeta = ['overview', 'kpis', 'submetas', 'financas'] as const;
+  type SecaoMeta = (typeof secoesMeta)[number];
   
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'kpis' | 'submetas' | 'financas'>('overview');
+  const [activeTab, setActiveTab] = useState<SecaoMeta>('overview');
   const [showAlocacaoModal, setShowAlocacaoModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
@@ -38,6 +40,21 @@ export const MetaDetailsPage: React.FC = () => {
       carregarMeta();
     }
   }, [id]);
+
+  useEffect(() => {
+    const secaoParam = seccao as SecaoMeta | undefined;
+    if (secaoParam && secoesMeta.includes(secaoParam)) {
+      setActiveTab(secaoParam);
+      return;
+    }
+    setActiveTab('overview');
+  }, [seccao]);
+
+  const handleTabChange = (tab: SecaoMeta) => {
+    setActiveTab(tab);
+    if (!id) return;
+    navigate(`/estrategia/metas/${id}/${tab}`);
+  };
 
   const carregarMeta = async () => {
     try {
@@ -398,7 +415,7 @@ export const MetaDetailsPage: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => handleTabChange(tab.id as SecaoMeta)}
                   className={`flex items-center gap-2 px-6 py-4 font-medium relative ${
                     isActive 
                       ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
@@ -656,4 +673,3 @@ export const MetaDetailsPage: React.FC = () => {
     </div>
   );
 };
-

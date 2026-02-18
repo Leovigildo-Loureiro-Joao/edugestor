@@ -30,3 +30,36 @@ export interface AulaComFrequencia extends Aula {
   presentes?: number;
   ausentes?: number;
 }
+
+export interface PlanoAula extends BaseEntity {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  disciplina: string;
+  tipo: 'unica' | 'serie' | 'modulo';
+  objetivos_aprendizagem: string[];
+  competencias_desenvolvidas: string[];
+  recursos_necessarios: string[];
+  metodologia_principal: string;
+  avaliacao: string;
+  duracao_total: number;
+  aulas_planeadas: number;
+  data_inicio?: string;
+  data_fim?: string;
+  frequencia?: 'diaria' | 'semanal' | 'quinzenal' | 'mensal';
+  conteudos: Array<{
+    ordem: number;
+    titulo: string;
+    descricao: string;
+    duracao: number;
+    metodologia: string;
+    atividades: string[];
+  }>;
+  turma_ids: string[];
+  status: 'rascunho' | 'ativo' | 'arquivado' | 'concluido';
+  aulas_geradas: string[];
+  instituicao_id: string;
+  profile_id: string;
+  created_at: string;
+  updated_at: string;
+}

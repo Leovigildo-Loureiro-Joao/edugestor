@@ -283,7 +283,7 @@ const EventosPage = () => {
     { value: 'meeting', label: 'Reunião', color: 'bg-green-100 text-green-800' },
     { value: 'holiday', label: 'Feriado/Folga', color: 'bg-red-100 text-red-800' },
     { value: 'exam', label: 'Avaliação', color: 'bg-orange-100 text-orange-800' },
-    { value: 'other', label: 'Outro', color: 'bg-gray-100 text-gray-800' }
+    { value: 'other', label: 'Outro', color: 'bg-gray-100 text-gray-800 dark:text-gray-100' }
   ];
   
   const importanceLevels = [
@@ -362,7 +362,7 @@ const EventosPage = () => {
               <div className="mt-4 md:mt-0 flex space-x-3">
                 <button
                   onClick={() => navigate('/estrategia/eventos')}
-                  className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50"
+                  className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 rounded-lg font-medium hover:bg-blue-50"
                 >
                   <FiList className="inline mr-2" />
                   Ver Todos
@@ -388,7 +388,7 @@ const EventosPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl shadow-xl overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
             >
               <div className="border-b p-6">
                 <h2 className="text-xl font-bold flex items-center">
@@ -401,7 +401,7 @@ const EventosPage = () => {
                 <div className="space-y-6">
                   {/* Título */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Título do Evento *
                     </label>
                     <input
@@ -410,7 +410,7 @@ const EventosPage = () => {
                       value={formData.title}
                       onChange={handleChange}
                       required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Ex: Reunião de Pais, Prova Trimestral, Workshop de Matemática"
                     />
                   </div>
@@ -418,7 +418,7 @@ const EventosPage = () => {
                   {/* Data e Hora */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiCalendar className="mr-2" />
                         Data *
                       </label>
@@ -429,12 +429,12 @@ const EventosPage = () => {
                         onChange={handleChange}
                         required
                         min={new Date().toISOString().split('T')[0]}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiClock className="mr-2" />
                         Hora *
                       </label>
@@ -444,7 +444,7 @@ const EventosPage = () => {
                         value={formData.time}
                         onChange={handleChange}
                         required
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -452,7 +452,7 @@ const EventosPage = () => {
                   {/* Local e Duração */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiMapPin className="mr-2" />
                         Local
                       </label>
@@ -461,20 +461,20 @@ const EventosPage = () => {
                         name="location"
                         value={formData.location}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Sala 1, Auditório, Online..."
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                         Duração
                       </label>
                       <select
                         name="duration"
                         value={formData.duration}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         {durationPresets.map(preset => (
                           <option key={preset.value} value={preset.value}>
@@ -483,7 +483,7 @@ const EventosPage = () => {
                         ))}
                       </select>
                       {formData.duration && (
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Duração: {formatarDuracao(parseInt(formData.duration))}
                         </div>
                       )}
@@ -493,7 +493,7 @@ const EventosPage = () => {
                   {/* Tipo e Importância */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiTag className="mr-2" />
                         Tipo de Evento
                       </label>
@@ -501,7 +501,7 @@ const EventosPage = () => {
                         name="type"
                         value={formData.type}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         {eventTypes.map(type => (
                           <option key={type.value} value={type.value}>
@@ -512,7 +512,7 @@ const EventosPage = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiAlertCircle className="mr-2" />
                         Prioridade
                       </label>
@@ -520,7 +520,7 @@ const EventosPage = () => {
                         name="importance"
                         value={formData.importance}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         {importanceLevels.map(level => (
                           <option key={level.value} value={level.value}>
@@ -533,7 +533,7 @@ const EventosPage = () => {
                   
                   {/* Meta Relacionada */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiTarget className="mr-2" />
                       Meta Estratégica Relacionada
                     </label>
@@ -547,7 +547,7 @@ const EventosPage = () => {
                           meta_titulo: metaSelecionada?.titulo || ''
                         });
                       }}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       disabled={loadingMetas}
                     >
                       <option value="">Nenhuma meta específica</option>
@@ -562,14 +562,14 @@ const EventosPage = () => {
                     
                     {formData.meta_id && (
                       <div className="mt-3">
-                        <label className="block text-gray-700 font-medium mb-2">
+                        <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                           Objetivo deste evento
                         </label>
                         <textarea
                           name="objetivo_evento"
                           value={formData.objetivo_evento}
                           onChange={handleChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24"
                           placeholder="Como este evento contribui para a meta? (Ex: Avaliar progresso, treinar professores, engajar pais...)"
                         />
                       </div>
@@ -578,7 +578,7 @@ const EventosPage = () => {
                   
                   {/* Participantes */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiUsers className="mr-2" />
                       Participantes
                     </label>
@@ -588,7 +588,7 @@ const EventosPage = () => {
                         value={participantInput}
                         onChange={(e) => setParticipantInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
-                        className="flex-1 p-3 border border-gray-300 rounded-lg"
+                        className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
                         placeholder="Nome do participante"
                       />
                       <button
@@ -623,7 +623,7 @@ const EventosPage = () => {
                   
                   {/* Descrição */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiFileText className="mr-2" />
                       Descrição
                     </label>
@@ -632,14 +632,14 @@ const EventosPage = () => {
                       value={formData.description}
                       onChange={handleChange}
                       rows={4}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Detalhes sobre o evento, observações importantes, materiais necessários..."
                     />
                   </div>
                   
                   {/* Botões */}
                   <div className="flex justify-between items-center pt-6 border-t">
-                    <div className="text-gray-600 text-sm">
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">
                       <FiAlertCircle className="inline mr-2" />
                       Campos com * são obrigatórios
                     </div>
@@ -648,7 +648,7 @@ const EventosPage = () => {
                       <button
                         type="button"
                         onClick={() => navigate('/estrategia/eventos')}
-                        className="px-6 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                        className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900"
                         disabled={saving}
                       >
                         Cancelar
@@ -680,38 +680,38 @@ const EventosPage = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Estatísticas */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                 <FiBarChart2 className="mr-2" />
                 Estatísticas
               </h3>
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total de Eventos</span>
+                  <span className="text-gray-600 dark:text-gray-400">Total de Eventos</span>
                   <span className="font-bold text-2xl">{estatisticas.total}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Eventos Hoje</span>
+                  <span className="text-gray-600 dark:text-gray-400">Eventos Hoje</span>
                   <span className="font-bold text-blue-600">{estatisticas.hoje}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Próximos 7 Dias</span>
+                  <span className="text-gray-600 dark:text-gray-400">Próximos 7 Dias</span>
                   <span className="font-bold text-green-600">{estatisticas.proximos7Dias}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Com Meta</span>
+                  <span className="text-gray-600 dark:text-gray-400">Com Meta</span>
                   <span className="font-bold text-purple-600">{estatisticas.comMeta}</span>
                 </div>
               </div>
             </div>
             
             {/* Ações Rápidas */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">Ações Rápidas</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Ações Rápidas</h3>
               
               <div className="space-y-3">
                 <button
@@ -724,7 +724,7 @@ const EventosPage = () => {
                 
                 <button
                   onClick={loadData}
-                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center"
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 flex items-center justify-center"
                 >
                   <FiRefreshCw className="mr-2" />
                   Atualizar Lista
@@ -755,20 +755,20 @@ const EventosPage = () => {
             {/* Meta Relacionada (se houver) */}
             {formData.meta_id && (
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-6 border border-blue-200">
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                   <FiTarget className="mr-2 text-blue-600" />
                   Meta Relacionada
                 </h3>
                 
                 <div className="space-y-3">
                   <div>
-                    <div className="text-sm text-gray-600">Meta</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Meta</div>
                     <div className="font-medium">{formData.meta_titulo}</div>
                   </div>
                   
                   {formData.objetivo_evento && (
                     <div>
-                      <div className="text-sm text-gray-600">Objetivo do Evento</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Objetivo do Evento</div>
                       <div className="text-sm">{formData.objetivo_evento}</div>
                     </div>
                   )}
@@ -785,31 +785,31 @@ const EventosPage = () => {
             )}
             
             {/* Pré-visualização */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">Pré-visualização</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Pré-visualização</h3>
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Data:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Data:</span>
                   <span className="font-medium">
                     {new Date(formData.date).toLocaleDateString('pt-AO')}
                   </span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Hora:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Hora:</span>
                   <span className="font-medium">{formData.time}</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Duração:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Duração:</span>
                   <span className="font-medium">
                     {formatarDuracao(parseInt(formData.duration))}
                   </span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Tipo:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
                   <span className={`px-2 py-1 rounded text-xs ${
                     eventTypes.find(t => t.value === formData.type)?.color || 'bg-gray-100'
                   }`}>

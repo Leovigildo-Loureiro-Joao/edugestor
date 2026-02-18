@@ -64,9 +64,9 @@ const UsersManagement: React.FC = () => {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Gerenciamento de Usuários</h1>
       
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th className="px-6 py-3 text-left">Email</th>
               <th className="px-6 py-3 text-left">Role</th>
@@ -83,7 +83,7 @@ const UsersManagement: React.FC = () => {
                     user.role === 'admin' ? 'bg-red-100 text-red-800' :
                     user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
                     user.role === 'teacher' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
+                    'bg-gray-100 text-gray-800 dark:text-gray-100'
                   }`}>
                     {user.role}
                   </span>

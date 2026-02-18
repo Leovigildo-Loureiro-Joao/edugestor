@@ -19,15 +19,15 @@ import { estrategiaPlaneamentoService } from '../../services/database/estrategia
 import { useAlert } from '../ui/AlertBadge';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { ModalPlaneamento } from './modals';
-import { PlaneamentoMensal } from '../../types/planeamento';
+import { PlaneamentoMensal as PlaneamentoMensalType } from '../../types/planeamento';
 import { ModalSelecionarTarefas } from './modals/ModalSelecionarTarefas';
 import { ModalSelecionarMetas } from './modals/ModalSelecionarMetas';
 
 
 interface PlaneamentoMensalProps {
   criarPlaneamento?: () => void;
-  planejamento?: PlaneamentoMensal;
-  setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoMensal | null>>;
+  planejamento?: PlaneamentoMensalType;
+  setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoMensalType | null>>;
   modo: 'visualizacao' | 'criacao'|'edição';
   setModo: React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>;
   carregando?: boolean;
@@ -255,10 +255,10 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8">
         <div className="flex items-center space-x-4 mb-4 lg:mb-0">
           <div>
-            <h1 className="text-md lg:text-2md font-bold text-gray-800">
+            <h1 className="text-md lg:text-2md font-bold text-gray-800 dark:text-gray-100">
               Planejamento Mensal
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Organize as metas e objetivos do <span className="text-primary-700">mês</span>
             </p>
           </div>
@@ -267,7 +267,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
         <div className="flex items-center space-x-3">
           
           {/* Navegação de meses */}
-          <div className="flex items-center bg-white rounded-lg shadow p-1">
+          <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg shadow p-1">
             <button
               onClick={irParaMesAnterior}
               className="p-2 hover:bg-gray-100 rounded-lg"
@@ -276,7 +276,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
             </button>
             
             <div className="px-4 text-center">
-              <div className="font-bold text-gray-800">
+              <div className="font-bold text-gray-800 dark:text-gray-100">
                 {nomeMes}
               </div>
               <button
@@ -302,7 +302,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
         <>
           <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800">{planejamento.titulo}</h2>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{planejamento.titulo}</h2>
               {/* Botões de ação */}
           <div className="flex gap-3">
             {modo === 'visualizacao' && planejamento && (
@@ -325,11 +325,11 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
           </div>
             </div>
             {planejamento.descricao && (
-              <p className="mt-2 text-gray-600">{planejamento.descricao}</p>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">{planejamento.descricao}</p>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg mr-3">
                 <FiTarget className="h-5 w-5 text-blue-600" />
@@ -338,12 +338,12 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                 <div className="text-2xl font-bold">
                   {metasMensais.filter(m => m.trim() !== '').length}
                 </div>
-                <div className="text-sm text-gray-600">Metas do Mês</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Metas do Mês</div>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg mr-3">
                 <FiCheckCircle className="h-5 w-5 text-green-600" />
@@ -352,24 +352,24 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                 <div className="text-2xl font-bold">
                   {planejamento.progresso || 0}%
                 </div>
-                <div className="text-sm text-gray-600">Progresso</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Progresso</div>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg mr-3">
                 <FiCalendar className="h-5 w-5 text-purple-600" />
               </div>
               <div>
                 <div className="text-2xl font-bold">{semanas.length}</div>
-                <div className="text-sm text-gray-600">Semanas</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Semanas</div>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center">
               <div className="p-2 bg-orange-100 rounded-lg mr-3">
                 <FiBarChart2 className="h-5 w-5 text-orange-600" />
@@ -378,7 +378,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                 <div className="text-2xl font-bold">
                   {semanas.filter(s => s.objetivos.length > 0).length}
                 </div>
-                <div className="text-sm text-gray-600">Semanas Planejadas</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Semanas Planejadas</div>
               </div>
             </div>
           </div>
@@ -397,9 +397,9 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
         >
           {/* Metas do Mês */}
           {metasMensais.filter(m => m.trim() !== '').length > 0 && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 flex items-center">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center">
                   <FiTarget className="mr-2 text-blue-600" />
                   Metas do Mês
                 </h3>
@@ -437,7 +437,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
           )}
 
           {/* Planejamento Semanal */}
-          <div className="bg-white rounded-xl shadow-lg p-6 pt-0">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 pt-0">
             
             {/* Botões para conectar metas e tarefas */}
           <div className="flex items-center gap-2 mb-4">
@@ -460,15 +460,15 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
               {semanas.map((semana, index) => (
                 <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-gray-800">
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">
                       Semana {semana.numero}
                     </h4>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(semana.data_inicio).getDate()}/{new Date(semana.data_inicio).getMonth() + 1}
                     </span>
                   </div>
                   
-                  <div className="text-xs text-gray-600 mb-3">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                     {new Date(semana.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - {new Date(semana.data_fim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                   </div>
                   
@@ -484,7 +484,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                         setSemanaSelecionada(semana);
                         setModalSemana(true);
                       }}
-                      className="w-full p-2 border border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors text-xs"
+                      className="w-full p-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors text-xs"
                     >
                       <FiPlus className="mx-auto" />
                     </button>
@@ -496,8 +496,8 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
 
           {/* Itens Conectados */}
           {(planejamento.metas_ids?.length > 0 || planejamento.tarefas_ids?.length > 0) && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Itens Conectados</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Itens Conectados</h3>
               <div className="flex flex-wrap gap-3">
                 {planejamento.metas_ids?.map((metaId: string) => (
                   <span key={metaId} className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm">
@@ -527,11 +527,11 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
               <FiCalendar className="h-10 w-10 text-blue-600" />
             </div>
             
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
               Nenhum planejamento para este mês
             </h3>
             
-            <p className="text-gray-600 mb-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
               Crie um planejamento mensal para organizar suas metas e objetivos.
             </p>
             
@@ -582,11 +582,11 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   <FiCalendar className="mr-2 text-blue-600" />
                   Objetivo da Semana {semanaSelecionada?.numero}
                 </h3>
@@ -594,7 +594,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                   onClick={() => setModalSemana(false)}
                   className="p-1 hover:bg-gray-100 rounded-lg"
                 >
-                  <FiX className="h-5 w-5 text-gray-500" />
+                  <FiX className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
 
@@ -608,7 +608,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Objetivo da Semana
                   </label>
                   <textarea
@@ -616,7 +616,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                     value={objetivoSemana}
                     onChange={(e) => setObjetivoSemana(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -627,7 +627,7 @@ const conectarTarefas = async (tarefasSelecionadas: string[]) => {
                       setSemanaSelecionada(null);
                       setObjetivoSemana('');
                     }}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-900"
                   >
                     Cancelar
                   </button>

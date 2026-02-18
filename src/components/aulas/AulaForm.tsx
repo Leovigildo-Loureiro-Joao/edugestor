@@ -53,6 +53,7 @@ const [formData, setFormData] = useState({
   dia_semana: '' // Adicione este campo
 });
 const [disciplinas, setDisciplinas] = useState<string[]>(['Selecione uma disciplina']);
+const [isSubmitting, setIsSubmitting] = useState(false);
   const [novoObjetivo, setNovoObjetivo] = useState('');
   const [novoRecurso, setNovoRecurso] = useState('');
   const [turmaSelecionada, setTurmaSelecionada] = useState<any>(aula ? aula.turmas : []);
@@ -384,7 +385,10 @@ useEffect(() => {
   const handleSubmit = async (e: React.FormEvent) => {
 
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     
+    try {
     // Validações básicas
     if (!formData.turma_id) {
       showAlert({
@@ -447,9 +451,9 @@ useEffect(() => {
         message: 'Esta aula está em conflito com horários já definidos. Deseja continuar mesmo assim?',
         confirmText: 'Continuar',
         cancelText: 'Corrigir',
-        onConfirm: () => {
+        onConfirm: async () => {
           // Usuario confirmou que quer continuar com o conflito
-          onSubmit(formData);
+          await onSubmit(formData);
         },
       });
       return;
@@ -462,8 +466,8 @@ useEffect(() => {
         message: 'Esta aula não está dentro dos horários definidos para esta disciplina. Deseja continuar?',
         confirmText: 'Continuar',
         cancelText: 'Corrigir',
-        onConfirm: () => {
-          onSubmit(formData);
+        onConfirm: async () => {
+          await onSubmit(formData);
         }
       });
       return;
@@ -481,7 +485,10 @@ useEffect(() => {
   }
 
     // Se tudo estiver ok, submeter normalmente
-    onSubmit(formData);
+    await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const validarHorarioCompleto = () => {
@@ -550,33 +557,99 @@ useEffect(() => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
     >
       <form onSubmit={handleSubmit} className="flex flex-col h-full">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg">
-                <FiBook className="h-6 w-6 text-primary-600" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {isEditing ? 'Atualize os detalhes da aula' : 'Preencha os detalhes da nova aula'}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <FiX className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+{/* Header */}
+<div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-white/10 p-6 shadow-lg">
+  <div className="flex justify-between items-center">
+    <div className="flex items-center gap-4">
+      {/* Ícone com efeito de vidro */}
+      <motion.div 
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", damping: 20, stiffness: 200 }}
+        className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg"
+      >
+        <FiBook className="h-7 w-7 text-white" />
+      </motion.div>
+      
+      <div>
+        <motion.h2 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-2xl font-bold text-white"
+        >
+          {title}
+        </motion.h2>
+        
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-sm text-blue-100 mt-1"
+        >
+          {isEditing ? 'Atualize os detalhes da aula' : 'Preencha os detalhes da nova aula'}
+        </motion.p>
+      </div>
+    </div>
 
+    {/* Badge de Status (se for edição) */}
+    {isEditing && (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.3, type: "spring" }}
+        className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${
+          aula.status === 'planeada' ? 'bg-blue-500/20 text-white border border-white/20' :
+          aula.status === 'ministrada' ? 'bg-green-500/20 text-white border border-white/20' :
+          aula.status === 'cancelada' ? 'bg-red-500/20 text-white border border-white/20' :
+          'bg-yellow-500/20 text-white border border-white/20'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          {aula.status === 'planeada' && <FiCalendar className="h-4 w-4" />}
+          {aula.status === 'ministrada' && <FiCheckCircle className="h-4 w-4" />}
+          {aula.status === 'cancelada' && <FiAlertCircle className="h-4 w-4" />}
+          {aula.status === 'adiada' && <FiEdit3 className="h-4 w-4" />}
+          <span className="capitalize">{aula.status}</span>
+        </div>
+      </motion.div>
+    )}
+
+    <motion.button
+      whileHover={{ scale: 1.1, rotate: 90 }}
+      whileTap={{ scale: 0.9 }}
+      type="button"
+      onClick={onCancel}
+      className="p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all text-white"
+    >
+      <FiX className="h-5 w-5" />
+    </motion.button>
+  </div>
+
+  {/* Barra de progresso (opcional) */}
+  {!isEditing && (
+    <div className="mt-4">
+      <div className="flex items-center gap-2 text-xs text-blue-100 mb-1">
+        <span>Preencha todos os campos obrigatórios (*)</span>
+        <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+          <motion.div 
+            className="h-full bg-white rounded-full"
+            initial={{ width: "0%" }}
+            animate={{ 
+              width: `${
+                Object.values(formData).filter(v => v && v !== '' && v !== 'Selecione uma disciplina').length / 7 * 100
+              }%` 
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
         {/* Conteúdo Rolável */}
         <div className="flex-1 overflow-y-auto max-h-[calc(90vh-140px)] p-6">
           {/* Grid Principal */}
@@ -584,14 +657,14 @@ useEffect(() => {
             {/* Coluna Esquerda - Informações Básicas */}
             <div className="space-y-6">
               <div className="rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiBook className="text-blue-600" />
                   Informações Básicas
                 </h3>
 
                 {/* Turma */}
                 <div className="space-y-2 mb-4">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     <FiUsers className="inline mr-2" />
                     Turma *
                   </label>
@@ -606,7 +679,7 @@ useEffect(() => {
                   
                   {/* Info da turma selecionada */}
                   {turmaSelecionada && (
-                    <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded-lg">
                       <div><strong>Curso:</strong> {turmaSelecionada.curso_nome}</div>
                       <div><strong>Professor:</strong> {turmaSelecionada.professor || 'Não definido'}</div>
                       <div><strong>Horários definidos:</strong> {horariosDaTurma.length}</div>
@@ -616,7 +689,7 @@ useEffect(() => {
 
                 {/* Disciplina */}
                 <div className="space-y-2 mb-4">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     <FaGraduationCap className="inline mr-2" />
                     Disciplina *
                   </label>
@@ -631,7 +704,7 @@ useEffect(() => {
 
                 {/* Status */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     <FiCheckCircle className="inline mr-2" />
                     Status da Aula
                   </label>
@@ -649,7 +722,7 @@ useEffect(() => {
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
                           formData.status === status.value
                             ? `${status.color} ring-2 ring-opacity-50`
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-100 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
                         }`}
                       >
                         <status.icon className="h-4 w-4" />
@@ -662,17 +735,17 @@ useEffect(() => {
 
               {/* Data e Horário */}
               <div className="rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiCalendar className="text-green-600" />
                   Data e Horário
                 </h3>
 
                 {/* Data */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Data da Aula *
                     {formData.data_aula && (
-                      <span className="ml-2 text-xs font-normal text-gray-500">
+                      <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
                         ({formData.dia_semana})
                       </span>
                     )}
@@ -684,13 +757,13 @@ useEffect(() => {
                       value={formData.data_aula}
                       onChange={(e) => handleDataChange(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800"
                     />
                   </div>
 
                   {/* Nível de Dificuldade */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Nível de Dificuldade
                     </label>
                     <SelectTyped
@@ -706,7 +779,7 @@ useEffect(() => {
 
                   {/* Hora Início */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Hora Início *
                     </label>
                     <div className="relative">
@@ -716,14 +789,14 @@ useEffect(() => {
                         value={formData.hora_inicio}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_inicio: e.target.value }))}
                         required
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800"
                       />
                     </div>
                   </div>
 
                   {/* Hora Fim */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Hora Término *
                     </label>
                     <div className="relative">
@@ -733,7 +806,7 @@ useEffect(() => {
                         value={formData.hora_fim}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_fim: e.target.value }))}
                         required
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800"
                       />
                     </div>
                   </div>
@@ -777,7 +850,7 @@ useEffect(() => {
                 {/* Mostrar horários disponíveis para a disciplina no dia selecionado */}
                 {formData.disciplina && formData.disciplina !== 'Selecione uma disciplina' && formData.dia_semana && (
                   <div className="mt-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Horários definidos para "{formData.disciplina}" no {formData.dia_semana}:
                     </p>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -786,10 +859,10 @@ useEffect(() => {
                         .map((horario, index) => (
                           <div 
                             key={index}
-                            className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm"
+                            className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 p-2 rounded text-sm"
                           >
                             <div className="flex items-center gap-2">
-                              <FiClock className="text-gray-500" size={12} />
+                              <FiClock className="text-gray-500 dark:text-gray-400" size={12} />
                               <span>{horario.hora_inicio} - {horario.hora_fim}</span>
                             </div>
                             <button
@@ -809,12 +882,12 @@ useEffect(() => {
                         ))}
                       {horariosDaTurma.filter(h => h.disciplina === formData.disciplina && h.dia_semana === formData.dia_semana).length === 0 && (
                         <div>
-                          <p className="text-sm text-gray-500 italic mb-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-1">
                             Nenhum horário específico definido para esta disciplina no {formData.dia_semana}
                           </p>
                           {/* Mostrar horários em outros dias */}
                           {horariosDaTurma.filter(h => h.disciplina === formData.disciplina).length > 0 && (
-                            <div className="text-xs text-gray-600">
+                            <div className="text-xs text-gray-600 dark:text-gray-400">
                               <p className="font-medium">Horários em outros dias:</p>
                               {[...new Set(horariosDaTurma
                                 .filter(h => h.disciplina === formData.disciplina)
@@ -836,14 +909,14 @@ useEffect(() => {
             <div className="space-y-6">
               {/* Tema e Conteúdo */}
               <div className="rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiTarget className="text-purple-600" />
                   Conteúdo da Aula
                 </h3>
 
                 {/* Tema */}
                 <div className="space-y-2 mb-4">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Tema da Aula
                   </label>
                   <input
@@ -851,13 +924,13 @@ useEffect(() => {
                     value={formData.tema_aula}
                     onChange={(e) => setFormData(prev => ({ ...prev, tema_aula: e.target.value }))}
                     placeholder="Ex: Equações do 2º grau"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800"
                   />
                 </div>
 
                 {/* Conteúdo Ministrado */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Conteúdo Ministrado
                   </label>
                   <textarea
@@ -865,14 +938,14 @@ useEffect(() => {
                     onChange={(e) => setFormData(prev => ({ ...prev, conteudo_ministrado: e.target.value }))}
                     rows={4}
                     placeholder="Descreva o conteúdo que será ministrado nesta aula..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none bg-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none bg-white dark:bg-gray-800"
                   />
                 </div>
               </div>
 
               {/* Objetivos de Aprendizagem */}
               <div className="rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiTrendingUp className="text-amber-600" />
                   Objetivos de Aprendizagem
                 </h3>
@@ -884,7 +957,7 @@ useEffect(() => {
                       value={novoObjetivo}
                       onChange={(e) => setNovoObjetivo(e.target.value)}
                       placeholder="Adicionar um objetivo..."
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white"
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addObjetivo())}
                     />
                     <button
@@ -899,10 +972,10 @@ useEffect(() => {
                   {/* Lista de Objetivos */}
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {formData.objetivos_aprendizagem.map((objetivo, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                      <div key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border">
                         <div className="flex items-center gap-2">
                           <FiCheckCircle className="h-4 w-4 text-green-600" />
-                          <span className="text-sm text-gray-700">{objetivo}</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{objetivo}</span>
                         </div>
                         <button
                           type="button"
@@ -919,7 +992,7 @@ useEffect(() => {
 
               {/* Recursos Utilizados */}
               <div className="rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiFileText className="text-emerald-600" />
                   Recursos Utilizados
                 </h3>
@@ -931,7 +1004,7 @@ useEffect(() => {
                       value={novoRecurso}
                       onChange={(e) => setNovoRecurso(e.target.value)}
                       placeholder="Adicionar um recurso..."
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white"
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addRecurso())}
                     />
                     <button
@@ -946,12 +1019,12 @@ useEffect(() => {
                   {/* Lista de Recursos */}
                   <div className="flex flex-wrap gap-2">
                     {formData.recursos_utilizados.map((recurso, index) => (
-                      <div key={index} className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-full border">
-                        <span className="text-sm text-gray-700">{recurso}</span>
+                      <div key={index} className="flex items-center gap-1 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full border">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{recurso}</span>
                         <button
                           type="button"
                           onClick={() => removeRecurso(index)}
-                          className="text-gray-500 hover:text-gray-700"
+                          className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
                         >
                           <FiX className="h-3 w-3" />
                         </button>
@@ -966,7 +1039,7 @@ useEffect(() => {
           {/* Observações (Full Width) */}
           <div className="mt-6">
             <div className="rounded-xl p-4">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <FiMessageSquare className="text-blue-600" />
                 Observações do Professor
               </h3>
@@ -975,21 +1048,21 @@ useEffect(() => {
                 onChange={(e) => setFormData(prev => ({ ...prev, observacoes_professor: e.target.value }))}
                 rows={3}
                 placeholder="Adicione observações sobre a aula, pontos importantes, etc..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none bg-white"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none bg-white dark:bg-gray-800"
               />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
           <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {formData.turma_id && formData.disciplina && (
                 <div className={`flex items-center gap-2 ${
                   validacaoHorario.tipo === 'sucesso' ? 'text-green-600' :
                   validacaoHorario.tipo === 'aviso' ? 'text-yellow-600' :
-                  validacaoHorario.tipo === 'erro' ? 'text-red-600' : 'text-gray-600'
+                  validacaoHorario.tipo === 'erro' ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'
                 }`}>
                   <div className={`w-2 h-2 rounded-full ${
                     validacaoHorario.tipo === 'sucesso' ? 'bg-green-500' :
@@ -1006,13 +1079,13 @@ useEffect(() => {
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+                className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900 font-medium transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={loading || !validarHorarioCompleto()}
+                disabled={loading || isSubmitting || !validarHorarioCompleto()}
                 className={`px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
                   validacaoHorario.tipo === 'erro' 
                     ? 'bg-yellow-600 text-white hover:bg-yellow-700'
@@ -1021,7 +1094,7 @@ useEffect(() => {
                     : 'bg-primary-600 text-white hover:bg-primary-700'
                 }`}
               >
-                {loading ? (
+                {loading || isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     Salvando...

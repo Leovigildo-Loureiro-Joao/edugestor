@@ -15,7 +15,8 @@ import {
   FiUser,
   FiLogOut,
   FiLayers,
-  FiTrendingUp
+  FiTrendingUp,
+  FiBarChart2
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -66,6 +67,7 @@ const Sidebar: React.FC = () => {
 
   const navigation: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: FiHome },
+    
     { name: 'Estrategia', href: '/estrategia', icon: FiTrendingUp },
     { name: 'Alunos', href: '/alunos', icon: FiUsers },
     { name: 'Turmas', href: '/turmas', icon: FiLayers },

@@ -23,6 +23,7 @@ import db from '../../services/database/db';
 import { Student } from '../../types/aluno';
 import { Avaliacao } from '../../types/avaliacao';
 import { Frequencia } from '../../types/frequencia';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 interface DashboardIntegradoProps {
   metas: Meta[];
@@ -152,10 +153,24 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
   useEffect(() => {
     const carregarIndicadoresReais = async () => {
       try {
+        const activeInstituicaoId = instituicaoIdValue();
+        if (!activeInstituicaoId) {
+          setDadosMatriculasAnuais([]);
+          setDadosFrequenciaMensal([]);
+          setDadosSatisfacaoTrimestral([]);
+          return;
+        }
+
         const [alunos, avaliacoes, frequencias] = await Promise.all([
-          db.alunos.filter((a) => !a.deleted).toArray() as Promise<Student[]>,
-          db.avaliacoes.filter((a) => !a.deleted).toArray() as Promise<Avaliacao[]>,
-          db.frequencias.filter((f) => !f.deleted).toArray() as Promise<Frequencia[]>
+          db.alunos
+            .filter((a) => !a.deleted && a.instituicao_id === activeInstituicaoId)
+            .toArray() as Promise<Student[]>,
+          db.avaliacoes
+            .filter((a) => !a.deleted && a.instituicao_id === activeInstituicaoId)
+            .toArray() as Promise<Avaliacao[]>,
+          db.frequencias
+            .filter((f) => !f.deleted && f.instituicao_id === activeInstituicaoId)
+            .toArray() as Promise<Frequencia[]>
         ]);
 
         const anoAtual = new Date().getFullYear();
@@ -262,11 +277,11 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2 flex items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">
           <FiTrendingUp className="mr-3 text-blue-600" />
           Estatísticas Gerais
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Visão completa do planejamento escolar em todos os níveis
         </p>
       </motion.div>
@@ -276,13 +291,13 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Visão Anual com AreaChart */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-lg flex items-center">
                 <FiTrendingUp className="mr-2 text-blue-600" />
                 Evolução Anual do Progresso
               </h3>
-              <span className="text-sm text-gray-500">{new Date().getFullYear()}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{new Date().getFullYear()}</span>
             </div>
             
             <AreaChart
@@ -321,7 +336,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         
         {/* Semana Atual */}
         <div>
-          <div className="bg-white rounded-xl shadow p-6 h-full">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 h-full">
             <h3 className="font-bold text-lg mb-6 flex items-center">
               <FiCalendar className="mr-2 text-green-600" />
               Esta Semana
@@ -337,7 +352,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="font-medium">{compromisso.titulo}</div>
-                      <div className="text-sm text-gray-600 flex items-center mt-1">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-1">
                         <FiClock className="mr-1 h-3 w-3" />
                         {compromisso.hora} • {compromisso.dia}
                       </div>
@@ -350,14 +365,14 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
               ))}
 
               {compromissosSemana.length === 0 && (
-                <div className="text-center py-6 text-gray-500">
+                <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                   Sem tarefas com prazo nesta semana
                 </div>
               )}
             </div>
             
             <div className="mt-6 pt-4 border-t">
-              <h4 className="font-semibold mb-3 text-gray-700">Metas da Semana</h4>
+              <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Metas da Semana</h4>
               <div className="space-y-2">
                 {metasPrioritarias.map(meta => (
                   <div key={meta.id} className="flex items-center text-sm">
@@ -379,7 +394,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       {/* Segunda Linha - Gráficos Adicionais */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Matrículas Anuais */}
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h3 className="font-bold text-lg mb-6 flex items-center">
             <FiUsers className="mr-2 text-green-600" />
             Matrículas por Mês
@@ -392,13 +407,13 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
             cores={['#10B981']}
           />
           <div className="mt-4 text-center">
-            <div className="text-2xl font-bold text-gray-800">{metricasAcademicas.totalMatriculasAno}</div>
-            <div className="text-sm text-gray-600">Total de matrículas no ano</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{metricasAcademicas.totalMatriculasAno}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Total de matrículas no ano</div>
           </div>
         </div>
         
         {/* Satisfação Trimestral */}
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h3 className="font-bold text-lg mb-6 flex items-center">
             <FiAward className="mr-2 text-orange-600" />
             Satisfação por Trimestre
@@ -413,19 +428,19 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="text-center">
               <div className="text-xl font-bold">{metricasAcademicas.mediaSatisfacaoAnual.toFixed(2)}</div>
-              <div className="text-xs text-gray-600">Média Anual</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Média Anual</div>
             </div>
             <div className="text-center">
               <div className={`text-xl font-bold ${metricasAcademicas.variacaoSatisfacao >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {metricasAcademicas.variacaoSatisfacao >= 0 ? '+' : ''}{metricasAcademicas.variacaoSatisfacao.toFixed(2)}
               </div>
-              <div className="text-xs text-gray-600">vs trimestre anterior</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">vs trimestre anterior</div>
             </div>
           </div>
         </div>
         
         {/* Frequência Mensal */}
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h3 className="font-bold text-lg mb-6 flex items-center">
             <FiActivity className="mr-2 text-purple-600" />
             Frequência Mensal
@@ -440,13 +455,13 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="text-center">
               <div className="text-xl font-bold">{metricasAcademicas.mediaFrequenciaAnual.toFixed(1)}%</div>
-              <div className="text-xs text-gray-600">Média Anual</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Média Anual</div>
             </div>
             <div className="text-center">
               <div className={`text-xl font-bold ${metricasAcademicas.variacaoFrequencia >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {metricasAcademicas.variacaoFrequencia >= 0 ? '+' : ''}{metricasAcademicas.variacaoFrequencia.toFixed(1)}%
               </div>
-              <div className="text-xs text-gray-600">vs mês anterior</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">vs mês anterior</div>
             </div>
           </div>
         </div>
@@ -454,7 +469,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
 
       {/* Hoje */}
       <div className="lg:col-span-3">
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-lg flex items-center">
               <FiClock className="mr-2 text-blue-600" />
@@ -464,7 +479,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                 month: 'long' 
               })}
             </h3>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {estatisticas.tarefasHoje} tarefas para hoje
             </div>
           </div>
@@ -480,24 +495,24 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                     <div className="font-bold text-lg">
                       {new Date(item.data_limite as string).toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div className="text-sm text-gray-500">Prazo</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Prazo</div>
                   </div>
                 </div>
                 <h4 className="font-semibold mt-2">{item.titulo}</h4>
-                <p className="text-sm text-gray-600 mt-1">{item.descricao || 'Sem descrição'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.descricao || 'Sem descrição'}</p>
               </div>
             ))}
           </div>
 
           {tarefasHojeLista.length === 0 && (
-            <div className="text-center py-6 text-gray-500">
+            <div className="text-center py-6 text-gray-500 dark:text-gray-400">
               Sem tarefas com prazo para hoje
             </div>
           )}
           
           {/* Tarefas Urgentes de Hoje */}
           <div className="mt-6 pt-6 border-t">
-            <h4 className="font-semibold mb-4 text-gray-700">Tarefas Urgentes</h4>
+            <h4 className="font-semibold mb-4 text-gray-700 dark:text-gray-300">Tarefas Urgentes</h4>
             <div className="space-y-3">
               {tarefas
                 .filter(t => {
@@ -513,7 +528,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                       <FiAlertCircle className="text-red-500 mr-3" />
                       <div>
                         <div className="font-medium">{tarefa.titulo}</div>
-                        <div className="text-sm text-gray-600">{tarefa.responsavel_nome}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{tarefa.responsavel_nome}</div>
                       </div>
                     </div>
                     <button className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200">
@@ -528,7 +543,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
                 const dataTarefa = new Date(t.data_limite).toDateString();
                 return hoje === dataTarefa && t.prioridade === 'alta';
               }).length === 0 && (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                   Nenhuma tarefa urgente para hoje
                 </div>
               )}
@@ -546,13 +561,13 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
             initial={{y:-10,opacity:0}}
             animate={{y:0,opacity:1}}
             
-            key={idx} className="bg-white rounded-lg shadow-md p-4 text-center">
+            key={idx} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 text-center">
               <div className={`inline-block p-3 rounded-full bg-${area.color}-100 mb-3`}>
                 {area.icon}
               </div>
               <div className="font-bold text-2xl">{area.progresso}%</div>
-              <div className="text-sm text-gray-600 mb-2">{area.area}</div>
-              <div className="text-xs text-gray-500">{area.metas} metas</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{area.area}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{area.metas} metas</div>
             </motion.div>
           ))}
         </div>

@@ -14,13 +14,13 @@ import {
   FiX
 } from 'react-icons/fi';
 import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService';
-import { PlaneamentoSemanal } from '../../types/planeamento';
+import { PlaneamentoSemanalType } from '../../types/planeamento';
 import { useAlert } from '../ui/AlertBadge';
 import { ModalSelecionarMetas } from './modals/ModalSelecionarMetas';
 import { ModalSelecionarTarefas } from './modals/ModalSelecionarTarefas';
 
 
-export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,planejamento,setPlanejamento,modo,setModo,carregando,setCarregando}:{criarPlaneamento:any,planejamento:PlaneamentoSemanal | null,setPlanejamento:(p:PlaneamentoSemanal | null) => void,modo:'visualizacao' | 'criacao'|'edição',setModo:React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>,dataAtual:string,setDataAtual?:React.Dispatch<React.SetStateAction<string>>,carregando?:boolean,setCarregando?:React.Dispatch<React.SetStateAction<boolean>>}) => {
+export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,planejamento,setPlanejamento,modo,setModo,carregando,setCarregando}:{criarPlaneamento:any,planejamento:PlaneamentoSemanalType | null,setPlanejamento:(p:PlaneamentoSemanalType | null) => void,modo:'visualizacao' | 'criacao'|'edição',setModo:React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>,dataAtual:string,setDataAtual?:React.Dispatch<React.SetStateAction<string>>,carregando?:boolean,setCarregando?:React.Dispatch<React.SetStateAction<boolean>>}) => {
   // Estados para modais
   const [modalMeta, setModalMeta] = useState(false);
   const [modalTarefa, setModalTarefa] = useState(false);
@@ -236,10 +236,10 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
         <div className="flex items-center space-x-4 justify-between w-full">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div>
-              <h1 className="text-md lg:text-2md font-bold text-gray-800">
+              <h1 className="text-md lg:text-2md font-bold text-gray-800 dark:text-gray-100">
                 Planeamento Semanal
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 Organize suas atividades e conecte com <span className='text-primary-700'>metas e tarefas</span>
               </p>
             </div>
@@ -286,7 +286,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
           <div>
             <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-800">{planejamento.titulo}</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{planejamento.titulo}</h2>
                 <div className='flex space-x-3'>
                   {modo === 'visualizacao' && planejamento && (
                     <button
@@ -309,7 +309,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                 
               </div>
               {planejamento.descricao && (
-                <p className="mt-2 text-gray-600">{planejamento.descricao}</p>
+                <p className="mt-2 text-gray-600 dark:text-gray-400">{planejamento.descricao}</p>
               )}
               </div>
               <div className="flex items-center gap-3 p-4">
@@ -330,8 +330,8 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
           </div>
           {/* Objetivos da Semana */}
           {planejamento.objetivos_semanais?.filter(o => o.trim()).length > 0 && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                 <FiTarget className="mr-2 text-blue-600" />
                 Objetivos da Semana
               </h3>
@@ -357,13 +357,13 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               const tarefas = diaPlanejamento?.atividades || [];
               
               return (
-                <div key={index} className="bg-white rounded-xl shadow-lg p-4">
+                <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
                   <div className={`text-center font-semibold ${
-                    index === 0 || index === 6 ? 'text-red-500' : 'text-gray-800'
+                    index === 0 || index === 6 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'
                   }`}>
                     {diaSemana}
                   </div>
-                  <div className="text-center text-sm text-gray-500 mb-3">
+                  <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
                     {dia.getDate()}
                   </div>
                   
@@ -375,7 +375,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                           tarefa.tipo === 'reuniao' ? 'bg-purple-100 text-purple-800' :
                           tarefa.tipo === 'aula' ? 'bg-green-100 text-green-800' :
                           tarefa.tipo === 'planejamento' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
+                          'bg-gray-100 text-gray-800 dark:text-gray-100'
                         }`}
                       >
                         <div className="font-medium truncate">{tarefa.titulo}</div>
@@ -387,7 +387,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                     ))}
                     
                     {tarefas.length > 3 && (
-                      <div className="text-xs text-gray-500 text-center">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                         +{tarefas.length - 3} atividades
                       </div>
                     )}
@@ -401,7 +401,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                         });
                         setModalAtividade(true);
                       }}
-                      className="w-full p-2 border border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                      className="w-full p-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors"
                     >
                       <FiPlus className="mx-auto" />
                     </button>
@@ -413,8 +413,8 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
 
           {/* Metas e Tarefas Conectadas */}
           {(planejamento.metas_ids?.length > 0 || planejamento.tarefas_ids?.length > 0) && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Itens Conectados</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Itens Conectados</h3>
               <div className="flex flex-wrap gap-3">
                 {planejamento.metas_ids?.map((metaId) => (
                   <span key={metaId} className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm">
@@ -444,11 +444,11 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               <FiCalendar className="h-10 w-10 text-blue-600" />
             </div>
             
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
               Nenhum planejamento para esta semana
             </h3>
             
-            <p className="text-gray-600 mb-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
               Crie um planejamento semanal para organizar suas atividades e conectar com metas e tarefas.
             </p>
             
@@ -482,11 +482,11 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   <FiCalendar className="mr-2 text-blue-600" />
                   Adicionar Atividade
                 </h3>
@@ -494,7 +494,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                   onClick={() => setModalAtividade(false)}
                   className="p-1 hover:bg-gray-100 rounded-lg"
                 >
-                  <FiX className="h-5 w-5 text-gray-500" />
+                  <FiX className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
 
@@ -510,7 +510,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Horário
                   </label>
                   <input
@@ -520,12 +520,12 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       hora: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tipo de Atividade
                   </label>
                   <select
@@ -533,7 +533,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       tipo: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                     defaultValue="aula"
                   >
                     <option value="aula">Aula</option>
@@ -545,7 +545,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Título da Atividade
                   </label>
                   <input
@@ -555,12 +555,12 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       titulo: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Descrição (opcional)
                   </label>
                   <textarea
@@ -570,7 +570,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       descricao: e.target.value
                     })}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -581,7 +581,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       setDiaSelecionado(null);
                       setAtividadeSelecionada(null);
                     }}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-900"
                   >
                     Cancelar
                   </button>

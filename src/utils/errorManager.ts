@@ -2,6 +2,7 @@
 
 import db from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
+import { instituicaoIdValue } from "./getInsitituicaoID";
 
 // Interface para armazenar informações de erro
 export interface SyncError {
@@ -19,12 +20,14 @@ const getErrorKey = (tableName: string) => `sync_errors_${tableName}`;
 // Função para obter contagem de erros
   export const getErrorCount = async (table: string): Promise<number> => {
     try {
+      const instituicaoId = instituicaoIdValue();
+      if (!instituicaoId) return 0;
       // Tentar do localStorage primeiro
       
       const failedItems = await db.syncQueue
-        .where('table')
-        .equals(table)
-        .and(item => item.status === 'failed')
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.table === table && item.status === 'failed')
         .toArray();
 
         console.log(failedItems)

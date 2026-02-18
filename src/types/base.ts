@@ -13,20 +13,24 @@ import { Instituicao } from ".";
 import { Notificacao } from "../services/database/notificacaoService";
 import { Avaliacao } from "./avaliacao";
 import { PlaneamentoBase } from "./planeamento";
-import type { PlanoAula } from "../services/database/planoAulasService";
+import { PlanoAula } from "../types/aula";
+import { instituicaoIdValue } from "../utils/getInsitituicaoID";
 
 export type SyncStatus = 'pending' | 'synced' | 'pending_delete' | 'failed' | 'conflict';
 
 export interface BaseEntity {
   id: string;
+  instituicao_id?: string;
   sync_status: SyncStatus;
   deleted?: boolean;
   created_at?: string;
   updated_at?: string;
+
 }
 
 export interface SyncQueueItem {
   id?: number;
+  instituicao_id:string
   table: 'alunos' | 'turmas' | 'cursos'|'alocacao' | 'transacoes'|'aulas'|'propina'|'frequencias'|'tarefas'|'metas'|'rotinas'|'evento'|'profiles'|'system_config'|'instituicao'|'notificacao'|'avaliacoes'|'turma_horarios'|'planeamentos'|'plano_aulas';
   record_id: string;
   operation: 'upsert' | 'delete';

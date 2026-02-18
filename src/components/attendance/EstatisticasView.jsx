@@ -66,7 +66,7 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
           key={index}
           variants={cardVariants}
           whileHover={{ y: -4 }}
-          className={`bg-white rounded-2xl border border-gray-200 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ${
+          className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ${
             card.color === 'blue' ? 'border-l-4 border-l-blue-500' :
             card.color === 'green' ? 'border-l-4 border-l-green-500' :
             'border-l-4 border-l-purple-500'
@@ -76,18 +76,18 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
             <div className={`p-3 rounded-xl bg-${card.color}-100`}>
               <card.icon className={`text-${card.color}-600 text-xl`} />
             </div>
-            <h3 className="font-bold text-gray-900 text-lg">{card.title}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-lg">{card.title}</h3>
           </div>
           
           {card.items ? (
             <div className="space-y-4">
               {card.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center">
-                  <span className="text-gray-600">{item.label}</span>
+                  <span className="text-gray-600 dark:text-gray-400">{item.label}</span>
                   <span className={`font-bold ${
                     item.highlight 
                       ? item.color === 'green' ? 'text-green-600' : 'text-orange-600'
-                      : 'text-gray-900'
+                      : 'text-gray-900 dark:text-white'
                   }`}>
                     {item.value}
                   </span>
@@ -104,7 +104,7 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
               >
                 {card.value}
               </motion.div>
-              <p className="text-gray-600 text-sm">{card.description}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{card.description}</p>
             </div>
           )}
         </motion.div>
@@ -113,13 +113,13 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
       {/* Informações Adicionais */}
       <motion.div
         variants={cardVariants}
-        className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg md:col-span-2 lg:col-span-3"
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg md:col-span-2 lg:col-span-3"
       >
         <div className="flex items-center gap-3 mb-6">
           <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100">
             <FiActivity className="text-indigo-600 text-xl" />
           </div>
-          <h3 className="font-bold text-gray-900 text-lg">Visão Geral do Sistema</h3>
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Visão Geral do Sistema</h3>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
@@ -142,14 +142,14 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
               <div className={`text-3xl font-bold text-${stat.color}-600 mb-1`}>
                 {stat.value}
               </div>
-              <div className="text-gray-600 text-sm font-medium">{stat.label}</div>
+              <div className="text-gray-600 dark:text-gray-400 text-sm font-medium">{stat.label}</div>
             </motion.div>
           ))}
         </div>
         
-        <div className="h-80 mt-6 border-t-2 pt-6 border-gray-200">
+        <div className="h-80 mt-6 border-t-2 pt-6 border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
-            <h4 className="text-gray-900 font-bold text-lg flex items-center gap-2">
+            <h4 className="text-gray-900 dark:text-white font-bold text-lg flex items-center gap-2">
               <FiTrendingUp className="text-blue-500" />
               Desempenho das Presenças
             </h4>

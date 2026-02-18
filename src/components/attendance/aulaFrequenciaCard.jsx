@@ -41,13 +41,13 @@ const handleRegistrar = async () => {
   const totalAlunos = alunos.length;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Cabeçalho da Aula */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-center">
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{aula.disciplina}</h3>
-            <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+            <h3 className="font-semibold text-gray-900 dark:text-white">{aula.disciplina}</h3>
+            <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
               <span className="flex items-center gap-1">
                 <FiCalendar size={14} />
                 {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
@@ -63,7 +63,7 @@ const handleRegistrar = async () => {
           <div className="flex items-center gap-2">
             <button
               onClick={onToggleExpandir}
-              className="p-2 text-gray-500 hover:text-gray-700"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
             >
               {isExpandida ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
             </button>
@@ -73,12 +73,12 @@ const handleRegistrar = async () => {
 
       {/* Lista de Alunos (Expandível) */}
       {isExpandida && (
-        <div className="p-4 bg-white">
+        <div className="p-4 bg-white dark:bg-gray-800">
           <div className="mb-4">
-            <h4 className="font-medium text-gray-900 mb-3">Lista de Alunos</h4>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-3">Lista de Alunos</h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {alunos.map(aluno => (
-                <div key={aluno.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                <div key={aluno.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border">
                   <span className="text-sm">{aluno.nome_completo}</span>
                   <button
                     onClick={() => togglePresenca(aluno.id)}

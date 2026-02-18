@@ -179,7 +179,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -187,9 +187,9 @@ useEffect(() => {
 
   if (!aluno) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900">Aluno não encontrado</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Aluno não encontrado</h2>
           <button 
             onClick={() => navigate('/financeiro/pagamentos')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -203,11 +203,11 @@ useEffect(() => {
 
   if (sucesso) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
           <FiCheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Registrado!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pagamento Registrado!</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             O pagamento de {dadosPagamento.meses} mes(es) foi registrado com sucesso para {aluno.nome_completo}.
           </p>
           <div className="text-lg font-semibold text-green-600 mb-6">
@@ -240,11 +240,11 @@ useEffect(() => {
           
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Registrar Pagamento</h1>
-              <p className="text-gray-600 mt-2">Registre o pagamento de propinas do estudante</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Registrar Pagamento</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">Registre o pagamento de propinas do estudante</p>
             </div>
             
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {aluno.pagamento_em_dia ? (
                 <span className="flex items-center gap-1 text-green-600">
                   <FiCheckCircle size={16} />
@@ -266,16 +266,16 @@ useEffect(() => {
           <div className="lg:col-span-1 space-y-6">
             
             {/* Card Informações do Estudante */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações do Estudante</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Informações do Estudante</h3>
               
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                   <FiUser className="text-blue-600 text-xl" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-900 text-lg">{aluno.nome_completo}</div>
-                  <div className="text-sm text-gray-500">
+                  <div className="font-medium text-gray-900 dark:text-white text-lg">{aluno.nome_completo}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     #{aluno.numero_estudante}
                   </div>
                 </div>
@@ -283,17 +283,17 @@ useEffect(() => {
               
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="font-medium text-gray-700">Turma:</span>
-                  <div className="text-gray-900">{aluno.turmas?.nome_turma || 'Não definida'}</div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Turma:</span>
+                  <div className="text-gray-900 dark:text-white">{aluno.turmas?.nome_turma || 'Não definida'}</div>
                 </div>
                 
                 <div>
-                  <span className="font-medium text-gray-700">Professor:</span>
-                  <div className="text-gray-900">{aluno.turmas?.professor || 'Não definido'}</div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Professor:</span>
+                  <div className="text-gray-900 dark:text-white">{aluno.turmas?.professor || 'Não definido'}</div>
                 </div>
                 
                 <div>
-                  <span className="font-medium text-gray-700">Propina Mensal:</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Propina Mensal:</span>
                   <div className="text-green-600 font-semibold">
                     {formatarMoeda(aluno.propina || 0)}
                   </div>
@@ -337,14 +337,14 @@ useEffect(() => {
           {/* Coluna 2: Formulário de Pagamento */}
           <div className="lg:col-span-2">
             
-            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* No seu JSX - adicione esta seção */}
 
                 {/* Seleção de Meses */}
                 <div>
-                  <label className="block text-lg font-semibold text-gray-900 mb-4">
+                  <label className="block text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     <FiCalendar className="inline mr-2 mb-1" />
                     Quantidade de Meses a Pagar
                   </label>
@@ -361,7 +361,7 @@ useEffect(() => {
                     
                     <div className="text-center">
                       <div className="text-5xl font-bold text-blue-600">{dadosPagamento.meses}</div>
-                      <div className="text-lg text-gray-500 mt-2">
+                      <div className="text-lg text-gray-500 dark:text-gray-400 mt-2">
                         mês{dadosPagamento.meses > 1 ? 'es' : ''}
                       </div>
                     </div>
@@ -379,7 +379,7 @@ useEffect(() => {
 
                 {/* Valor por Mês */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Valor por Mês (AOA)
                   </label>
                   <input
@@ -390,11 +390,11 @@ useEffect(() => {
                       valor: e.target.value 
                     }))}
                     placeholder="0.00"
-                    className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 text-lg border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     min="0"
                     step="0.01"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     Valor sugerido: {formatarMoeda(aluno.propina || 0)}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ useEffect(() => {
                         {dadosPagamento.mesReferencia.map((mes, index) => (
                           <span 
                             key={index}
-                            className="px-3 py-2 bg-white text-blue-800 text-sm rounded-lg border border-blue-300 font-medium"
+                            className="px-3 py-2 bg-white dark:bg-gray-800 text-blue-800 text-sm rounded-lg border border-blue-300 font-medium"
                           >
                             {mes}
                           </span>
@@ -443,7 +443,7 @@ useEffect(() => {
                   <button
                     type="button"
                     onClick={() => navigate('/pagamentos')}
-                    className="flex-1 px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:bg-gray-900 transition-colors font-medium"
                     disabled={pagamentoLoading}
                   >
                     Cancelar

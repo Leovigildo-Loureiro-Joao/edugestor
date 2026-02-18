@@ -4,8 +4,10 @@ import db from './db';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { alunosService } from './alunosService';
 import { Student } from '../../types';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const getActiveInstituicaoId = () => instituicaoIdValue();
 
 export const propinaService = {
   // ✅ Registrar propina localmente
@@ -16,6 +18,11 @@ export const propinaService = {
       
       // Buscar aluno localmente
       const aluno = await alunosService.getStudentById(data.aluno_id);
+      const instituicaoId = aluno?.instituicao_id || instituicaoIdValue();
+
+      if (!instituicaoId) {
+        throw new Error('Instituição ativa não encontrada para registrar propina.');
+      }
       
       // Calcular valores
       const valorPropina = aluno?.propina || 0;
@@ -24,6 +31,7 @@ export const propinaService = {
       
       const propina = {
         ...data,
+        instituicao_id: instituicaoId,
         id,
         valor_falta: valorFalta,
         estado,
@@ -39,6 +47,7 @@ export const propinaService = {
       
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
+        instituicao_id: instituicaoId,
         table: 'propina',
         record_id: id,
         operation: 'upsert',
@@ -59,11 +68,15 @@ export const propinaService = {
   async getAllPropinas(): Promise<Propina[]> {
     try {
       console.log('📋 Buscando propinas...');
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       
       const todasPropinas = await db.propina.toArray();
       
       // Filtrar as não deletadas
-      const propinasAtivas = todasPropinas.filter(propina => !propina.deleted);
+      const propinasAtivas = todasPropinas.filter(
+        (propina) => !propina.deleted && propina.instituicao_id === instituicaoId
+      );
       
       // Ordenar por data de vencimento (mais recente primeiro)
       propinasAtivas.sort((a, b) => 
@@ -107,6 +120,8 @@ export const propinaService = {
   async downloadFromSupabase() {
     try {
       console.log('📥 Buscando últimas propinas do Supabase...');
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return;
       
       const lastSync = localStorage.getItem('last_sync_propinas');
       console.log('Última sincronização de propinas:', lastSync || 'Primeira vez');
@@ -114,6 +129,7 @@ export const propinaService = {
       let query = supabase
         .from('propina')
         .select('*, alunos(nome_completo)')
+        .eq('instituicao_id', instituicaoId)
         .order('updated_at', { ascending: false });
       
       if (lastSync) {
@@ -186,11 +202,13 @@ export const propinaService = {
   // ✅ UPLOAD: Enviar alterações locais para Supabase
   async uploadToSupabase() {
     try {
+      const instituicaoId = instituicaoIdValue();
+      if (!instituicaoId) return;
       // Buscar itens da fila específicos para propinas
       const pendingItems = await db.syncQueue
-        .where('table')
-        .equals('propina')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.table === 'propina' && item.status === 'pending')
         .toArray();
 
       console.log(`📤 ${pendingItems.length} propinas pendentes para envio`);
@@ -302,10 +320,17 @@ export const propinaService = {
   // ✅ Buscar meses pagos (com suporte offline)
   async SearchMesesPagos(alunoId: string): Promise<string[]> {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       const propinas = await db.propina
         .where('aluno_id')
         .equals(alunoId)
-        .and(propina => propina.estado === 'pago' && !propina.deleted)
+        .and(
+          (propina) =>
+            propina.estado === 'pago' &&
+            !propina.deleted &&
+            propina.instituicao_id === instituicaoId
+        )
         .toArray();
       
       // Extrair meses únicos pagos
@@ -327,10 +352,12 @@ export const propinaService = {
   // ✅ Buscar propinas por aluno
   async getByAluno(alunoId: string): Promise<Propina[]> {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       const propinas = await db.propina
         .where('aluno_id')
         .equals(alunoId)
-        .and(propina => !propina.deleted)
+        .and((propina) => !propina.deleted && propina.instituicao_id === instituicaoId)
         .toArray();
       
       // Ordenar por data de vencimento (mais recente primeiro)
@@ -392,10 +419,12 @@ export const propinaService = {
   // ✅ Buscar histórico de pagamentos (com suporte offline)
   async getHistoricoPagamentos(limite = 10) {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       const propinas = await db.propina
         .where('data_pagamento')
         .notEqual('')
-        .and(propina => !propina.deleted)
+        .and((propina) => !propina.deleted && propina.instituicao_id === instituicaoId)
         .toArray();
       
       // Ordenar por data de pagamento (mais recente primeiro)
@@ -428,19 +457,20 @@ export const propinaService = {
   async updatePropina(id: string, updates: Partial<PropinaFormData>) {
     try {
       const updated_at = new Date().toISOString();
+      const instituicaoId = getActiveInstituicaoId();
+      const propinaAtual = await db.propina.get(id);
+      if (!propinaAtual || !instituicaoId || propinaAtual.instituicao_id !== instituicaoId) {
+        throw new Error('Propina não encontrada para a instituição ativa.');
+      }
       
       // Se estiver atualizando valor pago, recalcular
       if (updates.valor_pago !== undefined) {
-        const propina = await db.propina.get(id);
-        if (propina) {
-          // Buscar valor da propina do aluno
-          const aluno = await alunosService.getStudentById(propina.aluno_id);
-          const valorPropina = aluno?.propina || 0;
-          const valorFalta = valorPropina - updates.valor_pago;
-          
-          updates.valor_falta = valorFalta;
-          updates.estado = valorFalta > 0 ? 'pendente' : 'pago';
-        }
+        const aluno = await alunosService.getStudentById(propinaAtual.aluno_id);
+        const valorPropina = aluno?.propina || 0;
+        const valorFalta = valorPropina - updates.valor_pago;
+        
+        updates.valor_falta = valorFalta;
+        updates.estado = valorFalta > 0 ? 'pendente' : 'pago';
       }
       
       await db.propina.update(id, {
@@ -451,6 +481,7 @@ export const propinaService = {
 
       // Adicionar/atualizar na fila
       await db.syncQueue.add({
+        instituicao_id: instituicaoId,
         table: 'propina',
         record_id: id,
         operation: 'upsert',
@@ -472,7 +503,8 @@ export const propinaService = {
   async deletePropina(id: string) {
     try {
       const propina = await db.propina.get(id);
-      if (!propina) return;
+      const instituicaoId = getActiveInstituicaoId();
+      if (!propina || !instituicaoId || propina.instituicao_id !== instituicaoId) return;
 
       if (propina.sync_status === 'synced' && !propina.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
@@ -483,6 +515,7 @@ export const propinaService = {
         });
         
         await db.syncQueue.add({
+          instituicao_id: instituicaoId,
           table: 'propina',
           record_id: id,
           operation: 'delete',
@@ -499,6 +532,7 @@ export const propinaService = {
         await db.syncQueue
           .where('record_id')
           .equals(id)
+          .and((item) => item.instituicao_id === instituicaoId)
           .delete();
           
         console.log(`🗑️ Propina ${id} deletada localmente`);
@@ -513,10 +547,12 @@ export const propinaService = {
   // ✅ Buscar propinas por mês de referência
   async getByMesReferencia(mes: Propina['mes_referencia'], estado?: Propina['estado']) {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       let query = db.propina
         .where('mes_referencia')
         .equals(mes)
-        .and(propina => !propina.deleted);
+        .and((propina) => !propina.deleted && propina.instituicao_id === instituicaoId);
       
       if (estado) {
         query = query.and(propina => propina.estado === estado);
@@ -538,13 +574,15 @@ export const propinaService = {
   // ✅ Buscar propinas atrasadas
   async getAtrasadas(): Promise<Propina[]> {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return [];
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
       
       const propinas = await db.propina
         .where('estado')
         .equals('pendente')
-        .and(propina => !propina.deleted)
+        .and((propina) => !propina.deleted && propina.instituicao_id === instituicaoId)
         .toArray();
       
       // Filtrar as atrasadas (data de vencimento anterior a hoje)
@@ -589,10 +627,12 @@ export const propinaService = {
   // ✅ Calcular total recebido por período
   async calcularTotalRecebido(inicio: Date, fim: Date): Promise<number> {
     try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) return 0;
       const propinas = await db.propina
         .where('estado')
         .equals('pago')
-        .and(propina => !propina.deleted)
+        .and((propina) => !propina.deleted && propina.instituicao_id === instituicaoId)
         .toArray();
       
       return propinas
@@ -611,11 +651,26 @@ export const propinaService = {
   // ✅ Verificar saúde do banco de propinas
   async checkDatabaseHealth() {
     try {
-      const propinaCount = await db.propina.count();
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) {
+        return {
+          propinasTotal: 0,
+          propinasAtivas: 0,
+          pendentes: 0,
+          atrasadas: 0,
+          online: navigator.onLine,
+          bancoAberto: db.isOpen(),
+          inconsistencia: 0
+        };
+      }
+
+      const propinaCount = await db.propina
+        .filter((p) => p.instituicao_id === instituicaoId)
+        .count();
       const queueCount = await db.syncQueue
-        .where('table')
-        .equals('propina')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.table === 'propina' && item.status === 'pending')
         .count();
       
       const propinasAtivas = (await this.getAllPropinas()).length;

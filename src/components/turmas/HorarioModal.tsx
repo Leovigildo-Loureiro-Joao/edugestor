@@ -147,6 +147,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
   // No handleSubmit do HorarioModal, adicione a validação:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     
     if (!validateForm()) {
       return;
@@ -174,6 +175,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     try {
       // Formatar horas para salvar
       const horarioParaSalvar: HorarioAulaForm = {
+        id: horarioEdit?.id|| undefined,
         turma_id: turmaId,
         dia_semana: formData.dia_semana,
         hora_inicio: formData.hora_inicio.padStart(5, '0'),

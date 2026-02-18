@@ -9,13 +9,14 @@ export class CacheManager {
   static getInstance(): CacheManager {
     if (!CacheManager.instance) {
       CacheManager.instance = new CacheManager();
+      CacheManager.instance.compactStorage();
     }
     return CacheManager.instance;
   }
 
   // 🔹 SET: Guardar dados no cache
    getLatest(baseKey: string): any {
-    const keys = Object.keys(localStorage)
+    const keys = this.getCacheKeys()
       .filter(key => key.startsWith(`${baseKey}_`))
       .sort((a, b) => {
         // Ordenar por timestamp ou versão mais recente
@@ -40,7 +41,13 @@ export class CacheManager {
     try {
       localStorage.setItem(key, JSON.stringify(item));
     } catch (error) {
-      this.clear();
+      // Em caso de quota, remove caches antigos e tenta novamente.
+      this.pruneOldestCacheEntries(20);
+      try {
+        localStorage.setItem(key, JSON.stringify(item));
+      } catch {
+        console.warn(`⚠️ Falha ao persistir cache para a chave ${key}`);
+      }
     }
   }
   
@@ -66,7 +73,7 @@ export class CacheManager {
   // 🔹 DELETE: Remover do cache
   delete(key: string) {
     this.cache.delete(key);
-    localStorage.removeItem(`cache_${key}`);
+    localStorage.removeItem(key);
     console.log(`🗑️  Cache removido: ${key}`);
   }
 
@@ -75,10 +82,8 @@ export class CacheManager {
     this.cache.clear();
     
     // Limpar todos os itens de cache do localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('cache_')) {
-        localStorage.removeItem(key);
-      }
+    this.getCacheKeys().forEach((key) => {
+      localStorage.removeItem(key);
     });
     
     console.log('🧹 Cache completamente limpo');
@@ -96,8 +101,8 @@ export class CacheManager {
     }
     
     // Limpar do localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('cache_') && regex.test(key.replace('cache_', ''))) {
+    this.getCacheKeys().forEach((key) => {
+      if (regex.test(key)) {
         localStorage.removeItem(key);
       }
     });
@@ -120,7 +125,7 @@ export class CacheManager {
   }
   
   getCurrentVersion(keyPattern: string): string | null {
-    const keys = Object.keys(localStorage)
+    const keys = this.getCacheKeys()
       .filter(key => key.startsWith(keyPattern))
       .sort((a, b) => b.localeCompare(a)); // Mais recente primeiro
     
@@ -155,16 +160,87 @@ export class CacheManager {
     const memorySize = Array.from(this.cache.values())
       .reduce((acc, item) => acc + JSON.stringify(item.data).length, 0);
     
-    const storageSize = Object.keys(localStorage)
-      .filter(key => key.startsWith('cache_'))
+    const cacheKeys = this.getCacheKeys();
+
+    const storageSize = cacheKeys
       .reduce((acc, key) => acc + (localStorage.getItem(key)?.length || 0), 0);
     
     return {
       memoryItems: this.cache.size,
       memorySize: `${(memorySize / 1024).toFixed(2)} KB`,
-      storageItems: Object.keys(localStorage).filter(k => k.startsWith('cache_')).length,
+      storageItems: cacheKeys.length,
       storageSize: `${(storageSize / 1024).toFixed(2)} KB`
     };
+  }
+
+  private getCacheKeys(): string[] {
+    const keys = Object.keys(localStorage);
+    const cacheKeys: string[] = [];
+
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      try {
+        const parsed = JSON.parse(raw);
+        const isCacheEntry = parsed && typeof parsed === 'object' &&
+          'value' in parsed &&
+          typeof parsed.timestamp === 'number';
+
+        if (isCacheEntry) {
+          cacheKeys.push(key);
+        }
+      } catch {
+        // Ignorar chaves que não são JSON de cache.
+      }
+    }
+
+    return cacheKeys;
+  }
+
+  private pruneOldestCacheEntries(limit = 20): void {
+    const ordered = this.getCacheKeys()
+      .map((key) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return { key, timestamp: 0 };
+        try {
+          const parsed = JSON.parse(raw);
+          return { key, timestamp: Number(parsed?.timestamp) || 0 };
+        } catch {
+          return { key, timestamp: 0 };
+        }
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    ordered.slice(0, limit).forEach(({ key }) => localStorage.removeItem(key));
+  }
+
+  private compactStorage(): void {
+    const now = Date.now();
+    const cacheKeys = this.getCacheKeys();
+
+    cacheKeys.forEach((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+
+      try {
+        const parsed = JSON.parse(raw);
+        const ttl = Number(parsed?.ttl);
+        const timestamp = Number(parsed?.timestamp) || 0;
+
+        if (ttl > 0 && timestamp > 0 && now - timestamp > ttl) {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // Mantém no máximo 120 entradas de cache para reduzir risco de quota.
+    const remainingKeys = this.getCacheKeys();
+    if (remainingKeys.length > 120) {
+      this.pruneOldestCacheEntries(remainingKeys.length - 120);
+    }
   }
 }
 

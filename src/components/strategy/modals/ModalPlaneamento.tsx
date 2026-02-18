@@ -239,7 +239,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Header - IGUAL PARA TODOS */}
@@ -264,7 +264,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                   </div>
                   <div className="w-full bg-blue-500/50 rounded-full h-2">
                     <div 
-                      className="bg-white h-2 rounded-full transition-all duration-300"
+                      className="bg-white dark:bg-gray-800 h-2 rounded-full transition-all duration-300"
                       style={{ width: etapa === 'basico' ? '50%' : '100%' }}
                     />
                   </div>
@@ -326,18 +326,18 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                 </div>
                 
                 {/* Footer - IGUAL PARA TODOS */}
-                <div className="bg-gray-50 px-6 py-4 border-t flex justify-between">
+                <div className="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t flex justify-between">
                   {etapa === 'conteudo' ? (
                     <>
                       <button
                         type="button"
                         onClick={() => setEtapa('basico')}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 flex items-center"
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 flex items-center"
                       >
                         <FiChevronLeft className="mr-1" /> Voltar
                       </button>
                       <div className="flex space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100">
                           Cancelar
                         </button>
                         <button
@@ -353,7 +353,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                     <>
                       <div></div>
                       <div className="flex space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100">
                           Cancelar
                         </button>
                         <button
@@ -401,34 +401,34 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
 }) => (
   <div className="space-y-6">
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Título do Planejamento
       </label>
       <input
         type="text"
         value={titulo}
         onChange={(e) => setTitulo(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
         placeholder="Ex: Planejamento de Aulas"
         required
       />
     </div>
     
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Descrição (opcional)
       </label>
       <textarea
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
         placeholder="Descreva os objetivos principais..."
       />
     </div>
     
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Data Início
         </label>
         <input
@@ -438,20 +438,20 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
             setDataInicio(e.target.value);
             if (tipo === 'diario') setDataFim(e.target.value);
           }}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Data Fim
         </label>
         <input
           type="date"
           value={dataFim}
           onChange={(e) => setDataFim(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
           disabled={tipo === 'diario'}
           required
         />
@@ -459,14 +459,14 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
     </div>
     
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Responsável
       </label>
       <input
         type="text"
         value={responsavel}
         onChange={(e) => setResponsavel(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
         required
       />
     </div>
@@ -508,7 +508,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
     <div className="space-y-6">
       {/* Focos Principais */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Focos Principais do Dia (máx 3)
         </label>
         <div className="space-y-3">
@@ -522,7 +522,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
                 novos[index] = e.target.value;
                 setFocos(novos);
               }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder={`Foco principal ${index + 1}`}
             />
           ))}
@@ -532,7 +532,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
       {/* Agenda */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Agenda do Dia
           </label>
           <button
@@ -546,25 +546,25 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
         
         <div className="space-y-3">
           {horarios.map((horario, index) => (
-            <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+            <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <input
                 type="time"
                 value={horario.hora}
                 onChange={(e) => updateHorario(index, 'hora', e.target.value)}
-                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
               />
               <input
                 type="text"
                 value={horario.atividade}
                 onChange={(e) => updateHorario(index, 'atividade', e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                 placeholder="Atividade"
               />
               <input
                 type="text"
                 value={horario.descricao || ''}
                 onChange={(e) => updateHorario(index, 'descricao', e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                 placeholder="Descrição"
               />
               {horarios.length > 1 && (
@@ -583,13 +583,13 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
       
       {/* Lembretes */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Lembretes Importantes
         </label>
         <textarea
           value={lembretes.join('\n')}
           onChange={(e) => setLembretes(e.target.value.split('\n').filter(l => l.trim() !== ''))}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
           placeholder="Adicione lembretes, um por linha..."
         />
       </div>
@@ -636,7 +636,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
     <div className="space-y-6">
       {/* Objetivos da Semana */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Objetivos da Semana
         </label>
         <div className="space-y-3">
@@ -650,7 +650,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
                 novos[index] = e.target.value;
                 setObjetivosSemanais(novos);
               }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder={`Objetivo ${index + 1}`}
             />
           ))}
@@ -660,7 +660,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
       {/* Metas Prioritárias */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Metas Prioritárias
           </label>
           {metasPrioritarias.length < 5 && (
@@ -685,7 +685,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
                   novas[index] = e.target.value;
                   setMetasPrioritarias(novas);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
                 placeholder={`Meta prioritária ${index + 1}`}
               />
               <button
@@ -702,14 +702,14 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
       
       {/* Atividades por Dia */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Atividades da Semana</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Atividades da Semana</h4>
         <div className="space-y-4">
           {dias.map((dia, diaIndex) => (
             <div key={diaIndex} className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h5 className="font-semibold text-gray-800">{diasSemana[diaIndex]}</h5>
-                  <span className="text-xs text-gray-500">
+                  <h5 className="font-semibold text-gray-800 dark:text-gray-100">{diasSemana[diaIndex]}</h5>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(dia.data).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
@@ -757,7 +757,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
       {/* Metas do Mês */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Metas do Mês
           </label>
           {metasMensais.length < 6 && (
@@ -782,7 +782,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
                   novas[index] = e.target.value;
                   setMetasMensais(novas);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
                 placeholder={`Meta ${index + 1}`}
               />
               {metasMensais.length > 1 && (
@@ -801,15 +801,15 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
       
       {/* Planejamento por Semana */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Planejamento Semanal</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Planejamento Semanal</h4>
         <div className="space-y-4">
           {semanas.map((semana, index) => (
             <div key={index} className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h5 className="font-semibold text-gray-800">
+                <h5 className="font-semibold text-gray-800 dark:text-gray-100">
                   Semana {semana.numero}
                 </h5>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(semana.data_inicio).getDate()}/{new Date(semana.data_inicio).getMonth() + 1} - {new Date(semana.data_fim).getDate()}/{new Date(semana.data_fim).getMonth() + 1}
                 </span>
               </div>
@@ -825,7 +825,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
                     novas[index].objetivos[objIndex] = e.target.value;
                     setSemanas(novas);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm mb-2"
                   placeholder={`Objetivo da semana ${semana.numero}`}
                 />
               ))}

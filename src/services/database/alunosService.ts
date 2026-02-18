@@ -12,8 +12,10 @@ import { frequenciaService } from "./frequenciaService";
 import { cacheManager } from "./cacheManager";
 import { emitPendingSync } from "../../utils/emitPendingSync";
 import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { generateUniqueId } from "../../utils/idGenarator";
 
-const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 
 export const alunosService = {
   // ✅ Criar aluno
@@ -21,10 +23,12 @@ export const alunosService = {
     try {
       const id = generateUniqueId();
       const now = new Date().toISOString();
+      const instituicao_id = instituicaoIdValue() || "";
       const n=await this.gerarProximoNumeroEstudante();
-      const aluno = {
+    const aluno = {
         ...studentData,
         id,
+        instituicao_id,
         numero_estudante:n,
         created_at: now,
         updated_at: now,
@@ -40,6 +44,7 @@ export const alunosService = {
      const syncRecord = await db.syncQueue.add({
         table: 'alunos',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: now
@@ -65,8 +70,9 @@ export const alunosService = {
 
     // ✅ Buscar todos os alunos - CORRIGIDO
 async getAllStudents(): Promise<Student[]> {
-  const CACHE_KEY = 'alunos_all';
-  
+  const activeInstituicaoId = instituicaoIdValue() || '';
+  const cacheScope = activeInstituicaoId || 'global';
+  const CACHE_KEY = `alunos_all_${cacheScope}`;
   try {
     // 1. Criar versão baseada em múltiplos contadores para detectar mudanças reais
     const [alunoCount, turmaCount, lastModified] = await Promise.all([
@@ -76,7 +82,7 @@ async getAllStudents(): Promise<Student[]> {
     ]);
     
     // 2. Criar chave de cache composta por versões
-    const cacheVersion = `v${alunoCount}_${turmaCount}_${lastModified}`;
+    const cacheVersion = `v${alunoCount}_${turmaCount}_${activeInstituicaoId}_${lastModified}`;
     const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
     
     // 3. Tentar cache primeiro
@@ -110,16 +116,12 @@ async getAllStudents(): Promise<Student[]> {
     // Primeiro filtrar, depois ordenar, depois mapear
     const alunos = alunosAll
       .filter(aluno => {
+        if (activeInstituicaoId && aluno.instituicao_id !== activeInstituicaoId) {
+          return false;
+        }
         // Aluno não deletado
         if (aluno.deleted) return false;
-        
-        // Aluno com turma válida (se tiver turma_id)
-        if (aluno.turma_id) {
-          const turma = turmaMap.get(aluno.turma_id);
-          return turma !== undefined;
-        }
-        
-        // Aceitar alunos sem turma também
+        // Aceitar alunos mesmo quando a turma ainda não sincronizou
         return true;
       })
       .sort((a, b) => {
@@ -249,6 +251,7 @@ async getAllStudents(): Promise<Student[]> {
     await db.syncQueue.add({
       table: 'alunos',
       record_id: recordId,
+      instituicao_id:instituicaoIdValue(),
       operation,
       status: 'pending',
       created_at: new Date().toISOString()
@@ -276,16 +279,20 @@ async getAllStudents(): Promise<Student[]> {
     }
   },
   async refreshAllStudents() {
+    const activeInstituicaoId = instituicaoIdValue() || '';
+    const cacheScope = activeInstituicaoId || 'global';
     // Invalidar cache
-    cacheManager.delete('alunos_all');
-    cacheManager.invalidate('alunos_.*');
-    cacheManager.invalidate('chart_.*');
+    cacheManager.delete(`alunos_all_${cacheScope}`);
+    cacheManager.invalidate(`alunos_all_${cacheScope}_.*`);
+    cacheManager.invalidate(`alunos_chart_data_${cacheScope}`);
     
     // Buscar dados frescos
     return await this.getAllStudents();
   },
    async getAlunosForChart() {
-    const CACHE_KEY = 'alunos_chart_data';
+    const activeInstituicaoId = instituicaoIdValue() || '';
+    const cacheScope = activeInstituicaoId || 'global';
+    const CACHE_KEY = `alunos_chart_data_${cacheScope}`;
     const cached = cacheManager.get(CACHE_KEY);
     
     if (cached) {
@@ -334,6 +341,7 @@ async getAllStudents(): Promise<Student[]> {
       await db.syncQueue.add({
         table: 'alunos',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at
@@ -368,6 +376,7 @@ async getAllStudents(): Promise<Student[]> {
         await db.syncQueue.add({
           table: 'alunos',
           record_id: id,
+          instituicao_id:instituicaoIdValue(),
           operation: 'delete',
           status: 'pending',
           created_at: new Date().toISOString()
@@ -423,7 +432,6 @@ async getAllStudents(): Promise<Student[]> {
       const numeros = alunos
         .filter(a => !a.deleted)
         .map(a => a.numero_estudante);
-      alert(numeros.length)
       const maior = numeros.length > 0 ? Math.max(...numeros) : 0;
       return maior + 1;
     } catch (error) {
@@ -437,8 +445,9 @@ async getAllStudents(): Promise<Student[]> {
     try {
       const alunoCount = await db.alunos.count();
       const queueCount = await db.syncQueue
-        .where('status')
-        .equals('pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and((item) => item.status === 'pending')
         .count();
       
       return {

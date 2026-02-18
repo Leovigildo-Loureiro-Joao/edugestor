@@ -9,6 +9,7 @@ import { instituicaoService } from '../../services/database/insitituicao.ts';
 import { SeletorMeses } from '../../components/ui/SelectMonth.tsx';
 import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import { motion } from 'framer-motion';
 
 export const CompletarMatricula = () => {
     const { alunoId } = useParams();
@@ -198,12 +199,12 @@ export const CompletarMatricula = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
                     <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
-                    <p className="text-center mt-4 text-gray-600">Carregando dados do aluno...</p>
+                    <p className="text-center mt-4 text-gray-600 dark:text-gray-400">Carregando dados do aluno...</p>
                 </div>
             </div>
         );
@@ -211,9 +212,9 @@ export const CompletarMatricula = () => {
 
     if (!aluno) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Aluno não encontrado</h2>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Aluno não encontrado</h2>
                     <button 
                         onClick={() => navigate('/alunos')}
                         className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -227,11 +228,18 @@ export const CompletarMatricula = () => {
 
     if (sucesso) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
+            <motion.div
+            initial={{x:-20,opacity:0}}
+                animate={{x:0,opacity:1}}
+            className="min-h-screen  bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+                <motion.div
+                initial={{y:-20,opacity:0}}
+                animate={{y:0,opacity:1}}
+                transition={{delay:.3}}
+                className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 max-w-md w-full text-center">
                     <FiCheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Matrícula Concluída!</h2>
-                    <p className="text-gray-600 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Matrícula Concluída!</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
                         Aluno matriculado com sucesso no sistema.
                     </p>
                     <div className="bg-green-50 rounded-lg p-4 mb-6">
@@ -245,7 +253,7 @@ export const CompletarMatricula = () => {
                     <div className="flex gap-3">
                         <button 
                             onClick={() => navigate('/alunos')}
-                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-900"
                         >
                             Ver Alunos
                         </button>
@@ -256,20 +264,20 @@ export const CompletarMatricula = () => {
                             Ir para Financeiro
                         </button>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <ModalComponent/>
                 {/* Header */}
                 <div className="mb-8">
                     <button
                         onClick={() => navigate('/alunos')}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+                        className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white mb-4"
                     >
                         <FiArrowLeft size={20} />
                         Voltar para Alunos
@@ -277,14 +285,14 @@ export const CompletarMatricula = () => {
                     
                     <div className="flex justify-between items-start">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Completar Matrícula</h1>
-                            <p className="text-gray-600 mt-2">
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Completar Matrícula</h1>
+                            <p className="text-gray-600 dark:text-gray-400 mt-2">
                                 Registre os pagamentos iniciais para ativar o aluno no sistema
                             </p>
                         </div>
                         
                         <div className="text-right">
-                            <div className="text-sm text-gray-500">Nº do Estudante</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Nº do Estudante</div>
                             <div className="text-xl font-bold text-blue-600">#{aluno.numero_estudante}</div>
                         </div>
                     </div>
@@ -294,33 +302,33 @@ export const CompletarMatricula = () => {
                     
                     {/* Informações do Aluno */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-                            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                 <FiUser className="text-blue-600" />
                                 Dados do Aluno
                             </h3>
                             
                             <div className="space-y-3">
                                 <div>
-                                    <div className="text-sm text-gray-500">Nome Completo</div>
-                                    <div className="font-medium text-gray-900">{aluno.nome_completo}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">Nome Completo</div>
+                                    <div className="font-medium text-gray-900 dark:text-white">{aluno.nome_completo}</div>
                                 </div>
                                 
                                 <div>
-                                    <div className="text-sm text-gray-500">Turma</div>
-                                    <div className="font-medium text-gray-900">
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">Turma</div>
+                                    <div className="font-medium text-gray-900 dark:text-white">
                                         {aluno.turma_nome || 'Não definida'}
                                     </div>
                                 </div>
                                 
                                 <div>
-                                    <div className="text-sm text-gray-500">Classe</div>
-                                    <div className="font-medium text-gray-900">{aluno.classe_escolar}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">Classe</div>
+                                    <div className="font-medium text-gray-900 dark:text-white">{aluno.classe_escolar}</div>
                                 </div>
                                 
                                 <div>
-                                    <div className="text-sm text-gray-500">Data de Matrícula</div>
-                                    <div className="font-medium text-gray-900">
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">Data de Matrícula</div>
+                                    <div className="font-medium text-gray-900 dark:text-white">
                                         {new Date(aluno.data_matricula).toLocaleDateString('pt-AO')}
                                     </div>
                                 </div>
@@ -340,23 +348,23 @@ export const CompletarMatricula = () => {
 
                     {/* Formulário de Pagamentos */}
                     <div className="lg:col-span-3">
-                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <div className="p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-bold text-gray-900">Pagamentos Iniciais</h2>
-                                <p className="text-gray-600 mt-1">Selecione os pagamentos que deseja registrar</p>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pagamentos Iniciais</h2>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">Selecione os pagamentos que deseja registrar</p>
                             </div>
 
                             <div className="p-6 space-y-6">
                                 
                                 {/* Taxa de Matrícula */}
                                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                                         <FiDollarSign className="text-blue-600" />
                                         Taxa de Matrícula
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Valor (AOA)
                                             </label>
                                             <input
@@ -366,13 +374,13 @@ export const CompletarMatricula = () => {
                                                     ...prev, 
                                                     valorMatricula: e.target.value 
                                                 }))}
-                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 min="0"
                                                 step="0.01"
                                             />
                                         </div>
                                         <div className="flex items-end">
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 <span className="font-medium">Sugerido:</span><br />
                                                 {formatarMoeda(configInstituicao?.valor_matricula || 5000)}
                                             </p>
@@ -383,7 +391,7 @@ export const CompletarMatricula = () => {
                                 {/* Cartão de Estudante */}
                                 <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                             <FiCreditCard className="text-purple-600" />
                                             Cartão de Estudante
                                         </h4>
@@ -397,14 +405,14 @@ export const CompletarMatricula = () => {
                                                 }))}
                                                 className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                                             />
-                                            <span className="text-sm font-medium text-gray-700">Incluir cartão</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Incluir cartão</span>
                                         </label>
                                     </div>
                                     
                                     {dadosMatricula.incluirCartao && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                     Valor do Cartão (AOA)
                                                 </label>
                                                 <input
@@ -414,13 +422,13 @@ export const CompletarMatricula = () => {
                                                         ...prev, 
                                                         valorCartao: e.target.value 
                                                     }))}
-                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                                     min="0"
                                                     step="0.01"
                                                 />
                                             </div>
                                             <div className="flex items-end">
-                                                <p className="text-sm text-gray-600">
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
                                                     <span className="font-medium">Padrão:</span><br />
                                                     {formatarMoeda(configInstituicao?.valor_cartao || 1000)}
                                                 </p>
@@ -432,7 +440,7 @@ export const CompletarMatricula = () => {
                                 {/* Propina */}
                                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                             <FiCalendar className="text-green-600" />
                                             Propina
                                         </h4>
@@ -447,14 +455,14 @@ export const CompletarMatricula = () => {
                                                 }))}
                                                 className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
                                             />
-                                            <span className="text-sm font-medium text-gray-700">Incluir propina</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Incluir propina</span>
                                         </label>
                                     </div>
                                     
                                     {dadosMatricula.incluirPropina && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                     Valor Mensal (AOA)
                                                 </label>
                                                 <input
@@ -464,13 +472,13 @@ export const CompletarMatricula = () => {
                                                         ...prev, 
                                                         valorPropina: e.target.value 
                                                     }))}
-                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                                     min="0"
                                                     step="0.01"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                     Meses a Pagar
                                                 </label>
                                                 <SeletorMeses
@@ -482,7 +490,7 @@ export const CompletarMatricula = () => {
                                                     anoLetivo={new Date().getFullYear()}
                                                 />
                                                 {dadosMatricula.mesesPropina.length > 0 && (
-                                                    <p className="text-xs text-gray-500 mt-1">
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                         {dadosMatricula.mesesPropina.length} {dadosMatricula.mesesPropina.length === 1 ? 'mês selecionado' : 'meses selecionados'}
                                                     </p>
                                                 )}
@@ -491,9 +499,9 @@ export const CompletarMatricula = () => {
                                     )}
                                     
                                     {dadosMatricula.incluirPropina && dadosMatricula.mesesPropina.length > 0 && (
-                                        <div className="mt-3 p-3 bg-white rounded border border-green-200">
+                                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border border-green-200">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
                                                     {dadosMatricula.mesesPropina.length} {dadosMatricula.mesesPropina.length === 1 ? 'mês' : 'meses'} × {formatarMoeda(parseFloat(dadosMatricula.valorPropina))}
                                                 </span>
                                                 <span className="font-semibold text-green-600">
@@ -501,7 +509,7 @@ export const CompletarMatricula = () => {
                                                 </span>
                                             </div>
                                             {dadosMatricula.mesesPropina.length > 0 && (
-                                                <div className="mt-2 text-xs text-gray-500">
+                                                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                                     Meses: {dadosMatricula.mesesPropina.map(num => 
                                                        num
                                                     ).join(', ')}
@@ -513,7 +521,7 @@ export const CompletarMatricula = () => {
 
                                 {/* Observações */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Observações
                                     </label>
                                     <textarea
@@ -522,39 +530,39 @@ export const CompletarMatricula = () => {
                                             ...prev, 
                                             observacao: e.target.value 
                                         }))}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                                         rows={3}
                                         placeholder="Observações sobre estes pagamentos..."
                                     />
                                 </div>
 
                                 {/* Resumo Final */}
-                                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                                    <h4 className="font-semibold text-gray-900 mb-4 text-lg">Resumo Final</h4>
+                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">Resumo Final</h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Taxa de Matrícula:</span>
+                                            <span className="text-gray-600 dark:text-gray-400">Taxa de Matrícula:</span>
                                             <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorMatricula))}</span>
                                         </div>
                                         
                                         {dadosMatricula.incluirCartao && (
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Cartão de Estudante:</span>
+                                                <span className="text-gray-600 dark:text-gray-400">Cartão de Estudante:</span>
                                                 <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorCartao))}</span>
                                             </div>
                                         )}
                                         
                                         {dadosMatricula.incluirPropina && (
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">
+                                                <span className="text-gray-600 dark:text-gray-400">
                                                     Propina ({dadosMatricula.mesesPropina} {dadosMatricula.mesesPropina.length > 1 ? 'meses' : 'mês'}):
                                                 </span>
                                                 <span className="font-medium">{formatarMoeda(calcularTotalPropina())}</span>
                                             </div>
                                         )}
                                         
-                                        <div className="flex justify-between border-t border-gray-300 pt-3">
-                                            <span className="text-gray-800 font-bold text-lg">Total a Pagar:</span>
+                                        <div className="flex justify-between border-t border-gray-300 dark:border-gray-600 pt-3">
+                                            <span className="text-gray-800 dark:text-gray-100 font-bold text-lg">Total a Pagar:</span>
                                             <span className="text-green-600 font-bold text-xl">
                                                 {formatarMoeda(calcularTotal())}
                                             </span>

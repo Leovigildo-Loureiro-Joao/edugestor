@@ -1,6 +1,7 @@
 import db from "./db";
 import { generateUniqueId } from "../../utils/idGenarator";
 import { EventFormData } from "../../types/eventos";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 
 
 export const eventoService = {
@@ -8,7 +9,7 @@ export const eventoService = {
   async listarEventos() {
     try {
     let query = db.evento.toArray().then(eventos => 
-        eventos.filter(evento => !evento.deleted)
+        eventos.filter(evento => !evento.deleted&&evento.instituicao_id===instituicaoIdValue())
       );
 
       return query || [];
@@ -56,6 +57,7 @@ export const eventoService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'evento',
+        instituicao_id:instituicaoIdValue(),
         record_id: id+"",
         operation: 'upsert',
         status: 'pending',
@@ -95,6 +97,7 @@ export const eventoService = {
       // Adicionar/atualizar na fila de sincronização
       await db.syncQueue.add({
         table: 'evento',
+        instituicao_id:instituicaoIdValue(),
         record_id: eventoId,
         operation: 'upsert',
         status: 'pending',
@@ -126,6 +129,7 @@ export const eventoService = {
         
         await db.syncQueue.add({
           table: 'evento',
+          instituicao_id:instituicaoIdValue(),
           record_id: eventoId,
           operation: 'delete',
           status: 'pending',

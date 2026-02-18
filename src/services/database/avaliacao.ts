@@ -7,6 +7,8 @@ import { emitDbChanged } from '../../utils/emitPendingSync';
 import { toast } from 'react-hot-toast';
 import { turmaService } from './turmas';
 import { cursosService } from '.';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { generateUniqueId } from '../../utils/idGenarator';
 
 export interface Avaliacao extends BaseEntity {
   id: string;
@@ -57,7 +59,7 @@ export type AvaliacaoFormData = Omit<
   'id' | 'deleted' | 'sync_status' | 'updated_at' | 'created_at' | 'aluno'
 >;
 
-const generateUniqueId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 
 export const avaliacaoService = {
   // ✅ Criar avaliação com validação avançada
@@ -102,6 +104,7 @@ export const avaliacaoService = {
         data: JSON.stringify(avaliacao),
         status: 'pending',
         created_at: now,
+        instituicao_id:instituicaoIdValue(),
         retry_count: 0
       });
 
@@ -433,6 +436,7 @@ export const avaliacaoService = {
         operation: 'delete',
         data: JSON.stringify({ id: avaliacao.id }),
         status: 'pending',
+        instituicao_id:instituicaoIdValue(),
         created_at: new Date().toISOString()
       });
     }
@@ -687,6 +691,7 @@ export const avaliacaoService = {
       await db.syncQueue.add({
         table: 'avaliacoes',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at,
@@ -717,6 +722,7 @@ export const avaliacaoService = {
       await db.syncQueue.add({
         table: 'avaliacoes',
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: 'delete',
         status: 'pending',
         created_at: new Date().toISOString(),
@@ -746,9 +752,9 @@ export const avaliacaoService = {
       const avaliacoes = await db.avaliacoes.toArray();
       const ativas = avaliacoes.filter(a => !a.deleted);
       const pendentes = await db.syncQueue
-        .where('table')
-        .equals('avaliacoes')
-        .and(item => item.status === 'pending')
+        .where('instituicao_id')
+        .equals(instituicaoIdValue())
+        .and(item => item.table === 'avaliacoes' && item.status === 'pending')
         .count();
 
       return {

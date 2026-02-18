@@ -12,8 +12,10 @@ import {
   FiUserCheck
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import { initializeSyncSystem } from '../../services/database/syncManager';
+import db from '../../services/database/db';
+import { initializeSyncSystem, syncManager } from '../../services/database/syncManager';
 import { NotificacoesBellInteligente } from './Notificao';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 // Interface para o status de sincronização
 interface SyncStatus {
@@ -40,26 +42,6 @@ interface AuthContextType {
 interface HeaderProps {
   setIsDarkMode: (isDark: boolean) => void;
   isDarkMode: boolean;
-}
-
-// Extendendo a interface Window para incluir propriedades personalizadas
-declare global {
-  interface Window {
-    db?: {
-      syncQueue: {
-        where: (field: string) => {
-          equals: (value: string) => {
-            count: () => Promise<number>;
-          };
-          anyOf: (values: string[]) => {
-            count: () => Promise<number>;
-          };
-        };
-        // Adicione outras propriedades conforme necessário
-      };
-      // Adicione outras tabelas conforme necessário
-    };
-  }
 }
 
 const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
@@ -94,21 +76,33 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
 
   const verificarStatusSincronizacao = async () => {
     try {
-      // Verificar itens pendentes na fila de sync
-      if (window.db?.syncQueue) {
-        const syncQueue = await window.db.syncQueue.where('status').equals('pending').count();
-        const syncErrors = await window.db.syncQueue.where('status').equals('failed').count();
-        
-        setSyncStatus({
-          pending: syncQueue,
-          errors: syncErrors
-        });
+      const instituicaoId = instituicaoIdValue();
+      const syncQueue = instituicaoId
+        ? await db.syncQueue
+            .where('instituicao_id')
+            .equals(instituicaoId)
+            .and((item) => item.status === 'pending')
+            .count()
+        : 0;
+      const syncErrors = instituicaoId
+        ? await db.syncQueue
+            .where('instituicao_id')
+            .equals(instituicaoId)
+            .and((item) => item.status === 'failed')
+            .count()
+        : 0;
+      
+      setSyncStatus({
+        pending: syncQueue,
+        errors: syncErrors
+      });
 
-        // Se estiver online e houver pendências, tentar sincronizar
-        if (isOnline && syncQueue > 0) {
-          console.log(`🔄 ${syncQueue} itens pendentes para sincronizar`);
-          setSaveStatus('saving');
-        }
+      // Se estiver online e houver pendências, sinalizar estado
+      if (isOnline && syncQueue > 0) {
+        console.log(`🔄 ${syncQueue} itens pendentes para sincronizar`);
+        setSaveStatus('saving');
+      } else if (isOnline && syncQueue === 0) {
+        setSaveStatus(syncErrors > 0 ? 'error' : 'saved');
       }
     } catch (error) {
       console.error('Erro ao verificar status de sincronização:', error);
@@ -202,22 +196,29 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
 
 
   const handleSyncClick = async (): Promise<void> => {
-    if (isOnline && syncStatus.pending > 0) {
-      setSaveStatus('saving');
-      try {
-        // Aqui você chamaria o serviço de sincronização
-        console.log('🔄 Iniciando sincronização manual...');
-        
-        // Simulação de sincronização
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setSaveStatus('saved');
-        await verificarStatusSincronizacao();
-        
-      } catch (error) {
-        setSaveStatus('error');
-        console.error('Erro na sincronização:', error);
-      }
+    if (!isOnline) return;
+    setSaveStatus('saving');
+    try {
+      console.log('♻️ Forçando full sync manual...');
+
+      // 1) Enviar pendências locais primeiro
+      await syncManager.uploadBatch();
+      await syncManager.uploadFailedItems()
+
+      // 2) Limpar marcadores de sincronização incremental para forçar download completo
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('last_sync_'))
+        .forEach((key) => localStorage.removeItem(key));
+
+      // 3) Baixar tudo novamente
+      await syncManager.downloadBatch();
+
+      setSaveStatus('saved');
+      await verificarStatusSincronizacao();
+      console.log('✅ Full sync concluído');
+    } catch (error) {
+      setSaveStatus('error');
+      console.error('Erro na sincronização:', error);
     }
   };
 
@@ -246,19 +247,17 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
           {/* Status de Sincronização */}
           <button
             onClick={handleSyncClick}
-            disabled={!isOnline || syncStatus.pending === 0}
+            disabled={!isOnline}
             className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-              isOnline && syncStatus.pending > 0 
-                ? 'cursor-pointer hover:opacity-90' 
-                : 'cursor-default'
+              isOnline ? 'cursor-pointer hover:opacity-90' : 'cursor-default'
             } ${getStatusColor()}`}
             title={!isOnline 
               ? 'Modo Offline' 
-              : syncStatus.pending > 0 
-                ? 'Clique para sincronizar' 
+              : syncStatus.pending > 0
+                ? 'Clique para forçar full sync'
                 : syncStatus.errors > 0 
-                  ? 'Erros na sincronização' 
-                  : 'Tudo sincronizado'
+                  ? 'Clique para tentar full sync'
+                  : 'Clique para atualizar tudo (full sync)'
             }
           >
             {isOnline ? (

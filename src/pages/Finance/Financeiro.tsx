@@ -18,7 +18,7 @@ import {
 } from 'react-icons/fi';
 import { transacaoService } from '../../services/database/transacaoService.ts';
 import { alunosService } from '../../services/database/alunosService.ts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CustomPieChart } from '../../components/finance/PieChartDespesa.tsx';
 import GraficoBarrasDuplas from '../../components/finance/BarraDupla.jsx';
 import GraficoBarrasLucro from '../../components/finance/BarraMensal.jsx';
@@ -28,6 +28,7 @@ import db from '../../services/database/db.ts';
 import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.ts';
 import { motion } from 'framer-motion';
 import { getPendingCount } from '../../utils/emitPendingSync.ts';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID.ts';
 
 // Interfaces/Types
 interface TabOption {
@@ -151,10 +152,13 @@ const Tabs_Navigation: React.FC<TabsNavigationProps> = ({ value, onChange }) => 
 
 // Componente principal
 export const FinanceiroPage: React.FC = () => {
+  const { seccao } = useParams<{ seccao?: string }>();
   const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
   const [dadosFinanceiros, setDadosFinanceiros] = useState<DadosFinanceiros | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [select, setSelect] = useState<string>('VS'); 
+  const secoesFinanceiro = ['VS', 'despesas', 'lucro'] as const;
+  type SecaoFinanceiro = (typeof secoesFinanceiro)[number];
+  const [select, setSelect] = useState<SecaoFinanceiro>('VS'); 
   const navigate = useNavigate();
   const [propinaPending,setPropinaPending]=useState<number>(0)
   const [transacaoPending,setTransacaoPending]=useState<number>(0)
@@ -176,13 +180,34 @@ export const FinanceiroPage: React.FC = () => {
        await transacaoService.createAlocacao(element)
     }
    
-    setAlocacao(await db.alocacao.filter(a=>!a.deleted).toArray());
+    const instituicaoId = instituicaoIdValue();
+    setAlocacao(
+      await db.alocacao
+        .filter((a) => !a.deleted && (!instituicaoId || a.instituicao_id === instituicaoId))
+        .toArray()
+    );
     setShowDivisaoLucrosModal(false);
   };
 
   useEffect(() => {
     carregarDadosFinanceiros();
   }, [anoSelecionado]);
+
+  useEffect(() => {
+    const secaoParam = seccao as SecaoFinanceiro | undefined;
+    if (secaoParam && secoesFinanceiro.includes(secaoParam)) {
+      setSelect(secaoParam);
+      return;
+    }
+    setSelect('VS');
+  }, [seccao]);
+
+  const handleSecaoChange = (tab: string) => {
+    const selectedTab = tab as SecaoFinanceiro;
+    if (!secoesFinanceiro.includes(selectedTab)) return;
+    setSelect(selectedTab);
+    navigate(`/financeiro/${selectedTab}`);
+  };
 
   useEffect(() => {
     const handleDbChanged = (event: Event) => {
@@ -253,10 +278,13 @@ export const FinanceiroPage: React.FC = () => {
         despesas,
         alunos
       });
-
-        setMetas(await db.metas.filter(a=> a.tipo==="infraestrutura"||a.tipo=='financeira'||a.tipo=='marketing')
-                      .and(a=>!a.deleted && a.progresso<100)
-                      .toArray())
+      const instituicaoId = instituicaoIdValue();
+      setMetas(
+        await db.metas
+          .filter((a) => a.tipo === "infraestrutura" || a.tipo === 'financeira' || a.tipo === 'marketing')
+          .and((a) => !a.deleted && a.progresso < 100 && (!instituicaoId || a.instituicao_id === instituicaoId))
+          .toArray()
+      )
     } catch (error) {
       console.error('❌ Erro ao carregar dados financeiros:', error);
     } finally {
@@ -518,7 +546,7 @@ export const FinanceiroPage: React.FC = () => {
 
             {/* Seletor de Visualização */}
             <div className="flex justify-center">
-              <Tabs_Navigation value={select} onChange={setSelect} />
+              <Tabs_Navigation value={select} onChange={handleSecaoChange} />
             </div>
 
             {/* Gráficos */}

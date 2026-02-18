@@ -167,7 +167,7 @@ const TarefaPage = () => {
     { value: 'em_andamento', label: 'Em Andamento', cor: 'bg-blue-100 text-blue-800' },
     { value: 'concluida', label: 'Concluída', cor: 'bg-green-100 text-green-800' },
     { value: 'atrasada', label: 'Atrasada', cor: 'bg-red-100 text-red-800' },
-    { value: 'cancelada', label: 'Cancelada', cor: 'bg-gray-100 text-gray-800' }
+    { value: 'cancelada', label: 'Cancelada', cor: 'bg-gray-100 text-gray-800 dark:text-gray-100' }
   ];
 
   // Handlers
@@ -367,7 +367,7 @@ const TarefaPage = () => {
               <div className="mt-4 md:mt-0 flex space-x-2">
                 <button
                   onClick={handleDuplicar}
-                  className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 flex items-center"
+                  className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 rounded-lg font-medium hover:bg-blue-50 flex items-center"
                 >
                   <FiCopy className="mr-2" />
                   Duplicar
@@ -392,7 +392,7 @@ const TarefaPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
           >
             {/* Cabeçalho do Card */}
             <div className="border-b p-6">
@@ -426,14 +426,14 @@ const TarefaPage = () => {
             <div className="p-6">
               {/* Descrição */}
               <div className="mb-8">
-                <label className="block text-gray-700 font-semibold mb-3 flex items-center">
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-3 flex items-center">
                   <FiFileText className="mr-2" />
                   Descrição
                 </label>
                 <textarea
                   value={formData.descricao}
                   onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-40"
+                  className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-40"
                   placeholder="Descreva em detalhes o que precisa ser feito..."
                 />
               </div>
@@ -442,7 +442,7 @@ const TarefaPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {/* Tipo */}
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                  <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                     <FiTag className="mr-2" />
                     Tipo de Tarefa
                   </label>
@@ -455,14 +455,14 @@ const TarefaPage = () => {
                         className={`w-full p-3 rounded-lg border text-left transition-all ${
                           formData.tipo === tipo.value
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                            : 'border-gray-200 hover:bg-gray-50'
+                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:bg-gray-900'
                         }`}
                       >
                         <div className="flex items-center">
                           <span className="text-xl mr-3">{tipo.icon}</span>
                           <div>
                             <div className="font-medium">{tipo.label}</div>
-                            <div className="text-xs text-gray-500">{tipo.desc}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{tipo.desc}</div>
                           </div>
                         </div>
                       </button>
@@ -474,7 +474,7 @@ const TarefaPage = () => {
                 <div className="space-y-6">
                   {/* Categoria */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Categoria
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -486,7 +486,7 @@ const TarefaPage = () => {
                           className={`p-3 rounded-lg font-medium flex items-center justify-center transition-all ${
                             formData.categoria === cat.value
                               ? `${cat.cor} ring-2 ring-offset-1`
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              : 'bg-gray-100 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
                           }`}
                         >
                           <span className="mr-2">{cat.icon}</span>
@@ -498,7 +498,7 @@ const TarefaPage = () => {
 
                   {/* Prioridade */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Prioridade
                     </label>
                     <div className="space-y-2">
@@ -510,14 +510,14 @@ const TarefaPage = () => {
                           className={`w-full p-3 rounded-lg border text-left transition-all ${
                             formData.prioridade === pri.value
                               ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                              : 'border-gray-200 hover:bg-gray-50'
+                              : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:bg-gray-900'
                           }`}
                         >
                           <div className="flex items-center">
                             <span className="text-xl mr-3">{pri.icon}</span>
                             <div>
                               <div className="font-medium">{pri.label}</div>
-                              <div className="text-xs text-gray-500">{pri.desc}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">{pri.desc}</div>
                             </div>
                           </div>
                         </button>
@@ -530,7 +530,7 @@ const TarefaPage = () => {
                 <div className="space-y-6">
                   {/* Data Limite */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiCalendar className="mr-2" />
                       Prazo Limite
                     </label>
@@ -540,10 +540,10 @@ const TarefaPage = () => {
                         value={formData.data_limite}
                         onChange={(e) => setFormData({...formData, data_limite: e.target.value})}
                         min={new Date().toISOString().split('T')[0]}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                       {formData.data_limite && (
-                        <div className="mt-2 text-sm text-gray-600">
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                           Dias restantes: {
                             Math.ceil((new Date(formData.data_limite).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
                           }
@@ -555,7 +555,7 @@ const TarefaPage = () => {
                   {/* Estimativa e Progresso */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                         <FiClock className="mr-2" />
                         Estimativa
                       </label>
@@ -566,16 +566,16 @@ const TarefaPage = () => {
                           step="0.5"
                           value={formData.estimativa_horas}
                           onChange={(e) => setFormData({...formData, estimativa_horas: parseFloat(e.target.value)})}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
                           horas
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-medium mb-2">
+                      <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                         Progresso
                       </label>
                       <div className="relative">
@@ -585,9 +585,9 @@ const TarefaPage = () => {
                           max="100"
                           value={formData.percentual_conclusao}
                           onChange={(e) => setFormData({...formData, percentual_conclusao: parseInt(e.target.value)})}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
                           %
                         </div>
                       </div>
@@ -606,7 +606,7 @@ const TarefaPage = () => {
 
                   {/* Meta Relacionada */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Meta Relacionada
                     </label>
                     <SelectTyped
@@ -626,14 +626,14 @@ const TarefaPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
           >
             <div className="border-b p-6">
               <h2 className="text-xl font-bold flex items-center">
                 <FiCheckSquare className="mr-2" />
                 Checklist
               </h2>
-              <p className="text-gray-600 mt-1">Adicione os passos necessários para concluir esta tarefa</p>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Adicione os passos necessários para concluir esta tarefa</p>
             </div>
             
             <div className="p-6">
@@ -645,7 +645,7 @@ const TarefaPage = () => {
                     value={novoChecklistItem}
                     onChange={(e) => setNovoChecklistItem(e.target.value)}
                     placeholder="Digite um novo item..."
-                    className="flex-1 p-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-blue-500"
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), adicionarChecklistItem())}
                   />
                   <button
@@ -661,14 +661,14 @@ const TarefaPage = () => {
               {/* Lista de itens */}
               <div className="space-y-3">
                 {checklistItems.map((item, index) => (
-                  <div key={index} className="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100">
+                  <div key={index} className="flex items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100">
                     <input
                       type="checkbox"
                       checked={item.concluido}
                       onChange={() => toggleChecklistItem(index)}
                       className="h-5 w-5 text-blue-600 rounded"
                     />
-                    <span className={`ml-3 flex-1 ${item.concluido ? 'line-through text-gray-500' : ''}`}>
+                    <span className={`ml-3 flex-1 ${item.concluido ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {item.item}
                     </span>
                     <button
@@ -712,7 +712,7 @@ const TarefaPage = () => {
 
           {/* Botões de Ação */}
           <div className="flex justify-between items-center pt-8 border-t">
-            <div className="text-gray-600">
+            <div className="text-gray-600 dark:text-gray-400">
               <div className="flex items-center">
                 <FiAlertCircle className="mr-2" />
                 <span>Campos com * são obrigatórios</span>
@@ -729,7 +729,7 @@ const TarefaPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/estrategia/tarefas')}
-                className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                className="px-8 py-3 border border-gray-300 dark:border-gray-600 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900"
                 disabled={salvando}
               >
                 Cancelar

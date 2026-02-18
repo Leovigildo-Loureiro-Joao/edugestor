@@ -86,7 +86,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
       case 'ministrada': return 'bg-green-50 text-green-700 border-green-200';
       case 'cancelada': return 'bg-red-50 text-red-700 border-red-200';
       case 'adiada': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -118,7 +118,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className="bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all w-full duration-300"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all w-full duration-300"
     >
       {/* Header Compacto */}
       <div className="p-4">
@@ -133,7 +133,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
             {/* Conteúdo Principal */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold text-gray-900 truncate">
+                <h4 className="font-semibold text-gray-900 dark:text-white truncate">
                   {aula.disciplina || 'Sem disciplina'}
                 </h4>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(aula.status as AulaStatus)}`}>
@@ -142,7 +142,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
               </div>
               
               {/* Informações de Data/Horário */}
-              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-1">
                   <FiCalendar className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="font-medium">{formatarData(aula.data_aula)}</span>
@@ -153,7 +153,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
                   <span>
                     {formatarHora(aula.hora_inicio)} - {formatarHora(aula.hora_fim)}
                     {calcularDuracao() && (
-                      <span className="text-gray-500 text-xs ml-1">
+                      <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">
                         ({calcularDuracao()})
                       </span>
                     )}
@@ -171,11 +171,11 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
               {/* Tema da Aula (se existir) */}
               {aula.tema_aula && (
                 <div className="mt-2">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
                     <FiTarget className="h-3 w-3" />
                     <span>Tema</span>
                   </div>
-                  <p className="text-sm text-gray-700 line-clamp-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                     {aula.tema_aula}
                   </p>
                 </div>
@@ -187,7 +187,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
           <div className="flex items-center gap-1 ml-3 flex-shrink-0">
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
               title={expanded ? "Recolher" : "Expandir"}
             >
               <FiTrendingUp className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -224,9 +224,9 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <FiBook className="h-4 w-4 text-blue-600" />
-                  <h5 className="font-medium text-gray-900 text-sm">Conteúdo Ministrado</h5>
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Conteúdo Ministrado</h5>
                 </div>
-                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
                   {aula.conteudo_ministrado}
                 </p>
               </div>
@@ -237,7 +237,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <FiTarget className="h-4 w-4 text-green-600" />
-                  <h5 className="font-medium text-gray-900 text-sm">Objetivos</h5>
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Objetivos</h5>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {aula.objetivos_aprendizagem.slice(0, 3).map((objetivo: string, idx: number) => (
@@ -250,7 +250,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
                     </span>
                   ))}
                   {aula.objetivos_aprendizagem.length > 3 && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       +{aula.objetivos_aprendizagem.length - 3} mais
                     </span>
                   )}
@@ -265,7 +265,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
                   <div className="bg-blue-50 p-3 rounded-lg">
                     <div className="text-xs text-blue-700 mb-1">Participação</div>
                     <div className="flex items-center justify-between">
-                      <div className="text-lg font-semibold text-gray-900">
+                      <div className="text-lg font-semibold text-gray-900 dark:text-white">
                         {aula.taxa_participacao}%
                       </div>
                       <div className="text-xs text-blue-600">
@@ -281,7 +281,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
                     <div className={`text-xs ${aula.meta_concluida ? 'text-green-700' : 'text-amber-700'} mb-1`}>
                       Meta
                     </div>
-                    <div className="text-lg font-semibold text-gray-900">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
                       {aula.meta_concluida ? 'Concluída' : 'Pendente'}
                     </div>
                   </div>
@@ -303,7 +303,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
 
         {/* Footer (sempre visível) */}
         <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <div>
               {aula.created_at && (
                 <>

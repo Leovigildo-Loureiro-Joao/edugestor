@@ -1,26 +1,34 @@
 // services/database/profileService.ts
-import { use } from 'react';
-import db, { supabase, supabaseUrl } from './db';
+import db, { supabase } from './db';
 import { syncManager } from './syncManager';
 import { SyncStatus } from '../../types/base';
+import { auditLogService } from '../audit/auditLogService';
 
 export const profileService = {
   // ✅ Salvar perfil localmente
   async saveProfile(profile: any) {
     try {
+      const now = new Date().toISOString();
       // Se você tem tabela profiles no Dexie
       await db.table('profiles')?.put({
         id: profile.id,
         email: profile.email,
         role: profile.role || 'user',
+        full_name: profile.full_name || profile.nome || '',
+        instituicao_id: profile.instituicao_id || '',
         nome: profile.nome || '',
-        updated_at: new Date().toISOString(),
+        updated_at: now,
+        created_at: profile.created_at || now,
+        deleted: false,
         sync_status: 'pending'
       });
       
       // Também salvar no localStorage para acesso rápido
       localStorage.setItem('user_profile', JSON.stringify(profile));
       localStorage.setItem('has_admin_setup', 'true');
+      if (profile?.role) localStorage.setItem('user_role', profile.role);
+      if (profile?.id) localStorage.setItem('user_id', profile.id);
+      if (profile?.instituicao_id) localStorage.setItem('active_instituicao_id', profile.instituicao_id);
       
       console.log('✅ Perfil salvo localmente');
     } catch (error) {
@@ -34,17 +42,21 @@ export const profileService = {
       // 1. Tentar localStorage primeiro
       const localProfile = localStorage.getItem('user_profile');
       if (localProfile) {
-        const profile =JSON.parse(localProfile);
-        localStorage.setItem("active_instituicao_id",profile.instituicao_id)
-        localStorage.setItem("user_id",profile.id)
-        return JSON.parse(localProfile);
+        const profile = JSON.parse(localProfile);
+        if (profile?.instituicao_id) localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+        if (profile?.id) localStorage.setItem("user_id", profile.id);
+        if (profile?.role) localStorage.setItem("user_role", profile.role);
+        return profile;
       }
       
       // 2. Tentar Dexie
       const profiles = await db.table('profiles')?.toArray();
       if (profiles && profiles.length > 0) {
-        localStorage.setItem("active_instituicao_id",profiles[0].instituicao_id)
-        return profiles[0];
+        const profile = profiles[0] as any;
+        if (profile?.instituicao_id) localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+        if (profile?.id) localStorage.setItem("user_id", profile.id);
+        if (profile?.role) localStorage.setItem("user_role", profile.role);
+        return profile;
       }
       
       return null;
@@ -69,63 +81,70 @@ export const profileService = {
         .count();
       
       return (adminCount || 0) > 0;
-    } catch {
+    } catch (error) {
+      console.error('Erro ao verificar admin local:', error);
       return false;
     }
   },
 
    // ✅ ADMIN: Adicionar usuário (apenas admin pode)
-  async addUserByAdmin(userData: {
-    email: string;
-    nome: string;
-    role: 'manager' | 'teacher' | 'user';
-    instituicao_id: string;
-  }, adminId: string) {
-    try {
-      // 1. Verificar se é admin
-      const adminProfile = await this.getLocalProfile();
-      if (adminProfile?.role !== 'admin') {
-        throw new Error('Apenas administradores podem adicionar usuários');
-      }
-
-      // 2. Criar usuário OFFLINE primeiro
-      const tempUserId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const offlineUser = {
-        id: tempUserId,
-        email: userData.email,
-        nome: userData.nome,
-        role: userData.role,
-        instituicao_id: userData.instituicao_id,
-        status: 'pending', // Pendente de ativação
-        created_by: adminId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        sync_status: 'pending' as SyncStatus,
-        is_local: true
-      };
-
-      // 3. Salvar localmente
-      await db.profiles.add(offlineUser);
-      
-      // 4. Salvar no localStorage para acesso rápido
-      const pendingUsers = JSON.parse(localStorage.getItem('pending_users') || '[]');
-      pendingUsers.push(offlineUser);
-      localStorage.setItem('pending_users', JSON.stringify(pendingUsers));
-
-      // 5. Adicionar à fila de sync (mas NÃO sincronizar automaticamente)
-      await syncManager.markAsSynced('profiles', offlineUser.id);
-
-      return {
-        success: true,
-        message: 'Usuário adicionado localmente. Será sincronizado quando houver internet.',
-        userId: tempUserId
-      };
-    } catch (error) {
-      console.error('Erro ao adicionar usuário:', error);
-      throw error;
+  
+async addUserByAdmin(userData: {
+  email: string;
+  nome: string;
+  role: 'manager' | 'teacher' | 'user';
+  instituicao_id: string;
+}, adminId: string) {
+  try {
+    // 1. Verificar se é admin
+    const adminProfile = await this.getLocalProfile();
+    if (adminProfile?.role !== 'admin') {
+      await auditLogService.log('PERMISSION_DENIED_OPERATION', {
+        area: 'profileService',
+        operation: 'add_user_by_admin',
+        target_email: userData.email
+      });
+      throw new Error('Apenas administradores podem adicionar usuários');
     }
-  },
+
+    // 2. Criar usuário OFFLINE primeiro
+    const tempUserId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const offlineUser = {
+      id: tempUserId,
+      email: userData.email,
+      full_name: userData.nome,
+      role: userData.role,
+      instituicao_id: userData.instituicao_id,
+      status: 'pending', // Pendente de ativação
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      sync_status: 'pending' as SyncStatus, // ✅ Começa como pending
+    };
+
+    // 3. Salvar localmente
+    await db.profiles.add(offlineUser);
+    
+    // 4. Salvar no localStorage para acesso rápido
+    const pendingUsers = JSON.parse(localStorage.getItem('pending_users') || '[]');
+    pendingUsers.push(offlineUser);
+    localStorage.setItem('pending_users', JSON.stringify(pendingUsers));
+    
+    console.log('📝 Usuário adicionado localmente:', offlineUser);
+
+    // 5. NÃO marcar como synced ainda! Remover esta linha:
+    // await syncManager.markAsSynced('profiles', offlineUser.id);
+
+    return {
+      success: true,
+      message: 'Usuário adicionado localmente. Será sincronizado quando houver internet.',
+      userId: tempUserId
+    };
+  } catch (error) {
+    console.error('Erro ao adicionar usuário:', error);
+    throw error;
+  }
+},
 
   async  testToken() {
   try {
@@ -167,16 +186,19 @@ export const profileService = {
 },
 
   // ✅ Sincronizar usuários pendentes (APENAS quando admin quiser)
+// ✅ Sincronizar usuários pendentes (APENAS quando admin quiser)
 async syncPendingUsers() {
   try {
     console.log('🔄 Iniciando sincronização de usuários pendentes...');
 
+    // Buscar apenas usuários com sync_status = 'pending'
     const pendingUsers = await db.profiles
       .where('sync_status')
       .equals('pending')
       .toArray();
 
-    console.log(`📋 ${pendingUsers.length} usuário(s) pendente(s) encontrado(s)`);
+    console.log(`📋 ${pendingUsers.length} usuário(s) pendente(s) encontrado(s):`, 
+      pendingUsers.map(u => ({ email: u.email, role: u.role, id: u.id })));
 
     if (pendingUsers.length === 0) {
       return { success: true, message: 'Nenhum usuário pendente para sincronizar' };
@@ -200,7 +222,7 @@ async syncPendingUsers() {
 
     console.log('🔑 Token JWT obtido, usuário:', session.user?.email);
 
-    // Preparar dados
+    // Preparar dados - filtrar apenas campos necessários
     const usersToSync = pendingUsers.map(user => ({
       id: user.id,
       email: user.email,
@@ -209,15 +231,13 @@ async syncPendingUsers() {
       instituicao_id: user.instituicao_id
     }));
 
-    console.log('🚀 Chamando Edge Function com dados:', usersToSync);
+    console.log('🚀 Enviando para Edge Function:', usersToSync);
 
-    const EDGE_FUNCTION_URL = 'https://fbgpygnqzcifbfzxqlzh.supabase.co/functions/v1/sync-users';
+    const EDGE_FUNCTION_URL = 'https://fbgpygnqzcifbfzxqlzh.supabase.co/functions/v1/sync';
     
-    console.log('🌐 URL da Edge Function:', EDGE_FUNCTION_URL);
-
     // Configurar fetch com timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -226,11 +246,10 @@ async syncPendingUsers() {
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ pendingUsers: usersToSync }),
-      signal: controller.signal,
-      mode: 'cors' // Explicitamente definir modo CORS
+      signal: controller.signal
     }).finally(() => clearTimeout(timeoutId));
 
-    console.log('📨 Resposta recebida, status:', response.status);
+    console.log('📨 Status da resposta:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -251,21 +270,22 @@ async syncPendingUsers() {
     console.log('📦 Resposta da Edge Function:', result);
 
     // Processar resultados
-    if (result.details) {
+    if (result.details && Array.isArray(result.details)) {
       console.log('📊 Processando detalhes dos resultados...');
       
       let successCount = 0;
       let errorCount = 0;
       
       for (const detail of result.details) {
-        if (detail.status === 'success' || detail.status === 'updated') {
+        if (detail.status === 'success' || detail.status === 'updated' || detail.status === 'created_profile') {
+          // ✅ SÓ AGORA marcar como synced
           await db.profiles.update(detail.id, {
             sync_status: 'synced',
             supabase_id: detail.supabaseId,
             updated_at: new Date().toISOString()
           });
 
-          // Remover do localStorage se aplicável
+          // Remover do localStorage
           const pendingInStorage = JSON.parse(localStorage.getItem('pending_users') || '[]');
           const updatedPending = pendingInStorage.filter((u: any) => u.id !== detail.id);
           localStorage.setItem('pending_users', JSON.stringify(updatedPending));
@@ -273,6 +293,7 @@ async syncPendingUsers() {
           successCount++;
           console.log(`✅ Usuário ${detail.email} sincronizado com ID: ${detail.supabaseId}`);
         } else {
+          // Marcar como erro
           await db.profiles.update(detail.id, {
             sync_status: 'error',
             sync_error: detail.error,
@@ -285,6 +306,11 @@ async syncPendingUsers() {
       }
       
       console.log(`🎯 Finalizado: ${successCount} sucesso(s), ${errorCount} erro(s)`);
+      
+      return {
+        ...result,
+        localStats: { successCount, errorCount }
+      };
     }
 
     return result;
@@ -300,28 +326,15 @@ async syncPendingUsers() {
       };
     }
     
-    if (error.message.includes('autenticado') || error.message.includes('token') || error.message.includes('Sessão')) {
-      return {
-        success: false,
-        message: 'Sessão expirada. Faça login novamente.',
-        requiresLogin: true
-      };
-    }
-    
-    if (error.message.includes('administradores')) {
-      return {
-        success: false,
-        message: 'Apenas administradores podem sincronizar usuários.',
-        requiresAdmin: true
-      };
-    }
-    
     return {
       success: false,
       message: error.message || 'Erro desconhecido na sincronização'
     };
   }
 },
+
+// Dentro da Edge Function, substitua o loop for...of
+
 
   // ✅ Buscar usuários locais (incluindo pendentes)
   async getLocalUsers() {
@@ -370,6 +383,11 @@ async syncPendingUsers() {
     try {
       const adminProfile = await this.getLocalProfile();
       if (adminProfile?.role !== 'admin') {
+        await auditLogService.log('PERMISSION_DENIED_OPERATION', {
+          area: 'profileService',
+          operation: 'update_user',
+          target_user_id: userId
+        });
         throw new Error('Apenas administradores podem atualizar usuários');
       }
 
@@ -395,6 +413,11 @@ async syncPendingUsers() {
     try {
       const adminProfile = await this.getLocalProfile();
       if (adminProfile?.role !== 'admin') {
+        await auditLogService.log('PERMISSION_DENIED_OPERATION', {
+          area: 'profileService',
+          operation: 'delete_user',
+          target_user_id: userId
+        });
         throw new Error('Apenas administradores podem deletar usuários');
       }
 
@@ -405,7 +428,6 @@ async syncPendingUsers() {
 
       // Marcar como deletado localmente
       await db.profiles.update(userId, {
-        status: 'deleted',
         deleted_at: new Date().toISOString(),
         sync_status: 'pending'
       });

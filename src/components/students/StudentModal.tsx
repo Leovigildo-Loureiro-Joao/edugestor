@@ -12,7 +12,6 @@ import { avaliacaoService } from "../../services/database/avaliacao";
 import { toast } from 'react-hot-toast';
 import { FaChartLine, FaGraduationCap } from 'react-icons/fa';
 import { alunosService } from "../../services/database/alunosService";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 
 interface StudentModalProps {
   alunoSelecionado: AlunoDesempenho | null;
@@ -105,16 +104,15 @@ export const StudentModal = ({
         ]);
 
         setConfig(configValue?.value?.map((val: any) => val.nome) || []);
-        const ins=instituicaoIdValue()
-        // Buscar disciplinas do curso
-        if (alunoSelecionado.curso && ins) {
-          const curso = await db.cursos
-            .where('[nome+instituicao_id]')
-            .equals([alunoSelecionado.curso, ins])
-            .and(curso => !curso.deleted)
-            .first();
-          
-          setDisciplinas(curso?.disciplinas || []);
+        // Buscar disciplinas via turma -> curso
+        if (alunoSelecionado.turma_id) {
+          const turma = await db.turmas.get(alunoSelecionado.turma_id);
+          if (turma?.curso_id) {
+            const curso = await db.cursos.get(turma.curso_id);
+            setDisciplinas(curso?.disciplinas || []);
+          } else {
+            setDisciplinas([]);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);

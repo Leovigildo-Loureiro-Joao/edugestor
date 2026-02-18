@@ -136,15 +136,15 @@ const InitialSetup = () => {
 
      <section className='rounded-2xl shadow-xl max-w-5xl flex justify-center'>
         <img src={jpg} alt="" className='w-1/2 rounded-l-2xl object-cover'/>
-         <div className=" w-1/2 bg-white rounded-r-2xl p-8">
+         <div className=" w-1/2 bg-white dark:bg-gray-800 rounded-r-2xl p-8">
         <div className="text-center mb-8">
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
             <img src={logo} alt="" className='w-20 h-20 rounded-full' />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Configuração Inicial
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Crie o primeiro administrador do sistema
           </p>
         </div>
@@ -155,7 +155,7 @@ const InitialSetup = () => {
               <h2 className="text-xl font-semibold mb-3">
                 Bem-vindo ao EduGestor
               </h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
                 É necessário configurar um administrador principal antes de usar o sistema.
               </p>
               
@@ -175,7 +175,7 @@ const InitialSetup = () => {
               
               <button
                 onClick={() => navigate('/login')}
-                className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors mt-3"
+                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 transition-colors mt-3"
               >
                 Já tenho uma conta
               </button>
@@ -184,7 +184,7 @@ const InitialSetup = () => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nome Completo *
               </label>
               <input
@@ -193,13 +193,13 @@ const InitialSetup = () => {
                 value={adminCredentials.fullName}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Ex: João Silva"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email do Administrador *
               </label>
               <input
@@ -208,13 +208,13 @@ const InitialSetup = () => {
                 value={adminCredentials.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="admin@escola.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Senha *
               </label>
               <input
@@ -223,14 +223,14 @@ const InitialSetup = () => {
                 value={adminCredentials.password}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Mínimo 6 caracteres"
                 minLength={6}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Confirmar Senha *
               </label>
               <input
@@ -239,7 +239,7 @@ const InitialSetup = () => {
                 value={adminCredentials.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Digite a senha novamente"
               />
             </div>
@@ -267,7 +267,7 @@ const InitialSetup = () => {
                 type="button"
                 onClick={() => setShowAdminForm(false)}
                 disabled={loading}
-                className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Voltar
               </button>
@@ -275,11 +275,11 @@ const InitialSetup = () => {
           </form>
         )}
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
             Dica: Use um email que você tenha acesso para recuperação de senha.
           </p>
-          <p className="text-xs text-gray-500 text-center mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
             Após criar o admin, você poderá adicionar outros usuários.
           </p>
         </div>

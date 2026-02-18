@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Check, Trash2, Settings, AlertCircle, Info, Clock, DollarSign, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
+import { useNavigate } from 'react-router-dom';
 
 interface NotificacoesBellProps {
   userRole: 'aluno' | 'professor' | 'admin' | 'responsavel';
@@ -14,6 +15,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
   userId, 
   alunoId 
 }) => {
+  const navigate = useNavigate();
   const [notificacoes, setNotificacoes] = useState<any[]>([]);
   const [countNaoLidas, setCountNaoLidas] = useState(0);
   const [aberto, setAberto] = useState(false);
@@ -63,12 +65,21 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
     }
   };
 
-  const marcarComoLida = async (id: string) => {
+  const abrirNotificacao = async (notif: any) => {
     try {
-      await notificacaoService.marcarComoLida(id);
+      if (!notif.lida) {
+        await notificacaoService.marcarComoLida(notif.id);
+      }
+      setAberto(false);
+
+      if (notif.link && typeof notif.link === 'string') {
+        navigate(notif.link);
+        return;
+      }
+
       await carregarNotificacoes();
     } catch (error) {
-      console.error('Erro ao marcar como lida:', error);
+      console.error('Erro ao abrir notificação:', error);
     }
   };
 
@@ -119,7 +130,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
       case PrioridadeNotificacao.MEDIA:
         return 'text-blue-600 bg-blue-50 border-blue-100';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-100';
+        return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-gray-100';
     }
   };
 
@@ -132,7 +143,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
       case PrioridadeNotificacao.MEDIA:
         return 'bg-blue-100 text-blue-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:text-gray-100';
     }
   };
 
@@ -144,7 +155,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
         whileTap={{ scale: 0.95 }}
         onClick={() => setAberto(!aberto)}
         className={`relative p-2 rounded-lg transition-colors ${
-          aberto ? 'bg-gray-100' : 'hover:bg-gray-50'
+          aberto ? 'bg-gray-100' : 'hover:bg-gray-50 dark:bg-gray-900'
         }`}
         title={`${countNaoLidas} notificação(ões) não lida(s)`}
       >
@@ -184,16 +195,16 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-40 max-h-[500px] flex flex-col"
+              className="absolute right-0 top-12 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-40 max-h-[500px] flex flex-col"
             >
               {/* Cabeçalho */}
-              <div className="px-4 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+              <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                       Notificações
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
                     </p>
                   </div>
@@ -220,10 +231,10 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => notificacaoService.verificarNotificacoesAutomaticas()}
-                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Verificar agora"
                     >
-                      <Settings className="w-4 h-4 text-gray-500" />
+                      <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </motion.button>
                     
                     <motion.button
@@ -232,7 +243,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                       onClick={() => setAberto(false)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </motion.button>
                   </div>
                 </div>
@@ -247,7 +258,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                     className="px-6 py-16 text-center"
                   >
                     <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">
                       Nenhuma notificação no momento
                     </p>
                     <p className="text-gray-400 text-sm mt-2">
@@ -263,9 +274,9 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: index * 0.05 }}
-                        onClick={() => marcarComoLida(notif.id)}
+                        onClick={() => abrirNotificacao(notif)}
                         className={`px-4 py-4 border-b border-gray-100 cursor-pointer transition-colors ${
-                          !notif.lida ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
+                          !notif.lida ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50 dark:bg-gray-900'
                         }`}
                       >
                         <div className="flex gap-3">
@@ -277,14 +288,18 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                           {/* Conteúdo */}
                           <div className="flex-1 min-w-0">
                             <div className={`font-medium mb-2 line-clamp-2 ${
-                              !notif.lida ? 'text-gray-900' : 'text-gray-600'
+                              !notif.lida ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'
                             }`}>
                               {notif.titulo}
                             </div>
                             
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
                               {notif.corpo}
                             </p>
+
+                            {notif.link && (
+                              <p className="text-xs text-blue-600 mb-2">Clique para abrir</p>
+                            )}
                             
                             {/* Meta informações */}
                             <div className="flex items-center justify-between">
@@ -336,9 +351,9 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
 
               {/* Rodapé */}
               {notificacoes.length > 0 && (
-                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-xl">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       Mostrando {Math.min(notificacoes.length, 15)} de {notificacoes.length}
                     </span>
                     

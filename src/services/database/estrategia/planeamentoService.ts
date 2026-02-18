@@ -1,6 +1,7 @@
 // services/database/estrategia/planeamentoService.ts
 import { PlaneamentoAnual } from "../../../types/planeamento";
 import { PlaneamentoDiario, PlaneamentoMensal, PlaneamentoSemanal } from "../../../types/planeamento";
+import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../../utils/idGenarator";
 import db from "../db";
 import { estrategiaService } from "../estrategiaService";
@@ -51,6 +52,7 @@ export const estrategiaPlaneamentoService = {
       await db.syncQueue.add({
         table: "planeamentos",
         record_id: id,
+        instituicao_id:instituicaoIdValue(),
         operation: "upsert",
         status: "pending",
         created_at: now,
@@ -81,6 +83,7 @@ export const estrategiaPlaneamentoService = {
       await db.syncQueue.add({
         table: "planeamentos",
         record_id: planoId,
+        instituicao_id:instituicaoIdValue(),
         operation: "upsert",
         status: "pending",
         created_at: updated_at,

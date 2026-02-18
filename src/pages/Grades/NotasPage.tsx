@@ -12,6 +12,7 @@ import type { Avaliacao } from '../../types/avaliacao';
 import type { AlunoDesempenho } from '../Turmas/TurmasPage';
 import { avaliacaoService } from '../../services/database/avaliacao';
 import { StatCard } from '../../components/students/StatCard';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 type SituacaoNota = 'aprovado' | 'recuperacao' | 'reprovado' | 'pendente';
 
@@ -81,14 +82,24 @@ export const NotasPage = () => {
   const [filtroDisciplina, setFiltroDisciplina] = useState('Todas disciplinas');
   const [filtroSituacao, setFiltroSituacao] = useState<'Todas situações' | SituacaoNota>('Todas situações');
 
+  const loadSyncStats = async () => {
+    try {
+      const pendentes = await getPendingCount('avaliacoes');
+      setSyncStats(pendentes);
+      setOnlineStatus(navigator.onLine);
+    } catch (error) {
+      console.error('Erro ao carregar sync stats de avaliações:', error);
+    }
+  };
+
   const loadNotasData = async () => {
     try {
       setLoading(true);
 
       const [alunosBase, avaliacoes, frequencias] = await Promise.all([
-        alunosService.getAllStudents(),
-        db.avaliacoes.filter((a) => !a.deleted).toArray(),
-        db.frequencias.filter((f) => !f.deleted).toArray()
+        db.alunos.filter((a) => !a.deleted && a.instituicao_id === instituicaoIdValue()).toArray(),
+        db.avaliacoes.filter((a) => !a.deleted && a.instituicao_id === instituicaoIdValue()).toArray(),
+        db.frequencias.filter((f) => !f.deleted && f.instituicao_id === instituicaoIdValue()).toArray()
       ]);
       setAvaliacoesSyncData(avaliacoes);
 
@@ -138,63 +149,14 @@ export const NotasPage = () => {
 
   useEffect(() => {
     loadNotasData();
-  }, []);
-
-  useEffect(() => {
-    const handleOnline = () => setOnlineStatus(true);
-    const handleOffline = () => setOnlineStatus(false);
-    const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table) {
-        loadNotasData();
-        return;
-      }
-
-      if (['avaliacoes', 'alunos', 'frequencias'].includes(detail.table)) {
-        loadNotasData();
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('db-changed', handleDbChanged);
-
-    const loadSyncStats = async () => {
-      try {
-        const pendentes = await getPendingCount('avaliacoes');
-        setSyncStats(pendentes);
-      } catch (error) {
-        console.error('Erro ao carregar sync stats de avaliações:', error);
-      }
-    };
-
     loadSyncStats();
-
-    const handleSyncUpdate = () => {
-      loadSyncStats();
-      loadNotasData();
-    };
-
-    const interval = setInterval(handleSyncUpdate, 30000);
-    window.addEventListener('sync-pending', handleSyncUpdate);
-    window.addEventListener('sync-complete', handleSyncUpdate);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('db-changed', handleDbChanged);
-      window.removeEventListener('sync-pending', handleSyncUpdate);
-      window.removeEventListener('sync-complete', handleSyncUpdate);
-      clearInterval(interval);
-    };
   }, []);
 
   const handleForceSync = async () => {
     try {
       await avaliacaoService.syncAvaliacoes();
       await loadNotasData();
-      const pendentes = await getPendingCount('avaliacoes');
-      setSyncStats(pendentes);
+      await loadSyncStats();
     } catch (error) {
       console.error('Erro ao sincronizar avaliações:', error);
     }

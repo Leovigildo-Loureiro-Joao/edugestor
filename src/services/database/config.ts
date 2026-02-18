@@ -11,11 +11,55 @@ import {
   SystemConfigFormData
 } from "../../types/config";
 import { instituicaoService } from "./insitituicao";
-import { generateUniqueId } from "../../utils/idGenarator";
 import { profileService } from "./profileService";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 
 export const configService = {
+  normalizeIdentityPart(value: string): string {
+    return (value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  },
+
+  buildConfigIdentityId(instituicaoId: string, category: string, keyName: string): string {
+    const inst = this.normalizeIdentityPart(instituicaoId);
+    const cat = this.normalizeIdentityPart(category);
+    const key = this.normalizeIdentityPart(keyName);
+    return `local_cfg_${inst}_${cat}_${key}`;
+  },
+
+  isUuid(value?: string | null): boolean {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  },
+
+  async resolveUpdatedByUuid(rawUpdatedBy?: string): Promise<string | undefined> {
+    if (this.isUuid(rawUpdatedBy)) return rawUpdatedBy;
+
+    const localUserId = localStorage.getItem('user_id');
+    if (this.isUuid(localUserId)) return localUserId as string;
+
+    const instituicaoId = instituicaoIdValue();
+    if (this.isUuid(instituicaoId)) return instituicaoId;
+
+    const userProfileRaw = localStorage.getItem('user_profile');
+    if (userProfileRaw) {
+      try {
+        const userProfile = JSON.parse(userProfileRaw);
+        if (this.isUuid(userProfile?.id)) return userProfile.id;
+      } catch {
+        // ignora parse inválido
+      }
+    }
+
+    const profile = await profileService.getLocalProfile();
+    if (this.isUuid(profile?.id)) return profile?.id;
+
+    return undefined;
+  },
+
   // ============ BUSCAR TODAS AS CONFIGURAÇÕES ============
   async getAllConfigOnly(): Promise<SystemConfig[]> {
     try {
@@ -107,10 +151,12 @@ export const configService = {
     defaultValue?: T
   ): Promise<T> {
     try {
+     const instituicaoId = instituicaoIdValue() || "";
      const config = await db.system_config
-  .where('category').equals(category)
-  .and(item => item.key_name === key && item.deleted === false)
-  .first();
+      .where('category')
+      .equals(category)
+      .and(item => item.key_name === key && item.deleted === false && item.instituicao_id === instituicaoId)
+      .first();
 
       if (!config || config.value === undefined) {
         return defaultValue as T;
@@ -139,19 +185,38 @@ export const configService = {
   async setConfig(dataConfig: SystemConfigFormData): Promise<void> {
     try {
       const now = new Date().toISOString();
+      const instituicaoId = dataConfig.instituicao_id || instituicaoIdValue() || "";
+      const updatedBy = await this.resolveUpdatedByUuid(dataConfig.updated_by);
+      const deterministicId = this.buildConfigIdentityId(
+        instituicaoId,
+        dataConfig.category,
+        dataConfig.key_name
+      );
       
-      // Verificar se já existe uma configuração com mesma categoria e chave
-      const existingConfig = await db.system_config
-        .where('[category+key_name]')
-        .equals([dataConfig.category, dataConfig.key_name])
-        .first();
+      // Buscar TODAS as configs com a mesma identidade para evitar duplicados legados.
+      const sameIdentityConfigs = await db.system_config
+        .where('category')
+        .equals(dataConfig.category)
+        .and((item) =>
+          item.key_name === dataConfig.key_name &&
+          item.instituicao_id === instituicaoId
+        )
+        .toArray();
+
+      const activeConfigs = sameIdentityConfigs.filter((item) => !item.deleted);
+      const [existingConfig] = activeConfigs.sort((a, b) => {
+        const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+        const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+        return bTime - aTime;
+      });
 
       const configToSave = {
         ...dataConfig,
+        instituicao_id: instituicaoId,
         updated_at: now,
         sync_status: 'pending' as const,
         deleted: false,
-        updated_by: dataConfig.updated_by || 'system'
+        updated_by: updatedBy
       } as SystemConfig;
 
       if (existingConfig) {
@@ -159,8 +224,8 @@ export const configService = {
         configToSave.id = existingConfig.id;
         configToSave.created_at = existingConfig.created_at;
       } else {
-        // Criar novo
-        configToSave.id = generateUniqueId();
+        // Criar novo de forma determinística para evitar duplicação por corrida.
+        configToSave.id = deterministicId;
         configToSave.created_at = now;
       }
 
@@ -168,14 +233,44 @@ export const configService = {
       
       await db.system_config.put(configToSave as SystemConfig);
 
+      // Limpar duplicados antigos (se existirem) mantendo apenas o ID escolhido.
+      const duplicateIds = activeConfigs
+        .map((item) => item.id)
+        .filter((id) => id !== configToSave.id);
+      if (duplicateIds.length > 0) {
+        await db.system_config.bulkDelete(duplicateIds);
+        for (const duplicateId of duplicateIds) {
+          await db.syncQueue
+            .where('record_id')
+            .equals(duplicateId)
+            .and((item) => item.instituicao_id === instituicaoId)
+            .delete();
+        }
+      }
+
       // Adicionar à fila de sincronização
+      const hasPendingUpsert = await db.syncQueue
+        .where('table')
+        .equals('system_config')
+        .and((item) =>
+          item.record_id === configToSave.id &&
+          item.operation === 'upsert' &&
+          item.status === 'pending' &&
+          item.instituicao_id === instituicaoId
+        )
+        .first();
+
+      if (!hasPendingUpsert) {
       await db.syncQueue.add({
         table: 'system_config',
+        
         record_id: configToSave.id,
         operation: 'upsert',
         status: 'pending',
+        instituicao_id: instituicaoId,
         created_at: now
       });
+      }
 
       console.log(`✅ Configuração salva: ${dataConfig.category}.${dataConfig.key_name}`);
       
@@ -450,9 +545,14 @@ export const configService = {
   async initializeDefaultConfigs(): Promise<void> {
     try {
       console.log('🔄 Inicializando configurações padrão do sistema...');
+      const instituicaoId = instituicaoIdValue() || "";
 
       // Verificar se já existem configurações
-      const existingCount = await db.system_config.count();
+      const existingCount = await db.system_config
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and((item) => !item.deleted)
+        .count();
       
       if (existingCount > 0) {
         console.log('✅ Configurações já existem, pulando inicialização...');

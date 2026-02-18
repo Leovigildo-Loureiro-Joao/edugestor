@@ -7,11 +7,13 @@ export interface Avaliacao extends BaseEntity{
   turma_id?: string;
   disciplina: string;
   tipo_avaliacao: string;
+  instituicao_id: string;
   nota: number;
   data_avaliacao: string;
   observacoes?: string;
   periodo: '1º trimestre' | '2º trimestre' | '3º trimestre';
   created_at: string;
+  updated_at: string;
 }
 
 

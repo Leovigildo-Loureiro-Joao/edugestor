@@ -3,16 +3,16 @@ import { FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
 export const HistoricoPagamentos = ({ historico }) => {
   if (!historico || historico.length === 0) {
     return (
-      <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
+      <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <FiClock className="mx-auto h-8 w-8 text-gray-400" />
-        <p className="text-gray-500 mt-2">Nenhum pagamento registrado</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Nenhum pagamento registrado</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300 text-sm">
         <div className="col-span-4">Estudante</div>
         <div className="col-span-2">Valor</div>
         <div className="col-span-3">Data</div>
@@ -22,13 +22,13 @@ export const HistoricoPagamentos = ({ historico }) => {
       <div className="divide-y divide-gray-200">
         {historico.slice(0, 5).map((pagamento) => (
           <div key={pagamento.id} className="grid grid-cols-12 gap-4 p-4 items-center">
-            <div className="col-span-4 font-medium text-gray-900">
+            <div className="col-span-4 font-medium text-gray-900 dark:text-white">
               {pagamento.aluno_nome}
             </div>
             <div className="col-span-2 text-green-600 font-semibold">
               {pagamento.valor?.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
             </div>
-            <div className="col-span-3 text-gray-600">
+            <div className="col-span-3 text-gray-600 dark:text-gray-400">
               {new Date(pagamento.data_pagamento).toLocaleDateString('pt-AO')}
             </div>
             <div className="col-span-3">

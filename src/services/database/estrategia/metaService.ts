@@ -1,5 +1,6 @@
 import { estrategiaService } from ".";
 import { Meta } from "../../../types/eventos";
+import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../../utils/idGenarator";
 import db from "../db";
 import { syncManager } from "../syncManager";
@@ -7,7 +8,8 @@ import { syncManager } from "../syncManager";
 export const estrategiaMetaService = {
   async getMetas() {
     try {
-      const metas = await db.metas.orderBy("created_at").toArray();
+      const activeInstituicaoId = instituicaoIdValue() || '';
+      const metas = await db.metas.filter((meta)=> !meta.deleted&&meta.instituicao_id===activeInstituicaoId).toArray();
       return metas || [];
     } catch (error) {
       console.error("Erro ao buscar metas:", error);
@@ -48,6 +50,7 @@ export const estrategiaMetaService = {
 
       await db.syncQueue.add({
         table: "metas",
+        instituicao_id:instituicaoIdValue(),
         record_id: id,
         operation: "upsert",
         status: "pending",
@@ -88,6 +91,7 @@ export const estrategiaMetaService = {
 
       await db.syncQueue.add({
         table: "metas",
+        instituicao_id:instituicaoIdValue(),
         record_id: metaId,
         operation: "upsert",
         status: "pending",

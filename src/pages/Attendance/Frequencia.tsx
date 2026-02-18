@@ -12,6 +12,7 @@ import {
   FiTarget
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { alunosService } from '../../services/database/alunosService.ts';
 import { turmaService } from '../../services/database/turmas.ts';
@@ -52,6 +53,8 @@ interface TabConfig {
 }
 
 export const FrequenciaPage: React.FC = () => {
+  const { seccao } = useParams<{ seccao?: string }>();
+  const navigate = useNavigate();
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [alunos, setStudents] = useState<Student[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
@@ -69,57 +72,33 @@ export const FrequenciaPage: React.FC = () => {
   useEffect(() => {
     carregarDados();
     carregarTurmas();
+    loadSyncStats();
   }, []);
 
+  useEffect(() => {
+    const secaoParam = seccao as ViewType | undefined;
+    if (secaoParam && ['pendentes', 'registradas', 'estatisticas'].includes(secaoParam)) {
+      setView(secaoParam);
+      return;
+    }
+    setView('pendentes');
+  }, [seccao]);
 
-    useEffect(() => {
-        // Monitorar status online
-        const handleOnline = () => setOnlineStatus(true);
-        const handleOffline = () => setOnlineStatus(false);
-        
-        const handleDbChanged = (event: Event) => {
-          const detail = (event as CustomEvent).detail;
-          if (!detail?.table || ['frequencias', 'aulas', 'alunos'].includes(detail.table)) {
-            carregarDados();
-          }
-        };
+  const handleViewChange = (viewId: ViewType) => {
+    setView(viewId);
+    navigate(`/frequencia/${viewId}`);
+  };
 
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        window.addEventListener('db-changed', handleDbChanged);
-  
-  
-        // Carregar estatísticas de sincronização
-        const loadSyncStats = async () => {
-          try {
-            const frequenciasPendentes = await getPendingCount("frequencias");
-            setSyncStats(frequenciasPendentes);
-          } catch (error) {
-            console.error('Erro ao carregar sync stats:', error);
-          }
-        };
-        
-        loadSyncStats();
-        
-        // Ouvir eventos de sincronização
-        const handleSyncUpdate = () => {
-          loadSyncStats();
-        };
-  
-        const interval=setInterval(handleSyncUpdate,30000)    
-        
-        window.addEventListener('sync-pending', handleSyncUpdate);
-        window.addEventListener('sync-complete', handleSyncUpdate);
-        
-        return () => {
-          window.removeEventListener('online', handleOnline);
-          window.removeEventListener('offline', handleOffline);
-          window.removeEventListener('db-changed', handleDbChanged);
-          window.removeEventListener('sync-pending', handleSyncUpdate);
-          window.removeEventListener('sync-complete', handleSyncUpdate);
-          clearInterval(interval)
-        };
-      }, []);
+
+  const loadSyncStats = async () => {
+    try {
+      const frequenciasPendentes = await getPendingCount('frequencias');
+      setSyncStats(frequenciasPendentes);
+      setOnlineStatus(navigator.onLine);
+    } catch (error) {
+      console.error('Erro ao carregar sync stats:', error);
+    }
+  };
 
       
   const carregarDados = async (): Promise<void> => {
@@ -263,6 +242,7 @@ export const FrequenciaPage: React.FC = () => {
     try {
       await frequenciaService.syncFrequencias();
       carregarDados();
+      await loadSyncStats();
       
       showAlert({
         type: 'success',
@@ -319,7 +299,7 @@ export const FrequenciaPage: React.FC = () => {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setView(tab.id)}
+                  onClick={() => handleViewChange(tab.id)}
                   className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
                     view === tab.id
                       ? 'bg-blue-500 text-white shadow-lg'

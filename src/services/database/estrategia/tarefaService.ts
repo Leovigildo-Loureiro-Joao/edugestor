@@ -1,4 +1,5 @@
 import { estrategiaService } from ".";
+import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../../utils/idGenarator";
 import db from "../db";
 import { syncManager } from "../syncManager";
@@ -6,11 +7,12 @@ import { syncManager } from "../syncManager";
 export const estrategiaTarefaService = {
   async getResumoEstrategico() {
     try {
+      const activeInstituicaoId=instituicaoIdValue()
       const [totametasConcluidas, tarefasPendentes, metasAtrasadas] =
         await Promise.all([
-          db.metas.where("status").equals("concluida").count(),
-          db.tarefas.filter(tarefa => !tarefa.deleted&&tarefa.concluida).count(),
-          db.metas.where("status").equals("nao_iniciada").count(),
+          db.metas.where("status").equals("concluida").filter(m=> m.instituicao_id===activeInstituicaoId).count(),
+          db.tarefas.filter(tarefa => !tarefa.deleted&&tarefa.concluida&&tarefa.instituicao_id===activeInstituicaoId).count(),
+          db.metas.where("status").equals("nao_iniciada").filter(m=> m.instituicao_id===activeInstituicaoId).count(),
         ]);
 
       return {
@@ -27,7 +29,8 @@ export const estrategiaTarefaService = {
 
   async getTarefas() {
     try {
-      const tarefas = await db.tarefas.orderBy("created_at").reverse().toArray();
+      const activeInstituicaoId=instituicaoIdValue()
+      const tarefas = await db.tarefas.orderBy("created_at").reverse().filter(ta=>ta.instituicao_id==activeInstituicaoId).toArray();
       return tarefas || [];
     } catch (error) {
       console.error("Erro ao buscar tarefas:", error);
@@ -58,6 +61,7 @@ export const estrategiaTarefaService = {
         record_id: id,
         operation: "upsert",
         status: "pending",
+        instituicao_id:instituicaoIdValue(),
         created_at: now,
       });
 
@@ -100,6 +104,7 @@ export const estrategiaTarefaService = {
 
       await db.syncQueue.add({
         table: "tarefas",
+        instituicao_id:instituicaoIdValue(),
         record_id: tarefaId,
         operation: "upsert",
         status: "pending",

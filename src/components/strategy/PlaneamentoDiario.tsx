@@ -16,15 +16,15 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService.ts';
-import { PlaneamentoDiario, Horario } from '../../types/planeamento';
+import { PlaneamentoDiario as PlaneamentoDiarioType, Horario } from '../../types/planeamento';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { ModalPlaneamento as ModalPlaneamentoDiario, ModalSelecionarTarefas, ModalSelecionarMetas } from './modals';
 
 interface PlaneamentoDiarioProps {
   criarPlaneamento?: () => void;
-  planejamento?: PlaneamentoDiario;
-  setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoDiario|null>>;
+  planejamento?: PlaneamentoDiarioType;
+  setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoDiarioType | null>>;
   modo: 'visualizacao' | 'criacao'|'edição';
   carregando?: boolean;
   setCarregando?: React.Dispatch<React.SetStateAction<boolean>>;
@@ -93,7 +93,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
         }
       );
       
-      setPlanejamento(atualizado.data as PlaneamentoDiario);
+      setPlanejamento(atualizado.data as PlaneamentoDiarioType);
     } catch (error) {
       showAlert({
         type: 'error',
@@ -186,7 +186,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
         }
       );
       
-      setPlanejamento(atualizado.data as PlaneamentoDiario);
+      setPlanejamento(atualizado.data as PlaneamentoDiarioType);
       setModalAgenda(false);
       setAgenda({});
       toast.success('Atividade adicionada ao planejamento!');

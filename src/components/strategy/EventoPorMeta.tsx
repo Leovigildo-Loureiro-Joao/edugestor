@@ -49,26 +49,26 @@ const EventosPorMeta = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
         <FiTarget className="mr-2 text-blue-600" />
         Eventos por Meta Estratégica
       </h3>
       
       <div className="space-y-6">
         {eventosPorMeta.map((item, index) => (
-          <div key={item.meta.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+          <div key={item.meta.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:bg-gray-900">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h4 className="font-semibold text-gray-800">{item.meta.titulo}</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="font-semibold text-gray-800 dark:text-gray-100">{item.meta.titulo}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Progresso: <span className="font-bold">{item.meta.progresso || 0}%</span>
                 </p>
               </div>
               
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">{item.total}</div>
-                <div className="text-xs text-gray-500">eventos</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">eventos</div>
               </div>
             </div>
             
@@ -83,11 +83,11 @@ const EventosPorMeta = () => {
             {/* Próximo evento */}
             {item.proximoEvento && (
               <div className="mt-4 pt-3 border-t">
-                <div className="text-sm text-gray-600 mb-1">Próximo evento:</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Próximo evento:</div>
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium">{item.proximoEvento.title}</div>
-                    <div className="text-xs text-gray-500 flex items-center">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                       <FiCalendar className="mr-1" />
                       {new Date(item.proximoEvento.date).toLocaleDateString('pt-AO')} 
                       às {item.proximoEvento.time}
@@ -128,7 +128,7 @@ const EventosPorMeta = () => {
         ))}
         
         {eventosPorMeta.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <FiCalendar className="mx-auto text-3xl mb-2" />
             <p>Nenhum evento relacionado a metas ainda</p>
             <p className="text-sm">Crie eventos e relacione com metas estratégicas</p>

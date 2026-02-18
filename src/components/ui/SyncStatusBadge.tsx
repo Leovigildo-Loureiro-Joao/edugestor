@@ -3,6 +3,7 @@ import { FiRefreshCw, FiAlertCircle, FiCheckCircle, FiXCircle } from 'react-icon
 import { syncManager } from '../../services/database/syncManager';
 import { getPendingCount } from '../../utils/emitPendingSync';
 import { getErrorCount } from '../../utils/errorManager'; // Você vai criar essa função
+import { supabase } from '../../services/database/db';
 
 interface SyncStatusBadgeProps {
   tableName: string;
@@ -106,6 +107,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   };
 
   const handleRetryErrors = async () => {
+    await syncManager.cleanupOrphanedSyncQueue({ statuses: ['failed'], dryRun: false })
+
     if (isSyncing) return;
     
     try {
@@ -149,7 +152,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       'notificacao': 'Notificações',
       'transacoes': 'Transações',
       'propina': 'Propinas',
-      'metas': 'Metas'
+      'metas': 'Metas',
+      'plano_aulas': 'Planos de Aula'
     };
     
     return names[tableName] || tableName;

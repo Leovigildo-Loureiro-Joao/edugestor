@@ -78,7 +78,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
       case 'ministrada': return 'bg-green-50 text-green-700 border-green-200';
       case 'cancelada': return 'bg-red-50 text-red-700 border-red-200';
       case 'adiada': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -111,7 +111,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className="bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all w-full duration-300 h-full"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary-300 hover:shadow-sm transition-all w-full duration-300 h-full"
     >
       {/* Header Compacto */}
       <div className="p-4 h-full flex flex-col">
@@ -126,7 +126,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
             {/* Conteúdo Principal */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold text-gray-900 truncate">
+                <h4 className="font-semibold text-gray-900 dark:text-white truncate">
                   {aula.disciplina || 'Sem disciplina'}
                 </h4>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(aula.status)}`}>
@@ -135,7 +135,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
               </div>
               
               {/* Informações de Data/Horário */}
-              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-1">
                   <FiCalendar className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="font-medium">{formatarData(aula.data_aula)}</span>
@@ -146,7 +146,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
                   <span>
                     {formatarHora(aula.hora_inicio)} - {formatarHora(aula.hora_fim)}
                     {calcularDuracao() && (
-                      <span className="text-gray-500 text-xs ml-1">
+                      <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">
                         ({calcularDuracao()})
                       </span>
                     )}
@@ -156,7 +156,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
               
               {/* Professor */}
               {aula.turmas?.professor && (
-                <div className="flex items-center gap-1 mt-2 text-sm text-gray-600">
+                <div className="flex items-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400">
                   <FaChalkboardTeacher className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="truncate">{aula.turmas?.professor}</span>
                 </div>
@@ -165,11 +165,11 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
               {/* Tema da Aula (se existir) */}
               {aula.tema_aula && (
                 <div className="mt-3">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
                     <FiTarget className="h-3 w-3" />
                     <span>Tema</span>
                   </div>
-                  <p className="text-sm text-gray-700 line-clamp-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                     {aula.tema_aula}
                   </p>
                 </div>
@@ -178,11 +178,11 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
               {/* Prévia de Conteúdo */}
               {aula.conteudo_ministrado && (
                 <div className="mt-2">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
                     <FiBook className="h-3 w-3" />
                     <span>Conteúdo</span>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-1 italic">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1 italic">
                     {aula.conteudo_ministrado.substring(0, 50)}...
                   </p>
                 </div>
@@ -193,7 +193,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
 
         {/* Ações no rodapé */}
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
             {aula.created_at && (
               <>
                 Criada: {new Date(aula.created_at).toLocaleDateString('pt-AO', {
@@ -208,7 +208,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
             {showExpandButton && (
               <button
                 onClick={onExpandir}
-                className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Ver detalhes"
               >
                 <FiEye className="h-4 w-4" />

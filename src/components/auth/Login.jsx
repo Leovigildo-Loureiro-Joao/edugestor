@@ -9,6 +9,8 @@ import { FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAlert } from '../ui/AlertBadge.tsx';
+import { supabase } from '../../services/database/db';
+import { auditLogService } from '../../services/audit/auditLogService';
 
 export {logo,logoBlack};
 const Login = () => {
@@ -165,6 +167,38 @@ const Login = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const email = formData.email?.trim();
+    if (!email) {
+      setFormError('Informe o email para recuperar a senha.');
+      await auditLogService.log('AUTH_PASSWORD_RESET_REQUEST_INVALID', {
+        reason: 'missing_email_on_request'
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`
+      });
+      if (error) throw error;
+
+      await auditLogService.log('AUTH_PASSWORD_RESET_REQUEST', { email });
+      showAlert({
+        title: 'Pedido enviado',
+        type: 'success',
+        duration: 5000,
+        message: 'Se o email existir, enviaremos instruções para redefinir a senha.'
+      });
+    } catch (error) {
+      await auditLogService.log('AUTH_PASSWORD_RESET_REQUEST_FAILED', {
+        email,
+        reason: error?.message || 'unknown'
+      });
+      setFormError('Não foi possível processar a recuperação agora.');
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -186,7 +220,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <div className='flex flex-col lg:flex-row w-full max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden'>
+      <div className='flex flex-col lg:flex-row w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
         {/* Lado Esquerdo - Imagem com overlay e máquina de escrever */}
         <div className='lg:w-1/2 relative'>
           <div className="relative h-64 lg:h-full">
@@ -248,7 +282,7 @@ const Login = () => {
             <img src={logo} className='w-24 h-24 lg:w-32 lg:h-32 mb-4' alt="EduGestor Logo" />
             <div className="text-center">
               <h1 className="text-2xl lg:text-3xl font-bold text-primary-600">EduGestor</h1>
-              <p className="text-gray-600 mt-2 text-sm lg:text-base">
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm lg:text-base">
                 {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
               </p>
             </div>
@@ -274,7 +308,7 @@ const Login = () => {
             <button
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
             >
               <FcGoogle className="text-xl" />
               {loading ? 'Processando...' : 'Continuar com Google'}
@@ -282,7 +316,7 @@ const Login = () => {
 
             {/* Mensagem sobre primeiro acesso */}
             {!isLogin && (
-              <div className="text-center text-sm text-gray-600">
+              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
                 <p>Após o registro, você terá acesso como usuário básico.</p>
                 <p>Para acesso administrativo, contate um administrador existente.</p>
               </div>
@@ -292,10 +326,10 @@ const Login = () => {
           {/* Divisor */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Ou continue com email</span>
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Ou continue com email</span>
             </div>
           </div>
 
@@ -303,7 +337,7 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nome Completo *
                 </label>
                 <div className="relative">
@@ -314,7 +348,7 @@ const Login = () => {
                     value={formData.displayName}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                     placeholder="Seu nome completo"
                   />
                 </div>
@@ -322,7 +356,7 @@ const Login = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email *
               </label>
               <div className="relative">
@@ -333,14 +367,14 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                   placeholder="seu@email.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Senha *
               </label>
               <div className="relative">
@@ -351,7 +385,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
                 />
@@ -360,7 +394,7 @@ const Login = () => {
 
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Confirmar Senha *
                 </label>
                 <div className="relative">
@@ -371,7 +405,7 @@ const Login = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                     placeholder="Confirme sua senha"
                   />
                 </div>
@@ -382,7 +416,7 @@ const Login = () => {
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => navigate('/forgot-password')}
+                  onClick={handleForgotPassword}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Esqueceu a senha?
@@ -423,7 +457,7 @@ const Login = () => {
             <div className="mt-4 text-center">
               <button
                 onClick={() => navigate('/setup/promote-admin')}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:text-gray-100"
               >
                 Precisa de acesso administrativo?
               </button>
@@ -431,7 +465,7 @@ const Login = () => {
           )}
 
           {/* Informações de segurança */}
-          <div className="mt-6 text-center text-xs text-gray-500">
+          <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
             <p>✅ Seus dados estão seguros com criptografia de ponta</p>
             <p className="mt-1">⚠️ Use apenas para testes educacionais</p>
           </div>

@@ -4,6 +4,8 @@ import { SyncQueueItem } from "../../types/base";
 import { avaliacaoService } from "./avaliacao";
 import db, { supabase } from "./db";
 import { emitDbChanged } from "../../utils/emitPendingSync";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { auditLogService } from "../audit/auditLogService";
 
 
 // Interface para o serviço de sincronização
@@ -17,6 +19,10 @@ interface SyncManager {
   processDeleteBatch(tableName: string, items: SyncQueueItem[]): Promise<void>;
   getRecordFromTable(tableName: string, recordId: string): Promise<any>;
   updateLocalId(tableName: string, oldId: string, newId: string): Promise<void>;
+  enqueuePendingUpsertIfNeeded(tableName: string, recordId: string, instituicaoId: string, now: string): Promise<void>;
+  updateLocalIdRelatedReferences(tableName: string, localId: string, supabaseId: string): Promise<void>;
+  updatePlanoAulasLocalReferences(oldAulaId: string, newAulaId: string): Promise<void>;
+  updateFrequenciasAulaReferences(oldAulaId: string, newAulaId: string): Promise<void>;
   markAsSynced(tableName: string, recordId: string): Promise<void>;
   deleteLocalRecord(tableName: string, recordId: string): Promise<void>;
   processarRegistrosUnicos(records: any[], tabela: string): any[];
@@ -38,6 +44,8 @@ interface SyncManager {
   removeBatchDuplicates(tableName:string,records:any[]):any;
   updateDependentRecords(tableName:string,supabaseId:string,record_id:string):any;
   verifyAndCleanSyncQueue():any;
+  findOrphanedSyncQueueItems(options?: { statuses?: string[]; tableName?: string; includeAllInstituicoes?: boolean }): Promise<any>;
+  cleanupOrphanedSyncQueue(options?: { statuses?: string[]; tableName?: string; dryRun?: boolean; includeAllInstituicoes?: boolean }): Promise<any>;
   debugSyncQueueIssue(tableName:string):any;
   cleanupOldItems(maxAgeHours:number):any;
   executeDeleteToSupabase(tableName: string, recordId: string): Promise<{ data: any | null; error: any | null }>;
@@ -46,18 +54,70 @@ interface SyncManager {
   forceCleanSyncQueue(tableName?: string):any
   retryFailedItems(maxRetries: number):any
   getSyncStats():Promise<any>
+  uploadFailedItems():Promise<any>
   verifyQueueIntegrity():Promise<any>
   processedRecords(records:any[],tableName:string):any[]
+  cleanupLegacyLocalDuplicates(tables?: string[]): Promise<void>
 }
 
 // Hook personalizado para usar dentro do manager
 const useSyncAuthInManager = () => {
+  const tryParseJSON = (value: string | null): any | null => {
+    if (!value) return null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  };
+
+  const extractTokenFromAnyShape = (raw: any): string | null => {
+    if (!raw) return null;
+    if (typeof raw === 'string' && raw.split('.').length === 3) return raw;
+    if (Array.isArray(raw)) {
+      for (const item of raw) {
+        const token = extractTokenFromAnyShape(item);
+        if (token) return token;
+      }
+      return null;
+    }
+    if (typeof raw === 'object') {
+      if (typeof raw.access_token === 'string') return raw.access_token;
+      if (raw.session) return extractTokenFromAnyShape(raw.session);
+      if (raw.currentSession) return extractTokenFromAnyShape(raw.currentSession);
+      if (raw.data) return extractTokenFromAnyShape(raw.data);
+    }
+    return null;
+  };
+
+  const getFallbackTokenFromStorage = (): string | null => {
+    const sessionToken = extractTokenFromAnyShape(
+      tryParseJSON(localStorage.getItem('supabase.auth.session'))
+    );
+    if (sessionToken) return sessionToken;
+
+    const supabaseInternalKey = Object.keys(localStorage).find((key) =>
+      key.startsWith('sb-') && key.endsWith('-auth-token')
+    );
+    if (supabaseInternalKey) {
+      return extractTokenFromAnyShape(tryParseJSON(localStorage.getItem(supabaseInternalKey)));
+    }
+
+    return null;
+  };
+
   // Esta função simula o hook, mas pode ser chamada em qualquer lugar
   const getAuthData = () => {
     // Tentar obter do localStorage primeiro (para contexto não React)
     console.log(localStorage.getItem('user_role'))
-    const token = localStorage.getItem('jwt_token') || 
-                  localStorage.getItem('supabase.auth.token');
+    const token = localStorage.getItem('jwt_token') || getFallbackTokenFromStorage();
+    if (token && !localStorage.getItem('jwt_token')) {
+      try {
+        localStorage.setItem('jwt_token', token);
+      } catch {
+        // ignora erro de quota/storage indisponível
+      }
+    }
     const userRole = localStorage.getItem('user_role') || 'user';
     const localProfile = localStorage.getItem('user_profile');
     let userId=localStorage.getItem("user_id") || null;
@@ -71,7 +131,7 @@ const useSyncAuthInManager = () => {
       authToken: token,
       userRole,
       userId,
-      isAuthenticated: !!token
+      isAuthenticated: !!token || !!localStorage.getItem('supabase.auth.session')
     };
   };
 
@@ -110,26 +170,38 @@ const useSyncAuthInManager = () => {
   };
 };
 
+const getSyncQueueInstitutionId = (): string => instituicaoIdValue();
+const isUuid = (value?: string | null): boolean =>
+  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+const isSeedRecordId = (value?: string | null): boolean =>
+  !!value && value.startsWith('seed_');
+
 // Instância do SyncManager
 export const syncManager: SyncManager = {
   // ✅ UPLOAD em BATCH (otimizado)
   async uploadBatch() {
     try {
+      await this.cleanupLegacyLocalDuplicates(['alunos', 'turmas', 'aulas']);
       const { getAuthData } = useSyncAuthInManager();
       
       const authData = getAuthData();
       console.log(authData)
       if (!authData.isAuthenticated) {
-        console.warn('⚠️ Usuário não autenticado. Upload adiado.');
-        return;
+        console.warn('⚠️ Sessão não encontrada no storage; tentando sincronizar mesmo assim.');
       }
       
       console.log('🔄 Iniciando upload em batch...');
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!instituicaoId) {
+        console.warn('⚠️ Sem instituicao_id ativa para processar syncQueue.');
+        return;
+      }
       
       // 1. Agrupar itens por tabela
       const pendingItems = await db.syncQueue
-        .where('status')
-        .equals('pending')
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and((item) => item.status === 'pending')
         .toArray();
       
       if (pendingItems.length === 0) {
@@ -154,24 +226,163 @@ export const syncManager: SyncManager = {
     }
   },
    async uploadTableBatch (tableName: string) {
-     
+    const instituicaoId = getSyncQueueInstitutionId();
+    if (!instituicaoId) return;
     const pendingItems = await db.syncQueue
-        .where('status')
-        .equals('pending')
-        .and(item => item.table === tableName )
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.status === 'pending' && item.table === tableName )
         .toArray();
       console.log(`📤 Processando batch de ${pendingItems.length} ${tableName}...`);
       await this.processTableBatch(tableName, pendingItems);
       
-  },
+  }
 
+// Adicione esta função ao objeto syncManager
 
+, async uploadFailedItems() {
+  try {
+    console.log('🔄 Iniciando upload de itens com falha...');
+    const { getAuthData } = useSyncAuthInManager();
+    const authData = getAuthData();
+    
+    if (!authData.isAuthenticated) {
+      console.warn('⚠️ Sessão não encontrada no storage; tentando upload mesmo assim.');
+    }
+    
+    const instituicaoId = getSyncQueueInstitutionId();
+    if (!instituicaoId) {
+      console.warn('⚠️ Sem instituicao_id ativa para processar itens com falha.');
+      return { success: false, message: 'Sem instituição ativa' };
+    }
+    
+    // Buscar TODOS os itens com status 'failed' (qualquer número de tentativas)
+    const failedItems = await db.syncQueue
+      .where('instituicao_id')
+      .equals(instituicaoId)
+      .and((item) => item.status === 'failed')
+      .toArray();
+    
+    if (failedItems.length === 0) {
+      console.log('✅ Nenhum item com falha encontrado');
+      return { 
+        success: true, 
+        message: 'Nenhum item com falha encontrado',
+        total: 0 
+      };
+    }
+    
+    console.log(`📊 Encontrados ${failedItems.length} itens com falha para processar`);
+    
+    // Estatísticas por tabela
+    const byTable = failedItems.reduce((acc: Record<string, number>, item) => {
+      const table = item.table || 'unknown';
+      acc[table] = (acc[table] || 0) + 1;
+      return acc;
+    }, {});
+    
+    console.log('📋 Distribuição por tabela:', byTable);
+    
+    // Agrupar por tabela para processamento em batch
+    const itemsByTable = this.groupByTable(failedItems);
+    
+    let totalProcessados = 0;
+    let totalErros = 0;
+    const resultados: Record<string, { success: number; failed: number }> = {};
+    
+    // Processar cada tabela
+    for (const [tableName, items] of Object.entries(itemsByTable)) {
+      console.log(`\n📤 Processando ${items.length} itens com falha em ${tableName}...`);
+      
+      // Resetar status para 'pending' antes de processar
+      const ids = items.map(item => item.id!).filter(Boolean);
+      await db.syncQueue.bulkUpdate(ids, {
+        status: 'pending',
+        error: "",
+        data: new Date().toISOString()
+      });
+      
+      // Tentar processar novamente
+      try {
+        await this.processTableBatch(tableName, items);
+        
+        // Verificar quantos foram bem-sucedidos
+        const aindaFalhos = await db.syncQueue
+          .where('instituicao_id')
+          .equals(instituicaoId)
+          .and((item) => item.status === 'failed' && item.table === tableName)
+          .toArray();
+        
+        const sucessos = items.length - aindaFalhos.length;
+        const falhas = aindaFalhos.length;
+        
+        totalProcessados += sucessos;
+        totalErros += falhas;
+        
+        resultados[tableName] = { success: sucessos, failed: falhas };
+        
+        console.log(`✅ ${tableName}: ${sucessos} sucessos, ${falhas} falhas`);
+        
+      } catch (error) {
+        console.error(`❌ Erro ao processar tabela ${tableName}:`, error);
+        
+        // Reverter para failed se houver erro catastrófico
+        await db.syncQueue.bulkUpdate(ids, {
+          status: 'failed',
+          error: `Erro catastrófico: ${error instanceof Error ? error.message : String(error)}`,
+          data: new Date().toISOString()
+        });
+        
+        totalErros += items.length;
+        resultados[tableName] = { success: 0, failed: items.length };
+      }
+      
+      // Pequena pausa entre tabelas para não sobrecarregar
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.log('\n🎯 Resumo do upload de itens com falha:');
+    console.log(`✅ Total processados: ${totalProcessados}`);
+    console.log(`❌ Total com erro: ${totalErros}`);
+    console.log('📊 Resultados por tabela:', resultados);
+    
+    // Registrar no log de auditoria
+    await auditLogService.log('SYNC_FAILED_ITEMS_UPLOAD', {
+      total_processados: totalProcessados,
+      total_erros: totalErros,
+      resultados,
+      timestamp: new Date().toISOString()
+    });
+    
+    return {
+      success: true,
+      total: failedItems.length,
+      processados: totalProcessados,
+      erros: totalErros,
+      resultados
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar upload de itens com falha:', error);
+    
+    await auditLogService.log('SYNC_FAILED_ITEMS_ERROR', {
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    });
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+},
   async rentryErrorsTable (tableName: string) {
-     
+    const instituicaoId = getSyncQueueInstitutionId();
+    if (!instituicaoId) return;
     const pendingItems = await db.syncQueue
-        .where('status')
-        .equals('failed')
-        .and(item => item.table === tableName )
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and(item => item.status === 'failed' && item.table === tableName )
         .toArray();
       console.log(`📤 Processando batch de ${pendingItems.length} ${tableName}...`);
       await this.processTableBatch(tableName, pendingItems);
@@ -197,11 +408,37 @@ export const syncManager: SyncManager = {
     try {
       const { getAuthData } = useSyncAuthInManager();
       const authData = getAuthData();
+
+      // Registros de teste (seed_*) não devem ser sincronizados com o Supabase.
+      const seedItems = items.filter((item) => isSeedRecordId(item.record_id));
+      if (seedItems.length > 0) {
+        const queueIds = seedItems
+          .map((item) => item.id)
+          .filter((id): id is number => typeof id === 'number');
+
+        if (queueIds.length > 0) {
+          await db.syncQueue.bulkDelete(queueIds);
+          console.log(`🧹 ${queueIds.length} item(ns) seed removido(s) da syncQueue em ${tableName}`);
+        }
+
+        for (const item of seedItems) {
+          try {
+            await this.markAsSynced(tableName, item.record_id);
+          } catch {
+            // Registro pode ter sido removido localmente; ignorar.
+          }
+        }
+      }
+
+      const validItems = items.filter((item) => !isSeedRecordId(item.record_id));
+      if (validItems.length === 0) {
+        return;
+      }
       
       // Separar INSERTs e UPDATEs
-      const inserts = items.filter(item => item.operation === 'upsert' && item.record_id.startsWith('local_'));
-      const updates = items.filter(item => item.operation === 'upsert' && !item.record_id.startsWith('local_'));
-      const deletes = items.filter(item => item.operation === 'delete');
+      const inserts = validItems.filter(item => item.operation === 'upsert' && item.record_id.startsWith('local_'));
+      const updates = validItems.filter(item => item.operation === 'upsert' && !item.record_id.startsWith('local_'));
+      const deletes = validItems.filter(item => item.operation === 'delete');
 
       // Processar DELETEs em batch
       if (deletes.length > 0) {
@@ -249,6 +486,18 @@ export const syncManager: SyncManager = {
         // Para professores, usa email ou BI
         chaveUnica = record.email || record.numero_bi;
         break;
+      
+      case 'aulas':
+        // Para aulas, usa uma identidade estável para evitar inserts duplicados no mesmo sync.
+        chaveUnica = [
+          record.turma_id || '',
+          record.data_aula || '',
+          record.hora_inicio || '',
+          record.hora_fim || '',
+          record.disciplina || '',
+          record.tema_aula || ''
+        ].join('|');
+        break;
         
       default:
         // Para outras tabelas, usa ID se existir
@@ -285,13 +534,12 @@ export const syncManager: SyncManager = {
 },
   
 // ✅ Processar INSERTs em batch - CORRIGIDO
-  async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
+ async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
     
     if (!authData.isAuthenticated) {
-      console.warn(`⚠️ Usuário não autenticado. Ignorando INSERTs em ${tableName}`);
-      return;
+      console.warn(`⚠️ Sessão não encontrada no storage; tentando INSERTs em ${tableName} mesmo assim.`);
     }
     
     try {
@@ -304,19 +552,51 @@ export const syncManager: SyncManager = {
         console.log(`✅ Nada para sincronizar em ${tableName}`);
         return;
       }
-      
-      // PASSO 2: Executar upsert no Supabase
-      const supabaseResult = await this.executeUpsertToSupabase(tableName, records);
-      
-      if (!supabaseResult.data || supabaseResult.data.length === 0) {
-        throw new Error('Nenhum dado retornado do Supabase');
-      }
-      
-      // PASSO 3: Atualizar IDs locais e LIMPAR SYNC QUEUE (CRÍTICO!)
-      await this.processSuccessResult(tableName, itemsToProcess, supabaseResult.data);
-      
-      console.log(`✅ Sincronização concluída: ${records.length} registros em ${tableName}`);
-      
+
+      // PASSO 2: Sincronizar com concorrência controlada.
+      // Para frequências, paraleliza para reduzir latência com turmas grandes.
+      let sucesso = 0;
+      const concorrencia = tableName === 'frequencias' ? 8 : 1;
+      let cursor = 0;
+
+      const worker = async () => {
+        while (true) {
+          const index = cursor++;
+          if (index >= itemsToProcess.length) return;
+
+          const item = itemsToProcess[index];
+          const record = records[index];
+
+          try {
+            const supabaseResult = await this.executeUpsertToSupabase(tableName, [record]);
+            const supabaseRecord = supabaseResult.data?.[0];
+
+            if (!supabaseRecord?.id) {
+              throw new Error(`Nenhum ID retornado do Supabase para ${tableName}:${item.record_id}`);
+            }
+
+            await this.updateLocalId(tableName, item.record_id, supabaseRecord.id);
+
+            if (tableName === 'turmas' || tableName === 'cursos') {
+              await this.updateDependentRecords(tableName, supabaseRecord.id, item.record_id);
+            }
+
+            await db.syncQueue.delete(item.id!);
+            sucesso++;
+          } catch (error) {
+            await this.handleSyncError(item, error);
+          }
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concorrencia, itemsToProcess.length) },
+        () => worker()
+      );
+      await Promise.all(workers);
+
+      console.log(`✅ Sincronização concluída: ${sucesso}/${records.length} registros em ${tableName}`);
+
     } catch (error) {
       await this.handleInsertError(tableName, items, error);
     }
@@ -328,7 +608,36 @@ export const syncManager: SyncManager = {
     const records = [];
     const itemsToProcess = [];
     
-    for (const item of items) {
+    // Mantém apenas o item mais recente por record_id para evitar múltiplos inserts do mesmo registro.
+    const orderedItems = [...items].sort((a, b) => {
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      if (aTime !== bTime) return aTime - bTime;
+      return (a.id || 0) - (b.id || 0);
+    });
+    const latestItemByRecordId = new Map<string, SyncQueueItem>();
+    orderedItems.forEach((item) => {
+      latestItemByRecordId.set(item.record_id, item);
+    });
+
+    const duplicatedQueueItems = orderedItems.filter((item) => {
+      const latestItem = latestItemByRecordId.get(item.record_id);
+      return latestItem && latestItem.id !== item.id;
+    });
+
+    if (duplicatedQueueItems.length > 0) {
+      const duplicateIds = duplicatedQueueItems
+        .map((item) => item.id)
+        .filter((id): id is number => typeof id === 'number');
+      if (duplicateIds.length > 0) {
+        await db.syncQueue.bulkDelete(duplicateIds);
+        console.warn(`⚠️ Removidos ${duplicateIds.length} itens duplicados da fila em ${tableName}`);
+      }
+    }
+
+    const uniqueItems = Array.from(latestItemByRecordId.values());
+    
+    for (const item of uniqueItems) {
       try {
         // 1. Buscar registro do IndexedDB
         const record = await this.getRecordFromTable(tableName, item.record_id);
@@ -336,6 +645,18 @@ export const syncManager: SyncManager = {
         if (!record) {
           console.warn(`🗑️  Registro não encontrado, removendo: ${item.record_id}`);
           await db.syncQueue.delete(item.id!);
+          continue;
+        }
+
+        // Dependência: propina só pode sincronizar quando transacao_id já for remoto.
+        if (
+          tableName === 'propina' &&
+          typeof record.transacao_id === 'string' &&
+          record.transacao_id.startsWith('local_')
+        ) {
+          console.log(
+            `⏳ Propina ${record.id} aguardando transação válida (${record.transacao_id}) antes do sync`
+          );
           continue;
         }
         
@@ -428,7 +749,7 @@ export const syncManager: SyncManager = {
       case 'alunos':
         // Remove avaliação (se existir)
         return records.map(record => {
-          const { id,avaliacao, ...rest } = record;
+          const { id,avaliacao,curso, ...rest } = record;
           return rest;
         });
         // IMPORTANTE: Se tiver constraint unique no número do estudante
@@ -438,6 +759,37 @@ export const syncManager: SyncManager = {
         return records.map(record => {
           const {id, registro,turmas, ...rest } = record;
           return rest;
+        });
+
+      case 'frequencias':
+        return records.map(record => {
+          const { id, ...rest } = record;
+          return {
+            ...rest,
+            instituicao_id: rest.instituicao_id || instituicaoIdValue()
+          };
+        });
+     case 'avaliacoes':
+        return records.map(record => {
+          const { id, peso,...rest } = record;
+          return {
+            ...rest,
+            instituicao_id: rest.instituicao_id || instituicaoIdValue()
+          };
+        }); 
+      case 'cursos':
+        // Remove avaliação (se existir)
+        return records.map(record => {
+          const {id, alunos,has_active_turmas,turmas,turmas_count, ...rest } = record;
+          return rest;
+        });
+      case 'system_config':
+        return records.map((record) => {
+          const { id, updated_by, ...rest } = record;
+          return {
+            ...rest,
+            ...(isUuid(updated_by) ? { updated_by } : {})
+          };
         });
         
       default:
@@ -564,11 +916,347 @@ export const syncManager: SyncManager = {
 
   , async updateLocalId(tableName: string, localId: string, supabaseId: string) {
     try {
-      const table = db.table(tableName);
-      await table.update(localId, { id: supabaseId });
-      console.log(`🔄 ID atualizado: ${localId} → ${supabaseId} (${tableName})`);
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!localId || !supabaseId) return;
+      if (localId === supabaseId) return;
+
+      const table = db.table<any>(tableName);
+      const localRecord = await table.get(localId);
+      if (!localRecord) return;
+
+      const existingRemoteRecord = await table.get(supabaseId);
+      const now = new Date().toISOString();
+
+      const mergedRecord = existingRemoteRecord
+        ? {
+            ...localRecord,
+            ...existingRemoteRecord,
+            id: supabaseId,
+            sync_status: 'synced',
+            deleted: false,
+            updated_at: now
+          }
+        : {
+            ...localRecord,
+            id: supabaseId,
+            sync_status: 'synced',
+            deleted: false,
+            updated_at: now
+          };
+
+      await db.transaction('rw', table, db.syncQueue, async () => {
+        await table.put(mergedRecord);
+        await table.delete(localId);
+
+        const queueRefs = await db.syncQueue
+          .where('record_id')
+          .equals(localId)
+          .and((item) => !instituicaoId || item.instituicao_id === instituicaoId)
+          .toArray();
+
+        for (const item of queueRefs) {
+          await db.syncQueue.update(item.id!, { record_id: supabaseId });
+        }
+      });
+
+      console.log(`🔄 ID migrado: ${localId} → ${supabaseId} (${tableName})`);
+
+      await this.updateLocalIdRelatedReferences(tableName, localId, supabaseId);
     } catch (error) {
       console.error(`❌ Falha ao atualizar ID local ${localId}:`, error);
+    }
+  }
+
+  , async enqueuePendingUpsertIfNeeded(tableName: string, recordId: string, instituicaoId: string, now: string) {
+    if (!recordId) return;
+
+    const hasPendingDelete = await db.syncQueue
+      .where('table')
+      .equals(tableName)
+      .filter(
+        (item) =>
+          item.instituicao_id === instituicaoId &&
+          item.record_id === recordId &&
+          item.operation === 'delete' &&
+          item.status === 'pending'
+      )
+      .first();
+
+    if (hasPendingDelete) return;
+
+    const hasPendingUpsert = await db.syncQueue
+      .where('table')
+      .equals(tableName)
+      .filter(
+        (item) =>
+          item.instituicao_id === instituicaoId &&
+          item.record_id === recordId &&
+          item.operation === 'upsert' &&
+          item.status === 'pending'
+      )
+      .first();
+
+    if (!hasPendingUpsert) {
+      await db.syncQueue.add({
+        instituicao_id: instituicaoId,
+        table: tableName,
+        record_id: recordId,
+        operation: 'upsert',
+        status: 'pending',
+        created_at: now
+      });
+    }
+  }
+
+  , async updateLocalIdRelatedReferences(tableName: string, localId: string, supabaseId: string) {
+    try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      const now = new Date().toISOString();
+
+      if (!instituicaoId) return;
+      if (!localId || !supabaseId || localId === supabaseId) return;
+
+      if (tableName === 'aulas') {
+        await this.updateFrequenciasAulaReferences(localId, supabaseId);
+        await this.updatePlanoAulasLocalReferences(localId, supabaseId);
+        return;
+      }
+
+      if (tableName === 'alunos') {
+        const [avaliacoes, frequencias, propinas, notificacoes] = await Promise.all([
+          db.avaliacoes.where('aluno_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.frequencias.where('aluno_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.propina.where('aluno_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.notificacao.where('aluno_id').equals(localId).and((r) => !r.deleted).toArray()
+        ]);
+
+        for (const av of avaliacoes) {
+          await db.avaliacoes.update(av.id, { aluno_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('avaliacoes', av.id, instituicaoId, now);
+        }
+        for (const fr of frequencias) {
+          await db.frequencias.update(fr.id, { aluno_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('frequencias', fr.id, instituicaoId, now);
+        }
+        for (const pp of propinas) {
+          await db.propina.update(pp.id, { aluno_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('propina', pp.id, instituicaoId, now);
+        }
+        for (const nt of notificacoes) {
+          await db.notificacao.update(nt.id, { aluno_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('notificacao', nt.id, instituicaoId, now);
+        }
+        return;
+      }
+
+      if (tableName === 'transacoes') {
+        const propinas = await db.propina
+          .filter((r) => !r.deleted && r.transacao_id === localId)
+          .toArray();
+
+        for (const pp of propinas) {
+          await db.propina.update(pp.id, {
+            transacao_id: supabaseId,
+            updated_at: now,
+            sync_status: 'pending'
+          });
+          await this.enqueuePendingUpsertIfNeeded('propina', pp.id, instituicaoId, now);
+        }
+        return;
+      }
+
+      if (tableName === 'turmas') {
+        const [alunos, aulas, horarios, avaliacoes, eventos, notificacoes, planos] = await Promise.all([
+          db.alunos.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.aulas.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.turma_horarios.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.avaliacoes.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.evento.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.notificacao.where('turma_id').equals(localId).and((r) => !r.deleted).toArray(),
+          db.plano_aulas
+            .filter((plano) => !plano.deleted && Array.isArray(plano.turma_ids) && plano.turma_ids.includes(localId))
+            .toArray()
+        ]);
+
+        for (const al of alunos) {
+          await db.alunos.update(al.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('alunos', al.id, instituicaoId, now);
+        }
+        for (const au of aulas) {
+          await db.aulas.update(au.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('aulas', au.id, instituicaoId, now);
+        }
+        for (const hr of horarios) {
+          await db.turma_horarios.update(hr.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('turma_horarios', hr.id, instituicaoId, now);
+        }
+        for (const av of avaliacoes) {
+          await db.avaliacoes.update(av.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('avaliacoes', av.id, instituicaoId, now);
+        }
+        for (const ev of eventos) {
+          await db.evento.update(ev.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('evento', ev.id, instituicaoId, now);
+        }
+        for (const nt of notificacoes) {
+          await db.notificacao.update(nt.id, { turma_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('notificacao', nt.id, instituicaoId, now);
+        }
+        for (const plano of planos) {
+          const turmaIds = Array.from(
+            new Set((plano.turma_ids || []).map((turmaId: string) => (turmaId === localId ? supabaseId : turmaId)))
+          );
+          await db.plano_aulas.update(plano.id, { turma_ids: turmaIds, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('plano_aulas', plano.id, instituicaoId, now);
+        }
+        return;
+      }
+
+      if (tableName === 'cursos') {
+        const turmas = await db.turmas
+          .where('curso_id')
+          .equals(localId)
+          .and((r) => !r.deleted)
+          .toArray();
+
+        for (const turma of turmas) {
+          await db.turmas.update(turma.id, { curso_id: supabaseId, updated_at: now, sync_status: 'pending' });
+          await this.enqueuePendingUpsertIfNeeded('turmas', turma.id, instituicaoId, now);
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar referências locais para ${tableName}:`, error);
+    }
+  }
+
+  , async updatePlanoAulasLocalReferences(oldAulaId: string, newAulaId: string) {
+    try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      const planos = await db.plano_aulas
+        .filter((plano) =>
+          !plano.deleted &&
+          Array.isArray(plano.aulas_geradas) &&
+          plano.aulas_geradas.includes(oldAulaId)
+        )
+        .toArray();
+
+      if (planos.length === 0) return;
+
+      const now = new Date().toISOString();
+
+      for (const plano of planos) {
+        const aulasAtualizadas = Array.from(
+          new Set(
+            (plano.aulas_geradas || []).map((aulaId) =>
+              aulaId === oldAulaId ? newAulaId : aulaId
+            )
+          )
+        );
+
+        await db.plano_aulas.update(plano.id, {
+          aulas_geradas: aulasAtualizadas,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        const hasPendingUpsert = await db.syncQueue
+          .where('table')
+          .equals('plano_aulas')
+          .filter(
+            (item) =>
+              item.instituicao_id === instituicaoId &&
+              item.record_id === plano.id &&
+              item.operation === 'upsert' &&
+              item.status === 'pending'
+          )
+          .first();
+
+        if (!hasPendingUpsert) {
+          await db.syncQueue.add({
+            instituicao_id: instituicaoId,
+            table: 'plano_aulas',
+            record_id: plano.id,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+        }
+      }
+
+      console.log(
+        `🔗 Referências de plano atualizadas para aula: ${oldAulaId} → ${newAulaId} (${planos.length} plano(s))`
+      );
+    } catch (error) {
+      console.error('❌ Erro ao atualizar referências de aulas em plano_aulas:', error);
+    }
+  }
+
+  , async updateFrequenciasAulaReferences(oldAulaId: string, newAulaId: string) {
+    try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      const frequencias = await db.frequencias
+        .where('aula_id')
+        .equals(oldAulaId)
+        .toArray();
+
+      if (frequencias.length === 0) return;
+
+      const now = new Date().toISOString();
+
+      for (const frequencia of frequencias) {
+        if (frequencia.deleted) continue;
+
+        await db.frequencias.update(frequencia.id, {
+          aula_id: newAulaId,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        const hasPendingDelete = await db.syncQueue
+          .where('table')
+          .equals('frequencias')
+          .filter(
+            (item) =>
+              item.instituicao_id === instituicaoId &&
+              item.record_id === frequencia.id &&
+              item.operation === 'delete' &&
+              item.status === 'pending'
+          )
+          .first();
+
+        if (hasPendingDelete) {
+          continue;
+        }
+
+        const hasPendingUpsert = await db.syncQueue
+          .where('table')
+          .equals('frequencias')
+          .filter(
+            (item) =>
+              item.instituicao_id === instituicaoId &&
+              item.record_id === frequencia.id &&
+              item.operation === 'upsert' &&
+              item.status === 'pending'
+          )
+          .first();
+
+        if (!hasPendingUpsert) {
+          await db.syncQueue.add({
+            instituicao_id: instituicaoId,
+            table: 'frequencias',
+            record_id: frequencia.id,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+        }
+      }
+
+      console.log(
+        `🔗 Referências de frequência atualizadas para aula: ${oldAulaId} → ${newAulaId} (${frequencias.length} frequência(s))`
+      );
+    } catch (error) {
+      console.error('❌ Erro ao atualizar aula_id em frequências:', error);
     }
   }
 
@@ -651,7 +1339,7 @@ export const syncManager: SyncManager = {
           const { data, error } = await supabase
             .from(tableName)
             .upsert(record, {
-              onConflict: 'category,name'
+              onConflict: 'id'
             })
             .select()
             .single();
@@ -701,13 +1389,14 @@ export const syncManager: SyncManager = {
 
   async checkExistingUniqueConstraint(tableName: string, record: any): Promise<any> {
     try {
-      // Para system_config, verificar pelo par category/name
-      if (tableName === 'system_config' && record.category && record.key_name) {
+      // Para system_config, verificar pelo par category/key_name + instituicao_id
+      if (tableName === 'system_config' && record.category && record.key_name && record.instituicao_id) {
         const { data, error } = await supabase
           .from(tableName)
           .select('*')
           .eq('category', record.category)
           .eq('key_name', record.key_name)
+          .eq('instituicao_id', record.instituicao_id)
           .maybeSingle();
         
         if (!error && data) {
@@ -803,6 +1492,12 @@ export const syncManager: SyncManager = {
       const { hasPermission } = useSyncAuthInManager();
       if (!hasPermission('admin')) {
         console.error(`❌ Permissão insuficiente para deletar ${tableName}`);
+        await auditLogService.log('PERMISSION_DENIED_OPERATION', {
+          area: 'syncManager',
+          table: tableName,
+          operation: 'delete_batch',
+          message: 'Permissão insuficiente para deletar registros protegidos'
+        });
         throw new Error(`Permissão insuficiente para deletar ${tableName}`);
       }
     }
@@ -848,6 +1543,7 @@ export const syncManager: SyncManager = {
   
   async handleSyncError(item: SyncQueueItem, error: any) {
     const novasTentativas = (item.retryCount || 0) + 1;
+    const errorCode = error?.code || error?.status || 'unknown';
     
     if (novasTentativas >= 3) {
       // Marcar como falha permanente
@@ -857,6 +1553,13 @@ export const syncManager: SyncManager = {
         retryCount: novasTentativas,
         data: new Date().toISOString()
       });
+      await auditLogService.log('SYNC_FAILED_PERMANENT', {
+        table: item.table,
+        record_id: item.record_id,
+        retry_count: novasTentativas,
+        error_code: errorCode,
+        error_message: error?.message || String(error)
+      });
     } else {
       // Tentar novamente mais tarde
       await db.syncQueue.update(item.id!, {
@@ -864,6 +1567,15 @@ export const syncManager: SyncManager = {
         status: 'pending',
         data: new Date().toISOString()
       });
+      if (errorCode === '42501' || errorCode === '403') {
+        await auditLogService.log('SYNC_PERMISSION_DENIED', {
+          table: item.table,
+          record_id: item.record_id,
+          retry_count: novasTentativas,
+          error_code: errorCode,
+          error_message: error?.message || String(error)
+        });
+      }
     }
   },
   
@@ -873,8 +1585,7 @@ export const syncManager: SyncManager = {
       const authData = getAuthData();
       
       if (!authData.isAuthenticated) {
-        console.warn('⚠️ Usuário não autenticado. Download adiado.');
-        return;
+        console.warn('⚠️ Sessão não encontrada no storage; tentando download mesmo assim.');
       }
       
       console.log('📥 Iniciando download em batch...');
@@ -887,7 +1598,7 @@ export const syncManager: SyncManager = {
       const { hasPermission } = useSyncAuthInManager();
       
       const tables = [
-        'alunos', 'turmas', 'cursos', 'transacoes', 'aulas', 
+        'cursos', 'turmas', 'alunos', 'transacoes', 'aulas', 
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
         'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios',"planeamentos","plano_aulas"
       ];
@@ -923,6 +1634,8 @@ export const syncManager: SyncManager = {
     try {
       const { getAuthData, hasPermission } = useSyncAuthInManager();
       const authData = getAuthData();
+      const localCount = await db.table(tableName).count();
+      const shouldForceFullSync = localCount === 0;
       
       // Buscar dados do Supabase (após a última sincronização)
       let query = supabase
@@ -931,8 +1644,10 @@ export const syncManager: SyncManager = {
         .order('updated_at', { ascending: true })
         .limit(500);
 
-      if (since && Number.isFinite(since.getTime()) && since.getTime() > 0) {
+      if (!shouldForceFullSync && since && Number.isFinite(since.getTime()) && since.getTime() > 0) {
         query = query.gt('updated_at', since.toISOString());
+      } else if (shouldForceFullSync) {
+        console.log(`♻️ ${tableName}: tabela local vazia, executando full sync`);
       }
       
       // Filtrar por instituição se não for admin
@@ -1104,8 +1819,14 @@ export const syncManager: SyncManager = {
     console.log('🔍 Verificando estado do syncQueue...');
     
     try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!instituicaoId) return { total: 0, byStatus: {}, cleaned: 0 };
+
       // 1. Contar itens por status
-      const allItems = await db.syncQueue.toArray();
+      const allItems = await db.syncQueue
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .toArray();
       
       const byStatus = allItems.reduce((acc: Record<string, number>, item) => {
         const status = item.status || 'unknown';
@@ -1143,8 +1864,23 @@ export const syncManager: SyncManager = {
         await db.syncQueue.bulkDelete(idsToClean);
         console.log(`🧹 Limpados ${idsToClean.length} itens com muitas falhas`);
       }
+
+      // 4. Limpar órfãos failed (registros que já não existem no Dexie)
+      const orphanCleanup = await this.cleanupOrphanedSyncQueue({
+        statuses: ['failed'],
+        dryRun: false
+      });
+      if (orphanCleanup.deletedCount > 0) {
+        console.log(`🧹 Limpados ${orphanCleanup.deletedCount} órfãos failed da syncQueue`);
+      }
       
-      return { total: allItems.length, byStatus, cleaned: syncedItems.length };
+      return {
+        total: allItems.length,
+        byStatus,
+        cleaned: syncedItems.length,
+        cleanedFailedWithManyRetries: failedItems.length,
+        cleanedOrphanFailed: orphanCleanup.deletedCount || 0
+      };
       
     } catch (error:any) {
       console.error('❌ Erro ao verificar syncQueue:', error);
@@ -1152,12 +1888,105 @@ export const syncManager: SyncManager = {
     }
   },
 
+  async findOrphanedSyncQueueItems(options: {
+    statuses?: string[];
+    tableName?: string;
+    includeAllInstituicoes?: boolean;
+  } = {}) {
+    const {
+      statuses,
+      tableName,
+      includeAllInstituicoes = false
+    } = options;
+    const instituicaoId = getSyncQueueInstitutionId();
+
+    let items = includeAllInstituicoes || !instituicaoId
+      ? await db.syncQueue.toArray()
+      : await db.syncQueue.where('instituicao_id').equals(instituicaoId).toArray();
+
+    if (tableName) {
+      items = items.filter((item) => item.table === tableName);
+    }
+
+    if (statuses && statuses.length > 0) {
+      const statusSet = new Set(statuses);
+      items = items.filter((item) => statusSet.has(item.status || 'unknown'));
+    }
+
+    const checks = await Promise.all(
+      items.map(async (item) => {
+        const tableExists = db.tables.some((t) => t.name === item.table);
+        if (!tableExists) return { item, orphan: true, reason: `Tabela inexistente: ${item.table}` };
+
+        const exists = await this.checkIfRecordExists(item.table, item.record_id);
+        if (!exists) return { item, orphan: true, reason: `Registro ${item.record_id} não encontrado` };
+
+        return { item, orphan: false, reason: '' };
+      })
+    );
+
+    const orphanItems = checks.filter((c) => c.orphan);
+    const byTable = orphanItems.reduce((acc: Record<string, number>, current) => {
+      const key = current.item.table || 'sem_tabela';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const byStatus = orphanItems.reduce((acc: Record<string, number>, current) => {
+      const key = current.item.status || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      totalScanned: items.length,
+      orphanCount: orphanItems.length,
+      byTable,
+      byStatus,
+      orphanItems
+    };
+  },
+
+  async cleanupOrphanedSyncQueue(options: {
+    statuses?: string[];
+    tableName?: string;
+    dryRun?: boolean;
+    includeAllInstituicoes?: boolean;
+  } = {}) {
+    const { dryRun = false, ...findOptions } = options;
+    const diagnosis = await this.findOrphanedSyncQueueItems(findOptions);
+
+    if (dryRun) {
+      return {
+        ...diagnosis,
+        deletedCount: 0,
+        dryRun: true
+      };
+    }
+
+    const idsToDelete = diagnosis.orphanItems
+      .map((entry: any) => entry.item?.id)
+      .filter((id: any) => typeof id === 'number');
+
+    if (idsToDelete.length > 0) {
+      await db.syncQueue.bulkDelete(idsToDelete);
+    }
+
+    return {
+      ...diagnosis,
+      deletedCount: idsToDelete.length,
+      dryRun: false
+    };
+  },
+
   // Debug para identificar problemas
   async debugSyncQueueIssue(tableName: string) {
     console.log(`🔍 DEBUG: Investigando syncQueue para ${tableName}`);
+    const instituicaoId = getSyncQueueInstitutionId();
     
     const items = await db.syncQueue
       .where('table').equals(tableName)
+      .and((item) => !instituicaoId || item.instituicao_id === instituicaoId)
       .toArray();
     
     console.log(`📋 ${items.length} itens na fila para ${tableName}:`);
@@ -1190,13 +2019,13 @@ export const syncManager: SyncManager = {
   // Limpeza forçada do syncQueue
   async forceCleanSyncQueue(tableName?: string) {
     try {
-      let query = db.syncQueue;
-      
-      if (tableName) {
-        query = query.where('table').equals(tableName);
-      }
-      
-      const items = await query.toArray();
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!instituicaoId) return;
+      const items = await db.syncQueue
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and((item) => !tableName || item.table === tableName)
+        .toArray();
       console.log(`🧹 Limpando ${items.length} itens do syncQueue...`);
       
       // Remove em batches para evitar timeout
@@ -1221,9 +2050,11 @@ export const syncManager: SyncManager = {
   // Retentativa de itens com erro
   async retryFailedItems(maxRetries: number = 3) {
     try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!instituicaoId) return;
       const failedItems = await db.syncQueue
-        .where('status').equals('failed')
-        .filter(item => (item.retryCount || 0) < maxRetries)
+        .where('instituicao_id').equals(instituicaoId)
+        .filter(item => item.status === 'failed' && (item.retryCount || 0) < maxRetries)
         .toArray();
       
       if (failedItems.length === 0) {
@@ -1256,7 +2087,10 @@ export const syncManager: SyncManager = {
 
   // Método para obter estatísticas de sincronização
   async getSyncStats() {
-    const allItems = await db.syncQueue.toArray();
+    const instituicaoId = getSyncQueueInstitutionId();
+    const allItems = instituicaoId
+      ? await db.syncQueue.where('instituicao_id').equals(instituicaoId).toArray()
+      : [];
     
     const stats = {
       total: allItems.length,
@@ -1292,10 +2126,14 @@ export const syncManager: SyncManager = {
   // Método para limpar itens antigos da fila
   async cleanupOldItems(maxAgeHours: number = 24) {
     try {
+      const instituicaoId = getSyncQueueInstitutionId();
+      if (!instituicaoId) return;
       const cutoffDate = new Date();
       cutoffDate.setHours(cutoffDate.getHours() - maxAgeHours);
       
       const oldItems = await db.syncQueue
+        .where('instituicao_id')
+        .equals(instituicaoId)
         .filter(item => {
           const itemDate = item.created_at ? new Date(item.created_at) : new Date(0);
           return itemDate < cutoffDate && item.status === 'synced';
@@ -1317,7 +2155,10 @@ export const syncManager: SyncManager = {
     console.log('🔍 Verificando integridade do syncQueue...');
     
     const issues = [];
-    const allItems = await db.syncQueue.toArray();
+    const instituicaoId = getSyncQueueInstitutionId();
+    const allItems = instituicaoId
+      ? await db.syncQueue.where('instituicao_id').equals(instituicaoId).toArray()
+      : [];
     
     for (const item of allItems) {
       // Verificar se tem ID
@@ -1385,6 +2226,90 @@ export const syncManager: SyncManager = {
       console.log('✅ Reset completo concluído');
     } catch (error) {
       console.error('❌ Erro ao resetar syncQueue:', error);
+    }
+  }
+,
+  async cleanupLegacyLocalDuplicates(tables: string[] = ['alunos', 'turmas', 'aulas']) {
+    const instituicaoId = getSyncQueueInstitutionId();
+    const buildFingerprint = (tableName: string, record: any): string | null => {
+      if (!record || record.deleted) return null;
+
+      switch (tableName) {
+        case 'alunos':
+          if (!record.numero_estudante) return null;
+          return `aluno:${record.numero_estudante}`;
+        case 'turmas':
+          if (!record.nome_turma || !record.ano_letivo) return null;
+          return `turma:${record.nome_turma}|${record.ano_letivo}|${record.curso_id || ''}`;
+        case 'aulas':
+          return [
+            'aula',
+            record.turma_id || '',
+            record.data_aula || '',
+            record.hora_inicio || '',
+            record.hora_fim || '',
+            record.disciplina || '',
+            record.tema_aula || ''
+          ].join(':');
+        default:
+          return null;
+      }
+    };
+
+    for (const tableName of tables) {
+      try {
+        const table = db.table<any>(tableName);
+        const records = await table.toArray();
+        if (!records.length) continue;
+
+        const byFingerprint = new Map<string, any[]>();
+        for (const record of records) {
+          const fingerprint = buildFingerprint(tableName, record);
+          if (!fingerprint) continue;
+          if (!byFingerprint.has(fingerprint)) byFingerprint.set(fingerprint, []);
+          byFingerprint.get(fingerprint)!.push(record);
+        }
+
+        const idsToDelete: string[] = [];
+
+        for (const [, group] of byFingerprint.entries()) {
+          if (group.length <= 1) continue;
+
+          group.sort((a, b) => {
+            const aLocal = String(a.id || '').startsWith('local_');
+            const bLocal = String(b.id || '').startsWith('local_');
+            if (aLocal !== bLocal) return aLocal ? 1 : -1; // prioriza remoto
+
+            const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+            const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+            return bTime - aTime; // prioriza mais recente
+          });
+
+          const kept = group[0];
+          const duplicates = group.slice(1);
+
+          for (const duplicate of duplicates) {
+            if (duplicate.id === kept.id) continue;
+            if (!String(duplicate.id || '').startsWith('local_')) continue;
+            idsToDelete.push(duplicate.id);
+          }
+        }
+
+        if (idsToDelete.length === 0) continue;
+
+        const uniqueIds = Array.from(new Set(idsToDelete));
+        await table.bulkDelete(uniqueIds);
+
+        await db.syncQueue
+          .where('table')
+          .equals(tableName)
+          .filter((item) => uniqueIds.includes(item.record_id) && (!instituicaoId || item.instituicao_id === instituicaoId))
+          .delete();
+
+        console.log(`🧹 Removidos ${uniqueIds.length} duplicados locais de ${tableName}`);
+      } catch (error) {
+        console.error(`❌ Erro ao limpar duplicados legados em ${tableName}:`, error);
+      }
     }
   }
 };
