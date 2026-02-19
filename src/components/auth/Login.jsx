@@ -246,27 +246,13 @@ const Login = () => {
                 
                 {/* Máquina de escrever */}
                 <div className="h-16 lg:h-20 flex items-center justify-center">
-                  <p className="text-xl lg:text-2xl font-medium text-primary-300">
+                  <p className="text-xl lg:text-2xl font-bold text-primary-200">
                     {currentText}
                     <span className="ml-1 animate-pulse">|</span>
                   </p>
                 </div>
 
-                {/* Dicas de login para teste */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1 }}
-                  className="mt-8 bg-black/40 backdrop-blur-sm rounded-lg p-4 max-w-md"
-                >
-                  <h3 className="text-sm font-semibold text-primary-200 mb-2">
-                    💡 Para testes:
-                  </h3>
-                  <div className="text-left text-sm space-y-1">
-                    <p><strong>Admin:</strong> admin@escola.com / Admin123!</p>
-                    <p><strong>Como se tornar admin?</strong> Acesse /setup/promote-admin</p>
-                  </div>
-                </motion.div>
+                
               </motion.div>
             </div>
           </div>
@@ -466,8 +452,8 @@ const Login = () => {
 
           {/* Informações de segurança */}
           <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
-            <p>✅ Seus dados estão seguros com criptografia de ponta</p>
-            <p className="mt-1">⚠️ Use apenas para testes educacionais</p>
+            <p> Seus dados estão seguros com criptografia de ponta</p>
+            <p className="mt-1">Use apenas para testes educacionais</p>
           </div>
         </motion.div>
       </div>
