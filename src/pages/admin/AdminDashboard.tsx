@@ -24,6 +24,7 @@ import { AddUserModal } from './AddUserModal';
 import { profileService } from '../../services/database/profileService';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auditLogService } from '../../services/audit/auditLogService';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 interface User {
   id: string;
@@ -466,14 +467,7 @@ const AdminDashboard = () => {
 
   // ✅ LOADING INICIAL
   if (loading.initial || authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Verificando permissões...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader title="Verificando permissões" subtitle="Carregando acesso do painel administrativo..." />;
   }
 
   // ✅ SE NÃO FOR ADMIN
@@ -524,7 +518,7 @@ const AdminDashboard = () => {
           <span>{notification.message}</span>
           <button 
             onClick={() => setNotification(null)}
-            className="ml-auto text-gray-500 hover:text-gray-700"
+            className="ml-auto text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           >
             <FiXCircle className="w-4 h-4" />
           </button>
@@ -645,14 +639,14 @@ const AdminDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id as SecaoAdmin)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`flex items-center justify-center gap-2 px-3 sm:px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
                     : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
-                {tab.label}
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -1031,11 +1025,11 @@ const AdminDashboard = () => {
 
       {/* Modal de Edição */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
           >
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -1129,11 +1123,11 @@ const AdminDashboard = () => {
 
       {/* Modal de Confirmação de Deleção */}
       {showConfirmDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
           >
             <div className="p-6">
               <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">

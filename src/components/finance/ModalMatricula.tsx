@@ -176,8 +176,8 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
 
     if (loading) {
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh]">
                     <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
@@ -189,8 +189,8 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
 
     if (sucesso) {
         return (
-            <motion.div className="fixed inset-0 shadow-xl bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 text-center">
+            <motion.div className="fixed inset-0 shadow-xl bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] text-center">
                     <FiCheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Matrícula Concluída!</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -216,8 +216,8 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto">
                 
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">

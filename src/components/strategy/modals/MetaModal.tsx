@@ -148,20 +148,20 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-5xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl">
               {/* Header */}
               <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl">
+                    <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-lg">
                       {getTipoIcon(meta.tipo)}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                           {meta.titulo}
                         </h2>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(meta.status)}`}>
@@ -251,14 +251,14 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-3 font-medium relative ${
+                        className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-3 font-medium relative ${
                           isActive 
                             ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
                             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
                         }`}
                       >
                         <Icon className="h-4 w-4" />
-                        <span>{tab.label}</span>
+                        <span className="hidden sm:inline">{tab.label}</span>
                         {tab.count !== undefined && (
                           <span className={`px-2 py-0.5 text-xs rounded-full ${
                             isActive 
@@ -287,7 +287,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                       <div className="space-y-6">
                         {/* Cards de Estatísticas */}
                         <div className="grid grid-cols-4 gap-4">
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl">
+                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-3">
                               <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
                                 <FiBarChart2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -303,7 +303,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             </div>
                           </div>
                           
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-xl">
+                          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-3">
                               <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
                                 <FiCheckSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -319,7 +319,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             </div>
                           </div>
                           
-                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-4 rounded-xl">
+                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-3">
                               <div className="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg">
                                 <FiDollarSign className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
@@ -335,7 +335,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             </div>
                           </div>
                           
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-xl">
+                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg">
                             <div className="flex items-center gap-3 mb-3">
                               <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
                                 <FiClock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -353,8 +353,8 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                         </div>
 
                         {/* SMART Criteria */}
-                        <div className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <div className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <FiTarget className="text-blue-500" />
                             Critérios SMART
                           </h3>
@@ -383,8 +383,8 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
 
                         {/* Resumo Financeiro */}
                         {meta.orcamento_previsto && (
-                          <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                               <FiDollarSign className="text-yellow-500" />
                               Resumo Financeiro
                             </h3>
@@ -432,7 +432,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             return (
                               <div
                                 key={kpi.id}
-                                className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
+                                className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                               >
                                 <div 
                                   className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/70 transition-colors"
@@ -571,9 +571,9 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             );
                           })
                         ) : (
-                          <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
+                          <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                             <FiBarChart2 className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
                               Nenhum indicador definido
                             </h3>
                             <p className="text-gray-600 dark:text-gray-300">
@@ -595,7 +595,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             return (
                               <div
                                 key={subMeta.id}
-                                className={`bg-white dark:bg-gray-700/50 border rounded-xl overflow-hidden ${
+                                className={`bg-white dark:bg-gray-700/50 border rounded-lg overflow-hidden ${
                                   isAtrasada 
                                     ? 'border-red-300 dark:border-red-700' 
                                     : 'border-gray-200 dark:border-gray-700'
@@ -777,9 +777,9 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                             );
                           })
                         ) : (
-                          <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
+                          <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                             <FiCheckSquare className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
                               Nenhuma sub-meta definida
                             </h3>
                             <p className="text-gray-600 dark:text-gray-300">
@@ -794,8 +794,8 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                     {activeTab === 'financas' && (
                       <div className="space-y-6">
                         {/* Resumo */}
-                        <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-xl p-6">
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-6">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4">
                             Resumo Financeiro
                           </h3>
                           <div className="grid grid-cols-3 gap-6">
@@ -838,7 +838,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                         {/* Histórico de Alocações */}
                         <div>
                           <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                               Histórico de Alocações
                             </h3>
                             <button

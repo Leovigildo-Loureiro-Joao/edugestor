@@ -236,10 +236,10 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
         <div className="flex items-center space-x-4 justify-between w-full">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div>
-              <h1 className="text-md lg:text-2md font-bold text-gray-800 dark:text-gray-100">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
                 Planeamento Semanal
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 Organize suas atividades e conecte com <span className='text-primary-700'>metas e tarefas</span>
               </p>
             </div>
@@ -253,12 +253,12 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                 novaData.setDate(novaData.getDate() - 7);
                 setDataAtual(novaData);
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
               <FiChevronLeft className="h-6 w-6" />
             </button>
             
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl sm:text-2xl font-bold">
               {dias[0].getDate()}/{dias[0].getMonth() + 1} - {dias[6].getDate()}/{dias[6].getMonth() + 1}
             </h2>
             
@@ -268,7 +268,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                 novaData.setDate(novaData.getDate() + 7);
                 setDataAtual(novaData);
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
               <FiChevronRight className="h-6 w-6" />
             </button>
@@ -286,7 +286,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
           <div>
             <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{planejamento.titulo}</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">{planejamento.titulo}</h2>
                 <div className='flex space-x-3'>
                   {modo === 'visualizacao' && planejamento && (
                     <button
@@ -444,7 +444,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               <FiCalendar className="h-10 w-10 text-blue-600" />
             </div>
             
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
               Nenhum planejamento para esta semana
             </h3>
             
@@ -475,24 +475,24 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => setModalAtividade(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   <FiCalendar className="mr-2 text-blue-600" />
                   Adicionar Atividade
                 </h3>
                 <button
                   onClick={() => setModalAtividade(false)}
-                  className="p-1 hover:bg-gray-100 rounded-lg"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
                   <FiX className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </button>
@@ -520,7 +520,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       hora: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -533,7 +533,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       tipo: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                     defaultValue="aula"
                   >
                     <option value="aula">Aula</option>
@@ -555,7 +555,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       ...atividadeSelecionada,
                       titulo: e.target.value
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -570,7 +570,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       descricao: e.target.value
                     })}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -581,7 +581,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       setDiaSelecionado(null);
                       setAtividadeSelecionada(null);
                     }}
-                    className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-900"
+                    className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     Cancelar
                   </button>

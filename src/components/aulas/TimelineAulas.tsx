@@ -238,10 +238,10 @@ export const TimelineWindows = ({
               <FiCalendar className="text-blue-600 dark:text-blue-400 text-lg" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 Timeline de Aulas
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Organizado por semanas
               </p>
             </div>

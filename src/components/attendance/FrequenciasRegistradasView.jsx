@@ -1,8 +1,26 @@
 // FrequenciasRegistradasView.tsx
 import { FiCalendar, FiCheckCircle, FiUsers, FiChevronRight } from "react-icons/fi";
 import { motion } from "framer-motion";
+import { usePagination } from "../../hooks/usePagination";
+import { PaginationControls } from "../ui/PaginationControls";
 
 export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, filtroTurma}) => {
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    totalPages,
+    startItem,
+    endItem,
+    paginatedItems
+  } = usePagination({
+    items: frequenciasFiltradas,
+    initialPageSize: 8,
+    resetDeps: [frequenciasFiltradas, filtroData, filtroTurma]
+  });
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -38,7 +56,7 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
       animate="visible"
       className="space-y-4"
     >
-      {frequenciasFiltradas.map((item, index) => {
+      {paginatedItems.map((item, index) => {
         const presentes = item.registro.filter(f => f.presente).length;
         const total = item.registro.length;
         const percentage = calculatePercentage(presentes, total);
@@ -50,8 +68,8 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
             whileHover={{ x: 4 }}
             className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-all duration-300"
           >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
+            <div className=" flex justify-between items-start">
+              <div className="flex-1 ">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-gradient-to-br from-green-100 to-emerald-50 rounded-xl">
                     <FiCheckCircle className="h-5 w-5 text-green-600" />
@@ -119,7 +137,7 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
           <div className="inline-flex p-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-full mb-4">
             <FiCalendar className="h-12 w-12 text-gray-400" />
           </div>
-          <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
+          <h3 className="mt-4 text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
             Nenhuma frequência registrada
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-md mx-auto">
@@ -130,6 +148,20 @@ export const FrequenciasRegistradasView = ({frequenciasFiltradas, filtroData, fi
           </p>
         </motion.div>
       )}
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        startItem={startItem}
+        endItem={endItem}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        sizeOptions={[8, 16, 30]}
+      />
     </motion.div>
   );
 };

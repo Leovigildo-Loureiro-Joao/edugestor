@@ -48,7 +48,7 @@ export const ConfiguracoesBackup = () => {
      <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Backup e Restauração</h2>
+      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-6">Backup e Restauração</h2>
       
       <div className="space-y-8">
         
@@ -56,7 +56,7 @@ export const ConfiguracoesBackup = () => {
         <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-blue-900 mb-2">Status do Backup</h3>
+              <h3 className="text-base sm:text-lg font-medium text-blue-900 mb-2">Status do Backup</h3>
               <p className="text-blue-700">
                 {config.ultimoBackup 
                   ? `Último backup: ${new Date(config.ultimoBackup).toLocaleString('pt-AO')}`
@@ -93,7 +93,7 @@ export const ConfiguracoesBackup = () => {
 
         {/* Configurações de Backup Automático */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Backup Automático</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Backup Automático</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -161,7 +161,7 @@ export const ConfiguracoesBackup = () => {
 
         {/* Restauração */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Restauração de Dados</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Restauração de Dados</h3>
           
           <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
             <div className="flex items-center gap-2 text-yellow-700">
@@ -184,7 +184,7 @@ export const ConfiguracoesBackup = () => {
 
         {/* Informações do Sistema */}
         <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Informações do Sistema</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Informações do Sistema</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
             <div>

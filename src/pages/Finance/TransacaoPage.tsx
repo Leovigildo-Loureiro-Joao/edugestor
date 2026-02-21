@@ -18,6 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import { tr } from 'date-fns/locale';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { TransacoesTable } from '../../components/finance/TransacaoTable';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 export const TransacoesPage = () => {
   const navigate = useNavigate();
@@ -280,10 +282,10 @@ export const TransacoesPage = () => {
             <div className="flex items-center gap-4">
             
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   Gestão de Transações
                 </h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
                   Gerencie investimentos e despesas da escola
                 </p>
               </div>
@@ -602,218 +604,69 @@ export const TransacoesPage = () => {
         </motion.div>
 
         {/* Lista de Transações */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden"
-        >
-          {/* Header da Tabela */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Transações ({transacoesFiltradas.length})
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {meses[filtros.mes - 1]} de {filtros.ano}
-                </p>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={exportarCSV}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                >
-                  <FiDownload className="h-4 w-4" />
-                  Exportar CSV
-                </button>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        {loading ? (
+          <PageLoader
+            title="Carregando transações"
+            subtitle="Buscando movimentações financeiras..."
+            fullScreen={false}
+          />
+        ) : (
+          <>
+            {/* Header com ações */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Transações ({transacoesFiltradas.length})
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {meses[filtros.mes - 1]} de {filtros.ano}
+                  </p>
+                </div>
                 
-                <button
-                  onClick={() => navigate('/financeiro')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                >
-                  <FiBarChart2 className="h-4 w-4" />
-                  Ver Dashboard
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={exportarCSV}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Exportar CSV
+                  </button>
+                  
+                  <button
+                    onClick={() => navigate('/financeiro')}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  >
+                    <FiBarChart2 className="h-4 w-4" />
+                    Ver Dashboard
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Tabela */}
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : transacoesFiltradas.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700/50">
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Data
-                    </th>
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Categoria
-                    </th>
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Descrição
-                    </th>
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Valor
-                    </th>
-                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {transacoesFiltradas.map((transacao) => {
-                    const data = new Date(transacao.data);
-                    const categoria = categorias.find(c => c.value === transacao.categoria);
-                    
-                    return (
-                      <motion.tr
-                        key={transacao.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                      >
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {data.toLocaleDateString('pt-AO', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {data.toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </td>
-                        
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            transacao.tipo === 'entrada'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                          }`}>
-                            {transacao.tipo === 'entrada' ? (
-                              <>
-                                <FiTrendingUp className="h-3 w-3" />
-                                Investimento
-                              </>
-                            ) : (
-                              <>
-                                <FiTrendingDown className="h-3 w-3" />
-                                Despesa
-                              </>
-                            )}
-                          </span>
-                        </td>
-                        
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            {categoria?.icon && (
-                              <categoria.icon className={`h-4 w-4 ${
-                                transacao.tipo === 'entrada' 
-                                  ? 'text-green-600 dark:text-green-400' 
-                                  : 'text-red-600 dark:text-red-400'
-                              }`} />
-                            )}
-                            <span className="text-sm text-gray-900 dark:text-white">
-                              {categoria?.label || transacao.categoria}
-                            </span>
-                          </div>
-                        </td>
-                        
-                        <td className="py-4 px-6">
-                          <div className="text-sm text-gray-900 dark:text-white max-w-md truncate">
-                            {transacao.descricao}
-                          </div>
-                        </td>
-                        
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <div className={`text-sm font-semibold ${
-                            transacao.tipo === 'entrada'
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
-                          }`}>
-                            {transacao.tipo === 'entrada' ? '+' : '-'}
-                            {new Intl.NumberFormat('pt-AO', {
-                              style: 'currency',
-                              currency: 'AOA'
-                            }).format(transacao.valor)}
-                          </div>
-                        </td>
-                        
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setTipoTransacao(transacao.tipo);
-                                setTransacaoEditando(transacao);
-                                setShowFormModal(true);
-                              }}
-                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <FiEdit2 className="h-4 w-4" />
-                            </button>
-                            
-                            <button
-                              onClick={() => {setTransacaoSel(transacao);handleDeletarTransacao()}}
-                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                              title="Excluir"
-                            >
-                              <FiTrash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <FiDollarSign className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                Nenhuma transação encontrada
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
-                {filtros.tipo !== 'todos' || filtros.categoria !== 'todos'
-                  ? 'Tente ajustar os filtros para encontrar mais resultados'
-                  : 'Comece registrando seu primeiro investimento ou despesa'
-                }
-              </p>
-              <div className="mt-4 flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    setTipoTransacao('entrada');
-                    setShowFormModal(true);
-                  }}
-                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                >
-                  Novo Investimento
-                </button>
-                <button
-                  onClick={() => {
-                    setTipoTransacao('saida');
-                    setShowFormModal(true);
-                  }}
-                  className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-                >
-                  Nova Despesa
-                </button>
-              </div>
-            </div>
-          )}
-        </motion.div>
+            {/* Componente da Tabela */}
+            <TransacoesTable
+              transacoes={transacoesFiltradas}
+              onEditar={(transacao) => {
+                setTipoTransacao(transacao.tipo);
+                setTransacaoEditando(transacao);
+                setShowFormModal(true);
+              }}
+              onExcluir={(transacao) => {
+                setTransacaoSel(transacao);
+                setComfirm(true);
+              }}
+              mes={filtros.mes}
+              ano={filtros.ano}
+            />
+          </>
+        )}
+      </motion.div>
 
         {/* Modal de Formulário */}
         <TransacaoFormModal

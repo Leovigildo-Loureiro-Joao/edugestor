@@ -4,6 +4,34 @@ import { motion } from "framer-motion";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltradas}) => {
+  const cardColorStyles = {
+    blue: {
+      border: 'border-l-4 border-l-blue-500',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+      iconText: 'text-blue-600 dark:text-blue-400',
+      valueGrad: 'bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-200'
+    },
+    green: {
+      border: 'border-l-4 border-l-green-500',
+      iconBg: 'bg-green-100 dark:bg-green-900/30',
+      iconText: 'text-green-600 dark:text-green-400',
+      valueGrad: 'bg-gradient-to-r from-green-600 to-green-800 dark:from-green-400 dark:to-green-200'
+    },
+    purple: {
+      border: 'border-l-4 border-l-purple-500',
+      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+      iconText: 'text-purple-600 dark:text-purple-400',
+      valueGrad: 'bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-200'
+    }
+  };
+
+  const overviewStatStyles = {
+    blue: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
+    green: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400' },
+    orange: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400' },
+    purple: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400' }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -66,17 +94,13 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
           key={index}
           variants={cardVariants}
           whileHover={{ y: -4 }}
-          className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ${
-            card.color === 'blue' ? 'border-l-4 border-l-blue-500' :
-            card.color === 'green' ? 'border-l-4 border-l-green-500' :
-            'border-l-4 border-l-purple-500'
-          }`}
+          className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ${cardColorStyles[card.color].border}`}
         >
           <div className="flex items-center gap-3 mb-6">
-            <div className={`p-3 rounded-xl bg-${card.color}-100`}>
-              <card.icon className={`text-${card.color}-600 text-xl`} />
+            <div className={`p-3 rounded-xl ${cardColorStyles[card.color].iconBg}`}>
+              <card.icon className={`${cardColorStyles[card.color].iconText} text-xl`} />
             </div>
-            <h3 className="font-bold text-gray-900 dark:text-white text-lg">{card.title}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">{card.title}</h3>
           </div>
           
           {card.items ? (
@@ -100,7 +124,7 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className={`text-4xl font-bold bg-gradient-to-r from-${card.color}-600 to-${card.color}-800 bg-clip-text text-transparent mb-3`}
+                className={`text-4xl font-bold ${cardColorStyles[card.color].valueGrad} bg-clip-text text-transparent mb-3`}
               >
                 {card.value}
               </motion.div>
@@ -119,7 +143,7 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
           <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100">
             <FiActivity className="text-indigo-600 text-xl" />
           </div>
-          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Visão Geral do Sistema</h3>
+          <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">Visão Geral do Sistema</h3>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
@@ -134,12 +158,12 @@ export const EstatisticasView = ({estatisticas, aulasFiltradas, frequenciasFiltr
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * index }}
-              className="text-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100"
+              className="text-center p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-100 dark:border-gray-700"
             >
-              <div className={`inline-flex p-2 bg-${stat.color}-100 rounded-lg mb-3`}>
-                <stat.icon className={`text-${stat.color}-600`} />
+              <div className={`inline-flex p-2 rounded-lg mb-3 ${overviewStatStyles[stat.color].bg}`}>
+                <stat.icon className={overviewStatStyles[stat.color].text} />
               </div>
-              <div className={`text-3xl font-bold text-${stat.color}-600 mb-1`}>
+              <div className={`text-3xl font-bold mb-1 ${overviewStatStyles[stat.color].text}`}>
                 {stat.value}
               </div>
               <div className="text-gray-600 dark:text-gray-400 text-sm font-medium">{stat.label}</div>

@@ -161,18 +161,18 @@ export const ConfiguracoesNotificacoes = () => {
    <motion.div 
     initial={{ opacity: 0, y: -20 }}
     animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 dark:border-gray-700 rounded-lg border border-gray-200 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Notificações</h2>
+      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Notificações</h2>
       
       <div className="space-y-8">
         
         {/* Configuração do Twilio (WhatsApp + SMS) */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">
             <FiMessageSquare className="inline mr-2 mb-1 dark:text-white" />
             Twilio - WhatsApp & SMS
           </h3>
           
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 mb-4">
             <p className="text-sm text-blue-700">
               <strong>Como obter as credenciais:</strong> Acesse <a href="https://www.twilio.com/console" target="_blank" rel="noopener noreferrer" className="underline">Twilio Console</a> e copie o Account SID e Auth Token.
             </p>
@@ -187,7 +187,7 @@ export const ConfiguracoesNotificacoes = () => {
                 type="text"
                 value={config.twilioAccountSid}
                 onChange={(e) => setConfig(prev => ({...prev, twilioAccountSid: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               />
             </div>
@@ -200,7 +200,7 @@ export const ConfiguracoesNotificacoes = () => {
                 type="password"
                 value={config.twilioAuthToken}
                 onChange={(e) => setConfig(prev => ({...prev, twilioAuthToken: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               />
             </div>
@@ -208,12 +208,12 @@ export const ConfiguracoesNotificacoes = () => {
 
           {/* WhatsApp */}
           <div className={`border-2 rounded-lg p-4 mb-4 ${
-            config.whatsappAtivo ? 'border-green-200 bg-green-50' : 'border-gray-200'
+            config.whatsappAtivo ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : 'border-gray-200'
           }`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FiMessageSquare className="text-green-600" />
-                <h4 className="font-medium text-gray-900">WhatsApp</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">WhatsApp</h4>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-1 text-xs rounded-full ${
@@ -227,24 +227,24 @@ export const ConfiguracoesNotificacoes = () => {
                   type="checkbox"
                   checked={config.whatsappAtivo}
                   onChange={(e) => setConfig(prev => ({...prev, whatsappAtivo: e.target.checked}))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
               </div>
             </div>
             
             {config.whatsappAtivo && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Número WhatsApp (Sandbox)
                 </label>
                 <input
                   type="text"
                   value={config.twilioWhatsAppNumber}
                   onChange={(e) => setConfig(prev => ({...prev, twilioWhatsAppNumber: e.target.value}))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="+14155238886"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Use o número sandbox para testes. Para produção, compre um número Twilio.
                 </p>
                 
@@ -262,12 +262,12 @@ export const ConfiguracoesNotificacoes = () => {
 
           {/* SMS */}
           <div className={`border-2 rounded-lg p-4 ${
-            config.smsAtivo ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
+            config.smsAtivo ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200'
           }`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FiPhone className="text-blue-600" />
-                <h4 className="font-medium text-gray-900">SMS</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">SMS</h4>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-1 text-xs rounded-full ${
@@ -281,24 +281,24 @@ export const ConfiguracoesNotificacoes = () => {
                   type="checkbox"
                   checked={config.smsAtivo}
                   onChange={(e) => setConfig(prev => ({...prev, smsAtivo: e.target.checked}))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
               </div>
             </div>
             
             {config.smsAtivo && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Número SMS Twilio
                 </label>
                 <input
                   type="text"
                   value={config.twilioSMSNumber}
                   onChange={(e) => setConfig(prev => ({...prev, twilioSMSNumber: e.target.value}))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="+1234567890"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Número Twilio comprado para enviar SMS
                 </p>
                 
@@ -316,19 +316,19 @@ export const ConfiguracoesNotificacoes = () => {
         </div>
 
         {/* Configuração do Email */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">
             <FiMail className="inline mr-2 mb-1" />
             Configurações de Email
           </h3>
           
           <div className={`border-2 rounded-lg p-4 ${
-            config.emailAtivo ? 'border-purple-200 bg-purple-50' : 'border-gray-200'
+            config.emailAtivo ? 'border-purple-200 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <FiMail className="text-purple-600" />
-                <h4 className="font-medium text-gray-900">Email</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">Email</h4>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-1 text-xs rounded-full ${
@@ -342,7 +342,7 @@ export const ConfiguracoesNotificacoes = () => {
                   type="checkbox"
                   checked={config.emailAtivo}
                   onChange={(e) => setConfig(prev => ({...prev, emailAtivo: e.target.checked}))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -350,13 +350,13 @@ export const ConfiguracoesNotificacoes = () => {
             {config.emailAtivo && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Serviço de Email
                   </label>
                   <select
                     value={config.emailService}
                     onChange={(e) => setConfig(prev => ({...prev, emailService: e.target.value}))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="gmail">Gmail</option>
                     <option value="outlook">Outlook/Office365</option>
@@ -365,27 +365,27 @@ export const ConfiguracoesNotificacoes = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email *
                   </label>
                   <input
                     type="email"
                     value={config.emailUsuario}
                     onChange={(e) => setConfig(prev => ({...prev, emailUsuario: e.target.value}))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="seu@email.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Senha/App Password *
                   </label>
                   <input
                     type="password"
                     value={config.emailSenha}
                     onChange={(e) => setConfig(prev => ({...prev, emailSenha: e.target.value}))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Sua senha ou app password"
                   />
                 </div>
@@ -393,27 +393,27 @@ export const ConfiguracoesNotificacoes = () => {
                 {config.emailService === 'smtp' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         SMTP Host
                       </label>
                       <input
                         type="text"
                         value={config.emailHost}
                         onChange={(e) => setConfig(prev => ({...prev, emailHost: e.target.value}))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="smtp.seuprovedor.com"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         SMTP Port
                       </label>
                       <input
                         type="text"
                         value={config.emailPort}
                         onChange={(e) => setConfig(prev => ({...prev, emailPort: e.target.value}))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="587"
                       />
                     </div>
@@ -431,7 +431,7 @@ export const ConfiguracoesNotificacoes = () => {
                   </button>
                   
                   {config.emailService === 'gmail' && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                       <strong>Para Gmail:</strong> Use uma "App Password" em vez da senha normal. Ative a verificação em 2 passos e gere a app password.
                     </p>
                   )}
@@ -442,13 +442,13 @@ export const ConfiguracoesNotificacoes = () => {
         </div>
 
         {/* Tipos de Notificação */}
-        <div className="border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-medium dark:text-white text-gray-900 mb-4">Tipos de Notificação</h3>
+        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+          <h3 className="text-base sm:text-lg font-medium dark:text-white text-gray-900 dark:text-white mb-4">Tipos de Notificação</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700 dark:text-gray-300">
                   Pagamentos realizados
                 </label>
                 <p className="text-sm text-gray-500 dark:text-gray-200">
@@ -459,13 +459,13 @@ export const ConfiguracoesNotificacoes = () => {
                 type="checkbox"
                 checked={config.notificarPagamentos}
                 onChange={(e) => setConfig(prev => ({...prev, notificarPagamentos: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700 dark:text-gray-300">
                   Pagamentos em atraso
                 </label>
                 <p className="text-sm text-gray-500 dark:text-gray-200">
@@ -476,13 +476,13 @@ export const ConfiguracoesNotificacoes = () => {
                 type="checkbox"
                 checked={config.notificarAtrasos}
                 onChange={(e) => setConfig(prev => ({...prev, notificarAtrasos: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium dark:text-gray-50  text-gray-700">
+                <label className="text-sm font-medium dark:text-gray-50  text-gray-700 dark:text-gray-300">
                   Lembretes de vencimento
                 </label>
                 <p className="text-sm text-gray-500 dark:text-gray-200">
@@ -493,7 +493,7 @@ export const ConfiguracoesNotificacoes = () => {
                 type="checkbox"
                 checked={config.notificarLembretes}
                 onChange={(e) => setConfig(prev => ({...prev, notificarLembretes: e.target.checked}))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -501,35 +501,35 @@ export const ConfiguracoesNotificacoes = () => {
           {config.notificarLembretes && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 ml-6">
               <div>
-                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 mb-2">
+                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 dark:text-gray-300 mb-2">
                   Dias antes do vencimento
                 </label>
                 <input
                   type="number"
                   value={config.diasLembrete}
                   onChange={(e) => setConfig(prev => ({...prev, diasLembrete: parseInt(e.target.value)}))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                   min="1"
                   max="30"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 mb-2">
+                <label className="block text-sm font-medium dark:text-gray-50  text-gray-700 dark:text-gray-300 mb-2">
                   Horário das notificações
                 </label>
                 <input
                   type="time"
                   value={config.horarioNotificacoes}
                   onChange={(e) => setConfig(prev => ({...prev, horarioNotificacoes: e.target.value}))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-gray-200">
+        <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"

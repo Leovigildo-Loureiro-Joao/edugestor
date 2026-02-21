@@ -7,6 +7,7 @@ import { FaCalendarWeek } from 'react-icons/fa6';
 import { RegistroFrequenciaLote } from '../../types/frequencia';
 import { useAlert } from '../ui/AlertBadge';
 import { useConfirmModal } from '../ui/ComfirmModal';
+import { set } from 'date-fns';
 
 export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{aula:Aula,onRegistrarFrequencia:(registro:RegistroFrequenciaLote) => Promise<void>,setAulaSelect:(aula:Aula) => void}) => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -91,44 +92,48 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg">
       {/* Header */}
-      <div className="sticky top-0 bg-white dark:bg-gray-800 border-b p-6">
-        <div className="flex justify-between items-start">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-              <FaCalendarWeek className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-primary-700 text-xl">{aula.tema_aula}</h2>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                {aula.disciplina || 'Aula Sem Disciplina'}
-              </h3>
-              <div className="flex items-center gap-4 mt-2 text-gray-600 dark:text-gray-400">
-                <div className="flex items-center gap-2">
-                  <FiCalendar className="h-5 w-5" />
-                  <span className="font-medium">
-                    {new Date(aula.data_aula).toLocaleDateString('pt-AO')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FiClock className="h-5 w-5" />
-                  <span>
-                    {aula.hora_inicio?.slice(0, 5)} - {aula.hora_fim?.slice(0, 5)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FiUsers className="h-5 w-5" />
-                  <span>{aula.turmas?.nome_turma || 'Turma'}</span>
+              {/* Header Azul Exatamente como o exemplo */}
+        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-white/10 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <FaCalendarWeek className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-white text-base sm:text-lg">
+                  {aula?.tema_aula || 'Registrar Frequência'}
+                </h2>
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  {aula?.disciplina || 'Aula'}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-blue-100">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <FiCalendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="font-medium">
+                      {aula?.data_aula ? new Date(aula.data_aula).toLocaleDateString('pt-AO') : 'Data'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <FiClock className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>
+                      {aula?.hora_inicio?.slice(0, 5)} - {aula?.hora_fim?.slice(0, 5)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <FiUsers className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>{aula?.turmas?.nome_turma || 'Turma'}</span>
+                  </div>
                 </div>
               </div>
             </div>
+            <button
+              onClick={() => setAulaSelect(null)}
+              className="p-1.5 sm:p-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors self-end sm:self-start"
+            >
+              <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
           </div>
-          <button
-            onClick={() => setAulaSelect(null)}
-            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100"
-          >
-            <FiX className="w-6 h-6" />
-          </button>
-        </div>
+
         
         {/* Status */}
         <div className="flex gap-4 mt-4">

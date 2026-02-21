@@ -424,14 +424,14 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl"
+            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -626,7 +626,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
               {/* Configuração da Alocação */}
               <div className="w-2/3 p-6 overflow-y-auto">
                 {/* Fundos Disponíveis */}
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-xl p-6 mb-8">
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg p-6 mb-8">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-gray-900 dark:text-white text-lg">
@@ -698,7 +698,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                   <h4 className="font-medium text-gray-900 dark:text-white mb-4">
                     Ferramentas de Distribuição
                   </h4>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                     <div className="grid grid-cols-3 gap-4 mb-4">
                       <div className="col-span-2">
                         <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
@@ -796,7 +796,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                   </div>
 
                   {metasSelecionadas.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
+                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                       <FiAlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                       <p className="text-gray-600 dark:text-gray-300">
                         Selecione metas da lista ao lado para alocar recursos
@@ -813,7 +813,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                         return (
                           <div
                             key={item.meta.id}
-                            className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-4"
+                            className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4"
                           >
                             <div className="flex justify-between items-start mb-4">
                               <div className="flex items-start gap-3">
@@ -963,7 +963,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                 </div>
 
                 {/* Resumo da Alocação */}
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-xl p-6 mb-8">
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-6 mb-8">
                   <h4 className="font-bold text-gray-900 dark:text-white mb-4">
                     Resumo da Alocação
                   </h4>

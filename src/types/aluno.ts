@@ -56,3 +56,8 @@ export interface StudentFormProps {
   loading?: boolean;
 }
 
+export interface AlunoDesempenho extends Student {
+  media: number;
+  presenca: number;
+  ultimaAvaliacao: number;
+}

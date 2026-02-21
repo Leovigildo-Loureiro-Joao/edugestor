@@ -42,11 +42,11 @@ export const ViewModeNavbar: React.FC<ViewModeNavbarProps> = ({
         {/* Lado Esquerdo - Título e Filtros */}
         <div className="flex items-center gap-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white flex items-center">
               <FiBook className="mr-2" />
               Lista de Aulas
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1">
               Gerencie e visualize suas aulas
             </p>
           </div>

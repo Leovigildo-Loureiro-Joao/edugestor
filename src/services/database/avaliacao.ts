@@ -1,7 +1,5 @@
 import { supabase } from '../database/db';
 import db from './db';
-import { BaseEntity } from "./base";
-import { alunosService } from './alunosService';
 import { syncManager } from './syncManager';
 import { emitDbChanged } from '../../utils/emitPendingSync';
 import { toast } from 'react-hot-toast';
@@ -9,55 +7,7 @@ import { turmaService } from './turmas';
 import { cursosService } from '.';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { generateUniqueId } from '../../utils/idGenarator';
-
-export interface Avaliacao extends BaseEntity {
-  id: string;
-  aluno_id: string;
-  turma_id?: string;
-  disciplina: string;
-  tipo_avaliacao: string;
-  nota: number;
-  data_avaliacao: string;
-  observacoes?: string;
-  periodo: '1º trimestre' | '2º trimestre' | '3º trimestre';
-  peso?: number; // Peso da avaliação (1-5)
-  professor_id?: string;
-  created_at: string;
-}
-
-export interface AvaliacaoWithAluno extends Avaliacao {
-  aluno?: {
-    nome_completo: string;
-    numero_estudante: string;
-    turma_nome?: string;
-  };
-}
-
-export interface AvaliacaoStats {
-  totalAvaliacoes: number;
-  mediaGeral: number;
-  aprovados: number;
-  reprovados: number;
-  distribuicaoNotas: Record<number, number>;
-  melhorMedia: number;
-  piorMedia: number;
-}
-
-export interface DisciplinaStats {
-  nome: string;
-  media: number;
-  totalAvaliacoes: number;
-  aprovados: number;
-  reprovados: number;
-  melhorNota: number;
-  piorNota: number;
-  historico: Array<{ data: string; nota: number }>;
-}
-
-export type AvaliacaoFormData = Omit<
-  Avaliacao,
-  'id' | 'deleted' | 'sync_status' | 'updated_at' | 'created_at' | 'aluno'
->;
+import { Avaliacao, AvaliacaoFormData, AvaliacaoStats, AvaliacaoWithAluno, DisciplinaStats } from '../../types/avaliacao';
 
 
 
@@ -84,7 +34,6 @@ export const avaliacaoService = {
         updated_at: now,
         sync_status: 'pending',
         deleted: false,
-        peso: avaliacaoData.peso || 1,
       };
 
       console.log('💾 Salvando avaliação:', {
@@ -184,12 +133,19 @@ export const avaliacaoService = {
       const paginated = avaliacoes.slice(offset, offset + limit);
 
       // Buscar informações dos alunos em batch
-      const alunoIds = [...new Set(paginated.map(a => a.aluno_id))];
-      const alunos = await db.alunos
-        .where('id')
-        .anyOf(alunoIds)
-        .and(aluno => !aluno.deleted)
-        .toArray();
+      const alunoIds = [...new Set(
+        paginated
+          .map(a => a.aluno_id)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      )];
+
+      const alunos = alunoIds.length > 0
+        ? await db.alunos
+            .where('id')
+            .anyOf(alunoIds)
+            .and(aluno => !aluno.deleted)
+            .toArray()
+        : [];
 
       const alunoMap = new Map(alunos.map(aluno => [aluno.id, aluno]));
 
@@ -208,6 +164,36 @@ export const avaliacaoService = {
 
     } catch (error) {
       console.error('❌ Erro ao buscar avaliações:', error);
+      throw error;
+    }
+  },
+  async getAlunosComMediaAcima(turmaId: string, mediaMinima: number): Promise<Array<{ alunoId: string; nome: string; media: number }>> {  
+    try {
+      const avaliacoes = await db.avaliacoes.filter(av => av.turma_id === turmaId && !av.deleted).toArray();
+      const alunoStats = new Map<string, { soma: number; count: number; nome: string }>();
+      avaliacoes.forEach(av => {
+        if (av.turma_id === turmaId && av.aluno_id) {
+          const aluno = alunoStats.get(av.aluno_id) || { soma: 0, count: 0, nome: '' };
+          aluno.soma += av.nota;
+          aluno.count += 1;
+          if (!aluno.nome) {
+            aluno.nome = av.aluno?.nome_completo || '';
+          }
+          alunoStats.set(av.aluno_id, aluno);
+        } 
+      });
+      
+      const alunosComMedia = Array.from(alunoStats.entries())
+        .filter(([_, stats]) => stats.count > 0 && (stats.soma / stats.count) >= mediaMinima)
+        .map(([alunoId, stats]) => ({
+          alunoId,
+          nome: stats.nome,
+          media: stats.soma / stats.count
+        }));
+      
+      return alunosComMedia;
+    } catch (error) {
+      console.error('❌ Erro ao buscar alunos com média acima:', error);
       throw error;
     }
   },

@@ -23,6 +23,7 @@ import {
   FiTarget
 } from 'react-icons/fi';
 import { Tarefa } from '../../types/eventos';
+import { PageLoader } from '../../components/ui/PageLoader';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
 import { useAlert } from '../../components/ui/AlertBadge';
@@ -330,11 +331,7 @@ const TarefaPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando tarefa" subtitle="Buscando detalhes, comentários e anexos..." />;
   }
 
   return (
@@ -352,11 +349,11 @@ const TarefaPage = () => {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-4xl font-bold mb-2 flex gap-3">
+              <h1 className="text-2xl sm:text-4xl font-bold mb-2 flex gap-3">
                 <FiCheckSquare/>
                 {isEdicao ? 'Editar Tarefa' : 'Nova Tarefa'}
               </h1>
-              <p className="text-blue-100">
+              <p className="text-sm sm:text-base text-blue-100">
                 {isEdicao 
                   ? 'Atualize os detalhes da tarefa existente' 
                   : 'Preencha os detalhes para criar uma nova tarefa'}
@@ -629,7 +626,7 @@ const TarefaPage = () => {
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
           >
             <div className="border-b p-6">
-              <h2 className="text-xl font-bold flex items-center">
+              <h2 className="text-lg sm:text-xl font-bold flex items-center">
                 <FiCheckSquare className="mr-2" />
                 Checklist
               </h2>
@@ -661,7 +658,7 @@ const TarefaPage = () => {
               {/* Lista de itens */}
               <div className="space-y-3">
                 {checklistItems.map((item, index) => (
-                  <div key={index} className="flex items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100">
+                  <div key={index} className="flex items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                     <input
                       type="checkbox"
                       checked={item.concluido}

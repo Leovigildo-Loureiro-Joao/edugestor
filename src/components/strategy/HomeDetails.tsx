@@ -277,7 +277,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">
           <FiTrendingUp className="mr-3 text-blue-600" />
           Estatísticas Gerais
         </h1>
@@ -293,7 +293,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-lg flex items-center">
+              <h3 className="font-bold text-base sm:text-lg flex items-center">
                 <FiTrendingUp className="mr-2 text-blue-600" />
                 Evolução Anual do Progresso
               </h3>
@@ -337,7 +337,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         {/* Semana Atual */}
         <div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 h-full">
-            <h3 className="font-bold text-lg mb-6 flex items-center">
+            <h3 className="font-bold text-base sm:text-lg mb-6 flex items-center">
               <FiCalendar className="mr-2 text-green-600" />
               Esta Semana
             </h3>
@@ -395,7 +395,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Matrículas Anuais */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-          <h3 className="font-bold text-lg mb-6 flex items-center">
+          <h3 className="font-bold text-base sm:text-lg mb-6 flex items-center">
             <FiUsers className="mr-2 text-green-600" />
             Matrículas por Mês
           </h3>
@@ -414,7 +414,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         
         {/* Satisfação Trimestral */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-          <h3 className="font-bold text-lg mb-6 flex items-center">
+          <h3 className="font-bold text-base sm:text-lg mb-6 flex items-center">
             <FiAward className="mr-2 text-orange-600" />
             Satisfação por Trimestre
           </h3>
@@ -441,7 +441,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
         
         {/* Frequência Mensal */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-          <h3 className="font-bold text-lg mb-6 flex items-center">
+          <h3 className="font-bold text-base sm:text-lg mb-6 flex items-center">
             <FiActivity className="mr-2 text-purple-600" />
             Frequência Mensal
           </h3>
@@ -471,7 +471,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       <div className="lg:col-span-3">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg flex items-center">
+            <h3 className="font-bold text-base sm:text-lg flex items-center">
               <FiClock className="mr-2 text-blue-600" />
               Hoje - {new Date().toLocaleDateString('pt-BR', { 
                 weekday: 'long', 
@@ -553,8 +553,8 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       </div>
 
       {/* Resumo de Áreas */}
-      <div className="mt-6 bg-gradient-to-r from-gray-50 to-white rounded-xl shadow p-6">
-        <h3 className="font-bold text-lg mb-6">Resumo por Área</h3>
+      <div className="mt-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-xl shadow p-6">
+        <h3 className="font-bold text-base sm:text-lg mb-6 dark:text-gray-200">Resumo por Área</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {resumoPorArea.map((area, idx) => (
             <motion.div 
@@ -565,7 +565,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
               <div className={`inline-block p-3 rounded-full bg-${area.color}-100 mb-3`}>
                 {area.icon}
               </div>
-              <div className="font-bold text-2xl">{area.progresso}%</div>
+              <div className="font-bold text-2xl dark:text-white">{area.progresso}%</div>
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{area.area}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{area.metas} metas</div>
             </motion.div>

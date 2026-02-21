@@ -695,7 +695,7 @@ const ProfilePage: React.FC = () => {
               
               <button
                 onClick={() => console.log('Mais segurança')}
-                className="w-full mt-4 px-4 py-2 bg-white text-blue-600 hover:bg-gray-100 rounded-lg font-medium"
+                className="w-full mt-4 px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
               >
                 Saiba Mais
               </button>

@@ -198,29 +198,29 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
         />
         
         {/* Modal Container */}
-        <div className="flex min-h-full items-center justify-center p-4">
+        <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header com gradiente azul */}
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 z-10">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-white/20 rounded-xl">
+                  <div className="p-2 bg-white/20 dark:bg-white/10 rounded-lg">
                     <FiBook className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">
                       {templateParaCopiar ? 'Novo Plano a partir de Template' : 
                        planoExistente ? 'Editar Plano de Aula' : 
                        'Novo Plano de Aula'}
                     </h2>
-                    <p className="text-sm text-blue-100">
+                    <p className="text-xs sm:text-sm text-blue-100">
                       {templateParaCopiar ? 'Use um template existente como base' : 
                        planoExistente ? 'Modifique os detalhes do plano' : 
                        'Crie um plano de aula estruturado'}
@@ -251,7 +251,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                     initial={{ width: 0 }}
                     animate={{ width: `${progresso}%` }}
                     transition={{ duration: 0.3 }}
-                    className="h-full bg-white rounded-full"
+                    className="h-full bg-white dark:bg-white/90 rounded-full"
                   />
                 </div>
               </div>
@@ -267,14 +267,14 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                   <button
                     key={step.id}
                     onClick={() => setEtapa(step.id as any)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+                    className={`flex items-center justify-center gap-2 px-2 sm:px-3 py-2 rounded-lg transition-all ${
                       etapa === step.id 
                         ? 'bg-white text-blue-600 shadow-lg' 
                         : 'text-blue-100 hover:bg-blue-700'
                     }`}
                   >
                     <step.icon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{step.label}</span>
+                    <span className="hidden sm:inline text-sm font-medium">{step.label}</span>
                     {index < 3 && (
                       <FiChevronRight className={`h-4 w-4 ${
                         etapa === step.id ? 'text-blue-600' : 'text-blue-300'
@@ -312,7 +312,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                             type="text"
                             value={plano.titulo}
                             onChange={(e) => setPlano({...plano, titulo: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                             placeholder="Ex: Introdução à Álgebra Linear"
                           />
                         </motion.div>
@@ -330,7 +330,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                             type="text"
                             value={plano.disciplina}
                             onChange={(e) => setPlano({...plano, disciplina: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                             placeholder="Ex: Matemática"
                           />
                         </motion.div>
@@ -348,7 +348,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         <textarea
                           value={plano.descricao}
                           onChange={(e) => setPlano({...plano, descricao: e.target.value})}
-                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl h-32 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg h-32 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="Descreva os objetivos principais deste plano de aula..."
                         />
                       </motion.div>
@@ -360,7 +360,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         transition={{ delay: 0.4 }}
                         className="grid grid-cols-1 md:grid-cols-3 gap-6"
                       >
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Tipo de Plano
                           </label>
@@ -375,7 +375,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                           </select>
                         </div>
                         
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
+                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Duração Total (min)
                           </label>
@@ -387,7 +387,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                           />
                         </div>
                         
-                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl">
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Nº de Aulas
                           </label>
@@ -409,7 +409,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl"
+                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg"
                       >
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                           <FiTarget className="text-blue-500" />
@@ -491,7 +491,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: index * 0.1 }}
-                              className="border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md transition-shadow"
+                              className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
@@ -576,7 +576,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                           ))}
                           
                           {plano.conteudos.length === 0 && (
-                            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
+                            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
                               <FiLayers className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                               <p className="text-gray-500 dark:text-gray-400">
                                 Nenhuma etapa adicionada. Clique em "Adicionar Etapa" para começar.
@@ -595,7 +595,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl"
+                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg"
                       >
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                           <FiTool className="text-blue-500" />
@@ -657,7 +657,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl"
+                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg"
                       >
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                           <FiAward className="text-blue-500" />
@@ -667,7 +667,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         <textarea
                           value={plano.avaliacao}
                           onChange={(e) => setPlano({...plano, avaliacao: e.target.value})}
-                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl h-32 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg h-32 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
                           placeholder="Descreva como será avaliado o aprendizado..."
                         />
                       </motion.div>
@@ -677,7 +677,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.3 }}
-                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl"
+                        className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg"
                       >
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                           <FiUsers className="text-blue-500" />
@@ -722,7 +722,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                   {/* ETAPA 4: Revisão */}
                   {etapa === 'revisao' && (
                     <div className="space-y-6">
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6">
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                           <FiCheckCircle className="text-blue-600" />
                           Resumo do Plano
@@ -771,7 +771,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                       </div>
                       
                       {/* Ações Finais */}
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Próximos Passos</h4>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -780,7 +780,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                             whileTap={{ scale: 0.98 }}
                             onClick={handleSalvar}
                             disabled={carregando}
-                            className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                           >
                             <FiSave />
                             {carregando ? 'Salvando...' : 'Apenas Salvar Plano'}
@@ -792,7 +792,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                               whileTap={{ scale: 0.98 }}
                               onClick={handleGerarAulas}
                               disabled={carregando}
-                              className="p-4 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                              className="p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                               <FiCalendar />
                               {carregando ? 'Gerando...' : 'Salvar e Gerar Aulas'}

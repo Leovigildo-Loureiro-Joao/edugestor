@@ -190,20 +190,20 @@ const TurmaForm = () => {
 
 
   return (
-    <div className="min-h-screen rounded-2xl shadow-sm p-8 bg-white">
+    <div className="min-h-screen rounded-2xl shadow-sm p-4 sm:p-8 bg-white dark:bg-gray-800">
       <div className="max-w-6xl mx-auto px-4">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between mb-8">
           <div className='w-full'>
-            <div className='flex flex-row-reverse justify-between items-center'>
+            <div className='flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3'>
               <button
                 onClick={handleCancel}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-white mb-4 transition-colors"
               >
                 <FiArrowLeft size={20} />
                 <span className="font-medium">Voltar para Turmas</span>
               </button>
-              <h1 className="text-xl lg:text-2xl font-bold text-primary-600">
+              <h1 className="text-xl sm:text-2xl font-bold text-primary-600 leading-tight">
                 {isEditing ? 'Editar Turma' : 'Nova Turma'}
               </h1>
             </div>
@@ -221,7 +221,7 @@ const TurmaForm = () => {
                   transition={{ delay: 0.5 }}  className="flex w-full flex-col gap-6">
                   {/* Nome da Turma */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Nome da Turma *
                     </label>
                     <div className="relative">
@@ -231,7 +231,7 @@ const TurmaForm = () => {
                         required
                         value={formData.nome_turma || ''}
                         onChange={(e) => handleChange('nome_turma', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="Ex: Turma A, 1º Ano A"
                       />
                     </div>
@@ -239,7 +239,7 @@ const TurmaForm = () => {
 
                   {/* Ano Lectivo */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Ano Lectivo *
                     </label>
                     <div className="relative">
@@ -249,7 +249,7 @@ const TurmaForm = () => {
                         required
                         value={formData.ano_lectivo || ''}
                         onChange={(e) => handleChange('ano_lectivo', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="Ex: 2024"
                       />
                     </div>
@@ -257,7 +257,7 @@ const TurmaForm = () => {
 
                   {/* Curso */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Curso *
                     </label>
                     <SelectTyped
@@ -271,7 +271,7 @@ const TurmaForm = () => {
 
                   {/* Turno */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Turno *
                     </label>
                     <SelectTyped
@@ -284,7 +284,7 @@ const TurmaForm = () => {
 
                   {/* Professor */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Professor *
                     </label>
                     <div className="relative">
@@ -294,7 +294,7 @@ const TurmaForm = () => {
                         required
                         value={formData.professor || ''}
                         onChange={(e) => handleChange('professor', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="Nome do professor"
                       />
                     </div>
@@ -309,7 +309,7 @@ const TurmaForm = () => {
 
                   {/* Turno */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Estado *
                     </label>
                     <SelectTyped
@@ -322,7 +322,7 @@ const TurmaForm = () => {
 
                    {/* Capacidade Máxima */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Capacidade Máxima *
                     </label>
                     <div className="relative">
@@ -335,14 +335,14 @@ const TurmaForm = () => {
                         disabled={!cursoSel}
                         value={formData.capacidade_maxima || 0}
                         onChange={(e) => handleChange('capacidade_maxima', parseInt(e.target.value))}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                       />
                     </div>
                   </div>
 
                   {/* Professor */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Descricao *
                     </label>
                     <div className="relative">
@@ -352,7 +352,7 @@ const TurmaForm = () => {
                         value={formData.descricao || ''}
                         rows={3}
                         onChange={(e) => handleChange('descricao', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="A descrição da turma"
                       />
                     </div>
@@ -363,11 +363,11 @@ const TurmaForm = () => {
              </div>
 
               {/* Botões */}
-              <div className="justify-end  flex space-x-4 pt-6 border-t border-gray-200">
+              <div className="justify-end  flex space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-6 py-3 w-min border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 font-medium"
+                  className="px-6 py-3 w-min border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium"
                 >
                   Cancelar
                 </button>
@@ -391,7 +391,7 @@ const TurmaForm = () => {
             transition={{ delay: 0.4 }}
           className='flex justify-center flex-col items-center h-96'>
                <div className='flex flex-col items-center w-96 text-center'>
-                  <FiBook className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                  <FiBook className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600 dark:text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Adicione um curso para adicionar turmas</h3>
                   <p className="mt-1 text-wrap text-sm text-gray-500 dark:text-gray-400">
                     Ainda não possuis cursos pois cada turma neste sistema esta

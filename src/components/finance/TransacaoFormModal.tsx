@@ -141,21 +141,21 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className={`p-6 ${tipo === 'entrada' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-pink-600'}`}>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
+                  <div className="p-2 bg-white/20 dark:bg-white/10 rounded-lg">
                     {tipo === 'entrada' ? (
                       <FiTrendingUp className="text-white text-xl" />
                     ) : (
@@ -181,7 +181,7 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10"
+                  className="p-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 dark:bg-white/5"
                 >
                   <FiX className="w-5 h-5" />
                 </button>

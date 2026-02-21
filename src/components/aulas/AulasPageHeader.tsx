@@ -20,13 +20,13 @@ export const AulasPageHeader: React.FC<AulasPageHeaderProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="mb-4 flex justify-between items-center flex-wrap gap-4"
     >
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-start sm:items-center gap-4 mb-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Aulas</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Gestão de Aulas</h1>
             <SyncStatusBadge tableName="aulas" />
           </div>
-          <p className="text-gray-600 dark:text-gray-200 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-200 mt-1">
             Planeie, ministre e analise o impacto das suas aulas
           </p>
         </div>
@@ -60,4 +60,3 @@ export const AulasPageHeader: React.FC<AulasPageHeaderProps> = ({
     </motion.div>
   );
 };
-

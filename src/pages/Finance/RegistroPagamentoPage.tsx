@@ -9,6 +9,7 @@ import { mesesUtils } from '../../utils/meses.ts';
 import { DadosPagamentoCash } from '../../types/transacao.ts';
 import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
 
 
 export const RegistroPagamentoPage: React.FC = () => {
@@ -178,11 +179,7 @@ useEffect(() => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando pagamento" subtitle="Buscando dados do aluno e propinas..." />;
   }
 
   if (!aluno) {

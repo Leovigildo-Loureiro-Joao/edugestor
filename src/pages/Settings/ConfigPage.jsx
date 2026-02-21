@@ -32,7 +32,7 @@ export const ConfiguracoesPage = () => {
   };
 
   return (
-    <div className="min-h-screen  p-6 ">
+    <div className="min-h-screen p-4 sm:p-6 ">
       <div className="max-w-8xl mx-auto">
         
         {/* Header */}
@@ -44,11 +44,11 @@ export const ConfiguracoesPage = () => {
           <div className='flex gap-3 items-center'>
             <div className="flex items-center gap-3 mb-2">
             <FiSettings className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold dark:text-white text-gray-900">Configurações do Sistema</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold dark:text-white text-gray-900 leading-tight">Configurações do Sistema</h1>
           </div>
           <SyncStatusBadge tableName='system_config' />
           </div>
-          <p className="text-gray-600 dark:text-gray-100">Gerencie as configurações da sua escola</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-100">Gerencie as configurações da sua escola</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

@@ -6,7 +6,7 @@ Sistema de gestão escolar com foco em:
 - planeamento estratégico (metas, tarefas, rotinas, eventos);
 - operação offline-first com sincronização.
 
-Atualizado em: 14/02/2026
+Atualizado em: 21/02/2026
 
 ## Stack atual
 - Frontend: React 19 + Vite 7
@@ -40,6 +40,45 @@ Atualizado em: 14/02/2026
 - Financeiro (pagamentos, propinas, transações)
 - Estratégia (metas, tarefas, planeamento, eventos)
 - Administração de utilizadores
+
+## Lógica de negócio (resumo funcional)
+### Núcleo do produto
+- Gestão escolar operacional e gerencial com visão unificada de Académico, Financeiro e Estratégia.
+- Suporte a operação offline-first para contextos de conectividade instável.
+
+### Entidades e relações principais
+- `Curso` agrupa `Turmas`.
+- `Turma` agrupa `Alunos` e recebe `Aulas`.
+- `Aluno` relaciona-se com frequência, notas e pagamentos.
+- `Propina/Transação` representa receitas e despesas.
+- `Meta/Tarefa/Evento` suporta planeamento e execução estratégica.
+- Escopo de dados por instituição via `instituicao_id`.
+
+### Regras financeiras principais
+- Dashboard financeiro consolida:
+  - total recebido;
+  - total de despesas;
+  - lucro líquido;
+  - saldo atual (`entradas - saídas`);
+  - taxa de pagamento (alunos em dia vs total).
+- Suporte a alocação de recursos/lucro para metas.
+
+### Regras académicas principais
+- Aulas, frequência e avaliações alimentam métricas de desempenho.
+- Planeamento semanal/mensal orienta execução pedagógica.
+- Dashboards apresentam indicadores para decisão operacional e gestão.
+
+### Sincronização e consistência
+- Escrita local em Dexie e sincronização com Supabase quando online.
+- Eventos de atualização (`db-changed`) para refresco reativo das telas.
+- Indicadores de pendência/sincronização por entidade crítica.
+
+## Atualizações recentes
+- Consolidação do modo escuro nas áreas de Finanças e Dashboard.
+- Ajustes de consistência visual em componentes de tabela, cards e modais.
+- Melhorias de responsividade em modais full-height para mobile.
+- Refinos em contrastes de texto/borda para legibilidade em dark mode.
+- Organização progressiva de domínio em Estratégia/Planeamento mantida.
 
 ## Requisitos
 - Node.js 20+ (recomendado para Vite 7)
@@ -123,4 +162,3 @@ Checklist recomendado antes de deploy:
 ### 5) Estado e sincronização
 **Atual:** Zustand para estado global essencial + serviços Dexie/Supabase para dados.  
 **Próximo passo (planeado):** avaliar React Query para cache server-side e revalidação.
-

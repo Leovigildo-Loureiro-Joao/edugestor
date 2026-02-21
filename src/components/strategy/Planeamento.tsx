@@ -240,7 +240,7 @@ async function salvarPlaneamento(
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center justify-between">
         <div>
           <div className="flex gap-3">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex gap-3 items-center">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex gap-3 items-center">
               <FiBarChart2 />
               Planeamento Escolar
             
@@ -249,22 +249,22 @@ async function salvarPlaneamento(
           </div>
 
           
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
             Gerencie e acompanhe o progresso dos planos da escola
           </p>
         </div>
         
         {/* ✅ BOTÕES SIMPLES - SÓ NAVEGAM! */}
         <div className="flex items-center space-x-3">
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             {botoes.map((r) => (
               <button
                 key={r.id}
                 onClick={() => {navigate(`/estrategia/planeamento/${r.id}`);setPlanejamento(null);}}
                 className={`px-4 py-2 rounded-lg transition-all ${
                   viewMode === r.id 
-                    ? 'bg-white shadow font-medium' 
-                    : 'hover:bg-gray-200'
+                    ? 'bg-white dark:bg-gray-800 shadow font-medium dark:text-gray-100' 
+                    : 'hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-gray-200'
                 }`}
               >
                 {r.label}
@@ -297,7 +297,7 @@ async function salvarPlaneamento(
             {metas.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-gray-700 rounded-xl">
                 <FiTarget className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
                   Nenhuma meta cadastrada
                 </h3>
                 <button 

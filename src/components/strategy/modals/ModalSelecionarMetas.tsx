@@ -111,12 +111,12 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
           onClick={onClose}
         />
         
-        <div className="flex min-h-full items-center justify-center p-4">
+        <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -124,7 +124,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <FiTarget className="h-6 w-6 text-white" />
-                  <h2 className="text-xl font-bold text-white">
+                  <h2 className="text-lg sm:text-xl font-bold text-white">
                     Conectar Metas ao Planejamento {tipoPlano}
                   </h2>
                 </div>
@@ -189,7 +189,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
                     <div
                       key={meta.id}
                       onClick={() => toggleMeta(meta.id)}
-                      className={`p-4 border rounded-xl cursor-pointer transition-all ${
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
                         selecionadas.includes(meta.id)
                           ? 'border-purple-500 bg-purple-50'
                           : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 hover:bg-gray-50 dark:bg-gray-900'
@@ -251,7 +251,7 @@ export const ModalSelecionarMetas: React.FC<ModalSelecionarMetasProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   Cancelar
                 </button>

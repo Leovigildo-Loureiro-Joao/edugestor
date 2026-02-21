@@ -23,6 +23,7 @@ import { FrequenciasRegistradasView } from '../../components/attendance/Frequenc
 import { Aula } from '../../types/aula.ts';
 import { Student } from '../../types/aluno.ts';
 import { Turma } from '../../types/turma.ts';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
 import { SelectTyped } from '../../components/students/StudentForm.tsx';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail.tsx';
@@ -30,6 +31,9 @@ import { useAlert } from '../../components/ui/AlertBadge.tsx';
 import { frequenciaService } from '../../services/database/frequenciaService.ts';
 import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
 import { getPendingCount } from '../../utils/emitPendingSync.ts';
+import TabNavigation from '../../components/ui/TabNavigation.tsx';
+import { usePagination } from '../../hooks/usePagination.ts';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 
 // Tipos de dados
 
@@ -193,6 +197,21 @@ export const FrequenciaPage: React.FC = () => {
   });
 
   const turmasSelect: string[] = ['Todas Turmas', ...turmas.map(t => t.nome_turma)];
+  const {
+    page: pendentesPage,
+    setPage: setPendentesPage,
+    pageSize: pendentesPageSize,
+    setPageSize: setPendentesPageSize,
+    totalItems: pendentesTotalItems,
+    totalPages: pendentesTotalPages,
+    startItem: pendentesStartItem,
+    endItem: pendentesEndItem,
+    paginatedItems: aulasPendentesPaginadas
+  } = usePagination<Aula>({
+    items: aulasFiltradas,
+    initialPageSize: 8,
+    resetDeps: [aulasFiltradas, filtroData, filtroTurma, view]
+  });
 
   // Configuração das abas
   const tabs: TabConfig[] = [
@@ -276,51 +295,27 @@ export const FrequenciaPage: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="mb-8 "
         >
-          <div className="flex items-center justify-between mb-6 flex-wrap">
+          <div className="flex items-center justify-between gap-6 flex-wrap">
             <div className="flex items-center gap-3 px-4">
               <div>
                 <div className='flex gap-3 items-center'>
-                  <h1 className="text-3xl font-bold text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   Controle de Frequência
                 </h1>
                   <SyncStatusBadge tableName='frequencias'/>
                 </div>
                 
-                <p className="text-gray-600">Gerencie a presença dos alunos de forma eficiente</p>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Gerencie a presença dos alunos de forma eficiente</p>
               </div>
             </div>
-            <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="p-2"
-          >
-            <div className="flex space-x-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleViewChange(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    view === tab.id
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  <tab.icon />
-                  <span className="font-medium">{tab.label}</span>
-                  {tab.count !== null && (
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      view === tab.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-200 dark:bg-gray-500'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+            <TabNavigation 
+              activeTab={view}
+              tabs={tabs}
+              onTabChange={(tabId) => {
+                navigate(`/frequencia/${tabId}`);
+              }}
+              path='/frequencia/'
+            />
           </div>
 
           
@@ -340,19 +335,19 @@ export const FrequenciaPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white p-6 rounded-2xl shadow-lg mb-8 border border-gray-100"
+          className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mb-8 border border-gray-100 dark:border-gray-700"
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
               <FiFilter className="text-blue-600" />
             </div>
-            <h3 className="font-semibold text-gray-900 text-lg">Filtros</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">Filtros</h3>
           </div>
           
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <span className="flex items-center gap-2">
                     <FiCalendar size={14} />
                     Data Específica
@@ -363,12 +358,12 @@ export const FrequenciaPage: React.FC = () => {
                   type="date"
                   value={filtroData}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroData(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <span className="flex items-center gap-2">
                     <FiUsers size={14} />
                     Turma
@@ -386,7 +381,7 @@ export const FrequenciaPage: React.FC = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
-                  className="w-full mt-6 h-12 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-300 rounded-xl hover:from-gray-200 hover:to-gray-100 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                  className="w-full mt-6 h-12 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-100 dark:hover:from-gray-600 dark:hover:to-gray-700 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
                 >
                   <FiRefreshCw size={16} />
                   Limpar Filtros
@@ -406,14 +401,11 @@ export const FrequenciaPage: React.FC = () => {
             transition={{ duration: 0.3 }}
           >
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <motion.div
-                  
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full mb-4"
-                />
-                <p className="text-gray-600 font-medium">Carregando dados...</p>
-              </div>
+              <PageLoader
+                title="Carregando frequências"
+                subtitle="Buscando aulas, turmas e registros..."
+                fullScreen={false}
+              />
             ) : (
               <div>
                 {view === 'pendentes' && (
@@ -423,13 +415,13 @@ export const FrequenciaPage: React.FC = () => {
                     animate="visible"
                     className="space-y-4"
                   >
-                    {aulasFiltradas.map((aula, index) => (
+                    {aulasPendentesPaginadas.map((aula, index) => (
                       <motion.div
                         key={aula.id}
                         variants={itemVariants}
                         whileHover="hover"
                         custom={index}
-                        className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
+                        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
                       >
                         <div className="p-6">
                           <div className="flex justify-between items-center">
@@ -438,7 +430,7 @@ export const FrequenciaPage: React.FC = () => {
                                 <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl">
                                   <FiBook className="h-5 w-5 text-blue-600" />
                                 </div>
-                                <h3 className="font-bold text-gray-900 text-lg">
+                                <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg">
                                   {aula.disciplina || 'Aula Sem Disciplina'}
                                 </h3>
                                 <motion.span
@@ -450,7 +442,7 @@ export const FrequenciaPage: React.FC = () => {
                                 </motion.span>
                               </div>
                               
-                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 ml-11">
+                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400 ml-11">
                                 <span className="flex items-center gap-2">
                                   <FiCalendar size={14} className="text-gray-400" />
                                   <span className="font-medium">
@@ -468,7 +460,7 @@ export const FrequenciaPage: React.FC = () => {
                                 {aula.tema_aula && (
                                   <span className="flex items-center gap-2">
                                     <FiTarget size={14} className="text-gray-400" />
-                                    <span className="text-gray-500 truncate max-w-xs">{aula.tema_aula}</span>
+                                    <span className="text-gray-500 dark:text-gray-400 truncate max-w-xs">{aula.tema_aula}</span>
                                   </span>
                                 )}
                               </div>
@@ -491,19 +483,33 @@ export const FrequenciaPage: React.FC = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-16 bg-white rounded-2xl border border-gray-200 shadow-sm"
+                        className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm"
                       >
                         <div className="inline-flex p-4 bg-green-100 rounded-full mb-4">
                           <FiCheckCircle className="h-12 w-12 text-green-600" />
                         </div>
-                        <h3 className="mt-4 text-xl font-bold text-gray-900">
+                        <h3 className="mt-4 text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                           Nenhuma frequência pendente!
                         </h3>
-                        <p className="text-gray-600 mt-2 max-w-md mx-auto">
+                        <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-md mx-auto">
                           Todas as frequências estão em dia. Continue o bom trabalho! 🎉
                         </p>
                       </motion.div>
                     )}
+                    <PaginationControls
+                      page={pendentesPage}
+                      totalPages={pendentesTotalPages}
+                      totalItems={pendentesTotalItems}
+                      startItem={pendentesStartItem}
+                      endItem={pendentesEndItem}
+                      pageSize={pendentesPageSize}
+                      onPageChange={setPendentesPage}
+                      onPageSizeChange={(size) => {
+                        setPendentesPageSize(size);
+                        setPendentesPage(1);
+                      }}
+                      sizeOptions={[8, 16, 30]}
+                    />
                   </motion.div>
                 )}
 
@@ -544,9 +550,9 @@ export const FrequenciaPage: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25 }}
-              className="fixed inset-0 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
             >
-              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl">
                 <ModalFrequencia
                   aula={aulaSelecionada}
                   onRegistrarFrequencia={handleRegistrarFrequencia}

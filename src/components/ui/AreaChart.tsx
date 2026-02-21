@@ -58,7 +58,7 @@ const AreaChart: React.FC<AreaChartProps> = ({
     <div className="p-1">
       {titulo && (
         <div className="mb-4">
-          <h3 className="font-bold text-gray-800 flex items-center">
+          <h3 className="font-bold text-gray-800 dark:text-white flex items-center">
             {titulo}
             {descricao && (
               <span className="ml-2" title={descricao}>

@@ -138,12 +138,12 @@ export const CourseForm = () => {
             Voltar para Cursos
           </button>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                 {isEditing ? 'Editar Curso' : 'Novo Curso'}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
                 {isEditing ? 'Atualize as informações do curso' : 'Preencha as informações para criar um novo curso'}
               </p>
             </div>

@@ -147,8 +147,8 @@ const planeamentoSemanal = useMemo(() => {
         
 
     return <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
                 <FiTarget className="mr-2" />
                 Planeamento e Monitoramento
               </h2>
@@ -176,7 +176,7 @@ const planeamentoSemanal = useMemo(() => {
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-medium">{aula.disciplina}</div>
-                          <div className="text-sm text-gray-600">{aula.turmas?.nome_turma}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">{aula.turmas?.nome_turma}</div>
                         </div>
                         <span className="text-sm font-semibold">{aula.hora_inicio || '--:--'}-{aula.hora_fim || '--:--'}</span>
                       </div>
@@ -266,7 +266,7 @@ const planeamentoSemanal = useMemo(() => {
                   </thead>
                   <tbody>
                     {planeamentoSemanal.map((aula) => (
-                      <tr key={aula.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <tr key={aula.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="py-3 px-4">
                           <div className="font-medium">{aula.dia}</div>
                           <div className="text-sm text-gray-500">{aula.data}</div>
@@ -348,7 +348,7 @@ const planeamentoSemanal = useMemo(() => {
                         {insight.icone}
                         <div>
                           <div className="font-medium">{insight.titulo}</div>
-                          <div className="text-sm text-gray-600">{insight.descricao}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">{insight.descricao}</div>
                         </div>
                       </div>
                     </div>
@@ -372,7 +372,7 @@ const planeamentoSemanal = useMemo(() => {
                     </div>
                   ))}
                 </div>
-                <button className="w-full mt-4 px-4 py-2 border border-dashed rounded-lg text-gray-600 hover:text-gray-800">
+                <button className="w-full mt-4 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
                   + Adicionar nova tarefa
                 </button>
               </div>

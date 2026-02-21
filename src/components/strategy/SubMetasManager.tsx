@@ -79,7 +79,7 @@ export const SubMetasManager: React.FC<SubMetasManagerProps> = ({ meta, onUpdate
               initial={{x:-20,opacity:0}}
               animate={{x:0,opacity:1}} className=" ">
       <div className="flex justify-between items-center pb-4">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
           Sub-metas / Ações
         </h3>
         <button

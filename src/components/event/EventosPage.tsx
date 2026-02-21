@@ -348,10 +348,10 @@ const EventosPage = () => {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
                 {isEditMode ? ' Editar Evento' : ' Novo Evento'}
               </h1>
-              <p className="text-blue-100">
+              <p className="text-sm sm:text-base text-blue-100">
                 {isEditMode 
                   ? 'Atualize os detalhes do evento' 
                   : 'Crie um novo evento para o calendário do centro'}
@@ -391,7 +391,7 @@ const EventosPage = () => {
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
             >
               <div className="border-b p-6">
-                <h2 className="text-xl font-bold flex items-center">
+                <h2 className="text-lg sm:text-xl font-bold flex items-center">
                   <FiCalendar className="mr-2" />
                   Detalhes do Evento
                 </h2>

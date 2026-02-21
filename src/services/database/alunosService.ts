@@ -14,6 +14,7 @@ import { emitPendingSync } from "../../utils/emitPendingSync";
 import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../utils/idGenarator";
+import { paymentChecker } from "./paymentcheker";
 
 
 
@@ -477,6 +478,10 @@ async getAllStudents(): Promise<Student[]> {
   },
 
   async verificarAlunos(){
-    
+    try {
+      await paymentChecker.verificarPagamentosAtrasados();
+    } catch (error) {
+      console.error('Erro ao verificar status financeiro dos alunos:', error);
+    }
   }
 };

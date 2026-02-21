@@ -61,10 +61,10 @@ const SyncMonitorPage: React.FC = () => {
 
   return (
     <div className="min-h-screen p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Sync Monitor</h1>
-          <p className="text-gray-600 dark:text-gray-300">Monitoramento da fila: pending, failed & orphans</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Sync Monitor</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Monitoramento da fila: pending, failed & orphans</p>
         </div>
         <button
           onClick={() => withBusy(loadStats)}

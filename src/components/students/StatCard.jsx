@@ -4,11 +4,11 @@ import { ProgressBar } from "../../pages/Grades/NotasPage";
 
   export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend,funcion=()=>{},progress=false,percent=-1}) => {
     const colorClasses = {
-        blue: { bg: 'bg-white dark:bg-gray-800',bordBg:'bg-blue-500', iconBg: 'bg-blue-100', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
-        green: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-green-500',iconBg: 'bg-green-100', text: 'text-green-600', value: 'text-green-600' },
-        orange: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-orange-500',iconBg: 'bg-orange-100', text: 'text-orange-600', value: 'text-orange-600' },
-        red: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-red-500',iconBg: 'bg-red-100', text: 'text-red-600', value: 'text-red-600' },
-        purple: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-purple-300',iconBg: 'bg-purple-100', text: 'text-purple-600', value: 'text-purple-600' },
+        blue: { bg: 'bg-white dark:bg-gray-800',bordBg:'bg-blue-500 ', iconBg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
+        green: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-green-500',iconBg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-600', value: 'text-green-600' },
+        orange: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-orange-500',iconBg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-600', value: 'text-orange-600' },
+        red: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-red-500',iconBg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-600', value: 'text-red-600' },
+        purple: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-purple-300',iconBg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-600', value: 'text-purple-600' },
     };
 
     const colors= colorClasses[color] || colorClasses.blue;

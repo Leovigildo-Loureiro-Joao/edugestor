@@ -12,7 +12,7 @@ import { AlocacaoRecurso, Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
 import { syncManager } from './syncManager';
-import { EventFormData, Meta, PlanoAcao, Rotina, Tarefa } from '../../types/eventos';
+import { EventFormData, Meta, Tarefa } from '../../types/eventos';
 import { SystemConfig } from '../../types/config';
 import { UserProfile } from '../../types/profile';
 import { Notificacao } from './notificacaoService';
@@ -60,7 +60,6 @@ class EduGestorDatabase extends Dexie {
   tarefas!: Table<Tarefa, string>;
   metas!: Table<Meta, string>;
   evento!: Table<EventFormData, string>;
-  rotinas!: Table<Rotina, string>;
   system_config!: Table<SystemConfig, string>;
   syncQueue!: Table<SyncQueueItem, number>;
   instituicao!: Table<Instituicao, string>;

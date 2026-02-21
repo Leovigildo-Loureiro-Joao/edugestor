@@ -36,13 +36,13 @@ export const ConfiguracoesSeguranca = () => {
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Segurança</h2>
+      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-6">Configurações de Segurança</h2>
       
       <div className="space-y-8">
         
         {/* Alteração de Senha */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Alterar Senha</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Alterar Senha</h3>
           <form onSubmit={alterarSenha} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -98,7 +98,7 @@ export const ConfiguracoesSeguranca = () => {
 
         {/* Configurações de Sessão */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Sessão e Autenticação</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Sessão e Autenticação</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -135,7 +135,7 @@ export const ConfiguracoesSeguranca = () => {
 
         {/* Políticas de Segurança */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Políticas de Segurança</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Políticas de Segurança</h3>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ export const ConfiguracoesSeguranca = () => {
 
         {/* IPs Permitidos */}
         <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">IPs Permitidos (Opcional)</h3>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">IPs Permitidos (Opcional)</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Adicione endereços IP específicos para acesso restrito. Deixe vazio para permitir de qualquer local.
           </p>

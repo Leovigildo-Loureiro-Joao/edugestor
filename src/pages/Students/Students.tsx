@@ -21,6 +21,7 @@ import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { StudentsTable } from '../../components/students/StudentsTable';
 import { ReforcoSectionModal } from '../../components/students/ReforcoSectionModal';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 const Students = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,6 +30,7 @@ const Students = () => {
   const [filtroProfessor, setFiltroProfessor] = useState('Todos Professores');
   const [filtroTurma, setFiltroTurma] = useState('Todas Turmas');
   const [filtroEstado, setFiltroEstado] = useState('Todos estados');
+  const [filtroDisciplinaReforco, setFiltroDisciplinaReforco] = useState('Todas disciplinas de reforço');
   const [isCartao, setCartao] = useState(false);
   const [isExpanded, setExpanded] = useState(false);
   const [filtroAnoLectivo, setFiltroAnoLectivo] = useState('Todos ano lectivos');
@@ -128,6 +130,13 @@ const Students = () => {
 
   const estadoSet = ["Todos estados", "ativo", "inativo", "transferido", "desistente"];
   const anoLectivoSet = ["Todos ano lectivos", "2024-2025", "2025-2026", "2027-2028", "2028-2029", "2030-2031"];
+  const disciplinasReforcoSet = useMemo(() => {
+    const disciplinas = new Set<string>();
+    students
+      .filter((student) => student.tipo_matricula === 'reforco_personalizado')
+      .forEach((student) => (student.disciplinas_reforco || []).forEach((disc) => disciplinas.add(disc)));
+    return ['Todas disciplinas de reforço', ...Array.from(disciplinas).sort((a, b) => a.localeCompare(b))];
+  }, [students]);
 
   // Extrair projfessores e turmas únicos
   const { professores, turmas } = useMemo(() => {
@@ -213,8 +222,20 @@ const Students = () => {
       const matchesEstado = filtroEstado === 'Todos estados' || student.estado === filtroEstado;
       const matchesAnoLectivo = filtroAnoLectivo === 'Todos ano lectivos' || student.ano_lectivo === filtroAnoLectivo;
       const matchesCartap = isCartao ? student.cartao_pago === true : true;
+      const matchesDisciplinaReforco =
+        filtroDisciplinaReforco === 'Todas disciplinas de reforço' ||
+        (student.tipo_matricula === 'reforco_personalizado' &&
+          (student.disciplinas_reforco || []).includes(filtroDisciplinaReforco));
       
-      return matchesSearch && matchesProfessor && matchesTurma && matchesAnoLectivo && matchesEstado && matchesCartap;
+      return (
+        matchesSearch &&
+        matchesProfessor &&
+        matchesTurma &&
+        matchesAnoLectivo &&
+        matchesEstado &&
+        matchesCartap &&
+        matchesDisciplinaReforco
+      );
     });
 
     const total = alunosFiltrados.length;
@@ -233,7 +254,7 @@ const Students = () => {
       cartaoPago,
       percentualCartao: total > 0 ? ((cartaoPago / total) * 100) : 0
     };
-  }, [students, searchTerm, filtroProfessor, filtroTurma, filtroAnoLectivo, filtroEstado, isCartao]);
+  }, [students, searchTerm, filtroProfessor, filtroTurma, filtroAnoLectivo, filtroEstado, isCartao, filtroDisciplinaReforco]);
 
   // Filtrar alunos para a tabela
   const filteredStudents = useMemo(() => {
@@ -247,10 +268,22 @@ const Students = () => {
       const matchesEstado = filtroEstado === 'Todos estados' || student.estado === filtroEstado;
       const matchesAnoLectivo = filtroAnoLectivo === 'Todos ano lectivos' || student.ano_lectivo === filtroAnoLectivo;
       const matchesCartap = isCartao ? student.cartao_pago === true : true;
+      const matchesDisciplinaReforco =
+        filtroDisciplinaReforco === 'Todas disciplinas de reforço' ||
+        (student.tipo_matricula === 'reforco_personalizado' &&
+          (student.disciplinas_reforco || []).includes(filtroDisciplinaReforco));
       
-      return matchesSearch && matchesProfessor && matchesTurma && matchesAnoLectivo && matchesEstado && matchesCartap;
+      return (
+        matchesSearch &&
+        matchesProfessor &&
+        matchesTurma &&
+        matchesAnoLectivo &&
+        matchesEstado &&
+        matchesCartap &&
+        matchesDisciplinaReforco
+      );
     });
-  }, [students, searchTerm, filtroProfessor, filtroTurma, filtroAnoLectivo, filtroEstado, isCartao]);
+  }, [students, searchTerm, filtroProfessor, filtroTurma, filtroAnoLectivo, filtroEstado, isCartao, filtroDisciplinaReforco]);
 
   const reforcoStudents = useMemo(
     () => filteredStudents.filter((student) => student.tipo_matricula === 'reforco_personalizado'),
@@ -452,14 +485,7 @@ const Students = () => {
 
   // Se estiver carregando
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-300">Carregando alunos...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader title="Carregando alunos" subtitle="Preparando listagem e filtros..." />;
   }
 
   return (
@@ -470,12 +496,12 @@ const Students = () => {
           <div className="flex-1">
             <motion.div className="space-y-2">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   Gestão de Alunos
                 </h1>
                 <SyncStatusBadge tableName="alunos" />
               </div>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                 Gerencie os alunos da instituição
               </p>    
             </motion.div>
@@ -599,7 +625,7 @@ const Students = () => {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
               Filtros:
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 flex-1">
               <SelectTyped 
                 vect={professores} 
                 icon={RxPerson} 
@@ -628,9 +654,51 @@ const Students = () => {
                 value={filtroAnoLectivo}
                 className="w-full"
               />
+              <SelectTyped
+                vect={disciplinasReforcoSet}
+                icon={FiLayers}
+                onChange={setFiltroDisciplinaReforco}
+                value={filtroDisciplinaReforco}
+                className="w-full"
+              />
             </div>
           </div>
         </div>
+
+        {reforcoStudents.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Subdivisão rápida por disciplina de reforço
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {disciplinasReforcoSet
+                .filter((disc) => disc !== 'Todas disciplinas de reforço')
+                .map((disciplina) => {
+                  const count = reforcoStudents.filter((student) =>
+                    (student.disciplinas_reforco || []).includes(disciplina)
+                  ).length;
+                  if (count === 0) return null;
+
+                  const isActive = filtroDisciplinaReforco === disciplina;
+                  return (
+                    <button
+                      key={disciplina}
+                      onClick={() =>
+                        setFiltroDisciplinaReforco(isActive ? 'Todas disciplinas de reforço' : disciplina)
+                      }
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {disciplina} ({count})
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         <StudentsTable
           filteredStudents={filteredStudents}

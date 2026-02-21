@@ -269,7 +269,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
   ];
 
   const statusOptions = [
-    { value: 'nao_iniciada', label: 'Não Iniciada', cor: 'bg-gray-100 text-gray-800', icon: '○' },
+    { value: 'nao_iniciada', label: 'Não Iniciada', cor: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200', icon: '○' },
     { value: 'em_andamento', label: 'Em Andamento', cor: 'bg-blue-100 text-blue-800', icon: '↻' },
     { value: 'concluida', label: 'Concluída', cor: 'bg-green-100 text-green-800', icon: '✓' },
     { value: 'atrasada', label: 'Atrasada', cor: 'bg-red-100 text-red-800', icon: '⚠' },
@@ -470,7 +470,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-900">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <div className="container mx-auto px-6 py-8">
@@ -484,11 +484,11 @@ const custoTotal = recursos.reduce((total, recurso) => {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-4xl font-bold mb-2 flex items-center">
+              <h1 className="text-2xl sm:text-4xl font-bold mb-2 flex items-center">
                 <FiTarget className="mr-3" />
                 {isEdicao ? ' Editar Meta' : ' Nova Meta'}
               </h1>
-              <p className="text-blue-100">
+              <p className="text-sm sm:text-base text-blue-100">
                 {isEdicao 
                   ? 'Atualize os detalhes da meta estratégica' 
                   : 'Defina uma nova meta para o centro educacional'}
@@ -499,7 +499,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
               <div className="mt-4 md:mt-0 flex space-x-2">
                 <button
                   onClick={handleDuplicar}
-                  className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 flex items-center"
+                  className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-gray-700 flex items-center"
                 >
                   <FiCopy className="mr-2" />
                   Duplicar
@@ -524,17 +524,17 @@ const custoTotal = recursos.reduce((total, recurso) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700"
           >
             {/* Cabeçalho do Card */}
-            <div className="border-b p-6">
+            <div className="border-b border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center space-x-4">
                 <div className="flex-1">
                   <input
                     type="text"
                     value={formData.titulo}
                     onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-                    className="text-xl font-bold bg-transparent border-none w-full focus:outline-none focus:ring-0"
+                    className="text-xl font-bold bg-transparent text-gray-900 dark:text-white border-none w-full focus:outline-none focus:ring-0"
                     placeholder="Digite o título da meta..."
                     required
                   />
@@ -558,7 +558,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                     <div className="text-2xl font-bold text-blue-600">
                       {calcularProgresso()}%
                     </div>
-                    <div className="text-xs text-gray-500">Progresso</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Progresso</div>
                   </div>
                 </div>
               </div>
@@ -568,13 +568,13 @@ const custoTotal = recursos.reduce((total, recurso) => {
             <div className="p-6">
               {/* Descrição */}
               <div className="mb-8">
-                <label className="block text-gray-700 font-semibold mb-3">
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-3">
                   Descrição da Meta
                 </label>
                 <textarea
                   value={formData.descricao}
                   onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32"
+                  className="w-full p-4 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32"
                   placeholder="Descreva em detalhes o que esta meta pretende alcançar..."
                 />
               </div>
@@ -583,7 +583,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {/* Tipo */}
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                     Tipo de Meta
                   </label>
                   <div className="space-y-2">
@@ -595,7 +595,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                         className={`w-full p-3 rounded-lg border text-left transition-all ${
                           formData.tipo === tipo.value
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                            : 'border-gray-200 hover:bg-gray-50'
+                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                         }`}
                       >
                         <div className="flex items-center">
@@ -603,7 +603,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                             {tipo.icon}
                           </span>
                           <div>
-                            <div className="font-medium">{tipo.label}</div>
+                            <div className="font-medium dark:text-gray-100">{tipo.label}</div>
                             <div className="text-xs text-gray-500">{tipo.desc}</div>
                           </div>
                         </div>
@@ -616,7 +616,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 <div className="space-y-6">
                   {/* Categoria */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Categoria
                     </label>
                     <div className="space-y-2">
@@ -628,11 +628,11 @@ const custoTotal = recursos.reduce((total, recurso) => {
                           className={`w-full p-3 rounded-lg border text-left transition-all ${
                             formData.categoria === cat.value
                               ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                              : 'border-gray-200 hover:bg-gray-50'
+                              : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                           }`}
                         >
                           <div>
-                            <div className="font-medium">{cat.label}</div>
+                            <div className="font-medium dark:text-gray-100">{cat.label}</div>
                             <div className="text-xs text-gray-500">{cat.desc}</div>
                           </div>
                         </button>
@@ -642,7 +642,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
 
                   {/* Prioridade */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                       Prioridade
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -654,7 +654,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                           className={`p-3 rounded-lg font-medium flex items-center justify-center transition-all ${
                             formData.prioridade === pri.value
                               ? `${pri.cor} ring-2 ring-offset-1`
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                           }`}
                         >
                           <span className="mr-2">{pri.icon}</span>
@@ -669,28 +669,28 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 <div className="space-y-6">
                   {/* Datas */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiCalendar className="mr-2" />
                       Período
                     </label>
                     <div className="space-y-4">
                       <div>
-                        <div className="text-sm text-gray-600 mb-1">Data Início</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Data Início</div>
                         <input
                           type="date"
                           value={formData.data_inicio}
                           onChange={(e) => setFormData({...formData, data_inicio: e.target.value})}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                         />
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600 mb-1">Data Final *</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Data Final *</div>
                         <input
                           type="date"
                           value={formData.data_fim}
                           onChange={(e) => setFormData({...formData, data_fim: e.target.value})}
                           min={formData.data_inicio}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                           required
                         />
                       </div>
@@ -699,7 +699,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
 
                   {/* Responsável */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2 flex items-center">
+                    <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2 flex items-center">
                       <FiUser className="mr-2" />
                       Responsável
                     </label>
@@ -707,7 +707,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                       type="text"
                       value={formData.responsavel_principal}
                       onChange={(e) => setFormData({...formData, responsavel_principal: e.target.value})}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                       placeholder="Nome do responsável"
                     />
                   </div>
@@ -726,7 +726,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
             <div className="border-b border-gray-200 dark:border-gray-700 p-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-bold flex items-center text-gray-900 dark:text-white">
+                  <h2 className="text-lg sm:text-xl font-bold flex items-center text-gray-900 dark:text-white">
                     <FiBarChart2 className="mr-2" />
                     Indicadores de Desempenho (KPIs)
                   </h2>
@@ -1044,10 +1044,10 @@ const custoTotal = recursos.reduce((total, recurso) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700"
           >
-            <div className="border-b p-6">
-              <h2 className="text-xl font-bold flex items-center">
+            <div className="border-b border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-lg sm:text-xl font-bold dark:text-white flex items-center">
                 <FiSettings className="mr-2" />
                 Recursos e Observações
               </h2>
@@ -1056,7 +1056,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Orçamento */}
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                     Orçamento Previsto (AKZ)
                   </label>
                   <div className="relative">
@@ -1065,7 +1065,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
                       type="number"
                       value={formData.orcamento_previsto || ''}
                       onChange={(e) => setFormData({...formData, orcamento_previsto: parseFloat(e.target.value)})}
-                      className="w-full pl-10 p-3 border border-gray-300 rounded-lg"
+                      className="w-full pl-10 p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                       placeholder="0.00"
                     />
                   </div>
@@ -1073,14 +1073,14 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 
                 {/* Recursos Necessários */}
                 <div>
-  <label className="block text-gray-700 font-medium mb-2">
+  <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
     Recursos Necessários
   </label>
   
   {/* Lista de recursos */}
   <div className="space-y-2 mb-3">
     {recursos.map((recurso, index) => (
-      <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+      <div key={index} className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60">
         <div className="flex-1 flex items-center">
           <div className={`w-3 h-3 rounded-full mr-3 ${
             recurso.tipo === 'equipamento' ? 'bg-blue-500' :
@@ -1089,11 +1089,11 @@ const custoTotal = recursos.reduce((total, recurso) => {
             'bg-purple-500'
           }`}></div>
           <div>
-            <div className="font-medium">{recurso.nome}</div>
-            <div className="text-sm text-gray-500 flex items-center">
+            <div className="font-medium dark:text-gray-100">{recurso.nome}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
               <span className="mr-3">{recurso.tipo}</span>
               {recurso.quantidade && (
-                <span className="px-2 py-0.5 bg-gray-200 rounded text-xs">
+                <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded text-xs dark:text-gray-100">
                   Qtd: {recurso.quantidade}
                 </span>
               )}
@@ -1112,21 +1112,21 @@ const custoTotal = recursos.reduce((total, recurso) => {
   </div>
   
   {/* Formulário para adicionar novo recurso */}
-  <div className="border border-gray-300 rounded-lg p-4">
+  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Nome do Recurso</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Nome do Recurso</label>
         <input
           type="text"
           value={novoRecurso.nome}
           onChange={(e) => setNovoRecurso({...novoRecurso, nome: e.target.value})}
-          className="w-full p-2 border border-gray-300 rounded"
+          className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded"
           placeholder="Ex: Impressora, Professor..."
         />
       </div>
       
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Tipo</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Tipo</label>
           <SelectTyped
             icon={null}
             vect={[{value:"equipamento",label:"Equipamento"},
@@ -1143,12 +1143,12 @@ const custoTotal = recursos.reduce((total, recurso) => {
       </div>
       
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Quantidade</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Quantidade</label>
         <input
           type="number"
           value={novoRecurso.quantidade}
           onChange={(e) => setNovoRecurso({...novoRecurso, quantidade: parseInt(e.target.value) || 1})}
-          className="w-full p-2 border border-gray-300 rounded"
+          className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded"
           placeholder="1"
           min="1"
         />
@@ -1157,19 +1157,19 @@ const custoTotal = recursos.reduce((total, recurso) => {
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Custo Estimado (AKZ)</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Custo Estimado (AKZ)</label>
         <input
           type="number"
           value={novoRecurso.custo || ''}
           onChange={(e) => setNovoRecurso({...novoRecurso, custo: parseFloat(e.target.value)})}
-          className="w-full p-2 border border-gray-300 rounded"
+          className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded"
           placeholder="0.00"
           step="0.01"
         />
       </div>
       
       <div>
-        <label className="block text-sm text-gray-600 mb-1">Prioridade</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Prioridade</label>
          <SelectTyped
             icon={null}
             vect={[{value:"baixa",label:"Baixa"},
@@ -1186,12 +1186,12 @@ const custoTotal = recursos.reduce((total, recurso) => {
     </div>
     
     <div className="mb-3">
-      <label className="block text-sm text-gray-600 mb-1">Observações</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Observações</label>
       <input
         type="text"
         value={novoRecurso.observacoes || ''}
         onChange={(e) => setNovoRecurso({...novoRecurso, observacoes: e.target.value})}
-        className="w-full p-2 border border-gray-300 rounded"
+        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded"
         placeholder="Detalhes adicionais..."
       />
     </div>
@@ -1211,13 +1211,13 @@ const custoTotal = recursos.reduce((total, recurso) => {
     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
       <div className="flex justify-between items-center">
         <div>
-          <div className="text-sm text-blue-600">Resumo de Recursos</div>
-          <div className="font-medium">
+          <div className="text-sm text-blue-600 dark:text-blue-300">Resumo de Recursos</div>
+          <div className="font-medium dark:text-gray-100">
             {recursos.length} itens • {recursos.filter(r => r.tipo === 'equipamento').length} equipamentos
           </div>
         </div>
         {custoTotal > 0 && (
-          <div className="text-lg font-bold text-blue-700">
+          <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
             {custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'AKZ' })}
           </div>
         )}
@@ -1230,8 +1230,8 @@ const custoTotal = recursos.reduce((total, recurso) => {
           </motion.div>
 
           {/* Botões de Ação */}
-          <div className="flex justify-between items-center pt-8 border-t">
-            <div className="text-gray-600">
+          <div className="flex justify-between items-center pt-8 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-gray-600 dark:text-gray-300">
               <div className="flex items-center">
                 <FiAlertCircle className="mr-2" />
                 <span>Campos com * são obrigatórios</span>
@@ -1248,7 +1248,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
               <button
                 type="button"
                 onClick={() => navigate('/estrategia/metas')}
-                className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                className="px-8 py-3 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
                 disabled={salvando}
               >
                 Cancelar

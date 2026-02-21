@@ -30,17 +30,17 @@ export const AulaQuickAddModal: React.FC<AulaQuickAddModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
           onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Adicionar Aula Rápida</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">Adicionar Aula Rápida</h3>
 
             <div className="space-y-4">
               <div>
@@ -90,4 +90,3 @@ export const AulaQuickAddModal: React.FC<AulaQuickAddModalProps> = ({
     </AnimatePresence>
   );
 };
-

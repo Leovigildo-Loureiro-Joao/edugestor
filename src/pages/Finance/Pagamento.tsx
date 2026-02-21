@@ -14,6 +14,8 @@ import { motion } from 'framer-motion';
 import { RxPerson } from 'react-icons/rx';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
 import { financeRulesService } from '../../services/finance/financeRulesService.ts';
+import { PagamentosTable } from '../../components/finance/PagamentosTable.tsx';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -266,28 +268,28 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
 
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
+              <div className="flex items-start sm:items-center gap-3">
                 <FiDollarSign className="h-8 w-8 text-green-600" />
 
-                <data  className='flex items-center gap-2'>
+                <data  className='flex flex-col sm:flex-row sm:items-center gap-2'>
 
                   <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Pagamento de Propinas</h1>
-                  <p className="text-gray-600">Gerencie os pagamentos dos estudantes por mês</p>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Pagamento de Propinas</h1>
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Gerencie os pagamentos dos estudantes por mês</p>
                 </div>
                 <SyncStatusBadge tableName='propina'   />
                 </data>
               </div>
               <div className='flex gap-2'>
                 <div className="relative ">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
                     placeholder="Nome ou número de estudante..."
-                    className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <button
@@ -371,8 +373,8 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
           animate={{opacity:1,y:0}}
            transition={{ delay: 0.5 }}
          
-          className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-            <div className="flex flex-row gap-4 justify-around">
+          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6 shadow-sm">
+            <div className="flex flex-wrap gap-4 justify-around">
 
               {/* Filtro Turma */}
               <div className='w-full'>
@@ -407,7 +409,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
                <div className='w-full'>
                 <button
                   onClick={limparFiltros}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <FiFilter size={16} />
                   Limpar Filtros
@@ -418,160 +420,69 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
 
           {/* Resumo de Filtros Ativos */}
           {(filtroTurma !== 'Todas Turmas' || filtroStatus !== 'Todos' || filtroMes !== 'Todos os Meses' || busca) && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 text-blue-700 mb-2">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/60 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
                 <FiFilter size={16} />
                 <span className="font-medium">Filtros Ativos:</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {busca && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 text-sm rounded-full">
                     Busca: "{busca}"
                   </span>
                 )}
                 {filtroTurma !== 'Todas Turmas' && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 text-sm rounded-full">
                     Turma: {filtroTurma}
                   </span>
                 )}
                 {filtroStatus !== 'Todos' && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 text-sm rounded-full">
                     Status: {filtroStatus}
                   </span>
                 )}
                 {filtroMes !== 'Todos os Meses' && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 text-sm rounded-full">
                     Mês: {filtroMes}
                   </span>
                 )}
               </div>
             </div>
           )}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}>
-             {/* Lista de Estudantes */}
-              {loading ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div  className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                  {/* Cabeçalho da Tabela */}
-                  <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">
-                    <div className="col-span-3">Estudante</div>
-                    <div className="col-span-2">Turma</div>
-                    <div className="col-span-3">Meses Pagos</div>
-                    <div className="col-span-2">Status Geral</div>
-                    <div className="col-span-2 text-center">Ação</div>
-                  </div>
+  
+          {/* Lista de Estudantes */}
 
-                  {/* Lista de Estudantes */}
-                  <div className="divide-y divide-gray-200">
-                    {alunosFiltrados.map((aluno: Student) => (
-                      <div key={aluno.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                        <div className="col-span-3">
-                          <div className="flex items-center gap-3">
-                            <div onClick={() => abrirAluno(aluno.id)} className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-200 transition-colors">
-                              <FiUser className="text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{aluno.nome_completo}</div>
-                              <div className="text-sm text-gray-500">#{aluno.numero_estudante}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-span-2 text-gray-700">
-                          { aluno.turma_nome || 'N/A'}
-                        </div>
-                        <div className="col-span-3">
-                          {/* Sempre mostra meses pagos E pendentes */}
-                          <div className="space-y-1">
-                            {/* Meses Pagos */}
-                            <div className={filtroStatus === "Pendente" ? "hidden" : "block text-sm"}>
-                              <span className="text-green-600 font-medium">Pagou:</span>{' '}
-                              {getMesesPagosFormatados(aluno, filtroMes)}
-                            </div>
-
-                            {/* Meses Pendentes */}
-                            <div className={filtroStatus === "Pago" ? "hidden" : "block text-sm"}>
-                              <span className="text-red-600 font-medium">Pendente:</span>{' '}
-                              {getMesesPendentesFormatados(aluno, filtroMes)}
-                            </div>
-                          </div>
-
-                          {/* Contadores totais */}
-                          <div className="text-xs text-gray-500 mt-1 flex gap-2">
-                            <span className={filtroStatus === "Pendente" ? "hidden" : "block"}>✓ {getMesesPagosAluno(aluno).length}</span>
-                            <span className={filtroStatus === "Pago" ? "hidden" : "block"}>✗ {getMesesPendentesAluno(aluno).length}</span>
-                          </div>
-                        </div>
-
-                        <div className="col-span-2">
-                          {(() => {
-                            const pagamentoEmDia = Pendente(aluno);
-                            return (
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                            pagamentoEmDia
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                            }`}>
-                            {pagamentoEmDia ? (
-                              <>
-                                <FiCheckCircle size={14} />
-                                Em Dia
-                              </>
-                            ) : (
-                              <>
-                                <FiClock size={14} />
-                                Pendente
-                              </>
-                            )}
-                          </span>
-                            );
-                          })()}
-                        </div>
-
-                      <div className="col-span-2 text-center justify-center flex items-center">
-                          <button
-                            onClick={() => handleSelecionarAluno(aluno)}
-                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
-                            title="Realizar pagamento (mês atual ou adiantado)"
-                          >
-                            <FiDollarSign size={16} />
-                            <span>Pagar</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Mensagem quando não há resultados */}
-                  {alunosFiltrados.length === 0 && (
-                    <div className="text-center py-12">
-                      <FiUser className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-4 text-lg font-medium text-gray-900">
-                        Nenhum estudante encontrado
-                      </h3>
-                      <p className="text-gray-500 mt-2">
-                        {busca || filtroTurma !== 'Todas Turmas' || filtroStatus !== 'Todos' || filtroMes !== 'Todos os Meses'
-                          ? 'Tente ajustar os filtros de busca'
-                          : 'Nenhum estudante cadastrado'
-                        }
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            {loading ? (
+              <PageLoader
+                title="Carregando pagamentos"
+                subtitle="Buscando alunos e situação de propinas..."
+                fullScreen={false}
+              />
+            ) : (
+              <PagamentosTable
+                alunos={alunosFiltrados}
+                filtroMes={filtroMes}
+                filtroStatus={filtroStatus}
+                getMesesPagosFormatados={getMesesPagosFormatados}
+                getMesesPendentesFormatados={getMesesPendentesFormatados}
+                getMesesPagosAluno={getMesesPagosAluno}
+                getMesesPendentesAluno={getMesesPendentesAluno}
+                Pendente={Pendente}
+                onPagar={handleSelecionarAluno}
+                onVerAluno={abrirAluno}
+              />
+            )}
           </motion.div>
-         
 
          
           {/* Histórico de Pagamentos */}
           <div className="mt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Histórico Recente de Pagamentos</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">Histórico Recente de Pagamentos</h2>
             <HistoricoPagamentos historico={historicoPagamentos} />
           </div>
 

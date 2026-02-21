@@ -1,5 +1,5 @@
 // src/pages/Turmas/TurmaDetails.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion,AnimatePresence } from 'framer-motion';
 import { 
@@ -14,7 +14,6 @@ import {
   FiActivity,
   FiTarget,
   FiPlus,
-  FiPlusCircle,
   FiTrash,
   FiCheckCircle,
   FiX
@@ -24,8 +23,7 @@ import {
   FaMedal, 
   FaAward as FaAwardSolid,
   FaChalkboardTeacher,
-  FaMoneyBill,
-  FaRegWindowMinimize
+  FaMoneyBill
 } from 'react-icons/fa';
 import { 
   RxPerson 
@@ -33,32 +31,36 @@ import {
 import { turmaService } from '../../services/database/turmas';
 import { alunosService } from '../../services/database/alunosService';
 import { HorarioAula, HorarioAulaForm, Turma } from '../../types/turma';
-import { Student } from '../../types';
-import HorarioModal from '../../components/turmas/HorarioModal';
-import { StudentModal } from '../../components/students/StudentModal';
-import { AulaCardMin } from '../../components/aulas/AulaCard.tsx';
+const HorarioModal = lazy(() => import('../../components/turmas/HorarioModal'));
+const StudentModal = lazy(() =>
+  import('../../components/students/StudentModal').then((module) => ({ default: module.StudentModal }))
+);
 import { aulaService, frequenciaService } from '../../services/database';
-import { Aula, AulaFormData } from '../../types/aula';
-import { SelectTyped } from '../../components/students/StudentForm';
-import { AulaForm } from '../../components/aulas/AulaForm';
-import {  useRef } from 'react';
-import {  FiMoreVertical } from 'react-icons/fi';
+import { Aula, AulaFormData, PlanoAula } from '../../types/aula';
+const AulaForm = lazy(() =>
+  import('../../components/aulas/AulaForm').then((module) => ({ default: module.AulaForm }))
+);
 import toast from 'react-hot-toast';
 import { AulaStatus } from '../../components/aulas/AulaCard-min';
-import { ModalFrequencia } from '../../components/attendance/FrequeciaModal';
+const ModalFrequencia = lazy(() =>
+  import('../../components/attendance/FrequeciaModal').then((module) => ({ default: module.ModalFrequencia }))
+);
 import { RegistroFrequenciaLote } from '../../types/frequencia';
 import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
 import HorarioCellMenu from '../../components/turmas/HorarioCellMenu.tsx';
-import { planoAulaService, PlanoAula } from '../../services/database/planoAulasService.ts';
+import { planoAulaService } from '../../services/database/planoAulasService.ts';
+import { AlunoDesempenho } from '../../types/aluno.ts';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
+const TurmaAlunosSection = lazy(() =>
+  import('../../components/turmas/details/TurmaAlunosSection').then((module) => ({ default: module.TurmaAlunosSection }))
+);
+const TurmaAulasSection = lazy(() =>
+  import('../../components/turmas/details/TurmaAulasSection').then((module) => ({ default: module.TurmaAulasSection }))
+);
 
 
 // Tipos atualizados para refletir o StudentForm
-export interface AlunoDesempenho extends Student {
-  media: number;
-  presenca: number;
-  ultimaAvaliacao: number;
-}
 
 interface TurmaDetailsData extends Turma {
   alunos: AlunoDesempenho[];
@@ -78,7 +80,6 @@ const TurmaDetails = () => {
   const [aulaSelect, setAulaSelect] = useState<Aula | null>(null);
   const [loading, setLoading] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<SecaoTurma>('overview');
-  const [alunosFiltrados, setAlunosFiltrados] = useState<AlunoDesempenho[]>([]);
   const [filtroTipoMatricula, setFiltroTipoMatricula] = useState<'todos' | 'regular' | 'reforco_personalizado'>('todos');
   const [filtroGrupoAprendizado, setFiltroGrupoAprendizado] = useState<string>('todos');
   const [filtroNivelConhecimento, setFiltroNivelConhecimento] = useState<string>('todos');
@@ -89,6 +90,10 @@ const TurmaDetails = () => {
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoDesempenho|null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [loadingAlunos, setLoadingAlunos] = useState(false);
+  const [loadingAulas, setLoadingAulas] = useState(false);
+  const [alunosLoaded, setAlunosLoaded] = useState(false);
+  const [aulasLoaded, setAulasLoaded] = useState(false);
   const [showPlanoModal, setShowPlanoModal] = useState(false);
   const [loadingPlanos, setLoadingPlanos] = useState(false);
   const [planosTurma, setPlanosTurma] = useState<PlanoComAulasTurma[]>([]);
@@ -97,6 +102,8 @@ const TurmaDetails = () => {
   const [aulaEditando, setAulaEditando] = useState<Aula | null>(null);
     const { confirm, ModalComponent } = useConfirmModal();
     const { showAlert } = useAlert(); 
+
+  
 
   // Grupos de aprendizado - alinhado com StudentForm
   const gruposAprendizado = [
@@ -118,14 +125,13 @@ const TurmaDetails = () => {
 };
 const registrarFrequencia = async (registros:RegistroFrequenciaLote) => {
     try {
-      console.log('📝 Registrando frequência para aula:', registros);
       await frequenciaService.registrarFrequenciaLote(registros);
       
       setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
-      console.log('✅ Frequência registrada e aula removida da lista');
       
       setTimeout(() => {
-        loadTurmaDetails();
+        setAulasLoaded(false);
+        loadAulasTurma();
       }, 500);
       
     } catch (error) {
@@ -276,10 +282,76 @@ const handleExcluirHorario = async (horarioId: string) => {
   }
 };
 
+  const loadTurmaDetails = useCallback(async () => {
+    try {
+      localStorage.setItem("last_rota", "/turmas/" + id);
+      setLoading(true);
+      const turmaData = await turmaService.findById(id || '');
+
+      if (!turmaData) {
+        setTurma(null);
+        return;
+      }
+
+      const horario = await turmaService.getHorarios(turmaData.id);
+      setTurma((prev) => ({
+        ...turmaData,
+        alunos: prev?.alunos || [],
+        horarios: horario,
+        professor: turmaData.professor || 'Professor a definir',
+        vagas: 30
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar turma:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const loadAlunosTurma = useCallback(async () => {
+    if (!id || loadingAlunos || alunosLoaded) return;
+    try {
+      setLoadingAlunos(true);
+      const alunosPromessas = await alunosService.getDesempemhoTurma(id);
+      const alunosDes = await Promise.all(alunosPromessas);
+      setTurma((prev) => (prev ? { ...prev, alunos: alunosDes } : prev));
+      setAlunosLoaded(true);
+    } catch (error) {
+      console.error('Erro ao carregar alunos da turma:', error);
+    } finally {
+      setLoadingAlunos(false);
+    }
+  }, [id, loadingAlunos, alunosLoaded]);
+
+  const loadAulasTurma = useCallback(async () => {
+    if (!id || loadingAulas || aulasLoaded) return;
+    try {
+      setLoadingAulas(true);
+      const aulasTurma = await aulaService.getAulasPorTurma(id);
+      setAulas(aulasTurma);
+      setAulasLoaded(true);
+    } catch (error) {
+      console.error('Erro ao carregar aulas da turma:', error);
+    } finally {
+      setLoadingAulas(false);
+    }
+  }, [id, loadingAulas, aulasLoaded]);
 
   useEffect(() => {
+    setAlunosLoaded(false);
+    setAulasLoaded(false);
+    setAulas([]);
     loadTurmaDetails();
-  }, [id]);
+  }, [loadTurmaDetails]);
+
+  useEffect(() => {
+    if (abaAtiva === 'overview' || abaAtiva === 'alunos') {
+      loadAlunosTurma();
+    }
+    if (abaAtiva === 'aulas') {
+      loadAulasTurma();
+    }
+  }, [abaAtiva, loadAlunosTurma, loadAulasTurma]);
 
   useEffect(() => {
     const secaoParam = seccao as SecaoTurma | undefined;
@@ -290,69 +362,7 @@ const handleExcluirHorario = async (horarioId: string) => {
     setAbaAtiva('overview');
   }, [seccao]);
 
-  useEffect(() => {
-    if (turma?.alunos) {
-      let filtered = turma.alunos;
-
-      // Filtrar por tipo de matrícula
-      if (filtroTipoMatricula !== 'todos') {
-        filtered = filtered.filter(aluno => aluno.tipo_matricula === filtroTipoMatricula);
-      }
-
-      // Filtrar por grupo de aprendizado
-      if (filtroGrupoAprendizado !== 'todos') {
-        filtered = filtered.filter(aluno => aluno.grupo_aprendizado === filtroGrupoAprendizado);
-      }
-
-      // Filtrar por nível de conhecimento
-      if (filtroNivelConhecimento !== 'todos') {
-        filtered = filtered.filter(aluno => aluno.nivel_conhecimento === filtroNivelConhecimento);
-      }
-
-      setAlunosFiltrados(filtered);
-    }
-  }, [turma, filtroTipoMatricula, filtroGrupoAprendizado, filtroNivelConhecimento]);
-
-  const loadTurmaDetails = async () => {
-    try {
-      localStorage.setItem("last_rota","/turmas/"+id)
-      setLoading(true);
-      // Carregar dados da turma
-      const turmaData = await turmaService.findById(id||'');
-      
-      if (!turmaData) {
-        setLoading(false);
-        return;
-      }
-
-      // Carregar alunos desta turma
-      const horario = await turmaService.getHorarios(turmaData.id);
-      // Transformar alunos com dados de desempenho simulados
-      const alunosDes=[]
-      const alunosComDesempenho: Promise<AlunoDesempenho>[] = await alunosService.getDesempemhoTurma(turmaData.id)
-      setAulas(await aulaService.getAulasPorTurma(turmaData.id))
-      for (const element of alunosComDesempenho) {
-        alunosDes.push(await element)
-      }
-   
-      // Dados completos da turma
-      const turmaCompleta: TurmaDetailsData = {
-        ...turmaData,
-        alunos:  alunosDes,
-        horarios: horario,
-        professor: turmaData.professor || 'Professor a definir',
-        vagas: 30 // Valor padrão
-      };
-
-      setTurma(turmaCompleta);
-      setAlunosFiltrados(alunosDes);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erro ao carregar turma:', error);
-      setLoading(false);
-    }
-  };
-
+  
   const carregarPlanosDaTurma = async () => {
     if (!id) return;
     try {
@@ -402,7 +412,8 @@ const handleExcluirHorario = async (horarioId: string) => {
         turmas: aula.turmas
       });
       await carregarPlanosDaTurma();
-      await loadTurmaDetails();
+      setAulasLoaded(false);
+      await loadAulasTurma();
     } catch (error) {
       console.error('Erro ao atualizar status da aula:', error);
       showAlert({
@@ -463,12 +474,18 @@ const getTipoMatriculaLabel = (tipo: string) => {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
+const getDiaSemanaFromDate = (dateString: string): string => {
+  const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+  const date = new Date(dateString);
+  return dias[date.getDay()];
+};
 
     const handleCriarAula = async (aulaData: AulaFormData) => {
       try {
         await aulaService.criarAula(aulaData);
         setShowForm(false);
-        await loadTurmaDetails();
+        setAulasLoaded(false);
+        await loadAulasTurma();
         toast.success('Aula criada com sucesso!');
       } catch (error: any) {
         console.error('Erro ao criar aula:', error);
@@ -497,7 +514,8 @@ const getTipoMatriculaLabel = (tipo: string) => {
         await aulaService.atualizarAula(aulaEditando.id, aulaData);
         setShowForm(false);
         setAulaEditando(null);
-        await loadTurmaDetails();
+        setAulasLoaded(false);
+        await loadAulasTurma();
         toast.success('Aula atualizada com sucesso!');
       } catch (error: any) {
         console.error('Erro ao atualizar aula:', error);
@@ -515,7 +533,7 @@ const getTipoMatriculaLabel = (tipo: string) => {
         onConfirm: async () => {
           try {
             await aulaService.deletarAula(aula.id);
-            setAulas(aulas.length==1?[]:aulas.filter(a=>a.id==aula.id))
+            setAulas(prev => prev.filter(a => a.id !== aula.id));
             toast.success('Aula excluída com sucesso!');
             showAlert({
               type: 'success',
@@ -548,7 +566,7 @@ const getTipoMatriculaLabel = (tipo: string) => {
           turma_id: quickAddTurma,
           dia_semana: getDiaSemanaFromDate(quickAddData),
           data_aula: quickAddData,
-          disciplina: turmas.find(t => t.id === quickAddTurma)?.curso_nome || '',
+          disciplina: turma?.curso_nome || '',
           hora_inicio: '08:00',
           hora_fim: '09:30',
           tema_aula: 'Aula do dia',
@@ -558,33 +576,60 @@ const getTipoMatriculaLabel = (tipo: string) => {
         
         setShowQuickAdd(false);
         setQuickAddTurma('');
-        await loadTurmaDetails();
+        setAulasLoaded(false);
+        await loadAulasTurma();
         toast.success('Aula adicionada rapidamente!');
       } catch (error) {
         toast.error('Erro ao adicionar aula rápida');
       }
     };
 
-  const top3Alunos = turma?.alunos
-    .sort((a, b) => b.media - a.media)
-    .slice(0, 3) || [];
+  const alunosFiltrados = useMemo(() => {
+    if (!turma?.alunos) return [];
+    let filtered = turma.alunos;
+    if (filtroTipoMatricula !== 'todos') {
+      filtered = filtered.filter(aluno => aluno.tipo_matricula === filtroTipoMatricula);
+    }
+    if (filtroGrupoAprendizado !== 'todos') {
+      filtered = filtered.filter(aluno => aluno.grupo_aprendizado === filtroGrupoAprendizado);
+    }
+    if (filtroNivelConhecimento !== 'todos') {
+      filtered = filtered.filter(aluno => aluno.nivel_conhecimento === filtroNivelConhecimento);
+    }
+    return filtered;
+  }, [turma?.alunos, filtroTipoMatricula, filtroGrupoAprendizado, filtroNivelConhecimento]);
+
+  const top3Alunos = useMemo(
+    () => [...(turma?.alunos || [])].sort((a, b) => b.media - a.media).slice(0, 3),
+    [turma?.alunos]
+  );
+
+  const regularCount = useMemo(
+    () => turma?.alunos.filter(a => a.tipo_matricula === 'regular').length || 0,
+    [turma?.alunos]
+  );
+
+  const reforcoCount = useMemo(
+    () => turma?.alunos.filter(a => a.tipo_matricula === 'reforco_personalizado').length || 0,
+    [turma?.alunos]
+  );
+
+  const horariosAgrupados = useMemo(() => horarios(turma), [turma]);
+  const diaSemanaAtual = useMemo(() => getDiaSemanaFromDate(new Date().toISOString()), []);
+  const horariosHoje = useMemo(
+    () => turma?.horarios.filter(e => e.dia_semana === diaSemanaAtual) || [],
+    [turma?.horarios, diaSemanaAtual]
+  );
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando turma...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader title="Abrindo detalhes da turma" subtitle="Carregando dados acadêmicos, horários e estatísticas..." />;
   }
 
   if (!turma) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Turma não encontrada</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">Turma não encontrada</h2>
           <button
             onClick={() => navigate('/turmas')}
             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
@@ -598,6 +643,8 @@ const getTipoMatriculaLabel = (tipo: string) => {
   const week = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 
  function horarios(turma: Turma): HorarioAula[][] {
+  if(!turma)
+    return [];
   const horarios = turma.horarios;
   if (!horarios || horarios.length === 0) {
     return [];
@@ -622,11 +669,6 @@ const getTipoMatriculaLabel = (tipo: string) => {
       return horaA.localeCompare(horaB);
     });
 }
-const getDiaSemanaFromDate = (dateString: string): string => {
-  const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
-  const date = new Date(dateString);
-  return dias[date.getDay()];
-};
 
 
   const taxaOcupacao = turma.vagas ? (turma.alunos.length / turma.vagas) * 100 : 0;
@@ -647,10 +689,10 @@ const getDiaSemanaFromDate = (dateString: string): string => {
             Voltar para Turmas
           </button>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   {turma.nome_turma}
                 </h1>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -661,7 +703,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   {turma.estado === 'ativa' ? 'Ativa' : 'Inativa'}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 <span className="flex items-center gap-1">
                   <FiBook size={16} />
                   {turma.curso_nome}
@@ -672,12 +714,12 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                 </span>
                 <span className="flex items-center gap-1">
                   <FiUsers size={16} />
-                  {turma.alunos.length} alunos
+                  {loadingAlunos && !alunosLoaded ? '...' : turma.alunos.length} alunos
                 </span>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={abrirPlanoModal}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
@@ -708,14 +750,14 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                 <button
                   key={aba.id}
                   onClick={() => handleSecaoChange(aba.id as SecaoTurma)}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center justify-center gap-2 py-4 px-2 sm:px-1 border-b-2 font-medium text-sm ${
                   abaAtiva === aba.id
                     ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <aba.icon size={18} />
-                {aba.label}
+                <span className="hidden sm:inline">{aba.label}</span>
               </button>
             ))}
           </nav>
@@ -727,6 +769,13 @@ const getDiaSemanaFromDate = (dateString: string): string => {
           <div className={" "+(toqgle?"lg:col-span-1":"lg:col-span-2 space-y-6")+" "}>
             {/* ABA: VISÃO GERAL */}
             {abaAtiva === 'overview' && (
+              loadingAlunos && !alunosLoaded ? (
+                <PageLoader
+                  title="Carregando visão geral"
+                  subtitle="Buscando desempenho e distribuição dos alunos..."
+                  fullScreen={false}
+                />
+              ) : (
               <>
                 {/* Top 3 Alunos - Destaque */}
                 <motion.div
@@ -834,7 +883,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                     <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                       <FaMoneyBill className="mx-auto text-purple-600 dark:text-purple-400 mb-2" size={24} />
                       <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {turma.alunos.filter(a => a.tipo_matricula === 'regular').length}
+                        {regularCount}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">Matrículas Regulares</div>
                     </div>
@@ -842,7 +891,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                     <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                       <FiTarget className="mx-auto text-amber-600 dark:amber-400 mb-2" size={24} />
                       <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {turma.alunos.filter(a => a.tipo_matricula === 'reforco_personalizado').length}
+                        {reforcoCount}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">Reforços</div>
                     </div>
@@ -869,224 +918,58 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   </div>
                 </motion.div>
               </>
+              )
             )}      
 
             {/* ABA: ALUNOS */}
             {abaAtiva === 'alunos' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Lista de Alunos ({alunosFiltrados.length}/{turma.alunos.length})
-                  </h2>
-                  
-                  {/* Filtros */}
-                  <div className="flex flex-wrap gap-2">
-                    {/* Filtro Tipo Matrícula */}
-                    <select
-                      value={filtroTipoMatricula}
-                      onChange={(e) => setFiltroTipoMatricula(e.target.value as any)}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    >
-                      <option value="todos">Todos os tipos</option>
-                      <option value="regular">Turma Regular</option>
-                      <option value="reforco_personalizado">Reforço Personalizado</option>
-                    </select>
-
-                    {/* Filtro Grupo Aprendizado */}
-                    <select
-                      value={filtroGrupoAprendizado}
-                      onChange={(e) => setFiltroGrupoAprendizado(e.target.value)}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    >
-                      <option value="todos">Todos os grupos</option>
-                      {gruposAprendizado.map(grupo => (
-                        <option key={grupo.value} value={grupo.value}>
-                          {grupo.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Filtro Nível Conhecimento */}
-                    <select
-                      value={filtroNivelConhecimento}
-                      onChange={(e) => setFiltroNivelConhecimento(e.target.value)}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    >
-                      <option value="todos">Todos os níveis</option>
-                      {niveisConhecimento.map(nivel => (
-                        <option key={nivel.value} value={nivel.value}>
-                          {nivel.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Aluno
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Tipo Matrícula
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Grupo
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Nível
-                        </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Qtd Notas
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Média
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Presença
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Última Aval.
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {alunosFiltrados.map((aluno) => (
-                        <tr  key={aluno.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
-                              <div onClick={()=>{
-                                setAlunoSelecionado(aluno)
-                              }}  className="w-8 h-8 bg-blue-100 text-blue-600  dark:text-blue-400 hover:bg-blue-400 hover:text-blue-100 transition-all cursor-pointer dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                <RxPerson className="" size={14} />
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-white">
-                                  {aluno.nome_completo}
-                                </div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">
-                                  {aluno.numero_estudante}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColor(aluno.tipo_matricula || 'regular')}`}>
-                              {getTipoMatriculaLabel(aluno.tipo_matricula || 'regular')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {aluno.grupo_aprendizado && (
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColorGrupo(aluno.grupo_aprendizado)}`}>
-                                {getGrupoAprendizadoLabel(aluno.grupo_aprendizado)}
-                              </span>
-                            )}
-                          </td>
-                           <td className="px-4 py-3 whitespace-nowrap">
-                            {aluno.nivel_conhecimento && (
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBadgeColorNivel(aluno.nivel_conhecimento)}`}>
-                                {getNivelConhecimentoLabel(aluno.nivel_conhecimento)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3  whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {aluno.avaliacao?.length}
-                          </td>
-                         
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              aluno.media >= 17 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                : aluno.media >= 14
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                            }`}>
-                              {aluno.media.toFixed(1)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3  whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {aluno.presenca}%
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {aluno.ultimaAvaliacao}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  
-                  {alunosFiltrados.length === 0 && (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      Nenhum aluno encontrado com os filtros aplicados.
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              <Suspense fallback={<PageLoader title="Carregando alunos" subtitle="Buscando desempenho e indicadores..." fullScreen={false} />}>
+                {loadingAlunos ? (
+                  <PageLoader title="Carregando alunos" subtitle="Buscando desempenho e indicadores..." fullScreen={false} />
+                ) : (
+                  <TurmaAlunosSection
+                    alunosFiltrados={alunosFiltrados}
+                    totalAlunos={turma.alunos.length}
+                    filtroTipoMatricula={filtroTipoMatricula}
+                    setFiltroTipoMatricula={setFiltroTipoMatricula}
+                    filtroGrupoAprendizado={filtroGrupoAprendizado}
+                    setFiltroGrupoAprendizado={setFiltroGrupoAprendizado}
+                    filtroNivelConhecimento={filtroNivelConhecimento}
+                    setFiltroNivelConhecimento={setFiltroNivelConhecimento}
+                    gruposAprendizado={gruposAprendizado}
+                    niveisConhecimento={niveisConhecimento}
+                    getBadgeColor={getBadgeColor}
+                    getBadgeColorGrupo={getBadgeColorGrupo}
+                    getBadgeColorNivel={getBadgeColorNivel}
+                    getTipoMatriculaLabel={getTipoMatriculaLabel}
+                    getGrupoAprendizadoLabel={getGrupoAprendizadoLabel}
+                    getNivelConhecimentoLabel={getNivelConhecimentoLabel}
+                    onSelectAluno={setAlunoSelecionado}
+                  />
+                )}
+              </Suspense>
             )}
 
             {abaAtiva === 'aulas' && (
-               <div className="flex flex-wrap gap-4">
-                 
-                     <div className="flex w-full items-center justify-between gap-4">
-                        <div>
-                          <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
-                            <FiBook className="mr-2" />
-                            Lista de Aulas
-                          </h2>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                            Gerencie e visualize suas aulas
-                          </p>
-                        </div>
-                        <div className='gap-5 flex'>
-                          <button 
-                            onClick={() => setShowForm(true)}
-                            className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors"
-                          >
-                            <FiPlus className="inline mr-2" />
-                            Nova Aula
-                          </button>
-                           <button 
-                            onClick={() => setShowQuickAdd(true)}
-                            className="px-4 py-2 bg-violet-100 text-violet-700 dark:bg-violet-800 dark:text-violet-300 rounded-lg hover:bg-violet-200 dark:hover:bg-violet-700 transition-colors"
-                          >
-                            <FiPlus className="inline mr-2" />
-                            Aula Rapida
-                          </button>
-                        </div>
-                            
-                      
-                  </div>
-                 
-                  {aulas.length>0?aulas.map((aula, index) => (
-                    <AulaCardMin
-                      key={aula.id}
-                      aula={aula}
-                      onEditar={()=>{
-                        setAulaEditando(aula)
-                        setShowForm(true)
-                      }}
-                      onDeletar={handleDeletarAula}
-                      index={index}
-                      onActualizar={(status:AulaStatus)=>{
-                        handelActualizar(status,aula)
-                      }}
-                    />
-                  )):
-                  <div className="text-center py-12">
-                    <FiBook className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-4 text-lg font-medium text-gray-900">Nenhuma aula encontrada</h3>
-                    <p className="text-gray-500 mt-2">
-                          Sem turmas
-                    </p>
-                  </div>
-                  }
-                </div>
+              <Suspense fallback={<PageLoader title="Carregando aulas" subtitle="Buscando agenda e registros da turma..." fullScreen={false} />}>
+                {loadingAulas ? (
+                  <PageLoader title="Carregando aulas" subtitle="Buscando agenda e registros da turma..." fullScreen={false} />
+                ) : (
+                  <TurmaAulasSection
+                    aulas={aulas}
+                    onNovaAula={() => setShowForm(true)}
+                    onAulaRapida={() => setShowQuickAdd(true)}
+                    onEditarAula={(aula) => {
+                      setAulaEditando(aula);
+                      setShowForm(true);
+                    }}
+                    onDeletarAula={handleDeletarAula}
+                    onActualizarAula={(status, aula) => {
+                      handelActualizar(status, aula);
+                    }}
+                  />
+                )}
+              </Suspense>
             )}
             {abaAtiva === 'horario' && (
   <motion.div
@@ -1098,10 +981,10 @@ const getDiaSemanaFromDate = (dateString: string): string => {
     {/* Cabeçalho com título e botão de adicionar */}
     <div className="flex items-center justify-between mb-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
           Horário da Turma
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
           Gerencie os horários das aulas da turma
         </p>
       </div>
@@ -1118,19 +1001,21 @@ const getDiaSemanaFromDate = (dateString: string): string => {
     </div>
 
     {/* Modal de Horário */}
-    <HorarioModal
-      isOpen={isHorarioModalOpen}
-      onClose={() => {
-        setIsHorarioModalOpen(false);
-        setHorarioEditando(null);
-      }}
-      confirm={confirm}
-      onSubmit={handleSalvarHorario}
-      onDelete={handleExcluirHorario}
-      horarioEdit={horarioEditando}
-      turmaId={turma.id}
-      title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
-    />
+    <Suspense fallback={null}>
+      <HorarioModal
+        isOpen={isHorarioModalOpen}
+        onClose={() => {
+          setIsHorarioModalOpen(false);
+          setHorarioEditando(null);
+        }}
+        confirm={confirm}
+        onSubmit={handleSalvarHorario}
+        onDelete={handleExcluirHorario}
+        horarioEdit={horarioEditando}
+        turmaId={turma.id}
+        title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
+      />
+    </Suspense>
     
     {/* Tabela de Horários */}
     <div className="overflow-x-auto">
@@ -1151,8 +1036,8 @@ const getDiaSemanaFromDate = (dateString: string): string => {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          { horarios(turma).length > 0 ? (
-            horarios(turma).map((horario: HorarioAula[], key: number) => (
+          { horariosAgrupados.length > 0 ? (
+            horariosAgrupados.map((horario: HorarioAula[], key: number) => (
               <motion.tr
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1263,13 +1148,13 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                     <div className="flex justify-between text-sm">
                       <span>Regular:</span>
                       <span className="font-medium">
-                        {turma.alunos.filter(a => a.tipo_matricula === 'regular').length}
+                        {regularCount}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Reforço:</span>
                       <span className="font-medium">
-                        {turma.alunos.filter(a => a.tipo_matricula === 'reforco_personalizado').length}
+                        {reforcoCount}
                       </span>
                     </div>
                   </div>
@@ -1298,22 +1183,10 @@ const getDiaSemanaFromDate = (dateString: string): string => {
               </h3>
             
              </div>
-              <HorarioModal
-                isOpen={isHorarioModalOpen}
-                onClose={() => {
-                  setIsHorarioModalOpen(false);
-                  setHorarioEditando(null);
-                }}
-                confirm={confirm}
-                onSubmit={handleSalvarHorario}
-                onDelete={handleExcluirHorario}
-                horarioEdit={horarioEditando}
-                turmaId={turma.id}
-                title={horarioEditando ? 'Editar Horário' : 'Adicionar Horário'}
-              />
+              
               
               <div className="space-y-3">
-                {turma.horarios.filter(e=>  e.dia_semana==getDiaSemanaFromDate(new Date().toISOString())).map((horario, index) => (
+                {horariosHoje.map((horario, index) => (
                   <motion.div
                     initial={{opacity:0,y:-20}}
                     animate={{opacity:1,y:0}}
@@ -1386,7 +1259,9 @@ const getDiaSemanaFromDate = (dateString: string): string => {
           </div>
         </div>
       </div>
-      <StudentModal loadTurmaDetails={loadTurmaDetails} alunoSelecionado={alunoSelecionado} setAlunoSelecionado={setAlunoSelecionado} />
+      <Suspense fallback={null}>
+        <StudentModal loadTurmaDetails={loadTurmaDetails} alunoSelecionado={alunoSelecionado} setAlunoSelecionado={setAlunoSelecionado} />
+      </Suspense>
        {/* Quick Actions */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -1423,7 +1298,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
                   onClick={() => {
                     setShowForm(false);
                     setAulaEditando(null);
@@ -1434,22 +1309,24 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
                     onClick={e => e.stopPropagation()}
                   >
-                    <AulaForm
-                      aula={aulaEditando}
-                      comfirm={confirm}
-                      turmas={[{ value: turma.id, label: turma.nome_turma }]}
-                      onSubmit={aulaEditando ? handleEditarAula : handleCriarAula}
-                      onCancel={() => {
-                        setShowForm(false);
-                        setAulaEditando(null);
-                      }}
-                      turmaHorarios={turma.horarios}
-                      loading={loading}
-                      aulaExistentes={turma.aulas}
-                    />
+                    <Suspense fallback={null}>
+                      <AulaForm
+                        aula={aulaEditando}
+                        comfirm={confirm}
+                        turmas={[{ value: turma.id, label: turma.nome_turma }]}
+                        onSubmit={aulaEditando ? handleEditarAula : handleCriarAula}
+                        onCancel={() => {
+                          setShowForm(false);
+                          setAulaEditando(null);
+                        }}
+                        turmaHorarios={turma.horarios}
+                        loading={loading}
+                        aulaExistentes={turma.aulas}
+                      />
+                    </Suspense>
                   </motion.div>
                 </motion.div>
               )}
@@ -1461,7 +1338,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
                   onClick={() => setShowPlanoModal(false)}
                 >
                   <motion.div
@@ -1469,7 +1346,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 20 }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl"
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-5xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Header com animação */}
@@ -1738,14 +1615,14 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
                   onClick={() => setShowQuickAdd(false)}
                 >
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
                     onClick={e => e.stopPropagation()}
                   >
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Adicionar Aula Rápida</h3>
@@ -1796,7 +1673,7 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
                 onClick={() => {
                   setShowForm(false);
                   setAulaEditando(null);
@@ -1807,16 +1684,18 @@ const getDiaSemanaFromDate = (dateString: string): string => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 20 }}
                   transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+                  className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
                   onClick={e => e.stopPropagation()}
                 >
                 
-                <ModalFrequencia
-                  aula={aulaSelect}
-                  setAulaSelect={setAulaSelect}
-                  isExpandida={true}
-                  onRegistrarFrequencia={registrarFrequencia}
-                />
+                <Suspense fallback={null}>
+                  <ModalFrequencia
+                    aula={aulaSelect}
+                    setAulaSelect={setAulaSelect}
+                    isExpandida={true}
+                    onRegistrarFrequencia={registrarFrequencia}
+                  />
+                </Suspense>
                 </motion.div>
             </motion.div>}        
           </AnimatePresence>

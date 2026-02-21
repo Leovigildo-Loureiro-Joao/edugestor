@@ -50,7 +50,7 @@ const EventosPorMeta = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+      <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
         <FiTarget className="mr-2 text-blue-600" />
         Eventos por Meta Estratégica
       </h3>

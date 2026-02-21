@@ -22,6 +22,7 @@ import {
 } from '../../components/strategy';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 
 const EstrategiaPage = () => {
@@ -81,7 +82,7 @@ const EstrategiaPage = () => {
       case 'alta': return 'bg-red-100 text-red-800 border-red-200';
       case 'media': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'baixa': return 'bg-blue-100 text-blue-800 border-blue-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600';
     }
   };
 
@@ -101,11 +102,7 @@ const tabs = [
   
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando estratégia" subtitle="Sincronizando metas, tarefas e planeamento..." />;
   }
 
   return (
@@ -116,10 +113,10 @@ const tabs = [
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-2xl md:text-3xl font-bold dark:text-white text-gray-800 mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold dark:text-white text-gray-800 mb-2">
           Planeamento Estratégico
         </h1>
-        <p className="text-gray-600 dark:text-gray-200">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-200">
           Gerencie metas, tarefas e rotinas do centro educacional
         </p>
       </motion.div>
@@ -132,14 +129,14 @@ const tabs = [
             <button
               key={aba.id}
               onClick={() => {setActiveTab(aba.id as any); navigate('/estrategia/'+aba.id)}}
-              className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center justify-center gap-2 py-4 px-2 sm:px-1 border-b-2 font-medium text-sm ${
                 activeTab === aba.id
                   ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <aba.icon size={18} />
-              {aba.label}
+              <span className="hidden sm:inline">{aba.label}</span>
             </button>
           ))}
         </nav>
@@ -153,7 +150,7 @@ const tabs = [
           initial="hidden"
           animate="visible"
           exit="hidden"
-          className="bg-white rounded-2xl shadow-xl overflow-hidden"
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
         >
           {/* Metas Tab */}
           {activeTab === 'home' && (
@@ -179,13 +176,13 @@ const tabs = [
               <div className="p-6">
                 <div className='p-4'>
                   <div className='flex items-center gap-3'>
-                    <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center">
                     <FiCalendar className="mr-2" />
                     Calendário de Eventos
                   </h2>
                   <SyncStatusBadge tableName='evento'></SyncStatusBadge>
                 </div>
-                  <p className="text-gray-600 dark:text-gray-300 mt-1">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
                     Gerencie e acompanhe os seus eventos bem como os feriados
                   </p>
               </div>
@@ -205,20 +202,20 @@ const tabs = [
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="mt-8 bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6"
+        className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
       >
-        <h3 className="font-semibold dark:text-white text-gray-800 mb-4">Ações Rápidas</h3>
+        <h3 className="text-base sm:text-lg font-semibold dark:text-white text-gray-800 mb-4">Ações Rápidas</h3>
         <div className="flex flex-wrap gap-3">
           
-          <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
+          <button className="px-4 py-2 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
             <FiCalendar className="inline mr-2" />
             Agendar Reunião
           </button>
-          <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors">
+          <button className="px-4 py-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
             <FiUsers className="inline mr-2" />
             Contatar Pais
           </button>
-          <button className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors">
+          <button className="px-4 py-2 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">
             <FiTrendingUp className="inline mr-2" />
             Relatório Mensal
           </button>

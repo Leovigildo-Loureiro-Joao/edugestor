@@ -80,8 +80,8 @@ export const GraficoComponent=({aulas,estatisticas}:{aulas:Aula[],estatisticas:a
       
         
     return <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
                   <FiBarChart2 className="mr-2" />
                   Análise e Estatísticas
                 </h2>

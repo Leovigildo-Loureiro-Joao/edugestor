@@ -24,10 +24,10 @@ export const PlanoAulaComponent =(
         handleDeletarPlano
     }:PlanoAulaComponentProps)=>{
     return <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
 
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
                 <FiTarget className="mr-2" />
                 Planos de Aula
               </h2>
@@ -119,7 +119,7 @@ export const PlanoAulaComponent =(
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         onClick={() => handleVerDetalhesPlano(plano.id)}
-                        className="px-3 py-1.5 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1"
                       >
                         <FiEye /> Ver detalhes
                       </button>

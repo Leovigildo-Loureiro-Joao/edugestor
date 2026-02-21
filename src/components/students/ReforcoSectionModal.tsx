@@ -52,14 +52,14 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
     <AnimatePresence>
       {show && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => !creating && onClose()}
         >
           <motion.div
-            className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-800 border border-gray-500 dark:border-gray-700 shadow-2xl overflow-hidden "
+            className="w-full max-w-none sm:max-w-5xl h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-lg bg-white dark:bg-gray-800 border border-gray-500 dark:border-gray-700 shadow-2xl overflow-hidden "
             initial={{ y: 24, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 16, scale: 0.98, opacity: 0 }}
@@ -70,17 +70,17 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
             <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-xl">
+                  <div className="p-2 bg-white/20 dark:bg-white/10 rounded-lg">
                     <FiUsers className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                       Agrupar Alunos de Reforço
-                      <span className="px-2 py-0.5 bg-white/20 text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-white/20 dark:bg-white/10 text-[11px] sm:text-xs rounded-full">
                         {selectedCount} aluno{selectedCount !== 1 ? 's' : ''}
                       </span>
                     </h3>
-                    <p className="text-sm text-primary-100">
+                    <p className="text-xs sm:text-sm text-primary-100">
                       Organize os alunos em turmas de reforço personalizado
                     </p>
                   </div>
@@ -116,7 +116,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`
-                    relative flex items-center p-4 rounded-xl border-2 cursor-pointer
+                    relative flex items-center p-4 rounded-lg border-2 cursor-pointer
                     transition-all duration-200
                     ${form.modo === 'nova' 
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
@@ -159,7 +159,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`
-                    relative flex items-center p-4 rounded-xl border-2 cursor-pointer
+                    relative flex items-center p-4 rounded-lg border-2 cursor-pointer
                     transition-all duration-200
                     ${form.modo === 'existente' 
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
@@ -209,7 +209,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                    <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Selecionar turma existente
                       </label>
@@ -244,7 +244,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden space-y-4"
                   >
-                    <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                    <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         <FiFolder className="inline mr-1 h-3 w-3" />
                         Nome da Seção
@@ -259,7 +259,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <FiUser className="inline mr-1 h-3 w-3" />
                           Professor
@@ -273,7 +273,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                         />
                       </div>
 
-                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <FiClock className="inline mr-1 h-3 w-3" />
                           Turno
@@ -289,7 +289,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                         </select>
                       </div>
 
-                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <FiCalendar className="inline mr-1 h-3 w-3" />
                           Ano letivo
@@ -303,7 +303,7 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                         />
                       </div>
 
-                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl">
+                      <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <FiBook className="inline mr-1 h-3 w-3" />
                           Curso (automático)

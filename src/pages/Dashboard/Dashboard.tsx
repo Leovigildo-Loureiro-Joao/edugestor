@@ -17,6 +17,7 @@ import { ErrorSection } from '../../components/ui/ErrorSection.tsx';
 import { GraficoDesempenho } from '../../components/dashboad/Strategic.tsx';
 import { CardsMetricas } from '../../components/dashboad/CardsMetricas.tsx';
 import { motion } from 'framer-motion';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
 
 // Tipos
 
@@ -31,6 +32,20 @@ const Dashboard: React.FC = () => {
     proximasAtividades: []
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [isDark, setIsDark] = useState<boolean>(() =>
+    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const syncTheme = () => setIsDark(root.classList.contains('dark'));
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   function Reload() {
      const loadDashboardData = async () => {
@@ -108,11 +123,7 @@ const Dashboard: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando dashboard" subtitle="Calculando métricas e indicadores..." />;
   }
 
   if (!stats) {
@@ -192,15 +203,15 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6  dark:bg-gray-900 min-h-screen p-4">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen p-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>      
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Dashboard</h1>      
           </motion.div>
         
-        <div className="text-sm text-gray-500 dark:text-white">
+        <div className="text-sm md:block hidden text-gray-500 dark:text-gray-300">
           Última atualização: {new Date().toLocaleString('pt-AO')}
         </div>
       </div>
@@ -219,7 +230,7 @@ const Dashboard: React.FC = () => {
           <AlunosTurmaChart />
         </div>
 
-          <GraficoDesempenho/>
+          <GraficoDesempenho tema={isDark ? 'escuro' : 'claro'} />
 
       </div>
     </div>

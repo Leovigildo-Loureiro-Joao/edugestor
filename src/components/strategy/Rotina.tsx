@@ -221,11 +221,11 @@ const RotinasComponent = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">
               <FiClock className="mr-3" />
               Rotinas Diárias
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Gerencie os processos padronizados do centro educacional
             </p>
           </div>
@@ -343,7 +343,7 @@ const RotinasComponent = () => {
                       {renderStatusBadge(rotina.status, rotina.taxa_conformidade)}
                     </div>
                     
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                       {rotina.nome}
                     </h3>
                     
@@ -446,7 +446,7 @@ const RotinasComponent = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => toggleExpandRotina(rotina.id)}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 rounded-lg"
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     title="Ver detalhes"
                   >
                     {rotinaExpandida === rotina.id ? <FiChevronUp /> : <FiChevronDown />}
@@ -474,7 +474,7 @@ const RotinasComponent = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => duplicarRotina(rotina)}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 rounded-lg"
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     title="Duplicar rotina"
                   >
                     <FiCopy />
@@ -557,7 +557,7 @@ const RotinasComponent = () => {
                         </button>
                         <button
                           onClick={() => navigate(`/rotinas/editar/${rotina.id}`)}
-                          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 rounded-lg"
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                         >
                           <FiEdit2 />
                         </button>
@@ -637,7 +637,7 @@ const RotinasComponent = () => {
       {rotinasFiltradas.length === 0 && (
         <div className="text-center py-16">
           <FiAlertCircle className="mx-auto text-gray-400 mb-4" size={64} />
-          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Nenhuma rotina encontrada
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-6">

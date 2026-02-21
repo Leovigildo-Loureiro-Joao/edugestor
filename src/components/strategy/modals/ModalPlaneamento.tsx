@@ -234,12 +234,12 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
             onClick={onClose}
           />
           
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Header - IGUAL PARA TODOS */}
@@ -247,7 +247,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <FiCalendar className="h-6 w-6 text-white" />
-                    <h2 className="text-xl font-bold text-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-white">
                       {planeamentoExistente ? 'Editar' : 'Novo'} {getTituloModal(tipo)}
                     </h2>
                   </div>
@@ -332,12 +332,12 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                       <button
                         type="button"
                         onClick={() => setEtapa('basico')}
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 flex items-center"
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
                       >
                         <FiChevronLeft className="mr-1" /> Voltar
                       </button>
                       <div className="flex space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                           Cancelar
                         </button>
                         <button
@@ -353,7 +353,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
                     <>
                       <div></div>
                       <div className="flex space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                           Cancelar
                         </button>
                         <button
@@ -408,7 +408,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
         type="text"
         value={titulo}
         onChange={(e) => setTitulo(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
         placeholder="Ex: Planejamento de Aulas"
         required
       />
@@ -421,7 +421,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
       <textarea
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
         placeholder="Descreva os objetivos principais..."
       />
     </div>
@@ -438,7 +438,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
             setDataInicio(e.target.value);
             if (tipo === 'diario') setDataFim(e.target.value);
           }}
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
@@ -451,7 +451,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
           type="date"
           value={dataFim}
           onChange={(e) => setDataFim(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
           disabled={tipo === 'diario'}
           required
         />
@@ -466,7 +466,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
         type="text"
         value={responsavel}
         onChange={(e) => setResponsavel(e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
         required
       />
     </div>
@@ -522,7 +522,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
                 novos[index] = e.target.value;
                 setFocos(novos);
               }}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder={`Foco principal ${index + 1}`}
             />
           ))}
@@ -551,20 +551,20 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
                 type="time"
                 value={horario.hora}
                 onChange={(e) => updateHorario(index, 'hora', e.target.value)}
-                className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
               />
               <input
                 type="text"
                 value={horario.atividade}
                 onChange={(e) => updateHorario(index, 'atividade', e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
                 placeholder="Atividade"
               />
               <input
                 type="text"
                 value={horario.descricao || ''}
                 onChange={(e) => updateHorario(index, 'descricao', e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
                 placeholder="Descrição"
               />
               {horarios.length > 1 && (
@@ -589,7 +589,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
         <textarea
           value={lembretes.join('\n')}
           onChange={(e) => setLembretes(e.target.value.split('\n').filter(l => l.trim() !== ''))}
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
           placeholder="Adicione lembretes, um por linha..."
         />
       </div>
@@ -650,7 +650,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
                 novos[index] = e.target.value;
                 setObjetivosSemanais(novos);
               }}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder={`Objetivo ${index + 1}`}
             />
           ))}
@@ -685,7 +685,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
                   novas[index] = e.target.value;
                   setMetasPrioritarias(novas);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                 placeholder={`Meta prioritária ${index + 1}`}
               />
               <button
@@ -705,7 +705,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Atividades da Semana</h4>
         <div className="space-y-4">
           {dias.map((dia, diaIndex) => (
-            <div key={diaIndex} className="border rounded-lg p-4">
+            <div key={diaIndex} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h5 className="font-semibold text-gray-800 dark:text-gray-100">{diasSemana[diaIndex]}</h5>
@@ -782,7 +782,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
                   novas[index] = e.target.value;
                   setMetasMensais(novas);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                 placeholder={`Meta ${index + 1}`}
               />
               {metasMensais.length > 1 && (
@@ -804,7 +804,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Planejamento Semanal</h4>
         <div className="space-y-4">
           {semanas.map((semana, index) => (
-            <div key={index} className="border rounded-lg p-4">
+            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h5 className="font-semibold text-gray-800 dark:text-gray-100">
                   Semana {semana.numero}
@@ -825,7 +825,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
                     novas[index].objetivos[objIndex] = e.target.value;
                     setSemanas(novas);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm mb-2"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm mb-2"
                   placeholder={`Objetivo da semana ${semana.numero}`}
                 />
               ))}

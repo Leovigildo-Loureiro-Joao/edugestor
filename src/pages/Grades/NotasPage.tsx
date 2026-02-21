@@ -9,10 +9,13 @@ import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
 import { getPendingCount } from '../../utils/emitPendingSync';
 import type { Avaliacao } from '../../types/avaliacao';
-import type { AlunoDesempenho } from '../Turmas/TurmasPage';
+
 import { avaliacaoService } from '../../services/database/avaliacao';
 import { StatCard } from '../../components/students/StatCard';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { AlunoDesempenho } from '../../types/aluno';
+import { NotasTable } from '../../components/notas/NotasTable';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 type SituacaoNota = 'aprovado' | 'recuperacao' | 'reprovado' | 'pendente';
 
@@ -44,13 +47,13 @@ const getSituacaoColor = (situacao: SituacaoNota) => {
 const getSituacaoText = (situacao: SituacaoNota) => {
   switch (situacao) {
     case 'aprovado':
-      return 'Aprovado';
+      return 'Bom desempenho';
     case 'recuperacao':
-      return 'Recuperação';
+      return 'Em atenção';
     case 'reprovado':
-      return 'Reprovado';
+      return 'Desempenho baixo';
     default:
-      return 'Pendente';
+      return 'Sem dados';
   }
 };
 
@@ -235,11 +238,7 @@ export const NotasPage = () => {
   }, [alunosFiltrados]);
 
   if (loading) {
-    return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-      </div>
-    );
+    return <PageLoader title="Carregando notas" subtitle="Preparando avaliações e indicadores..." fullScreen={false} />;
   }
 
   
@@ -251,11 +250,14 @@ export const NotasPage = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Gestão de Notas</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">Gestão de Notas</h2>
               <SyncStatusBadge tableName="avaliacoes" />
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
               Mesma base da aba de notas da turma, com visão global e filtros.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Trimestres são usados apenas para leitura de evolução. Sem pauta formal (MAC/PP).
             </p>
           </div>
 
@@ -349,9 +351,9 @@ export const NotasPage = () => {
         />  
 
         <StatCard 
-          title="Taxa de aprovação" 
+          title="Taxa de desempenho" 
           value={stats.taxaAprovacao.toFixed(1)+"%"}
-          subtitle={stats.taxaAprovacao>50?"Otimo":"Pessimo"}
+          subtitle={stats.taxaAprovacao>50?"Evolução positiva":"Precisa atenção"}
           icon={FiTrendingUp}
           color="green"
           trend={stats.taxaAprovacao > 50 ? 'positive' : 'neutral'}
@@ -359,89 +361,26 @@ export const NotasPage = () => {
           percent={stats.taxaAprovacao}
         />  
       </div>
-
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Alunos e Progresso</h3>
+          <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white">Alunos e Progresso</h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Aluno</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Turma</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Qtd Notas</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Média</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Progresso</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Situação</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {alunosFiltrados.map((aluno,index) => (
-                <motion.tr
-                    key={aluno.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }} className="hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-white">{aluno.nome_completo}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">#{aluno.numero_estudante}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{aluno.turma_nome || 'Sem turma'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{aluno.avaliacao.length}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex px-2 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      {aluno.media.toFixed(1)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 min-w-[150px]">
-                    <ProgressBar value={(aluno.media / 20) * 100} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${getSituacaoColor(aluno.situacao_notas)}`}>
-                      {getSituacaoText(aluno.situacao_notas)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setModalTab('overview');
-                          setAlunoSelecionado(aluno);
-                        }}
-                        className="p-2 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                        title="Ver detalhes"
-                      >
-                        <FiEye size={16} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setModalTab('notas');
-                          setAlunoSelecionado(aluno);
-                        }}
-                        className="p-2 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                        title="Lançar nota"
-                      >
-                        <FiEdit3 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {alunosFiltrados.length === 0 && (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Nenhum aluno encontrado com os filtros atuais.</div>
-        )}
+        <NotasTable
+          alunos={alunosFiltrados}
+          onVerDetalhes={(aluno) => {
+            setModalTab('overview');
+            setAlunoSelecionado(aluno);
+          }}
+          onLancarNota={(aluno) => {
+            setModalTab('notas');
+            setAlunoSelecionado(aluno);
+          }}
+        />
       </div>
-
       {progressoPorDisciplina.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Progresso por disciplina</h3>
+          <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white mb-4">Progresso por disciplina</h3>
           <div className="space-y-3">
             {progressoPorDisciplina.map((item) => (
               <div key={item.disciplina}>

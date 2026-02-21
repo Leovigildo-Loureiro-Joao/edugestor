@@ -14,44 +14,44 @@ interface AnimatedStatProps {
 // Mapeamento de cores para classes Tailwind
 const colorMap = {
   blue: {
-    bg: 'bg-blue-50',
+    bg: 'bg-blue-50 dark:bg-blue-900/30',
     text: 'text-blue-600',
-    bar: 'bg-blue-200'
+    bar: 'bg-blue-200 dark:bg-blue-800/60'
   },
   green: {
-    bg: 'bg-green-50',
+    bg: 'bg-green-50 dark:bg-green-900/30',
     text: 'text-green-600', 
-    bar: 'bg-green-200'
+    bar: 'bg-green-200 dark:bg-green-800/60'
   },
   emerald: {
-    bg: 'bg-emerald-50',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/30',
     text: 'text-emerald-600',
-    bar: 'bg-emerald-200'
+    bar: 'bg-emerald-200 dark:bg-emerald-800/60'
   },
   indigo: {
-    bg: 'bg-indigo-50',
+    bg: 'bg-indigo-50 dark:bg-indigo-900/30',
     text: 'text-indigo-600',
-    bar: 'bg-indigo-200'
+    bar: 'bg-indigo-200 dark:bg-indigo-800/60'
   },
   purple: {
-    bg: 'bg-purple-50',
+    bg: 'bg-purple-50 dark:bg-purple-900/30',
     text: 'text-purple-600',
-    bar: 'bg-purple-200'
+    bar: 'bg-purple-200 dark:bg-purple-800/60'
   },
   orange: {
-    bg: 'bg-orange-50',
+    bg: 'bg-orange-50 dark:bg-orange-900/30',
     text: 'text-orange-600',
-    bar: 'bg-orange-200'
+    bar: 'bg-orange-200 dark:bg-orange-800/60'
   },
   red: {
-    bg: 'bg-red-50',
+    bg: 'bg-red-50 dark:bg-red-900/30',
     text: 'text-red-600',
-    bar: 'bg-red-200'
+    bar: 'bg-red-200 dark:bg-red-800/60'
   },
   yellow: {
-    bg: 'bg-yellow-50',
+    bg: 'bg-yellow-50 dark:bg-yellow-900/30',
     text: 'text-yellow-600',
-    bar: 'bg-yellow-200'
+    bar: 'bg-yellow-200 dark:bg-yellow-800/60'
   }
 };
 
@@ -124,7 +124,7 @@ export const AnimatedStat = ({ stat, index }: AnimatedStatProps): ReactElement =
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-white mb-1">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
             {stat.title}
           </p>
           

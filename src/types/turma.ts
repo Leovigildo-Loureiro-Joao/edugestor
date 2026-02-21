@@ -44,16 +44,6 @@ export type TurmaFormData = Omit<Turma,
   'id' | 'created_at'|'cursos'|'sync_status'
 >;
 
-export interface AlunoDesempenho {
-  id: number;
-  nome: string;
-  numero_estudante: string;
-  media: number;
-  presenca: number;
-  ultimaAvaliacao: number;
-  foto?: string;
-}
-
 
 export type HorarioAulaForm = Omit<HorarioAula, 'id'>;
  

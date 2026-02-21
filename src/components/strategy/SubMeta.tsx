@@ -11,19 +11,19 @@ const { showAlert } = useAlert();
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
                     onClick={() => setShowSubMeta(false)}
                   >
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                      className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                      className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-none sm:max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"
                       onClick={e => e.stopPropagation()}
                     >
                       <div className='flex justify-between items-center mb-4'>
                         <div>
-                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                             {novaSubMeta.titulo ? 'Editar Sub-meta' : 'Nova Sub-meta'}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -202,7 +202,7 @@ const { showAlert } = useAlert();
                                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                                     novaSubMeta.kpis_afetados?.includes(index.toString())
                                       ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                      : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                                      : 'bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                                   }`}
                                 >
                                   {kpi.nome}

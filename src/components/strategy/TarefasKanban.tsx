@@ -231,7 +231,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
       media: { color: 'bg-yellow-100 text-yellow-800', icon: '🟡' },
       alta: { color: 'bg-orange-100 text-orange-800', icon: '🟠' },
       critica: { color: 'bg-red-100 text-red-800', icon: '🔴' }
-    }[prioridade] || { color: 'bg-gray-100 text-gray-800', icon: '⚪' };
+    }[prioridade] || { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200', icon: '⚪' };
 
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -249,7 +249,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
       evento: { color: 'bg-indigo-100 text-indigo-800', label: 'EVENTO' },
       rotina: { color: 'bg-green-100 text-green-800', label: 'ROTINA' },
       melhoria: { color: 'bg-teal-100 text-teal-800', label: 'MELHORIA' }
-    }[categoria] || { color: 'bg-gray-100 text-gray-800', label: categoria.toUpperCase() };
+    }[categoria] || { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200', label: categoria.toUpperCase() };
 
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${config.color}`}>
@@ -267,15 +267,15 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`flex-1 min-w-[280px] bg-gray-50  rounded-xl border ${color} overflow-hidden`}
+        className={`flex-1 min-w-[280px] bg-gray-50 dark:bg-gray-900/40 rounded-xl border ${color} dark:border-gray-700 overflow-hidden`}
       >
         {/* Cabeçalho da coluna */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {icon}
-              <h3 className="font-semibold text-gray-800 ml-2">{title}</h3>
-              <span className="ml-2 bg-white px-2 py-1 rounded-full text-sm font-medium">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 ml-2">{title}</h3>
+              <span className="ml-2 bg-white dark:bg-gray-700 px-2 py-1 rounded-full text-sm font-medium dark:text-gray-100">
                 {count}
               </span>
             </div>
@@ -312,7 +312,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                 transition={{ duration: 0.2 }}
                 draggable
                 onDragStart={(e: any) => handleDragStart(e, tarefa)}
-                className={`mb-3 bg-white  rounded-lg shadow-sm border hover:shadow-md transition-all cursor-move ${
+                className={`mb-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 hover:shadow-md transition-all cursor-move ${
                   expandedTask === tarefa.id ? 'ring-2 ring-blue-300' : ''
                 }`}
                 onClick={() => onTaskClick?.(tarefa)}
@@ -334,7 +334,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                             e.stopPropagation();
                             toggleExpandTask(tarefa.id);
                           }}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                         >
                           {expandedTask === tarefa.id ? 
                             <FiChevronUp /> : <FiChevronDown />
@@ -342,21 +342,21 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                         </button>
                       </div>
                       
-                      <h4 className="font-medium text-gray-800 line-clamp-2">
+                      <h4 className="font-medium text-gray-800 dark:text-gray-100 line-clamp-2">
                         {tarefa.titulo}
                       </h4>
                       
                       {/* Responsável */}
                       <div className="flex items-center mt-2">
                         <FiUser className="text-gray-400 mr-2" size={14} />
-                        <span className="text-sm text-gray-600">{tarefa.responsavel_nome}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-300">{tarefa.responsavel_nome}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Datas */}
                   {tarefa.data_limite && (
-                    <div className="flex items-center mt-2 text-sm text-gray-500">
+                    <div className="flex items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
                       <FiCalendar className="mr-1" size={14} />
                       <span>Prazo: {new Date(tarefa.data_limite).toLocaleDateString('pt-BR')}</span>
                     </div>
@@ -386,12 +386,12 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="border-t px-3 py-3 bg-gray-50"
+                      className="border-t border-gray-200 dark:border-gray-700 px-3 py-3 bg-gray-50 dark:bg-gray-900/50"
                     >
                       {/* Descrição */}
                       {tarefa.descricao && (
                         <div className="mb-3">
-                          <p className="text-sm text-gray-600">{tarefa.descricao}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{tarefa.descricao}</p>
                         </div>
                       )}
 
@@ -422,7 +422,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
 
                       {/* Ações */}
                       
-                      <div className="flex justify-end space-x-2 pt-2 border-t">
+                      <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                          <button 
                         onClick={
                           ()=> navigate("/estrategia/tarefas/deletar/"+tarefa.id)
@@ -460,7 +460,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
 
           {/* Mensagem quando vazio */}
           {tarefasColuna.length === 0 && (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
               <FiAlertCircle className="mx-auto mb-2" size={24} />
               <p>Nenhuma tarefa aqui</p>
               <p className="text-sm">Arraste tarefas para cá</p>
@@ -497,11 +497,11 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow p-4"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 border border-gray-200 dark:border-gray-700"
         >
           <div className='py-4 px-4'>
             <div className="flex gap-3 items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
               <FiList className="mr-2" />
               Tarefas práticas
             </h2>
@@ -521,7 +521,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                 placeholder="Buscar tarefas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -530,7 +530,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
               <select
                 value={selectedResponsavel}
                 onChange={(e) => setSelectedResponsavel(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
               >
                 <option value="todos">Todos responsáveis</option>
                 {responsaveisUnicos.map(r => (
@@ -541,7 +541,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
               <select
                 value={selectedPrioridade}
                 onChange={(e) => setSelectedPrioridade(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm"
               >
                 <option value="todos">Todas prioridades</option>
                 <option value="critica">Crítica</option>
@@ -555,7 +555,7 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
                 className={`px-3 py-2 rounded-lg text-sm flex items-center ${
                   showCompleted 
                     ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-700'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
                 }`}
               >
                 <FiCheckCircle className="mr-2" />
@@ -581,19 +581,19 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
           {/* Estatísticas */}
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600">Total</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Total</div>
               <div className="text-2xl font-bold">{tarefas.length}</div>
             </div>
             <div className="bg-yellow-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600">Em andamento</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Em andamento</div>
               <div className="text-2xl font-bold">{tarefasPorStatus.em_andamento.length}</div>
             </div>
             <div className="bg-red-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600">Atrasadas</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Atrasadas</div>
               <div className="text-2xl font-bold">{tarefasPorStatus.atrasada.length}</div>
             </div>
             <div className="bg-green-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600">Concluídas</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Concluídas</div>
               <div className="text-2xl font-bold">{tarefasPorStatus.concluida.length}</div>
             </div>
           </div>
@@ -609,23 +609,23 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
       </div>
 
       {/* Legendas */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-            <span className="text-sm">Prioridade Baixa</span>
+            <span className="text-sm dark:text-gray-200">Prioridade Baixa</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-            <span className="text-sm">Prioridade Média</span>
+            <span className="text-sm dark:text-gray-200">Prioridade Média</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-            <span className="text-sm">Prioridade Alta</span>
+            <span className="text-sm dark:text-gray-200">Prioridade Alta</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-            <span className="text-sm">Prioridade Crítica</span>
+            <span className="text-sm dark:text-gray-200">Prioridade Crítica</span>
           </div>
         </div>
       </div>

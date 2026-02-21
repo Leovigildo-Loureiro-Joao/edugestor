@@ -248,27 +248,27 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div>
-              <h1 className="text-md lg:text-2md font-bold text-gray-800">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
                 Planeamento Diário
               </h1>
-              <p className="text-gray-600">
-                Organize suas atividades do dia e conecte com <span className='text-primary-700'>metas e tarefas</span>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
+                Organize suas atividades do dia e conecte com <span className='text-primary-700 dark:text-primary-300'>metas e tarefas</span>
               </p>
             </div>
           </div>
 
           {/* Navegação de datas */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 bg-white rounded-lg shadow p-2">
-              <button onClick={retrocederDia} className="p-2 hover:bg-gray-100 rounded-lg">
-                <FiChevronLeft className="h-5 w-5 text-gray-600" />
+            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-none p-2 border border-gray-200 dark:border-gray-700">
+              <button onClick={retrocederDia} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <FiChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-200" />
               </button>
               
               <div className="px-4 py-2 text-center min-w-[180px]">
-                <div className="text-lg font-bold text-gray-800">
+                <div className="text-lg font-bold text-gray-800 dark:text-gray-300">
                   {dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
                   {dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </div>
                 {eHoje && (
@@ -276,8 +276,8 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                 )}
               </div>
               
-              <button onClick={avancarDia} className="p-2 hover:bg-gray-100 rounded-lg">
-                <FiChevronRight className="h-5 w-5 text-gray-600" />
+              <button onClick={avancarDia} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <FiChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-200" />
               </button>
               
               <button onClick={irParaHoje} className="ml-2 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">
@@ -302,10 +302,10 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
           >
             {/* Coluna Principal - Agenda */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-800">{planejamento.titulo}</h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">{planejamento.titulo}</h2>
                     <div className='flex space-x-3'>
                       {modo === 'visualizacao' && planejamento && (
                         <button
@@ -328,7 +328,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                     
                   </div>
                   {planejamento.descricao && (
-                    <p className="mt-2 text-gray-600">{planejamento.descricao}</p>
+                    <p className="mt-2 text-gray-600 dark:text-gray-300">{planejamento.descricao}</p>
                   )}
                 </div>
                 
@@ -336,7 +336,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                   {/* Focos Principais - AGORA É planejamento.focos */}
                   {planejamento.focos && planejamento.focos.length > 0 && planejamento.focos.some(f => f.trim() !== '') && (
                     <div className="mb-8">
-                      <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                      <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                         <FiTarget className="mr-2 text-blue-600" />
                         Focos Principais do Dia
                       </h3>
@@ -354,7 +354,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
 
                   {/* Agenda do Dia */}
                   <div className='flex justify-between items-center mb-4'>
-                    <h3 className="font-bold text-gray-800 flex items-center">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center">
                       <FiClock className="mr-2 text-green-600" />
                       Agenda do Dia
                     </h3>
@@ -393,11 +393,11 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                           className={`flex items-start p-4 rounded-xl border-l-4 transition-all ${
                             horario.concluido 
                               ? 'bg-green-50 border-green-500' 
-                              : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
+                              : 'bg-gray-50 dark:bg-gray-700/40 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700/60'
                           }`}
                         >
                           <div className="w-24 flex-shrink-0">
-                            <div className="font-bold text-gray-800">{horario.hora}</div>
+                            <div className="font-bold text-gray-800 dark:text-gray-100">{horario.hora}</div>
                             {horario.concluido && (
                               <span className="text-xs text-green-600 mt-1 inline-flex items-center">
                                 <FiCheckCircle className="mr-1" /> Concluído
@@ -408,9 +408,9 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                           <div className="flex-1 ml-4">
                             <div className="flex items-start justify-between">
                               <div>
-                                <h4 className="font-semibold text-gray-800">{horario.atividade}</h4>
+                                <h4 className="font-semibold text-gray-800 dark:text-gray-100">{horario.atividade}</h4>
                                 {horario.descricao && (
-                                  <p className="text-gray-600 text-sm mt-1">{horario.descricao}</p>
+                                  <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">{horario.descricao}</p>
                                 )}
                                 {horario.local && (
                                   <p className="text-gray-500 text-xs mt-1">📍 {horario.local}</p>
@@ -422,7 +422,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                                   className={`px-3 py-1 rounded-lg text-sm ${
                                     horario.concluido
                                       ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                                   }`}
                                 >
                                   {horario.concluido ? 'Desmarcar' : 'Concluir'}
@@ -436,8 +436,8 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
 
                   {/* Metas e Tarefas Conectadas - AGORA É planejamento.metas_ids e tarefas_ids */}
                   {(planejamento.metas_ids && planejamento.metas_ids.length > 0 || planejamento.tarefas_ids && planejamento.tarefas_ids.length > 0) && (
-                    <div className="mt-8 pt-6 border-t">
-                      <h3 className="font-bold text-gray-800 mb-4">Itens Conectados</h3>
+                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4" >Itens Conectados</h3>
                       <div className="flex flex-wrap gap-3">
                         {planejamento.metas_ids?.map((metaId) => (
                           <span key={metaId} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
@@ -460,8 +460,8 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
 
             {/* Coluna lateral - Informações */}
             <div className="space-y-6">
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4">Progresso do Dia</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Progresso do Dia</h3>
                 <div className="text-center">
                   <div className="text-4xl font-bold text-blue-600 mb-2">
                     {planejamento.progresso}%
@@ -472,44 +472,44 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                       style={{ width: `${planejamento.progresso}%` }}
                     />
                   </div>
-                  <div className="mt-3 text-sm text-gray-600">
+                  <div className="mt-3 text-sm text-gray-600 dark:text-gray-300">
                     {planejamento.horarios.filter(h => h.concluido).length} de {planejamento.horarios.filter(h => h.atividade.trim() !== '').length} atividades concluídas
                   </div>
                 </div>
               </div>
 
               {planejamento.lembretes && planejamento.lembretes.length > 0 && planejamento.lembretes.some(l => l.trim() !== '') && (
-                <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center mb-4">
                     <FiBell className="text-yellow-500 mr-2" />
-                    <h3 className="font-bold text-gray-800">Lembretes</h3>
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100">Lembretes</h3>
                   </div>
                   <div className="space-y-3">
                     {planejamento.lembretes
                       .filter(l => l.trim() !== '')
                       .map((lembrete, index) => (
                         <div key={index} className="p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
-                          <div className="text-gray-800 text-sm">{lembrete}</div>
+                          <div className="text-gray-800 dark:text-gray-100 text-sm">{lembrete}</div>
                         </div>
                       ))}
                   </div>
                 </div>
               )}
 
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4">Resumo</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Resumo</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Data:</span>
-                    <span className="font-medium">{new Date(planejamento.data_inicio).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-600 dark:text-gray-300">Data:</span>
+                    <span className="font-medium dark:text-gray-100">{new Date(planejamento.data_inicio).toLocaleDateString('pt-BR')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Responsável:</span>
-                    <span className="font-medium">{planejamento.responsavel || '—'}</span>
+                    <span className="text-gray-600 dark:text-gray-300">Responsável:</span>
+                    <span className="font-medium dark:text-gray-100">{planejamento.responsavel || '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Atividades:</span>
-                    <span className="font-medium">
+                    <span className="text-gray-600 dark:text-gray-300">Atividades:</span>
+                    <span className="font-medium dark:text-gray-100">
                       {planejamento.horarios.filter(h => h.atividade.trim() !== '').length}
                     </span>
                   </div>
@@ -531,11 +531,11 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
                 <FiCalendar className="h-10 w-10 text-blue-600" />
               </div>
               
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
                 Nenhum planejamento para hoje
               </h3>
               
-              <p className="text-gray-600 mb-8">
+              <p className="text-gray-600 dark:text-gray-300 mb-8">
                 Crie um planejamento para organizar suas atividades e conectar com metas e tarefas.
               </p>
               
@@ -567,23 +567,23 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => setModalAgenda(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   <FiClock className="mr-2 text-blue-600" />
                   Adicionar Atividade
                 </h3>
-                <button onClick={() => setModalAgenda(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <FiX className="h-5 w-5 text-gray-500" />
+                <button onClick={() => setModalAgenda(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <FiX className="h-5 w-5 text-gray-500 dark:text-gray-300" />
                 </button>
               </div>
               

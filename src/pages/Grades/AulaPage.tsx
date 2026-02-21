@@ -7,7 +7,8 @@ import {
   FiUpload, FiDownload, FiTrendingUp, FiEye, FiStar,
   FiCopy,
   FiAlertCircle,
-  FiTrendingDown
+  FiTrendingDown,
+  FiChevronDown
 } from 'react-icons/fi';
 import { aulaService } from '../../services/database/aulaService.ts';
 import { AulaForm } from '../../components/aulas/AulaForm.tsx';
@@ -48,6 +49,10 @@ import { PlanoDetalhes } from '../../components/aulas/PlanoAulaDetalhesModal.tsx
 import { PlanoAulaComponent } from '../../components/aulas/PlanoAulaPage.tsx';
 import { PlaneamentoComponent } from '../../components/aulas/PlaneametoComponent.tsx';
 import { GraficoComponent } from '../../components/aulas/GraficoComponent.tsx';
+import TabNavigation from '../../components/ui/TabNavigation.tsx';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { usePagination } from '../../hooks/usePagination.ts';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 
 export const AulasPage = () => {
   const {seccao} = useParams()
@@ -158,6 +163,20 @@ export const AulasPage = () => {
     const planos = await db.plano_aulas.filter((plano) => !plano.deleted && plano.instituicao_id === instituicaoIdValue()).toArray();
     return planos.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, []);
+
+        const [isMobile, setIsMobile] = useState(false);
+
+      useEffect(() => {
+        const checkMobile = () => {
+          setIsMobile(window.innerWidth < 640);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+      }, []);
+
+
 
   const pendentesAulasLive = useLiveQuery<number>(async () => {
     const instituicaoId = instituicaoIdValue();
@@ -362,34 +381,52 @@ export const AulasPage = () => {
     }
   };
 
-  const aulasFiltradas = aulas.length==0?[]:aulas.filter((aula)=>{
-      const matchesTurma=filtroTurma==="Todas Turmas"||filtroTurma===aula.turmas?.nome_turma
-      const matchesStatus=filtroStatus==="Todos"||filtroStatus===aula.status
-      const matchesData=filtroData===""||filtroData===aula.data_aula
-      return matchesTurma && matchesStatus && matchesData
-   });
+  const aulasFiltradas = useMemo(() => {
+    const filtradas = aulas.length === 0 ? [] : aulas.filter((aula) => {
+      const matchesTurma = filtroTurma === "Todas Turmas" || filtroTurma === aula.turmas?.nome_turma;
+      const matchesStatus = filtroStatus === "Todos" || filtroStatus === aula.status;
+      const matchesData = filtroData === "" || filtroData === aula.data_aula;
+      return matchesTurma && matchesStatus && matchesData;
+    });
 
-  useEffect(() => {
+    const sorted = [...filtradas];
     switch (sortBy) {
       case 'data_desc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
+        sorted.sort((a: Aula, b: Aula) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
         break;
       case 'data_asc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
+        sorted.sort((a: Aula, b: Aula) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
         break;
       case 'disciplina_asc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => a.disciplina.localeCompare(b.disciplina));
+        sorted.sort((a: Aula, b: Aula) => a.disciplina.localeCompare(b.disciplina));
         break;
       case 'disciplina_desc':
-        aulasFiltradas.sort((a:Aula, b:Aula) => b.disciplina.localeCompare(a.disciplina));
+        sorted.sort((a: Aula, b: Aula) => b.disciplina.localeCompare(a.disciplina));
         break;
-      case 'status':
-        const statusOrder = { ministrada: 1, planeada: 2, adiada: 3, cancelada: 4 };
-        aulasFiltradas.sort((a:Aula, b:Aula) => (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5));
+      case 'status': {
+        const statusOrder = { ministrada: 1, planeada: 2, adiada: 3, cancelada: 4 } as Record<string, number>;
+        sorted.sort((a: Aula, b: Aula) => (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5));
         break;
+      }
     }
+    return sorted;
+  }, [aulas, filtroTurma, filtroStatus, filtroData, sortBy]);
 
-  }, [sortBy, aulasFiltradas,filtroData,filtroStatus,filtroTurma]);
+  const {
+    page: aulasPage,
+    setPage: setAulasPage,
+    pageSize: aulasPageSize,
+    setPageSize: setAulasPageSize,
+    totalItems: aulasTotalItems,
+    totalPages: aulasTotalPages,
+    startItem: aulasStartItem,
+    endItem: aulasEndItem,
+    paginatedItems: aulasPaginadas
+  } = usePagination<Aula>({
+    items: aulasFiltradas,
+    initialPageSize: 9,
+    resetDeps: [aulasFiltradas, viewMode, activeTab, filtroData, filtroStatus, filtroTurma]
+  });
 
   // Handlers
   const handleCriarAula = async (aulaData: AulaFormData) => {
@@ -626,11 +663,7 @@ export const AulasPage = () => {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando aulas" subtitle="Preparando calendário, planos e filtros..." />;
   }
 
   async function handleActualizar(status: AulaStatus,aulaSelect:Aula) {
@@ -722,7 +755,7 @@ export const AulasPage = () => {
   };
 
   return (
-    <div className="min-h-screen rounded-md dark:bg-gray-900 p-4 md:p-6">
+    <div className="min-h-screen rounded-md dark:bg-gray-900 p-4  md:p-6">
       <AulasPageHeader
         onQuickAdd={() => setShowQuickAdd(true)}
         onDetailedAdd={() => setShowForm(true)}
@@ -740,36 +773,15 @@ export const AulasPage = () => {
       }
       <AulasStatsGrid aulas={aulas} />
 
-
       {/* Tabs Navigation */}
-      <div className="mb-6">
-        <div className="flex space-x-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => navigate("/aulas/"+tab.id)}
-              className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600'
-              }`}
-            >
-              {tab.icon}
-              <span className="font-medium">{tab.label}</span>
-              {tab.count !== undefined && (
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600'
-                    : 'bg-gray-200 dark:bg-gray-500'
-                }`}>
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
+      <TabNavigation 
+        activeTab={activeTab}
+        tabs={tabs}
+        onTabChange={(tabId) => {
+          navigate(`/aulas/${tabId}`);
+        }}
+        path='/aulas/'
+      />
       {/* Tab Content */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -778,7 +790,7 @@ export const AulasPage = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
-          className="bg-white dark:bg-gray-700 rounded-2xl shadow-xl overflow-hidden"
+          className="bg-white dark:bg-gray-700 rounded-2xl shadow-xl overflow-hidden mt-6"
         >
           {/* Lista de Aulas Tab */}
           {activeTab === 'lista' && (
@@ -803,7 +815,7 @@ export const AulasPage = () => {
                 // Visualização Timeline Completa
                 <div className="mb-8">
                   <TimelineWindows
-                    aulas={aulas}
+                    aulas={aulasPaginadas}
                     onAulaClick={(aula) => setAulaExpandida(aula)}
                     onEditClick={(aula) => {
                       setAulaEditando(aula);
@@ -817,7 +829,7 @@ export const AulasPage = () => {
                 // Visualização Lista
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                   <ListaView
-                    aulas={aulasFiltradas||[]}
+                    aulas={aulasPaginadas || []}
                     onEditar={(aula) => {
                       setAulaEditando(aula);
                       setShowForm(true);
@@ -832,7 +844,7 @@ export const AulasPage = () => {
                 <div>
                   {aulasFiltradas&&aulasFiltradas.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {aulasFiltradas.map((aula, index) => (
+                      {aulasPaginadas.map((aula, index) => (
                         <AulaCardTurma
                           key={aula.id}
                           aula={aula}
@@ -870,7 +882,22 @@ export const AulasPage = () => {
                     </div>
                   )}
                 </div>
-              )}
+                )}
+                <PaginationControls
+                  page={aulasPage}
+                  totalPages={aulasTotalPages}
+                  totalItems={aulasTotalItems}
+                  startItem={aulasStartItem}
+                  endItem={aulasEndItem}
+                  pageSize={aulasPageSize}
+                  onPageChange={setAulasPage}
+                  onPageSizeChange={(size) => {
+                    setAulasPageSize(size);
+                    setAulasPage(1);
+                  }}
+                  sizeOptions={[9, 18, 30]}
+                  className="mt-6"
+                />
 
               {/* Modal de Detalhes da Aula */}
               <ModalDetalhesAula 
@@ -974,7 +1001,7 @@ export const AulasPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => {
               setShowForm(false);
               setAulaEditando(null);
@@ -985,7 +1012,7 @@ export const AulasPage = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               <AulaForm
@@ -1010,7 +1037,7 @@ export const AulasPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => {
               setShowForm(false);
               setAulaEditando(null);
@@ -1021,7 +1048,7 @@ export const AulasPage = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
 

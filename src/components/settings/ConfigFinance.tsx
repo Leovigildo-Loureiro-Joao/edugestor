@@ -91,7 +91,7 @@ export const ConfiguracoesFinanceiras = () => {
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-6">
         Configurações Financeiras
       </h2>
 
@@ -322,4 +322,3 @@ export const ConfiguracoesFinanceiras = () => {
     </motion.div>
   );
 };
-

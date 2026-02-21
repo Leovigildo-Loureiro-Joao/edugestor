@@ -62,7 +62,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
         onClick={() => setAulaExpandida(null)}
       >
         <motion.div
@@ -70,19 +70,19 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl"
+          className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl"
           onClick={e => e.stopPropagation()}
         >
           {/* Header do Modal */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-white/20 rounded-xl">
+                <div className="p-3 bg-white/20 dark:bg-white/10 rounded-lg">
                   <StatusIcon className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-white">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-white leading-tight">
                       {aulaExpandida.disciplina || 'Aula Sem Disciplina'}
                     </h3>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(aulaExpandida.status)}`}>
@@ -90,7 +90,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                     </span>
                   </div>
                   
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-blue-100">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-blue-100">
                     <div className="flex items-center gap-2">
                       <FiCalendar className="h-4 w-4" />
                       <span className="font-medium capitalize">
@@ -156,7 +156,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                 {/* Coluna 1: Tema e Conteúdo */}
                 <div className="lg:col-span-2 space-y-6">
                   {/* Tema da Aula */}
-                  <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                  <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                     <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <FiBook className="h-4 w-4" />
                       Tema da Aula
@@ -168,7 +168,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
                   {/* Conteúdo Ministrado */}
                   {aulaExpandida.conteudo_ministrado && (
-                    <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                       <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <FiClipboard className="h-4 w-4" />
                         Conteúdo Ministrado
@@ -183,7 +183,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
                 {/* Coluna 2: Status e Métricas */}
                 <div className="space-y-6">
                   {/* Status Card */}
-                  <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                  <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                     <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Status da Aula</h4>
                     <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg ${getStatusColor(aulaExpandida.status)}`}>
                       <StatusIcon className="h-4 w-4" />
@@ -193,7 +193,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
                   {/* Participação (se ministrada) */}
                   {aulaExpandida.status === 'ministrada' && aulaExpandida.taxa_participacao !== undefined && (
-                    <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                       <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <FiBarChart2 className="h-4 w-4" />
                         Participação
@@ -230,7 +230,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
                   {/* Ações Rápidas (para aulas planeadas) */}
                   {aulaExpandida.status === 'planeada' && (
-                    <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                       <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Ações Rápidas</h4>
                       <div className="space-y-2">
                         <motion.button
@@ -272,7 +272,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
               {/* Objetivos de Aprendizagem */}
               {aulaExpandida.objetivos_aprendizagem && aulaExpandida.objetivos_aprendizagem.length > 0 && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                   <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <FiTarget className="h-4 w-4" />
                     Objetivos de Aprendizagem
@@ -296,7 +296,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
               {/* Recursos Utilizados */}
               {aulaExpandida.recursos_utilizados && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                   <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                     <FiTool className="h-4 w-4" />
                     Recursos Utilizados
@@ -307,7 +307,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
               {/* Observações do Professor */}
               {aulaExpandida.observacoes_professor && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                   <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                     <FiMessageSquare className="h-4 w-4" />
                     Observações do Professor
@@ -322,7 +322,7 @@ export const ModalDetalhesAula: React.FC<ModalDetalhesAulaProps> = ({
 
               {/* Plano de Aula Relacionado */}
               {planoAula && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
                   <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                     <FiAward className="h-4 w-4" />
                     Plano de Aula Relacionado

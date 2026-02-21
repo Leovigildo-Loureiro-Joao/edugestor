@@ -231,17 +231,17 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
       <motion.form
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-         onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 bg-white rounded-lg shadow-sm">
+         onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         {/* Header com auto-save */}
         <div
-        className="flex justify-between items-start">
+        className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">{title}</h1>
           </div>
           
           <div className="flex items-center gap-3">
             {lastSave && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                 <FiSave className="text-green-500" />
                 <span>Salvo: {new Date(lastSave).toLocaleTimeString()}</span>
               </div>
@@ -250,14 +250,14 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             <button
               type="button"
               onClick={handleManualSave}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-white"
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             >
               <FiSave />
               Salvar Rascunho
             </button>
              <button
               onClick={handleCancel}
-              className="flex py-2 mt-4 items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              className="flex py-2 mt-4 items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
             >
               <FiArrowLeft size={20} />
               <span className="font-medium">Voltar para Alunos</span>
@@ -267,7 +267,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
         
         {/* SELEÇÃO DE TIPO DE MATRÍCULA */}
         <div className=" p-6 pt-0">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
             <FiTarget className="mr-2" />
             Tipo de Matrícula
           </h3>
@@ -284,22 +284,22 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               }}
               className={`p-4 rounded-lg border-2 text-left transition-all hover:border-blue-200 ${
                 tipoMatricula === 'regular'
-                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                  : 'border-gray-200 hover:bg-gray-50'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-200 dark:ring-blue-900/40'
+                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40'
               }`}
             >
               <div className="flex items-center mb-2">
                 <div className={`p-2 rounded-full mr-3 ${
-                  tipoMatricula === 'regular' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                  tipoMatricula === 'regular' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                 }`}>
                   <FiUsers />
                 </div>
                 <div>
-                  <div className="font-semibold">Turma Regular</div>
-                  <div className="text-sm text-gray-600">Acompanha turma fixa com disciplinas exatas</div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Turma Regular</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Acompanha turma fixa com disciplinas exatas</div>
                 </div>
               </div>
-              <ul className="text-sm text-gray-600 ml-11 space-y-1">
+              <ul className="text-sm text-gray-600 dark:text-gray-400 ml-11 space-y-1">
                 <li>• Segue grade curricular fixa</li>
                 <li>• Horários definidos por turma</li>
                 <li>• Disciplinas padrão do curso</li>
@@ -319,22 +319,22 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               }}
               className={`p-4 rounded-lg border-2 text-left transition-all hover:border-purple-200 ${
                 tipoMatricula === 'reforco_personalizado'
-                  ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                  : 'border-gray-200 hover:bg-gray-50'
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 ring-2 ring-purple-200 dark:ring-purple-900/40'
+                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40'
               }`}
             >
               <div className="flex items-center mb-2">
                 <div className={`p-2 rounded-full mr-3 ${
-                  tipoMatricula === 'reforco_personalizado' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                  tipoMatricula === 'reforco_personalizado' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                 }`}>
                   <FiUser />
                 </div>
                 <div>
-                  <div className="font-semibold">Reforço Personalizado</div>
-                  <div className="text-sm text-gray-600">Acompanhamento individualizado</div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Reforço Personalizado</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Acompanhamento individualizado</div>
                 </div>
               </div>
-              <ul className="text-sm text-gray-600 ml-11 space-y-1">
+              <ul className="text-sm text-gray-600 dark:text-gray-400 ml-11 space-y-1">
                 <li>• Disciplinas específicas por aluno</li>
                 <li>• Horários flexíveis</li>
                 <li>• Foco em dificuldades pontuais</li>
@@ -369,20 +369,20 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           </>
           :<>
           <div className="flex flex-col gap-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2 flex items-center">
               <RxPerson className="mr-2" />
               Dados Pessoais
             </h3>
             
             {/* Nome Completo */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="nome_completo" className="text-sm font-medium text-gray-700">
+              <label htmlFor="nome_completo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Nome Completo *
               </label>
               <div className="relative">
                 <RxPerson className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                   type="text" 
                   placeholder="Informe o nome completo" 
                   name="nome_completo" 
@@ -396,13 +396,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             
             {/* Data de Nascimento */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="data_nascimento" className="text-sm font-medium text-gray-700">
+              <label htmlFor="data_nascimento" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Data de Nascimento *
               </label>
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                   type="date" 
                   name="data_nascimento"
                   id="data_nascimento"
@@ -416,7 +416,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
             {/* SEXO */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Sexo *
               </label>
               <SelectTyped 
@@ -433,13 +433,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             
             {/* Nome do Pai */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="nome_pai" className="text-sm font-medium text-gray-700">
+              <label htmlFor="nome_pai" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Nome do Pai
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                   type="text" 
                   value={formData.nome_pai}
                   placeholder="Nome completo do pai" 
@@ -452,13 +452,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             
             {/* Nome da Mãe */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="nome_mae" className="text-sm font-medium text-gray-700">
+              <label htmlFor="nome_mae" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Nome da Mãe
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                   type="text" 
                   placeholder="Nome completo da mãe" 
                   name="nome_mae" 
@@ -471,13 +471,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
             {/* Data de Matrícula */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="data_matricula" className="text-sm font-medium text-gray-700">
+              <label htmlFor="data_matricula" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Data de Matrícula *
               </label>
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                   type="date" 
                   name="data_matricula" 
                   id="data_matricula"
@@ -491,13 +491,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
             {/* Endereço */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="endereco" className="text-sm font-medium text-gray-700">
+              <label htmlFor="endereco" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Endereço
               </label>
               <div className="relative">
                 <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                 <textarea 
-                  className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none" 
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-gray-900 dark:text-white" 
                   placeholder="Endereço completo" 
                   name="endereco" 
                   id="endereco"
@@ -511,20 +511,20 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
             {/* Coluna Direita - INFORMAÇÕES ACADÊMICAS E CONTATO */}
             <div className="flex flex-col gap-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2 flex items-center">
                 <FiBookOpen className="mr-2" />
                 Informações Acadêmicas e Contato
               </h3>
               
               {/* Contacto Telefónico Principal */}
               <div className="flex flex-col gap-2">
-                <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700">
+                <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Contacto Telefónico Principal
                 </label>
                 <div className="relative">
                   <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                   <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                     type="text" 
                     placeholder="XXX XXX XXX" 
                     maxLength={9}
@@ -538,13 +538,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
               {/* Contacto Telefónico Secundário */}
               <div className="flex flex-col gap-2">
-                <label htmlFor="contacto_secundario" className="text-sm font-medium text-gray-700">
+                <label htmlFor="contacto_secundario" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Contacto Telefónico Secundário
                 </label>
                 <div className="relative">
                   <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                   <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                     type="text" 
                     placeholder="XXX XXX XXX" 
                     maxLength={9}
@@ -558,13 +558,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               
               {/* Email */}
               <div className="flex flex-col gap-2">
-                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Email
                 </label>
                 <div className="relative">
                   <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                   <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                     type="email" 
                     placeholder="exemplo@email.com" 
                     value={formData.email}
@@ -577,13 +577,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
               {/* Propina */}
               <div className="flex flex-col gap-2">
-                <label htmlFor="propina" className="text-sm font-medium text-gray-700">
+                <label htmlFor="propina" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Propina *
                 </label>
                 <div className="relative">
                   <FaMoneyBill className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
                   <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
                     type="number" 
                     placeholder="Quanto pagará por propina" 
                     name="propina" 
@@ -602,7 +602,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <>
                   {/* TURMA */}
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Turma *
                     </label>
                     <SelectTyped 
@@ -617,13 +617,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                       disabled={turmas.length === 0}
                     />
                     {turmas.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Nenhuma turma disponível</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Nenhuma turma disponível</p>
                     )}
                   </div>
 
                   {/* GRUPO DE APRENDIZADO (Gama/Beta/Alfa) */}
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Grupo de Aprendizado *
                     </label>
                     <SelectTyped 
@@ -637,7 +637,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
                   {/* NÍVEL DE CONHECIMENTO (A/B/C) */}
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Nível de Conhecimento Atual *
                     </label>
                     <SelectTyped 
@@ -653,10 +653,10 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <>
                   {/* DISCIPLINAS DE REFORÇO (multi-select) */}
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Disciplinas para Reforço *
                     </label>
-                    <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                    <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 max-h-40 overflow-y-auto bg-white dark:bg-gray-700/40">
                       {disciplinasDisponiveis.map(disciplina => (
                         <div key={disciplina} className="flex items-center mb-2">
                           <input
@@ -672,7 +672,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                             }}
                             className="mr-2"
                           />
-                          <label htmlFor={`disciplina-${disciplina}`} className="text-sm">
+                          <label htmlFor={`disciplina-${disciplina}`} className="text-sm text-gray-700 dark:text-gray-300">
                             {disciplina}
                           </label>
                         </div>
@@ -682,7 +682,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
                   {/* FREQUÊNCIA SEMANAL */}
                   <div className="flex flex-col gap-2">
-                    <label htmlFor="frequencia_semanal" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="frequencia_semanal" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Frequência Semanal (vezes)
                     </label>
                     <input
@@ -693,13 +693,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                       onChange={handleChange}
                       min="1"
                       max="5"
-                      className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm"
+                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm text-gray-900 dark:text-white"
                     />
                   </div>
 
                   {/* OBJETIVOS ACADÊMICOS */}
                   <div className="flex flex-col gap-2">
-                    <label htmlFor="objetivos_academicos" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="objetivos_academicos" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Objetivos Acadêmicos
                     </label>
                     <textarea
@@ -707,7 +707,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                       id="objetivos_academicos"
                       value={formData.objetivos_academicos}
                       onChange={handleChange}
-                      className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-24"
+                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm h-24 text-gray-900 dark:text-white"
                       placeholder="Ex: Melhorar notas em matemática, passar no exame..."
                     />
                   </div>
@@ -716,7 +716,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
               {/* ✅ CLASSE ESCOLAR */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Classe Escolar *
                 </label>
                 <SelectTyped 
@@ -730,7 +730,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               
               {/* ✅ ESTADO */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Estado *
                 </label>
                 <SelectTyped 
@@ -748,7 +748,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
               {/* Observações Específicas */}
               <div className="flex flex-col gap-2">
-                <label htmlFor="observacoes_especificas" className="text-sm font-medium text-gray-700">
+                <label htmlFor="observacoes_especificas" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Observações Específicas
                 </label>
                 <textarea
@@ -756,7 +756,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   id="observacoes_especificas"
                   value={formData.observacoes_especificas}
                   onChange={handleChange}
-                  className="w-full p-3 rounded-lg bg-white border border-gray-300 shadow-sm h-20"
+                  className="w-full p-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm h-20 text-gray-900 dark:text-white"
                   placeholder="Alergias, condições médicas, necessidades especiais..."
                 />
               </div>
@@ -766,12 +766,12 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
+        <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button 
             type="button" 
             onClick={handleCancel}
             disabled={loading}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-white transition-colors font-medium disabled:opacity-50"
+            className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
           >
             Cancelar
           </button>

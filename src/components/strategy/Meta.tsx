@@ -123,7 +123,7 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
       case 'em_andamento': return 'bg-blue-100 text-blue-800';
       case 'atrasada': return 'bg-red-100 text-red-800';
       case 'suspensa': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
 
@@ -133,7 +133,7 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
       case 'alta': return 'bg-orange-500 text-white';
       case 'media': return 'bg-yellow-500 text-black';
       case 'baixa': return 'bg-green-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      default: return 'bg-gray-500 text-white dark:bg-gray-600 dark:text-gray-100';
     }
   };
 
@@ -193,14 +193,14 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex gap-3 items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
               <FiTarget className="mr-2" />
               Metas Estratégicas
             </h2>
             <SyncStatusBadge tableName="metas"/>
           </div>
           
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
             Gerencie e acompanhe o progresso das metas da escola
           </p>
         </div>
@@ -285,7 +285,7 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
         {metas.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
             <FiTarget className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
               Nenhuma meta cadastrada
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-4">

@@ -1,5 +1,5 @@
 // components/dashboard/GraficoDesempenho.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { format, subDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -25,10 +25,15 @@ interface Props {
 
 export const GraficoDesempenho: React.FC<Props> = ({ 
   periodo = 'semana', 
-  tema = 'claro' 
+  tema
 }) => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
+  const [temaDetectado, setTemaDetectado] = useState<'claro' | 'escuro'>(() => {
+    if (typeof document === 'undefined') return 'claro';
+    return document.documentElement.classList.contains('dark') ? 'escuro' : 'claro';
+  });
+  const temaAtual = tema ?? temaDetectado;
   
   // Cores profissionais para o tema claro
   const coresTemaClaro = {
@@ -58,7 +63,22 @@ export const GraficoDesempenho: React.FC<Props> = ({
     perigo: '#F87171'
   };
 
-  const cores = tema === 'claro' ? coresTemaClaro : coresTemaEscuro;
+  const cores = temaAtual === 'claro' ? coresTemaClaro : coresTemaEscuro;
+
+  useEffect(() => {
+    if (tema) return;
+    if (typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    const syncTheme = () => {
+      setTemaDetectado(root.classList.contains('dark') ? 'escuro' : 'claro');
+    };
+
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, [tema]);
 
   useEffect(() => {
     carregarDadosEGerarGrafico();
@@ -68,7 +88,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
         chartInstance.current.destroy();
       }
     };
-  }, [periodo, tema]);
+  }, [periodo, temaAtual]);
 
   const carregarDadosEGerarGrafico = async () => {
     try {
@@ -224,7 +244,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
             }
           },
           tooltip: {
-            backgroundColor: tema === 'claro' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
+            backgroundColor: temaAtual === 'claro' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
             titleColor: cores.texto,
             bodyColor: cores.texto,
             borderColor: cores.grid,
@@ -294,10 +314,10 @@ export const GraficoDesempenho: React.FC<Props> = ({
   };
 
   const containerStyle = {
-    backgroundColor: tema === 'claro' ? '#ffffff' : '#1E293B',
+    backgroundColor: temaAtual === 'claro' ? '#ffffff' : '#1E293B',
     borderRadius: '16px',
     padding: '24px',
-    boxShadow: tema === 'claro' 
+    boxShadow: temaAtual === 'claro' 
       ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
       : '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)'
   };
@@ -315,7 +335,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
           Desempenho Estratégico
         </h3>
         <p style={{ 
-          color: tema === 'claro' ? '#64748B' : '#94A3B8',
+          color: temaAtual === 'claro' ? '#64748B' : '#94A3B8',
           margin: '4px 0 0 0',
           fontSize: '14px',
           fontFamily: "'Inter', sans-serif"

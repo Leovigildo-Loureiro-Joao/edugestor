@@ -557,99 +557,98 @@ useEffect(() => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
     >
       <form onSubmit={handleSubmit} className="flex flex-col h-full">
         {/* Header */}
-{/* Header */}
-<div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-white/10 p-6 shadow-lg">
-  <div className="flex justify-between items-center">
-    <div className="flex items-center gap-4">
-      {/* Ícone com efeito de vidro */}
-      <motion.div 
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", damping: 20, stiffness: 200 }}
-        className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg"
-      >
-        <FiBook className="h-7 w-7 text-white" />
-      </motion.div>
-      
-      <div>
-        <motion.h2 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-2xl font-bold text-white"
-        >
-          {title}
-        </motion.h2>
-        
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-sm text-blue-100 mt-1"
-        >
-          {isEditing ? 'Atualize os detalhes da aula' : 'Preencha os detalhes da nova aula'}
-        </motion.p>
-      </div>
-    </div>
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-white/10 p-6 shadow-lg">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              {/* Ícone com efeito de vidro */}
+              <motion.div 
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                className="p-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm rounded-xl shadow-lg"
+              >
+                <FiBook className="h-7 w-7 text-white" />
+              </motion.div>
+              
+              <div>
+                <motion.h2 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-2xl font-bold text-white"
+                >
+                  {title}
+                </motion.h2>
+                
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-sm text-blue-100 mt-1"
+                >
+                  {isEditing ? 'Atualize os detalhes da aula' : 'Preencha os detalhes da nova aula'}
+                </motion.p>
+              </div>
+            </div>
 
-    {/* Badge de Status (se for edição) */}
-    {isEditing && (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.3, type: "spring" }}
-        className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${
-          aula.status === 'planeada' ? 'bg-blue-500/20 text-white border border-white/20' :
-          aula.status === 'ministrada' ? 'bg-green-500/20 text-white border border-white/20' :
-          aula.status === 'cancelada' ? 'bg-red-500/20 text-white border border-white/20' :
-          'bg-yellow-500/20 text-white border border-white/20'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          {aula.status === 'planeada' && <FiCalendar className="h-4 w-4" />}
-          {aula.status === 'ministrada' && <FiCheckCircle className="h-4 w-4" />}
-          {aula.status === 'cancelada' && <FiAlertCircle className="h-4 w-4" />}
-          {aula.status === 'adiada' && <FiEdit3 className="h-4 w-4" />}
-          <span className="capitalize">{aula.status}</span>
+            {/* Badge de Status (se for edição) */}
+            {isEditing && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring" }}
+                className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${
+                  aula.status === 'planeada' ? 'bg-blue-500/20 text-white border border-white/20' :
+                  aula.status === 'ministrada' ? 'bg-green-500/20 text-white border border-white/20' :
+                  aula.status === 'cancelada' ? 'bg-red-500/20 text-white border border-white/20' :
+                  'bg-yellow-500/20 text-white border border-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {aula.status === 'planeada' && <FiCalendar className="h-4 w-4" />}
+                  {aula.status === 'ministrada' && <FiCheckCircle className="h-4 w-4" />}
+                  {aula.status === 'cancelada' && <FiAlertCircle className="h-4 w-4" />}
+                  {aula.status === 'adiada' && <FiEdit3 className="h-4 w-4" />}
+                  <span className="capitalize">{aula.status}</span>
+                </div>
+              </motion.div>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              type="button"
+              onClick={onCancel}
+              className="p-2.5 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:bg-white/10 backdrop-blur-sm rounded-xl transition-all text-white"
+            >
+              <FiX className="h-5 w-5" />
+            </motion.button>
+          </div>
+
+          {/* Barra de progresso (opcional) */}
+          {!isEditing && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 text-xs text-blue-100 mb-1">
+                <span>Preencha todos os campos obrigatórios (*)</span>
+                <div className="flex-1 h-1 bg-white/20 dark:bg-white/10 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-white dark:bg-white/90 rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{ 
+                      width: `${
+                        Object.values(formData).filter(v => v && v !== '' && v !== 'Selecione uma disciplina').length / 7 * 100
+                      }%` 
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </motion.div>
-    )}
-
-    <motion.button
-      whileHover={{ scale: 1.1, rotate: 90 }}
-      whileTap={{ scale: 0.9 }}
-      type="button"
-      onClick={onCancel}
-      className="p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all text-white"
-    >
-      <FiX className="h-5 w-5" />
-    </motion.button>
-  </div>
-
-  {/* Barra de progresso (opcional) */}
-  {!isEditing && (
-    <div className="mt-4">
-      <div className="flex items-center gap-2 text-xs text-blue-100 mb-1">
-        <span>Preencha todos os campos obrigatórios (*)</span>
-        <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-          <motion.div 
-            className="h-full bg-white rounded-full"
-            initial={{ width: "0%" }}
-            animate={{ 
-              width: `${
-                Object.values(formData).filter(v => v && v !== '' && v !== 'Selecione uma disciplina').length / 7 * 100
-              }%` 
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  )}
-</div>
         {/* Conteúdo Rolável */}
         <div className="flex-1 overflow-y-auto max-h-[calc(90vh-140px)] p-6">
           {/* Grid Principal */}

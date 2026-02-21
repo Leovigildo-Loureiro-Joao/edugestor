@@ -29,12 +29,14 @@ import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.
 import { motion } from 'framer-motion';
 import { getPendingCount } from '../../utils/emitPendingSync.ts';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID.ts';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { IconType } from 'react-icons';
 
 // Interfaces/Types
 interface TabOption {
   value: string;
   label: string;
-  icon: ReactNode;
+  icon: ReactNode|IconType;
   descricao: string;
   cor: string;
 }
@@ -94,11 +96,92 @@ interface Desconto {
   [key: string]: any;
 }
 
-interface DivisaoLucro {
-  id: string;
-  data_divisao: string;
-  [key: string]: any;
-}
+const SelectorVisualizacao: React.FC<TabsNavigationProps>  = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const opcoes = [
+    { 
+      value: 'VS', 
+      label: 'Receitas vs Despesas', 
+      icon: FiBarChart2,
+      descricao: 'Comparação mensal detalhada',
+      cor: 'blue'
+    },
+    { 
+      value: 'despesas', 
+      label: 'Categorias de Despesas', 
+      icon: FiPieChart,
+      descricao: 'Distribuição por categoria',
+      cor: 'red'
+    },
+    { 
+      value: 'lucro', 
+      label: 'Evolução do Lucro', 
+      icon: FiTrendingUp,
+      descricao: 'Performance mensal do lucro',
+      cor: 'green'
+    }
+  ];
+
+  const opcaoAtual = opcoes.find(op => op.value === value);
+
+  return (
+    <div className="relative w-full md:w-auto">
+      <button
+
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:border-gray-400 dark:hover:border-gray-600 transition-all shadow-sm w-full md:w-80"
+      >
+        <div className="flex items-center gap-3 flex-1">
+          <div className={`p-2 rounded-lg ${opcaoAtual.cor === 'blue' ? 'bg-blue-50' : opcaoAtual.cor === 'red' ? 'bg-red-50' : 'bg-green-50'}`}>
+            {opcaoAtual.cor === 'blue' ? <FiBarChart2 className="text-blue-600" size={20} /> : 
+             opcaoAtual.cor === 'red' ? <FiPieChart className="text-red-600" size={20} /> : 
+             <FiTrendingUp className="text-green-600" size={20} />}
+          </div>
+          <div className="text-left">
+            <div className="font-semibold text-gray-900 dark:text-white">{opcaoAtual.label}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{opcaoAtual.descricao}</div>
+          </div>
+        </div>
+        <FiArrowRight 
+          size={16} 
+          className={`text-gray-400 dark:text-gray-500 transition-transform ${isOpen ? 'rotate-90' : ''}`} 
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+          {opcoes.map((opcao) => (
+            <button
+              key={opcao.value}
+              onClick={() => {
+                onChange(opcao.value);
+                setIsOpen(false);
+              }}
+              className={`flex items-center gap-3 w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-all ${
+                value === opcao.value ? 'bg-blue-50 dark:bg-blue-900/30 border-r-4 border-blue-500' : ''
+              }`}
+            >
+              <div className={`p-2 rounded-lg ${opcao.cor === 'blue' ? 'bg-blue-50' : opcao.cor === 'red' ? 'bg-red-50' : 'bg-green-50'}`}>
+                {opcao.cor === 'blue' ? <FiBarChart2 className="text-blue-600" size={20} /> : 
+                 opcao.cor === 'red' ? <FiPieChart className="text-red-600" size={20} /> : 
+                 <FiTrendingUp className="text-green-600" size={20} />}
+              </div>
+              <div className="text-left flex-1">
+                <div className="font-semibold text-gray-900 dark:text-white">{opcao.label}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{opcao.descricao}</div>
+              </div>
+              {value === opcao.value && (
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 // Componente Tabs_Navigation com tipagem
 const Tabs_Navigation: React.FC<TabsNavigationProps> = ({ value, onChange }) => {
@@ -106,21 +189,21 @@ const Tabs_Navigation: React.FC<TabsNavigationProps> = ({ value, onChange }) => 
     { 
       value: 'VS', 
       label: 'Receitas vs Despesas', 
-      icon: <FiBarChart2/>,
+      icon: FiBarChart2,
       descricao: 'Comparação mensal detalhada',
       cor: 'blue'
     },
     { 
       value: 'despesas', 
       label: 'Categorias de Despesas', 
-      icon: <FiPieChart/>,
+      icon: FiPieChart,
       descricao: 'Distribuição por categoria',
       cor: 'red'
     },
     { 
       value: 'lucro', 
       label: 'Evolução do Lucro', 
-      icon: <FiTrendingUp/>,
+      icon: FiTrendingUp,
       descricao: 'Performance mensal do lucro',
       cor: 'green'
     }
@@ -130,19 +213,19 @@ const Tabs_Navigation: React.FC<TabsNavigationProps> = ({ value, onChange }) => 
 
   return (
     <div className="mb-6 w-full">
-      <div className="flex space-x-1 key={tab.id} bg-white dark:bg-gray-700 rounded-xl shadow-md p-1">
+      <div className="flex space-x-1 key={tab.id} bg-white dark:bg-gray-800 rounded-xl shadow-md p-1 border border-gray-200 dark:border-gray-700">
         {opcoes.map((tab) => (
           <button
             key={tab.value}
             onClick={() => onChange(tab.value)}
-            className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-lg transition-all duration-200 ${
               opcaoAtual.value === tab.value
                 ? 'bg-blue-500 text-white shadow-lg'
-                : 'text-gray-600 dark:text-white dark:hover:text-gray-500 hover:bg-gray-100'
+                : 'text-gray-600 dark:text-gray-200 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            {tab.icon}
-            <span className="font-medium">{tab.label}</span>
+            <tab.icon className="h-4 w-4" />
+            <span className="hidden sm:inline font-medium">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -166,6 +249,17 @@ export const FinanceiroPage: React.FC = () => {
   const [showDivisaoLucrosModal, setShowDivisaoLucrosModal] = useState<boolean>(false);
   const [alocacao, setAlocacao] = useState<AlocacaoRecurso[]>([]);
   const [metas,setMetas]=useState<Meta[]>([])
+  const [isMobile, setIsMobile] = useState(false);
+    
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 640);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
 
   const handleAlocacao = async (divisao: {
@@ -339,7 +433,7 @@ export const FinanceiroPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-4 sm:p-6 bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
@@ -352,8 +446,8 @@ export const FinanceiroPage: React.FC = () => {
                 <FiDollarSign className="h-8 w-8 text-green-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard Financeiro</h1>
-                <p className="text-gray-600">Visão geral das finanças da escola</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Dashboard Financeiro</h1>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Visão geral das finanças da escola</p>
               </div>
             </motion.div>
      
@@ -362,21 +456,21 @@ export const FinanceiroPage: React.FC = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navegarAno(-1)}
-                className="p-3 hover:bg-white rounded-lg border border-gray-200 transition-all"
+                className="p-3 hover:bg-white dark:hover:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-all"
               >
-                <FiArrowLeft className="text-gray-600" />
+                <FiArrowLeft className="text-gray-600 dark:text-gray-300" />
               </button>
               
-              <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm">
-                <FiCalendar className="text-gray-400" />
-                <span className="font-semibold text-gray-900 text-lg">{anoSelecionado}</span>
+              <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <FiCalendar className="text-gray-400 dark:text-gray-500" />
+                <span className="font-semibold text-gray-900 dark:text-white text-lg">{anoSelecionado}</span>
               </div>
               
               <button
                 onClick={() => navegarAno(1)}
-                className="p-3 hover:bg-white rounded-lg border border-gray-200 transition-all"
+                className="p-3 hover:bg-white dark:hover:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-all"
               >
-                <FiArrowRight className="text-gray-600" />
+                <FiArrowRight className="text-gray-600 dark:text-gray-300" />
               </button>
             </div>
           </div>
@@ -386,11 +480,11 @@ export const FinanceiroPage: React.FC = () => {
 
             <button
               onClick={() => navigate('/financeiro/transacoes')}
-              className="flex items-center justify-between gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition-all group"
+              className="flex items-center justify-between gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group"
             >
               <div className='flex gap-3'>
                 {
-                  transacaoPending>0?<div className='bg-orange-100 gap-2   text-orange-400 px-4  w-18 flex items-center justify-center rounded-md'>
+                  transacaoPending>0?<div className='bg-orange-100 dark:bg-orange-900/40 gap-2 text-orange-400 dark:text-orange-300 px-4 w-18 flex items-center justify-center rounded-md'>
                 <FiAlertCircle className='text-xl'/>
               </div>
               :<div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-all">
@@ -400,8 +494,8 @@ export const FinanceiroPage: React.FC = () => {
                 }
                 
               <div className="text-left">
-                <h3 className="font-semibold text-gray-900">Gestão de Transações</h3>
-                <p className="text-sm text-gray-600">Investimentos e despesas</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Gestão de Transações</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Investimentos e despesas</p>
                
               </div>
               </div>
@@ -411,24 +505,24 @@ export const FinanceiroPage: React.FC = () => {
               {/* Novo Botão para Divisão de Lucros */}
               <button
                 onClick={() => setShowDivisaoLucrosModal(true)}
-                className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-purple-500 hover:shadow-md transition-all group"
+                className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all group"
               >
                 <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-all">
                   <FiShare2 className="text-purple-600 text-xl" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-gray-900">Divisão de Lucros</h3>
-                  <p className="text-sm text-gray-600">Distribuir lucro entre as metas e planos</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Divisão de Lucros</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Distribuir lucro entre as metas e planos</p>
                 </div>
               </button>
                 
               <button
                 onClick={() => navigate("/financeiro/pagamentos")}
-                className="flex justify-between items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-green-500 hover:shadow-md transition-all group"
+                className="flex justify-between items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 hover:shadow-md transition-all group"
               >
               <div className='flex gap-3'>
                 {
-                  propinaPending>0?<div className='bg-orange-100 gap-2   text-orange-400 px-4  w-18 flex items-center justify-center rounded-md'>
+                  propinaPending>0?<div className='bg-orange-100 dark:bg-orange-900/40 gap-2 text-orange-400 dark:text-orange-300 px-4 w-18 flex items-center justify-center rounded-md'>
                 <FiAlertCircle className='text-xl'/>
               </div>
               :<div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-all">
@@ -438,8 +532,8 @@ export const FinanceiroPage: React.FC = () => {
                 
               <div className="text-left">
                 
-                      <h3 className="font-semibold text-gray-900">Gestão de Propinas</h3>
-                      <p className="text-sm text-gray-600">Gerir pagamentos de propinas</p>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">Gestão de Propinas</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Gerir pagamentos de propinas</p>
 
                 
               </div>
@@ -448,22 +542,24 @@ export const FinanceiroPage: React.FC = () => {
                 
               </button>
               
-              <div className="hidden items-center gap-3 p-4 bg-white rounded-lg border-2 border-gray-200">
+              <div className="hidden items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700">
                 <div className="p-3 bg-purple-100 rounded-lg">
                   <FiTrendingUp className="text-purple-600 text-xl" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-gray-900">Relatórios</h3>
-                  <p className="text-sm text-gray-600">Relatórios detalhados</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Relatórios</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Relatórios detalhados</p>
                 </div>
               </div>
             </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+          <PageLoader
+            title="Carregando financeiro"
+            subtitle="Consolidando receitas, despesas e saldo..."
+            fullScreen={false}
+          />
         ) : dadosFinanceiros ? (
           <div className="space-y-6">
             
@@ -546,21 +642,25 @@ export const FinanceiroPage: React.FC = () => {
 
             {/* Seletor de Visualização */}
             <div className="flex justify-center">
-              <Tabs_Navigation value={select} onChange={handleSecaoChange} />
+               {isMobile ? (
+                <SelectorVisualizacao value={select} onChange={setSelect} />
+               ) : (
+                <Tabs_Navigation value={select} onChange={handleSecaoChange} />
+               )}
             </div>
 
             {/* Gráficos */}
             <div className="flex flex-col gap-6">
               {select === "VS" ? (
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Receitas vs Despesas ({anoSelecionado})
                   </h3>
                   <GraficoBarrasDuplas dados={dadosFinanceiros.graficos.mensal} />
                 </div>
               ) : select === "despesas" ? (
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Categorias de Despesas ({anoSelecionado})
                   </h3>
                   <CustomPieChart 
@@ -569,8 +669,8 @@ export const FinanceiroPage: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Evolução do Lucro ({anoSelecionado})
                   </h3>
                   <GraficoBarrasLucro dados={dadosFinanceiros.graficos.mensal} />
@@ -580,12 +680,12 @@ export const FinanceiroPage: React.FC = () => {
 
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200 shadow-sm">
-            <FiDollarSign className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-medium text-gray-900 mb-2">
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <FiDollarSign className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600 mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
               Nenhum dado financeiro encontrado
             </h3>
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               Não há dados financeiros para o ano de {anoSelecionado}
             </p>
           </div>
@@ -618,25 +718,25 @@ const MetricCard: React.FC<MetricCardProps> = ({
   };
 
   const cores: Record<string, string> = {
-    green: 'bg-green-50 border-green-200',
-    red: 'bg-red-50 border-red-200',
-    blue: 'bg-blue-50 border-blue-200',
-    purple: 'bg-purple-50 border-purple-200'
+    green: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/60',
+    red: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/60',
+    blue: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/60',
+    purple: 'bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800/60'
   };
 
   return (
     <div className={`p-6 rounded-lg border-2 ${cores[cor]} shadow-sm hover:shadow-md transition-all`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{titulo}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{titulo}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
             {formatarValor(valor, formato)}
           </p>
           {subtitulo && (
-            <p className="text-sm text-gray-500 mt-1">{subtitulo}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitulo}</p>
           )}
         </div>
-        <div className="p-3 bg-white rounded-full shadow-sm">
+        <div className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-sm">
           {icone}
         </div>
       </div>

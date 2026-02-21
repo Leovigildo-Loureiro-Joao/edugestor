@@ -309,7 +309,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
     >
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
             Indicadores de Desempenho (KPIs)
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -572,7 +572,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
       onClick={() => setShowForm(false)}
     >
       
@@ -580,13 +580,13 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl "
+        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-none sm:max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-6 ">
           <div className='flex justify-between items-center mb-4'>
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                 {editando ? 'Editar KPI' : 'Adicionar Novo KPI'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">

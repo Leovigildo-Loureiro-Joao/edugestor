@@ -4,6 +4,7 @@ import { StudentForm } from "../../components/students/StudentForm";
 import { alunosService } from "../../services/database/alunosService.ts";
 import { Student } from "../../types";
 import { useNavigate, useParams } from 'react-router-dom'
+import { PageLoader } from "../../components/ui/PageLoader";
 
 export const StudentEdit = ()=>{
 
@@ -16,14 +17,9 @@ export const StudentEdit = ()=>{
         setAlunoExistente(student);
     })
     if(!loading&& !alunoExistente){
-        return <div>Aluno não encontrado</div>
+        return <div className="p-4 text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Aluno não encontrado</div>
     }else if(loading&& !alunoExistente){
-      
-        return (
-        <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-        );
+        return <PageLoader title="Abrindo edição do aluno" subtitle="Carregando dados do aluno..." />;
   
     }else if(alunoExistente)
     return <>

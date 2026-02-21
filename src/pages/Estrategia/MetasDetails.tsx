@@ -20,6 +20,7 @@ import { SubMetasManager } from '../../components/strategy/SubMetasManager';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { estrategiaMetaService } from '../../services/database/estrategia/metaService';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 export const MetaDetailsPage: React.FC = () => {
   const { id, seccao } = useParams<{ id: string; seccao?: string }>();
@@ -113,11 +114,7 @@ export const MetaDetailsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <PageLoader title="Carregando meta" subtitle="Buscando progresso, tarefas e indicadores..." />;
   }
 
   if (!meta) {
@@ -125,7 +122,7 @@ export const MetaDetailsPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <FiAlertCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Meta não encontrada</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Meta não encontrada</h2>
           <button
             onClick={() => navigate('/estrategia/metas')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -220,7 +217,7 @@ export const MetaDetailsPage: React.FC = () => {
                   {getTipoIcon(meta.tipo)}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                     {meta.titulo}
                   </h1>
                   <div className="flex items-center gap-3 mt-1">
@@ -309,7 +306,7 @@ export const MetaDetailsPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                 Progresso Geral
               </h3>
               <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -416,14 +413,14 @@ export const MetaDetailsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id as SecaoMeta)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium relative ${
+                  className={`flex items-center justify-center gap-2 px-3 sm:px-6 py-4 font-medium relative ${
                     isActive 
                       ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
-                  <span>{tab.label}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                   {tab.count !== undefined && (
                     <span className={`px-2 py-0.5 text-xs rounded-full ${
                       isActive 
@@ -448,7 +445,7 @@ export const MetaDetailsPage: React.FC = () => {
               className="space-y-8">
                 {/* SMART Criteria */}
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <FiTarget className="text-blue-500" />
                     Descricao
                   </h3>
@@ -460,7 +457,7 @@ export const MetaDetailsPage: React.FC = () => {
                 {/* Resumo Financeiro */}
                 {meta.orcamento_previsto && (
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                       <FiPieChart className="text-yellow-500" />
                       Resumo Financeiro
                     </h3>
@@ -513,7 +510,7 @@ export const MetaDetailsPage: React.FC = () => {
               animate={{x:0,opacity:1}} className="space-y-6">
                 {/* Resumo */}
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4">
                     Resumo Financeiro
                   </h3>
                   <div className="grid grid-cols-3 gap-6">
@@ -556,7 +553,7 @@ export const MetaDetailsPage: React.FC = () => {
                 {/* Histórico de Alocações */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                       Histórico de Alocações
                     </h3>
                     <button
@@ -644,7 +641,7 @@ export const MetaDetailsPage: React.FC = () => {
           >
             <div className="text-center">
               <FiAlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">
                 Excluir Meta
               </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-6">

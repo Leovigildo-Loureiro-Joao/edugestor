@@ -12,7 +12,7 @@ export const PlanoDetalhes=({planoDetalhes,setPlanoDetalhes}:PlanoDetalhesProps)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
             onClick={() => setPlanoDetalhes(null)}
           >
             <motion.div
@@ -20,7 +20,7 @@ export const PlanoDetalhes=({planoDetalhes,setPlanoDetalhes}:PlanoDetalhesProps)
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-5xl h-[90vh] sm:h-auto sm:max-h-[90vh] shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >                                                                           
               {/* Header com gradiente animado */}
@@ -32,10 +32,10 @@ export const PlanoDetalhes=({planoDetalhes,setPlanoDetalhes}:PlanoDetalhesProps)
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg sm:text-xl font-bold text-white leading-tight">
                     {planoDetalhes.titulo}
                   </h3>
-                  <p className="text-sm text-blue-100">{planoDetalhes.disciplina}</p>
+                  <p className="text-xs sm:text-sm text-blue-100">{planoDetalhes.disciplina}</p>
                 </motion.div>
                 
                 <motion.button

@@ -10,6 +10,7 @@ import { SeletorMeses } from '../../components/ui/SelectMonth.tsx';
 import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
 import { useAlert } from '../../components/ui/AlertBadge.tsx';
 import { motion } from 'framer-motion';
+import { PageLoader } from '../../components/ui/PageLoader.tsx';
 
 export const CompletarMatricula = () => {
     const { alunoId } = useParams();
@@ -198,16 +199,7 @@ export const CompletarMatricula = () => {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-                    <div className="flex justify-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-                    <p className="text-center mt-4 text-gray-600 dark:text-gray-400">Carregando dados do aluno...</p>
-                </div>
-            </div>
-        );
+        return <PageLoader title="Carregando matrícula" subtitle="Buscando dados do aluno e configurações..." />;
     }
 
     if (!aluno) {

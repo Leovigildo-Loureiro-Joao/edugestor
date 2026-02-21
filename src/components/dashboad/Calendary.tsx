@@ -52,7 +52,7 @@ export const CalendarWithEvents = () => {
     const cor = cores[parseInt(metaId.charAt(metaId.length - 1)) % cores.length];
     
     return (
-      <span className={`text-xs ${cor} text-gray-700 px-2 py-0.5 rounded-full ml-2`}>
+      <span className={`text-xs ${cor} text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full ml-2`}>
         📊 {metaTitulo?.substring(0, 15)}...
       </span>
     );
@@ -247,9 +247,9 @@ export const CalendarWithEvents = () => {
       academic: 'bg-purple-100 text-purple-800 border-purple-200',
       event: 'bg-orange-100 text-orange-800 border-orange-200',
       holiday: 'bg-red-100 text-red-800 border-red-200',
-      other: 'bg-gray-100 text-gray-800 border-gray-200'
+      other: 'bg-gray-100 dark:bg-gray-700 text-gray-800 border-gray-200 dark:border-gray-700'
     };
-    return colors[type] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return colors[type] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 border-gray-200 dark:border-gray-700';
   };
 
   const getEventTypeIcon = (type: string): IconType => {
@@ -281,7 +281,7 @@ export const CalendarWithEvents = () => {
       days.push(
         <div
           key={day}
-          className={`h-18 p-1 dark:bg-gray-800 dark:border-gray-700 border-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+          className={`h-18 p-1 dark:bg-gray-800 dark:border-gray-700 border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
             isToday ? 'bg-blue-50 border-blue-200' : ''
           } ${isHoliday ? 'bg-red-50 border-red-200' : ''}`}
           onClick={() => {
@@ -326,7 +326,7 @@ export const CalendarWithEvents = () => {
               );
             })}
             {dayEvents.length > 2 && (
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 +{dayEvents.length - 2} mais
               </div>
             )}
@@ -378,8 +378,8 @@ export const CalendarWithEvents = () => {
                         <span className="text-xs bg-yellow-500 text-white px-1 rounded">Alta</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-600 mb-2">{event.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{event.description}</p>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
                       <FiTime className="w-3 h-3" />
                       {event.time} {event.duration && `(${event.duration} min)`}
@@ -390,7 +390,7 @@ export const CalendarWithEvents = () => {
                     </div>
                   </div>
                   {event.participants && event.participants.length > 0 && (
-                    <div className="mt-2 text-xs text-gray-500">
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="font-medium">Participantes:</span> {event.participants.slice(0, 3).join(', ')}
                       {event.participants.length > 3 && ` +${event.participants.length - 3}`}
                     </div>
@@ -404,7 +404,7 @@ export const CalendarWithEvents = () => {
                   <>
                     <button
                       onClick={() => handleEditEvent(event)}
-                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
+                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 dark:text-white"
                     >
                       <FiEdit className="w-3 h-3" />
                       Editar
@@ -444,10 +444,10 @@ export const CalendarWithEvents = () => {
           return loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-2 text-gray-500">Carregando eventos...</p>
+              <p className="mt-2 text-gray-500 dark:text-gray-400">Carregando eventos...</p>
             </div>
           ) : dayEvents.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <FiCalendar className="mx-auto text-3xl mb-2" />
               <p>
                 {canAddEvent 
@@ -464,7 +464,7 @@ export const CalendarWithEvents = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
         onClick={() => {
           if (modalMode === 'list') {
             setSelectedDate(null);
@@ -476,7 +476,7 @@ export const CalendarWithEvents = () => {
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-lg p-6 max-w-xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+          className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-none sm:max-w-xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
@@ -501,7 +501,7 @@ export const CalendarWithEvents = () => {
                   handleBackToList();
                 }
               }}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-400"
             >
               ✕
             </button>
@@ -536,9 +536,9 @@ export const CalendarWithEvents = () => {
   const dayNames: string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   return (
-    <div className="bg-white border dark:bg-gray-800 rounded-lg   border-gray-200 p-6">
+    <div className="bg-white border dark:bg-gray-800 rounded-lg   border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold dark:text-white text-gray-900">Calendário Académico - Angola</h3>
+        <h3 className="text-lg font-semibold dark:text-white text-gray-900 dark:text-white">Calendário Académico - Angola</h3>
         <div className="flex items-center gap-4">
           <button onClick={() => navigateMonth(-1)}>‹</button>
           <span>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
@@ -558,7 +558,7 @@ export const CalendarWithEvents = () => {
         {loading ? (
           <div className="col-span-7 text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-            <p className="mt-2 text-gray-500">Carregando calendário...</p>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">Carregando calendário...</p>
           </div>
         ) : (
           renderCalendarDays()
@@ -589,7 +589,7 @@ export const CalendarWithEvents = () => {
             <span className="dark:text-white">🏳️ Feriados</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
+            <div className="w-3 h-3 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded"></div>
             <span className="dark:text-white">Outros</span>
           </div>
         </div>
