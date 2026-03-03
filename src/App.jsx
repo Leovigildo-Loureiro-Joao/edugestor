@@ -46,8 +46,9 @@ import { auditLogService } from './services/audit/auditLogService.ts';
 // ✅ ProtectedRoute CORRIGIDO
 // Modifique o ProtectedRoute para aceitar um array de roles permitidas
 const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager'] }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const [showTimeout, setShowTimeout] = useState(false);
+  const [loggingOutUser, setLoggingOutUser] = useState(false);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -59,6 +60,23 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
     
     return () => clearTimeout(timer);
   }, [loading]);
+
+  useEffect(() => {
+    const forceLogoutIfBasicUser = async () => {
+      if (!loading && user && profile?.role === 'user') {
+        try {
+          setLoggingOutUser(true);
+          await logout();
+        } catch (error) {
+          console.error('Erro ao encerrar sessão do usuário básico:', error);
+        } finally {
+          setLoggingOutUser(false);
+        }
+      }
+    };
+
+    forceLogoutIfBasicUser();
+  }, [loading, user, profile?.role, logout]);
 
   // Mostrar loading enquanto verifica
   if (loading) {
@@ -77,6 +95,17 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
               Recarregar página
             </button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (loggingOutUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Encerrando sessão...</p>
         </div>
       </div>
     );
