@@ -51,6 +51,7 @@ const Dashboard: React.FC = () => {
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date>(new Date());
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleChecked, setRoleChecked] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -83,26 +84,37 @@ const Dashboard: React.FC = () => {
   function Reload() {
     const loadDashboardData = async () => {
       try {
-        setLoading(true);
-        const [dashboardStats, estrategiaData, metas] = await Promise.all([
-          dashboardService.getDashboardStats(),
-          estrategiaService.getResumoEstrategico(),
-          estrategiaService.getMetas()
-        ]);
+        const isFirstLoad = !stats;
+        if (isFirstLoad) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+
+        // 1) Carregar primeiro o núcleo do dashboard
+        const dashboardStats = await dashboardService.getDashboardStats();
         
         setStats(dashboardStats);
         setUltimaAtualizacao(new Date());
-        
-        setEstrategiaStats({
-          ...estrategiaData,
-          proximasAtividades: Array.isArray(estrategiaData.proximasAtividades) 
-            ? estrategiaData.proximasAtividades 
-            : []
-        });
+
+        // 2) Carregar visão estratégica sem bloquear a renderização inicial
+        estrategiaService.getResumoEstrategico()
+          .then((estrategiaData) => {
+            setEstrategiaStats({
+              ...estrategiaData,
+              proximasAtividades: Array.isArray(estrategiaData.proximasAtividades)
+                ? estrategiaData.proximasAtividades
+                : []
+            });
+          })
+          .catch((error) => {
+            console.error('Erro ao carregar resumo estratégico:', error);
+          });
       } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
@@ -355,8 +367,11 @@ const Dashboard: React.FC = () => {
           </span>
           <button
             onClick={Reload}
-            className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            className={`p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors ${
+              refreshing ? 'opacity-70 pointer-events-none' : ''
+            }`}
             title="Atualizar dados"
+            aria-busy={refreshing}
           >
             <FiBarChart2 size={18} />
           </button>

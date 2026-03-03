@@ -610,9 +610,14 @@ const handleSuccessfulLogin = async (user: User) => {
         if (error) throw error;
 
         if (updates.full_name) {
-          await supabase.auth.updateUser({
-            data: { full_name: updates.full_name }
-          });
+          // Atualização de metadata não deve bloquear o fluxo principal do perfil.
+          supabase.auth
+            .updateUser({
+              data: { full_name: updates.full_name }
+            })
+            .catch((err) => {
+              console.error('Erro ao atualizar metadata do usuário:', err);
+            });
         }
 
         if (instituicaoId) {

@@ -21,6 +21,29 @@ interface MetaDetailsModalProps {
   onAlocarRecursos: () => void;
 }
 
+type SubMetaStatus = 'pendente' | 'em_andamento' | 'concluida' | 'atrasada';
+
+interface SubMetaItem {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  data_inicio: string;
+  data_fim: string;
+  responsavel: string;
+  status: SubMetaStatus;
+  custo_estimado?: number;
+  custo_real?: number;
+  notas?: string;
+}
+
+type MetaCompat = Meta & {
+  submetas?: SubMetaItem[];
+  especifico?: string;
+  mensuravel?: string;
+  atingivel?: boolean;
+  relevante?: string;
+};
+
 export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
   isOpen,
   onClose,
@@ -33,10 +56,12 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
   const [expandedKPI, setExpandedKPI] = useState<string | null>(null);
   const [expandedSubMeta, setExpandedSubMeta] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const metaCompat = meta as MetaCompat;
+  const subMetas = metaCompat.submetas ?? [];
 
   // Estatísticas calculadas
   const kpisCompletos = meta.kpis?.filter(k => k.valor_atual >= k.valor_meta).length || 0;
-  const subMetasCompletas = meta.submetas?.filter(sm => sm.status === 'concluida').length || 0;
+  const subMetasCompletas = subMetas.filter((sm: SubMetaItem) => sm.status === 'concluida').length || 0;
   const orcamentoUtilizado = meta.orcamento_previsto 
     ? ((meta.orcamento_alocado || 0) / meta.orcamento_previsto) * 100 
     : 0;
@@ -92,7 +117,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
     });
   };
 
-  const calcularProgressoKPI = (kpi: Meta['kpis'][0]) => {
+  const calcularProgressoKPI = (kpi: NonNullable<Meta['kpis']>[number]) => {
     return kpi.valor_meta > 0 
       ? Math.min((kpi.valor_atual / kpi.valor_meta) * 100, 100)
       : 0;
@@ -110,22 +135,14 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
     }
   };
 
-  const handleAtualizarSubMeta = async (subMetaId: string, status: any) => {
-    try {
-      setLoading(true);
-      await estrategiaService.updateSubMetaStatus(meta.id, subMetaId, status);
-      toast.success('Sub-meta atualizada!');
-    } catch (error) {
-      toast.error('Erro ao atualizar sub-meta');
-    } finally {
-      setLoading(false);
-    }
+  const handleAtualizarSubMeta = async (_subMetaId: string, _status: SubMetaStatus) => {
+    toast('Atualização de sub-meta ainda não está disponível no serviço.');
   };
 
   const tabs = [
     { id: 'overview', label: 'Visão Geral', icon: FiTarget },
     { id: 'kpis', label: 'Indicadores', icon: FiBarChart2, count: meta.kpis?.length },
-    { id: 'submetas', label: 'Sub-metas', icon: FiCheckSquare, count: meta.submetas?.length },
+    { id: 'submetas', label: 'Sub-metas', icon: FiCheckSquare, count: subMetas.length },
     { id: 'financas', label: 'Finanças', icon: FiDollarSign }
   ];
 
@@ -310,7 +327,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                               </div>
                               <div>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  {subMetasCompletas}/{meta.submetas?.length || 0}
+                                  {subMetasCompletas}/{subMetas.length || 0}
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300">
                                   Sub-metas Concluídas
@@ -361,21 +378,21 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Específico</h4>
-                              <p className="text-gray-900 dark:text-white">{meta.especifico}</p>
+                              <p className="text-gray-900 dark:text-white">{metaCompat.especifico || 'Não definido'}</p>
                             </div>
                             <div>
                               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Mensurável</h4>
-                              <p className="text-gray-900 dark:text-white">{meta.mensuravel}</p>
+                              <p className="text-gray-900 dark:text-white">{metaCompat.mensuravel || 'Não definido'}</p>
                             </div>
                             <div>
                               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Atingível</h4>
                               <p className="text-gray-900 dark:text-white">
-                                {meta.atingivel ? 'Sim' : 'Não'}
+                                {metaCompat.atingivel ? 'Sim' : 'Não'}
                               </p>
                             </div>
                             <div>
                               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Relevante</h4>
-                              <p className="text-gray-900 dark:text-white">{meta.relevante}</p>
+                              <p className="text-gray-900 dark:text-white">{metaCompat.relevante || 'Não definido'}</p>
                             </div>
                            
                           </div>
@@ -522,15 +539,11 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                                           <input
                                             type="number"
                                             value={kpi.valor_atual}
-                                            onChange={(e) => {
-                                              const novoValor = parseFloat(e.target.value) || 0;
-                                              // Update local state immediately for responsiveness
-                                              // The actual save happens on blur
-                                            }}
+                                            onChange={() => {}}
                                             onBlur={(e) => {
                                               const novoValor = parseFloat(e.target.value) || 0;
                                               if (novoValor !== kpi.valor_atual) {
-                                                handleAtualizarKPI(kpi.id, kpi);
+                                                handleAtualizarKPI({ ...kpi, valor_atual: novoValor });
                                               }
                                             }}
                                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
@@ -587,8 +600,8 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                     {/* Sub-metas */}
                     {activeTab === 'submetas' && (
                       <div className="space-y-4">
-                        {meta.submetas && meta.submetas.length > 0 ? (
-                          meta.submetas.map((subMeta) => {
+                        {subMetas.length > 0 ? (
+                          subMetas.map((subMeta: SubMetaItem) => {
                             const isExpanded = expandedSubMeta === subMeta.id;
                             const isAtrasada = new Date(subMeta.data_fim) < new Date() && subMeta.status !== 'concluida';
                             
@@ -738,7 +751,7 @@ export const MetaDetailsModal: React.FC<MetaDetailsModalProps> = ({
                                             Atualizar Status
                                           </h5>
                                           <div className="flex gap-2">
-                                            {['pendente', 'em_andamento', 'concluida', 'atrasada'].map((status) => (
+                                            {(['pendente', 'em_andamento', 'concluida', 'atrasada'] as SubMetaStatus[]).map((status) => (
                                               <button
                                                 key={status}
                                                 onClick={() => handleAtualizarSubMeta(subMeta.id, status)}

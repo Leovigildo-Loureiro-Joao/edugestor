@@ -18,10 +18,12 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificacaoService, PrioridadeNotificacao, TipoNotificacao } from '../../services/database/notificacaoService';
+import { useAlert } from '../../components/ui/AlertBadge';
 
 
 const ProfilePage: React.FC = () => {
   const { user, profile, updateProfile, changePassword } = useAuth();
+  const { showAlert } = useAlert();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,6 +59,7 @@ const ProfilePage: React.FC = () => {
     newsletter: false,
     securityAlerts: true
   });
+  const profileFeaturesInMaintenance = true;
 
   useEffect(() => {
     if (user || profile) {
@@ -66,9 +69,14 @@ const ProfilePage: React.FC = () => {
         role: profile?.role || 'user',
         created_at: profile?.created_at || user?.created_at || ''
       });
-      loadProfileStats();
     }
   }, [user, profile]);
+
+  useEffect(() => {
+    if (user?.id || profile?.id) {
+      loadProfileStats();
+    }
+  }, [user?.id, profile?.id]);
 
   const resetFormData = () => {
     setFormData({
@@ -141,22 +149,36 @@ const ProfilePage: React.FC = () => {
         full_name: formData.full_name
       });
 
-      // Criar notificação de atualização de perfil
-      await notificacaoService.criarNotificacao({
+      setSuccessMessage('Perfil atualizado com sucesso!');
+      setIsEditing(false);
+      showAlert({
+        type: 'success',
+        title: 'Perfil atualizado',
+        message: 'Os seus dados foram atualizados com sucesso.',
+        duration: 3000
+      });
+
+      // Notificação em background para não atrasar o feedback visual
+      notificacaoService.criarNotificacao({
         titulo: 'Perfil Atualizado',
         corpo: 'Seus dados de perfil foram atualizados com sucesso',
         tipo: TipoNotificacao.SISTEMA,
         prioridade: PrioridadeNotificacao.BAIXA,
         meta: { updated_at: new Date().toISOString() }
+      }).catch((err) => {
+        console.error('Erro ao criar notificação de perfil:', err);
       });
-
-      setSuccessMessage('Perfil atualizado com sucesso!');
-      setIsEditing(false);
       
       // Limpar mensagem após 3 segundos
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error: any) {
       setErrorMessage(error.message || 'Erro ao atualizar perfil');
+      showAlert({
+        type: 'error',
+        title: 'Erro ao atualizar perfil',
+        message: error.message || 'Não foi possível atualizar o perfil.',
+        duration: 4000
+      });
     } finally {
       setLoading(false);
     }
@@ -180,15 +202,6 @@ const ProfilePage: React.FC = () => {
     try {
       await changePassword(passwordData.currentPassword, passwordData.newPassword);
 
-      // Criar notificação de alteração de senha
-      await notificacaoService.criarNotificacao({
-        titulo: 'Senha Alterada',
-        corpo: 'Sua senha foi alterada com sucesso',
-        tipo: TipoNotificacao.SISTEMA,
-        prioridade: PrioridadeNotificacao.MEDIA,
-        meta: { changed_at: new Date().toISOString() }
-      });
-
       setSuccessMessage('Senha alterada com sucesso!');
       setPasswordData({
         currentPassword: '',
@@ -196,10 +209,33 @@ const ProfilePage: React.FC = () => {
         confirmPassword: ''
       });
       setIsChangingPassword(false);
+      showAlert({
+        type: 'success',
+        title: 'Senha alterada',
+        message: 'A sua senha foi alterada com sucesso.',
+        duration: 3000
+      });
+
+      // Notificação em background para liberar UI mais rápido
+      notificacaoService.criarNotificacao({
+        titulo: 'Senha Alterada',
+        corpo: 'Sua senha foi alterada com sucesso',
+        tipo: TipoNotificacao.SISTEMA,
+        prioridade: PrioridadeNotificacao.MEDIA,
+        meta: { changed_at: new Date().toISOString() }
+      }).catch((err) => {
+        console.error('Erro ao criar notificação de senha:', err);
+      });
       
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error: any) {
       setErrorMessage(error.message || 'Erro ao alterar senha');
+      showAlert({
+        type: 'error',
+        title: 'Erro ao alterar senha',
+        message: error.message || 'Não foi possível alterar a senha.',
+        duration: 4000
+      });
     } finally {
       setLoading(false);
     }
@@ -566,9 +602,11 @@ const ProfilePage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => handleNotificationChange(key as keyof typeof notificationSettings)}
+                        disabled={profileFeaturesInMaintenance}
+                        title={profileFeaturesInMaintenance ? 'Em manutenção' : ''}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           value ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                        }`}
+                        } ${profileFeaturesInMaintenance ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -649,7 +687,9 @@ const ProfilePage: React.FC = () => {
                 <div className="space-y-3">
                   <button
                     onClick={() => {}}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
+                    disabled={profileFeaturesInMaintenance}
+                    title="Em manutenção"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiUpload />
                     <span>Exportar Meus Dados</span>
@@ -657,7 +697,9 @@ const ProfilePage: React.FC = () => {
                   
                   <button
                     onClick={() => {}}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
+                    disabled={profileFeaturesInMaintenance}
+                    title="Em manutenção"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiDatabase />
                     <span>Ver Atividade</span>
@@ -665,7 +707,9 @@ const ProfilePage: React.FC = () => {
                   
                   <button
                     onClick={() => {}}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
+                    disabled={profileFeaturesInMaintenance}
+                    title="Em manutenção"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiShield />
                     <span>Sessões Ativas</span>
@@ -673,7 +717,9 @@ const ProfilePage: React.FC = () => {
                   
                   <button
                     onClick={() => {}}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-3"
+                    disabled={profileFeaturesInMaintenance}
+                    title="Em manutenção"
+                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiBell />
                     <span>Solicitar Suporte</span>
@@ -709,7 +755,9 @@ const ProfilePage: React.FC = () => {
               
               <button
                 onClick={() => {}}
-                className="w-full mt-4 px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
+                disabled={profileFeaturesInMaintenance}
+                title="Em manutenção"
+                className="w-full mt-4 px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Saiba Mais
               </button>
@@ -736,7 +784,9 @@ const ProfilePage: React.FC = () => {
             <div className="mt-4 md:mt-0">
               <button
                 onClick={() => {}}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                disabled={profileFeaturesInMaintenance}
+                title="Em manutenção"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Recarregar Dados
               </button>

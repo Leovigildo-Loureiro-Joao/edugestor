@@ -15,6 +15,13 @@ import {
 import { ComparativoPropinasMensal } from '../../types/propina';
 
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const DASHBOARD_CACHE_TTL_MS = 60_000;
+
+let dashboardStatsCache: {
+  instituicaoId: string;
+  createdAt: number;
+  data: DashboardStats;
+} | null = null;
 
 function toPercent(valor: number, total: number): number {
   if (!total) return 0;
@@ -109,6 +116,15 @@ export const dashboardService = {
     try {
       const activeInstituicaoId = instituicaoIdValue() || '';
       if (!activeInstituicaoId) return criarStatsVazio();
+
+      const nowMs = Date.now();
+      if (
+        dashboardStatsCache &&
+        dashboardStatsCache.instituicaoId === activeInstituicaoId &&
+        nowMs - dashboardStatsCache.createdAt < DASHBOARD_CACHE_TTL_MS
+      ) {
+        return dashboardStatsCache.data;
+      }
 
       const now = new Date();
       const currentMonth = now.getMonth();
@@ -225,11 +241,14 @@ export const dashboardService = {
         frequenciasMesAnterior.length
       );
 
-      const [totalAlunos, totalAlunosAnterior, paymentConfig] = await Promise.all([
-        this.get_alunos_ano_lectivo_actual(),
-        this.alunos_ano_lectivo_anterior(),
-        configService.getPaymentConfig()
-      ]);
+      const [paymentConfig] = await Promise.all([configService.getPaymentConfig()]);
+
+      const totalAlunos = alunosInstituicao.filter(
+        (aluno) => aluno.ano_lectivo === anoLectivoAtual
+      ).length;
+      const totalAlunosAnterior = alunosInstituicao.filter(
+        (aluno) => aluno.ano_lectivo === anoLectivoAnterior
+      ).length;
 
       const mesesBase = (paymentConfig.mesesPagamento || []).map((mes: string) =>
         financeRulesService.toMonthAbbr(mes)
@@ -584,7 +603,7 @@ export const dashboardService = {
         }
       ];
 
-      return {
+      const result: DashboardStats = {
         totalAlunos,
         totalAlunosAnterior,
         alunosAtivos,
@@ -634,6 +653,14 @@ export const dashboardService = {
         proximosEventos,
         indicadoresChave
       };
+
+      dashboardStatsCache = {
+        instituicaoId: activeInstituicaoId,
+        createdAt: nowMs,
+        data: result
+      };
+
+      return result;
     } catch (error: unknown) {
       console.error('❌ Erro ao buscar estatísticas do dashboard:', error);
       throw error;

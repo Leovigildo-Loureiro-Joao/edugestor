@@ -1,11 +1,11 @@
 // components/financeiro/ModalMatricula.tsx
 import { useState, useEffect } from 'react';
 import { FiX, FiUser, FiDollarSign, FiCheckCircle, FiCalendar, FiCreditCard } from 'react-icons/fi';
-import { alunosService } from '../../services/database/alunosService.ts';
-import { transacaoService } from '../../services/database/transacaoService.ts';
-import { Student } from '../../types/aluno.ts';
-import { instituicaoService } from '../../services/database/insitituicao.ts';
-import { useAlert } from '../ui/AlertBadge.tsx';
+import { alunosService } from '../../services/database/alunosService';
+import { transacaoService } from '../../services/database/transacaoService';
+import { Student } from '../../types/aluno';
+import { instituicaoService } from '../../services/database/insitituicao';
+import { useAlert } from '../ui/AlertBadge';
 import toast from 'react-hot-toast';
 import { motion, MotionConfig } from 'framer-motion';
 
@@ -46,7 +46,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                 instituicaoService.getConfig()
             ]);
             
-            setAluno(alunoData);
+            setAluno(alunoData || null);
             setConfigInstituicao(configData);
             
             // Preencher valores padrão
@@ -256,7 +256,7 @@ export const ModalMatricula = ({ alunoId, onConcluido, onCancelado, onPular }: M
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-blue-700 font-medium">Turma:</span>
-                                            <span className="text-blue-900">{aluno.turmas?.nome_turma || 'Não definida'}</span>
+                                            <span className="text-blue-900">{aluno.turma_nome || 'Não definida'}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-blue-700 font-medium">Classe:</span>
