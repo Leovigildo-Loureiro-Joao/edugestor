@@ -1,6 +1,6 @@
-// src/contexts/AuthContext.tsx - VERSÃO CORRIGIDA
+// src/contexts/AuthContext - VERSÃO CORRIGIDA
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/database/db';
+import db, { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
 import { UserProfile } from '../types/profile';
 import { profileService } from '../services/database/profileService';
@@ -132,8 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      console.log('✅ Perfil criado com role:', 'user');
-      
       // Salvar localmente
       await profileService.saveProfile(newProfile as UserProfile);
       setProfile(newProfile as UserProfile);
@@ -170,11 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentClaims.instituicao_id !== expectedClaims.instituicao_id;
       
       if (needsUpdate) {
-        console.log('🔄 Atualizando claims do JWT...', {
-          current: currentClaims,
-          expected: expectedClaims
-        });
-        
         // Chamar Edge Function para atualizar JWT
         const success = await updateJWTClaims({
           instituicao_id: userProfile.instituicao_id,
@@ -182,8 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         if (success) {
-          console.log('✅ JWT atualizado com novos claims');
-          
           // Atualizar localStorage
           if (userProfile.instituicao_id) {
             localStorage.setItem('active_instituicao_id', userProfile.instituicao_id);
@@ -198,8 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn('⚠️ Não foi possível atualizar JWT via Edge Function');
         }
       } else {
-        console.log('ℹ️ Claims do JWT já estão atualizados');
-      }
+        }
       
     } catch (error) {
       console.error('❌ Erro ao atualizar metadados:', error);
@@ -252,9 +242,7 @@ const handleSuccessfulLogin = async (user: User) => {
     // 3. Setup adicional
     await setupUserAfterLogin(user);
     
-    console.log('✅ Login completo, JWT sincronizado');
-    
-  } catch (error) {
+    } catch (error) {
     console.error('❌ Erro no pós-login:', error);
     localStorage.setItem('user_id', user.id);
   }
@@ -310,8 +298,6 @@ const handleSuccessfulLogin = async (user: User) => {
       // 6. Refresh session para garantir sincronização
       await supabase.auth.refreshSession();
       
-      console.log(`✅ Instituição alterada para: ${instituicaoId}`);
-      
       return { success: true };
       
     } catch (error: any) {
@@ -327,28 +313,13 @@ const handleSuccessfulLogin = async (user: User) => {
       const session = await supabase.auth.getSession();
       
       if (!session.data.session?.access_token) {
-        console.log('❌ Nenhum token JWT disponível');
         return;
       }
       
       const token = session.data.session.access_token;
       const payload = JSON.parse(atob(token.split('.')[1]));
       
-      console.log('🔍 DEBUG - JWT Claims:', {
-        sub: payload.sub,
-        email: payload.email,
-        // Claims customizados
-        user_role: payload.user_role,
-        instituicao_id: payload.instituicao_id,
-        active_instituicao_id: payload.active_instituicao_id,
-        // App metadata (Edge Function)
-        app_metadata: payload.app_metadata,
-        // User metadata (Supabase Auth)
-        user_metadata: payload.user_metadata,
-        // Timestamps
-        exp: new Date(payload.exp * 1000),
-        iat: new Date(payload.iat * 1000)
-      });
+      // Removido log de debug para evitar impacto/perf
       
       return payload;
       
@@ -371,6 +342,7 @@ const handleSuccessfulLogin = async (user: User) => {
           setUser(session?.user ?? null);
           
           if (session?.user) {
+            localStorage.setItem('user_id', session.user.id);
             const localProfile = await profileService.getLocalProfile();
             setProfile(localProfile);
           }
@@ -388,6 +360,7 @@ const handleSuccessfulLogin = async (user: User) => {
         
         // 🔥 BUSCAR PERFIL DO USUÁRIO
         if (session?.user) {
+          localStorage.setItem('user_id', session.user.id);
           const userProfile = await fetchUserProfile(session.user.id);
           setProfile(userProfile);
           persistAuthBootstrap(userProfile);
@@ -408,8 +381,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event:any, newSession:any) => {
-        console.log(`🔄 Auth state changed: ${event}`);
-        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
@@ -453,7 +424,17 @@ const handleSuccessfulLogin = async (user: User) => {
       
       // ⭐ NOVO: Após login, verificar/atualizar metadados do usuário
       await handleSuccessfulLogin(data.user!);
-      console.log('✅ Login bem-sucedido');
+      await auditLogService.log('AUTH_LOGIN', {
+        action_label: 'Fez Login',
+        source: 'auth',
+        table_name: 'profiles',
+        record_id: data.user?.id || null,
+        new_values: {
+          email: data.user?.email || email,
+          provider: 'password'
+        }
+      });
+
       return data;
     } catch (error: any) {
       console.error('❌ Erro no login:', error);
@@ -472,8 +453,6 @@ const handleSuccessfulLogin = async (user: User) => {
   const loginWithGoogle = async () => {
     try {
       setError('');
-      console.log('🔄 Iniciando login com Google...');
-      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -488,7 +467,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      console.log('✅ Redirecionando para Google OAuth');
       return data;
     } catch (error: any) {
       console.error('❌ Erro no login com Google:', error);
@@ -517,7 +495,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      console.log('✅ Registro bem-sucedido');
       return data;
     } catch (error: any) {
       console.error('❌ Erro no registro:', error);
@@ -533,7 +510,23 @@ const handleSuccessfulLogin = async (user: User) => {
   const logout = async () => {
     try {
       setError('');
-      console.log('🚪 Fazendo logout...');
+      const previousUser = user;
+      const previousProfile = await profileService.getLocalProfile();
+
+      try {
+        await auditLogService.log('AUTH_LOGOUT', {
+          action_label: 'Fez Logout',
+          source: 'auth',
+          table_name: 'profiles',
+          record_id: previousUser?.id || null,
+          new_values: {
+            email: previousUser?.email || previousProfile?.email || null
+          },
+          instituicao_id: previousProfile?.instituicao_id
+        });
+      } catch (logError) {
+        console.warn('⚠️ Falha ao registrar logout na auditoria:', logError);
+      }
 
       // Tenta encerrar sessão remota, mas não bloqueia o logout local se falhar.
       const { error } = await supabase.auth.signOut({ scope: 'local' });
@@ -547,8 +540,7 @@ const handleSuccessfulLogin = async (user: User) => {
       setProfile(null);
       setSession(null);
 
-      console.log('✅ Logout concluído');
-    } catch (error: any) {
+      } catch (error: any) {
       console.error('❌ Erro no logout:', error);
       // Mesmo com erro inesperado, garantimos limpeza local para não prender sessão.
       clearLocalAuthState();
@@ -581,8 +573,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      console.log(`✅ Role atualizada para ${newRole}`);
-      
       // Se for o próprio usuário, atualizar estado local
       if (user?.id === userId) {
         const updatedProfile = await fetchUserProfile(userId);
@@ -604,6 +594,11 @@ const handleSuccessfulLogin = async (user: User) => {
       ...updates,
       updated_at: now
     };
+    const instituicaoId =
+      updates.instituicao_id ||
+      profile?.instituicao_id ||
+      localStorage.getItem('active_instituicao_id') ||
+      '';
 
     try {
       if (navigator.onLine) {
@@ -619,15 +614,47 @@ const handleSuccessfulLogin = async (user: User) => {
             data: { full_name: updates.full_name }
           });
         }
+
+        if (instituicaoId) {
+          await db.syncQueue
+            .where('table')
+            .equals('profiles')
+            .and((item) => item.record_id === user.id && item.instituicao_id === instituicaoId)
+            .delete();
+        }
       }
 
       const mergedProfile = {
         ...(profile || { id: user.id, email: user.email || '', role: 'user' }),
         ...updates,
+        instituicao_id: instituicaoId || profile?.instituicao_id,
         updated_at: now
       } as UserProfile;
 
-      await profileService.saveProfile(mergedProfile);
+      if (!navigator.onLine) {
+        const pendingProfile = {
+          ...mergedProfile,
+          sync_status: 'pending'
+        } as UserProfile;
+
+        if (instituicaoId) {
+          await db.syncQueue.add({
+            instituicao_id: instituicaoId,
+            table: 'profiles',
+            record_id: user.id,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now,
+            data: JSON.stringify(pendingProfile)
+          });
+        }
+
+        await profileService.saveProfile(pendingProfile, { syncStatus: 'pending' });
+        setProfile(pendingProfile);
+        return;
+      }
+
+      await profileService.saveProfile(mergedProfile, { syncStatus: 'synced' });
       setProfile(mergedProfile);
     } catch (error: any) {
       console.error('❌ Erro ao atualizar perfil:', error);

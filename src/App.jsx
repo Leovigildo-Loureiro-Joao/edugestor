@@ -41,9 +41,11 @@ import { backgroundService } from './services/database/backgroundService.ts';
 import { notificacaoService } from './services/database/notificacaoService.ts';
 import { AlertProvider } from './components/ui/AlertBadge.tsx';
 import { NotasPage } from './pages/Grades/NotasPage.tsx';
+import { auditLogService } from './services/audit/auditLogService.ts';
 
 // ✅ ProtectedRoute CORRIGIDO
-const ProtectedRoute = ({ children, adminOnly = false }) => {
+// Modifique o ProtectedRoute para aceitar um array de roles permitidas
+const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager'] }) => {
   const { user, profile, loading } = useAuth();
   const [showTimeout, setShowTimeout] = useState(false);
   
@@ -81,18 +83,19 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   }
 
   // Se não estiver logado, redirecionar para login
+  
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Se for rota de admin, verificar permissão
-  if (adminOnly && profile?.role !== 'admin') {
+  // 👇 VERIFICAR SE O USUÁRIO TEM PERMISSÃO PARA ACESSAR A ROTA
+  if (!allowedRoles.includes(profile?.role)) {
+    console.warn(`⚠️ Acesso negado: Usuário com role "${profile?.role}" tentou acessar rota permitida apenas para: ${allowedRoles.join(', ')}`);
     return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
-
 // Componente principal corrigido
 function AppContent() {
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -102,11 +105,11 @@ function AppContent() {
   useEffect(() => {
     const initializeServices = async () => {
       try {
+        auditLogService.initializeListeners();
         // Sincronização inicial
         const syncResult = await syncDatabase.syncAll();
         if (syncResult.success) {
-          console.log('✅ Sincronização inicial completa');
-        }
+          }
 
         // Iniciar serviços de fundo
         backgroundService.inicializar();
@@ -128,7 +131,6 @@ function AppContent() {
         // Cache local
         const hasAdminInLocalStorage = localStorage.getItem('has_admin_setup') === 'true';
         if (hasAdminInLocalStorage) {
-          console.log('✅ Setup já realizado (cache local)');
           if (isMounted) {
             setNeedsSetup(false);
             setCheckingSetup(false);
@@ -145,7 +147,6 @@ function AppContent() {
               .count();
             
             if (localAdmins > 0) {
-              console.log('✅ Admin encontrado no Dexie');
               localStorage.setItem('has_admin_setup', 'true');
               if (isMounted) {
                 setNeedsSetup(false);
@@ -155,8 +156,7 @@ function AppContent() {
             }
           }
         } catch (dexieError) {
-          console.log('ℹ️ Tabela profiles não existe no Dexie ainda:', dexieError);
-        }
+          }
 
         // Verificar no Supabase
         const { data: admins, error } = await supabase
@@ -196,7 +196,6 @@ function AppContent() {
       const initConfigs = async () => {
         try {
           await configService.initializeDefaultConfigs();
-          console.log('✅ Configurações padrão inicializadas');
         } catch (error) {
           console.warn('⚠️ Erro ao inicializar configurações:', error);
         }
@@ -230,8 +229,6 @@ function AppContent() {
       </AuthProvider>
     );
   }
-
-  // Sistema normal
   return (
     <AlertProvider>
       <AuthProvider>
@@ -240,8 +237,6 @@ function AppContent() {
             {/* Rotas públicas */}
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            {/* Redirecionamento raiz */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Rota de promoção a admin */}
@@ -261,65 +256,81 @@ function AppContent() {
                 <ProtectedRoute>
                   <Layout>
                     <Routes>
-                      {/* Rotas de admin */}
+                      {/* Rotas que TODOS podem acessar */}
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/aulas" element={<AulasPage />} />
+                      <Route path="/aulas/:seccao" element={<AulasPage />} />
+                      <Route path="/frequencia" element={<FrequenciaPage />} />
+                      <Route path="/frequencia/:seccao" element={<FrequenciaPage />} />
+                      <Route path="/notas" element={<NotasPage />} />
+                      <Route path="/turmas" element={<Turmas />} />
+                      <Route path="/turmas/:id" element={<TurmaDetails />} />
+                      <Route path="/turmas/:id/:seccao" element={<TurmaDetails />} />
+                      
+                      {/* 👇 ROTAS BLOQUEADAS PARA PROFESSORES */}
                       <Route 
-                        path="/admin/dashboard" 
+                        path="/admin/*" 
                         element={
-                          <ProtectedRoute adminOnly>
-                            <AdminDashboard />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/dashboard/:seccao" 
-                        element={
-                          <ProtectedRoute adminOnly>
+                          <ProtectedRoute allowedRoles={['admin']}>
                             <AdminDashboard />
                           </ProtectedRoute>
                         } 
                       />
                       
-                      {/* Rotas normais */}
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/sync-monitor" element={<SyncMonitorPage />} />
-                      <Route path="/profile" element={<ProfilePage />} />
-                      <Route path="/alunos" element={<Students />} />
-                      <Route path="/alunos/:id" element={<StudentPage />} />
-                      <Route path="/alunos/:id/:seccao" element={<StudentPage />} />
-                      <Route path="/alunos/novo" element={<StudentNew />} />
-                      <Route path="/alunos/editar/:id" element={<StudentEdit />} />
-                      <Route path="/frequencia" element={<FrequenciaPage />} />
-                      <Route path="/frequencia/:seccao" element={<FrequenciaPage />} />
-                      <Route path="/configuracoes" element={<ConfiguracoesPage />} />
-                      <Route path="/configuracoes/:seccao" element={<ConfiguracoesPage />} />
-                      <Route path="/financeiro" element={<FinanceiroPage />} />
-                      <Route path="/financeiro/:seccao" element={<FinanceiroPage />} />
-                      <Route path="/cursos" element={<Courses />} />
-                      <Route path="/eventos/add/:date" element={<EventosPage />} />
-                      <Route path="/estrategia/metas/nova" element={<MetaPage />} />
-                      <Route path="/estrategia/metas/editar/:id" element={<MetaPage />} />
-                      <Route path="/estrategia/tarefas/nova" element={<TarefaPage />} />
-                      <Route path="/estrategia/tarefas/editar/:id" element={<TarefaPage />} />
-                      <Route path="/estrategia/:seccao/:tipo" element={<EstrategiaPage />} />
-                      <Route path="/estrategia/:seccao" element={<EstrategiaPage />} />
-                      <Route path="/estrategia" element={<EstrategiaPage />} />
-                      <Route path="/estrategia/metas/:id/:seccao" element={<MetaDetailsPage />} />
-                      <Route path="/estrategia/metas/:id" element={<MetaDetailsPage />} />
-                      <Route path="/cursos/novo" element={<CursoNew />} />
-                      <Route path="/cursos/editar/:id" element={<CursoEdit />} />
-                      <Route path="/notas" element={<NotasPage />} />
-                      <Route path="/cursos/:id" element={<CourseDetails />} />
-                      <Route path="/financeiro/pagamentos" element={<PagamentosPage />} />
-                      <Route path="/financeiro/transacoes" element={<TransacoesPage />} />
-                      <Route path="/financeiro/Pagamento/:alunoId" element={<RegistroPagamentoPage />} />
-                      <Route path="/financeiro/matricula/:alunoId" element={<CompletarMatricula />} />
-                      <Route path="/aulas" element={<AulasPage />} />
-                      <Route path="/aulas/:seccao" element={<AulasPage />} />
-                      <Route path="/turmas" element={<Turmas />} />
-                      <Route path="/turmas/:id" element={<TurmaDetails />} />
-                      <Route path="/turmas/:id/:seccao" element={<TurmaDetails />} />
-                      <Route path="/turmas/nova" element={<TurmaForm />} />
-                      <Route path="/turmas/editar/:id" element={<TurmaForm />} />
+                      <Route 
+                        path="/financeiro/*" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <FinanceiroPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/cursos/*" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <Courses />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/alunos/*" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <Students />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/estrategia/*" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EstrategiaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/configuracoes/*" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <ConfiguracoesPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/sync-monitor" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <SyncMonitorPage />
+                          </ProtectedRoute>
+                        } 
+                      />
                       
                       {/* Rota 404 */}
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />

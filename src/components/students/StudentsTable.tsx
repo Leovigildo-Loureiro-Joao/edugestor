@@ -13,7 +13,7 @@ interface StudentsTableProps {
   onToggleStudentSelection: (studentId: string) => void;
   onOpenStudent: (studentId: string) => void;
   onDeleteStudent: (student: Student) => void;
-  onReload: () => void;
+  onReload: (e:any) => void;
 }
 
 // Componente de checkbox reutilizável
@@ -26,7 +26,7 @@ const CheckboxPersonalizado = ({
 }: { 
   checked: boolean; 
   indeterminate?: boolean; 
-  onChange: () => void; 
+  onChange: (e:any) => void; 
   label?: string;
   className?: string;
 }) => (
@@ -174,7 +174,7 @@ export const StudentsTable: React.FC<StudentsTableProps> = ({
                         {isReforco ? (
                           <CheckboxPersonalizado
                             checked={isSelected}
-                            onChange={(e) => {
+                            onChange={(e:any) => {
                               e.stopPropagation();
                               onToggleStudentSelection(student.id);
                             }}

@@ -1,4 +1,4 @@
-// utils/errorManager.ts
+// utils/errorManager
 
 import db from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
@@ -11,7 +11,7 @@ export interface SyncError {
   data: any;
   error: string;
   timestamp: Date;
-  retryCount: number;
+  retry_count: number;
 }
 
 // Chave para localStorage
@@ -30,8 +30,7 @@ const getErrorKey = (tableName: string) => `sync_errors_${tableName}`;
         .and(item => item.table === table && item.status === 'failed')
         .toArray();
 
-        console.log(failedItems)
-      return syncManager.processarRegistrosUnicos(failedItems,table).length;
+        return syncManager.processarRegistrosUnicos(failedItems,table).length;
     } catch (error) {
       return 0;
     }
@@ -55,7 +54,7 @@ export const addSyncError = (
       data,
       error,
       timestamp: new Date(),
-      retryCount: 0
+      retry_count: 0
     };
     
     errors.push(syncError);
@@ -134,7 +133,7 @@ export const incrementRetryCount = (tableName: string, errorId: string): void =>
     let errors: SyncError[] = JSON.parse(errorsJson);
     errors = errors.map(error => {
       if (error.id === errorId) {
-        return { ...error, retryCount: error.retryCount + 1 };
+        return { ...error, retry_count: error.retry_count + 1 };
       }
       return error;
     });

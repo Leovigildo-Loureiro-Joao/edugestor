@@ -12,7 +12,6 @@ import {
 } from 'react-icons/fi';
 import { transacaoService } from '../../services/database/transacaoService';
 import { Transacao } from '../../types/transacao';
-import { toast } from 'react-hot-toast';
 import { TransacaoFormModal } from '../../components/finance/TransacaoFormModal';
 import { useNavigate } from 'react-router-dom';
 import { tr } from 'date-fns/locale';
@@ -20,6 +19,9 @@ import { useAlert } from '../../components/ui/AlertBadge';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { TransacoesTable } from '../../components/finance/TransacaoTable';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
+import { getPendingCount } from '../../utils/emitPendingSync';
 
 export const TransacoesPage = () => {
   const navigate = useNavigate();
@@ -41,6 +43,8 @@ export const TransacoesPage = () => {
   const [mostrarFiltrosAvancados, setMostrarFiltrosAvancados] = useState(false);
   const [transacaoSel,setTransacaoSel]=useState<Transacao|null>()
   const [comfirm, setComfirm] = useState(false);
+  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
+  const [syncStats, setSyncStats] = useState(0);
 
   // Carregar transações
   const carregarTransacoes = async () => {
@@ -50,7 +54,7 @@ export const TransacoesPage = () => {
       setTransacoes(todasTransacoes);
     } catch (error) {
       console.error('Erro ao carregar transações:', error);
-      toast.error('Erro ao carregar transações');
+      showAlert({ type: 'error', title: 'Erro ao carregar transações' });
     } finally {
       setLoading(false);
     }
@@ -64,11 +68,13 @@ export const TransacoesPage = () => {
         // Monitorar status online
         const handleOnline = () => setOnlineStatus(true);
         const handleOffline = () => setOnlineStatus(false);
+        const throttledReload = createThrottledCallback(() => {
+          carregarTransacoes();
+        }, 2500);
         
         const handleDbChanged = (event: Event) => {
-          const detail = (event as CustomEvent).detail;
-          if (!detail?.table || detail.table === 'transacoes') {
-            carregarTransacoes();
+          if (shouldHandleDbChangedEvent(event, ['transacoes'])) {
+            throttledReload();
           }
         };
 
@@ -80,8 +86,8 @@ export const TransacoesPage = () => {
         // Carregar estatísticas de sincronização
         const loadSyncStats = async () => {
           try {
-            const turmasPendentes = await getPendingCount("aulas");
-            setSyncStats(turmasPendentes);
+            const pendentes = await getPendingCount("transacoes");
+            setSyncStats(pendentes);
           } catch (error) {
             console.error('Erro ao carregar sync stats:', error);
           }
@@ -105,6 +111,7 @@ export const TransacoesPage = () => {
           window.removeEventListener('db-changed', handleDbChanged);
           window.removeEventListener('sync-pending', handleSyncUpdate);
           window.removeEventListener('sync-complete', handleSyncUpdate);
+          throttledReload.cancel();
           clearInterval(interval)
         };
       }, []);
@@ -112,8 +119,8 @@ export const TransacoesPage = () => {
       
       const handleForceSync = async () => {
         try {
-          await aulaService.syncAulas();
-          loadData();
+          await transacaoService.syncTransacoes();
+          carregarTransacoes();
          
           showAlert({
             type: 'success',
@@ -206,11 +213,11 @@ export const TransacoesPage = () => {
       setComfirm(false)
       try {
         await transacaoService.deleteTransacao(transacaoSel.id);
-        toast.success('Transação excluída com sucesso!');
+        showAlert({ type: 'success', title: 'Transação excluída com sucesso!' });
         carregarTransacoes();
       } catch (error) {
         console.error('Erro ao excluir transação:', error);
-        toast.error('Erro ao excluir transação');
+        showAlert({ type: 'error', title: 'Erro ao excluir transação' });
       }
       setTransacaoSel(null)
     }  
@@ -239,7 +246,7 @@ export const TransacoesPage = () => {
     link.download = `transacoes_${filtros.mes}_${filtros.ano}.csv`;
     link.click();
     
-    toast.success('CSV exportado com sucesso!');
+    showAlert({ type: 'success', title: 'CSV exportado com sucesso!' });
   };
 
   // Categorias disponíveis
@@ -326,6 +333,16 @@ export const TransacoesPage = () => {
             </div>
           </div>
         </motion.div>
+
+        {syncStats > 5 && (
+          <SyncDataDetail
+            syncStats={syncStats}
+            onlineStatus={onlineStatus}
+            handleForceSync={handleForceSync}
+            table="transacoes"
+            data={transacoes}
+          />
+        )}
 
         {/* Cards de Estatísticas */}
 

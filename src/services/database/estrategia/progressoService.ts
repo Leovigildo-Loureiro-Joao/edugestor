@@ -46,8 +46,6 @@ export const estrategiaProgressoService = {
     };
   }> {
     try {
-      console.log("📊 Calculando progresso geral das estratégias...");
-
       const [metas, tarefas] = await Promise.all([
         estrategiaMetaService.getMetas(),
         estrategiaTarefaService.getTarefas(),
@@ -205,12 +203,6 @@ export const estrategiaProgressoService = {
       if (statusMetas.nao_iniciada > 0 && progressoTotal < 50) {
         mensagemResumo += ` ${statusMetas.nao_iniciada} meta(s) não iniciada(s).`;
       }
-
-      console.log("✅ Progresso calculado:", {
-        total: progressoTotal,
-        metas: progressoFinalMetas,
-        tarefas: progressoFinalTarefas,
-      });
 
       return {
         progressoTotal: Number(progressoTotal.toFixed(1)),

@@ -1,4 +1,4 @@
-// src/services/database/db.ts
+// src/services/database/db
 import Dexie, { Table } from 'dexie';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -82,7 +82,7 @@ class EduGestorDatabase extends Dexie {
       cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
       turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
       transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
-      propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db.ts - Adicione esta linha na definição das tabelas,
+      propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at'   ,   // db - Adicione esta linha na definição das tabelas,
       frequencias: 'id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
       tarefas: 'id, concluida, status, sync_status, deleted, created_at',
@@ -132,6 +132,71 @@ class EduGestorDatabase extends Dexie {
         });
       });
 
+    this.version(6)
+      .stores({
+        alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
+        avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
+        turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
+        transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
+        propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at',
+        frequencias: 'id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
+        aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
+        tarefas: 'id, concluida, status, sync_status, deleted, created_at',
+        metas: 'id, data_limite_real,tipo,status, sync_status, deleted, created_at',
+        planeamentos:"id,tipo,data_inicio,sync_status, deleted, created_at, updated_at",
+        plano_aulas:"id,tipo,sync_status, deleted, created_at, updated_at",
+        alocacao:"id,meta_id, sync_status, deleted, created_at,updated_at",
+        rotinas: 'id, status, sync_status, deleted, created_at,updated_at',
+        syncQueue: '++id, instituicao_id, table, record_id, operation, status, created_at, [instituicao_id+status], [instituicao_id+table], [instituicao_id+table+status]',
+        profiles: 'id, role, sync_status, deleted, created_at, updated_at',
+        notificacao: `id,lida,corpo,tipo,instituicao_id,aluno_id,user_id,data_envio,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted,updated_at`,
+        instituicao:'id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at,sync_status,deleted',
+        evento: 'id, data_evento, tipo, sync_status, deleted, created_at',
+        system_config:'id, key_name, category, instituicao_id, [instituicao_id+category], [instituicao_id+key_name], [instituicao_id+category+key_name], [category+deleted], [category+key_name], [category+key_name+deleted], sync_status, deleted'
+      })
+      .upgrade(async (tx) => {
+        const activeInstitutionId = instituicaoIdValue() || '';
+        await tx.table('system_config').toCollection().modify((item: any) => {
+          if (!item.instituicao_id) {
+            item.instituicao_id = activeInstitutionId;
+          }
+        });
+      });
+
+    this.version(7)
+      .stores({
+        alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
+        avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
+        turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
+        transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
+        propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at',
+        frequencias: 'id, aluno_id, aula_id, data_aula, presente, atraso, sync_status, deleted, updated_at',
+        aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
+        tarefas: 'id, concluida, status, sync_status, deleted, created_at',
+        metas: 'id, data_limite_real,tipo,status, sync_status, deleted, created_at',
+        planeamentos:"id,tipo,data_inicio,sync_status, deleted, created_at, updated_at",
+        plano_aulas:"id,tipo,sync_status, deleted, created_at, updated_at",
+        alocacao:"id,meta_id, sync_status, deleted, created_at,updated_at",
+        rotinas: 'id, status, sync_status, deleted, created_at,updated_at',
+        syncQueue: '++id, instituicao_id, table, record_id, operation, status, created_at, [instituicao_id+status], [instituicao_id+table], [instituicao_id+table+status]',
+        profiles: 'id, role, sync_status, deleted, created_at, updated_at',
+        notificacao: `id,lida,corpo,tipo,instituicao_id,aluno_id,user_id,data_envio,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted,updated_at`,
+        instituicao:'id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at,sync_status,deleted',
+        evento: 'id, data_evento, tipo, sync_status, deleted, created_at',
+        system_config:'id, key_name, category, instituicao_id, [instituicao_id+category], [instituicao_id+key_name], [instituicao_id+category+key_name], [category+deleted], [category+key_name], [category+key_name+deleted], sync_status, deleted'
+      })
+      .upgrade(async (tx) => {
+        await tx.table('frequencias').toCollection().modify((item: any) => {
+          if (typeof item.atraso !== 'boolean') {
+            item.atraso = false;
+          }
+        });
+      });
+
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
       if (!obj.instituicao_id) {
         obj.instituicao_id = instituicaoIdValue();
@@ -139,16 +204,39 @@ class EduGestorDatabase extends Dexie {
       if (!obj.created_at) {
         obj.created_at = new Date().toISOString();
       }
+      if (typeof window !== 'undefined') {
+        try {
+          const snapshot = obj.data ? JSON.parse(obj.data) : undefined;
+          window.dispatchEvent(
+            new CustomEvent('sync-queue-enqueued', {
+              detail: {
+                table: obj.table,
+                record_id: obj.record_id,
+                operation: obj.operation,
+                snapshot
+              }
+            })
+          );
+        } catch {
+          window.dispatchEvent(
+            new CustomEvent('sync-queue-enqueued', {
+              detail: {
+                table: obj.table,
+                record_id: obj.record_id,
+                operation: obj.operation
+              }
+            })
+          );
+        }
+      }
     });
 
       // ✅ ADICIONE ESTES LISTENERS PARA DEBUG
     this.on('populate', () => {
-      console.log('🎯 Dexie: Banco populado pela primeira vez');
-    });
+      });
     
     this.on('ready', () => {
-      console.log('🎯 Dexie: Banco pronto para uso');
-      console.log('🎯 Dexie: Tabelas disponíveis:', this.tables.map(t => t.name));
+      
     });
     
     this.on('blocked', (error) => {
@@ -165,15 +253,16 @@ let dbInstance: DatabaseInstance | null = null;
 export function getDatabase(): DatabaseInstance {
   if (!dbInstance) {
     dbInstance = new EduGestorDatabase() as DatabaseInstance;
+    const currentDb = dbInstance;
     
     // Abrir conexão
-    dbInstance.open().catch(async err => {
+    currentDb.open().catch(async err => {
       console.error('Erro ao abrir banco Dexie:', err);
 
       if (err?.name === 'UpgradeError' || err?.name === 'VersionError') {
         console.warn('Falha de upgrade. Recriando o banco local...');
         await Dexie.delete('EduGestorDB_Final');
-        await dbInstance.open();
+        await currentDb.open();
       }
     });
   }
@@ -189,20 +278,16 @@ export default db;
 export const syncDatabase = {
   async syncAll() {
     if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização adiada');
       return { success: false, message: 'Offline' };
     }
     
     try {
-      console.log('🔄 Iniciando sincronização completa...');
-      
       // 1. Primeiro upload (enviar alterações locais)
       await syncManager.uploadBatch();
       
       // 2. Depois download (buscar atualizações remotas)
       await syncManager.downloadBatch();
       
-      console.log('✅ Sincronização completa concluída');
       return { success: true, message: 'Sincronizado com sucesso' };
       
     } catch (error: any) {

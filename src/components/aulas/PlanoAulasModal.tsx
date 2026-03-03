@@ -1,4 +1,4 @@
-// components/aulas/ModalPlanoAula.tsx
+// components/aulas/ModalPlanoAula
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -10,8 +10,11 @@ import {
 } from 'react-icons/fi';
 import { turmaService } from '../../services/database/turmas';
 import { planoAulaService } from '../../services/database/planoAulasService';
+import { cursosService } from '../../services/database/curso';
+import db from '../../services/database/db';
 import { SelectTyped } from '../students/StudentForm';
-import { toast } from 'react-hot-toast';
+import { useAlert } from '../ui/AlertBadge';
+import { PlanoAula } from '../../types/aula';
 
 interface ModalPlanoAulaProps {
   isOpen: boolean;
@@ -39,6 +42,10 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
   templateParaCopiar,
   planoExistente
 }) => {
+  const { showAlert } = useAlert();
+  const normalizeDisciplina = (value: string) =>
+    String(value || '').trim().toLowerCase();
+
   const planoInicial = {
     tipo: 'unica' as 'unica' | 'serie' | 'modulo',
     titulo: '',
@@ -70,6 +77,9 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
 
   const [etapa, setEtapa] = useState<'basico' | 'conteudo' | 'recursos' | 'revisao'>('basico');
   const [turmas, setTurmas] = useState<any[]>([]);
+  const [disciplinasDisponiveis, setDisciplinasDisponiveis] = useState<string[]>([]);
+  const [cursoDisciplinasById, setCursoDisciplinasById] = useState<Record<string, string[]>>({});
+  const [turmasComHorarioIds, setTurmasComHorarioIds] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [progresso, setProgresso] = useState(25);
 
@@ -111,27 +121,114 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
 
   const carregarTurmas = async () => {
     try {
-      const turmasData = await turmaService.getTurmas();
+      const [turmasData, cursosData] = await Promise.all([
+        turmaService.getTurmas(),
+        cursosService.getCourses()
+      ]);
       setTurmas(turmasData || []);
+
+      const disciplinas = (cursosData || [])
+        .flatMap((curso) => curso.disciplinas || [])
+        .map((disciplina) => String(disciplina || '').trim())
+        .filter((disciplina) => disciplina.length > 0);
+
+      const unicas = Array.from(new Set(disciplinas)).sort((a, b) =>
+        a.localeCompare(b, 'pt-AO', { sensitivity: 'base' })
+      );
+      setDisciplinasDisponiveis(unicas);
+
+      const byId = (cursosData || []).reduce((acc: Record<string, string[]>, curso: any) => {
+        acc[curso.id] = (curso.disciplinas || [])
+          .map((disciplina: string) => normalizeDisciplina(disciplina))
+          .filter((disciplina: string) => disciplina.length > 0);
+        return acc;
+      }, {});
+      setCursoDisciplinasById(byId);
+
+      const horarios = await db.turma_horarios
+        .filter((horario) => !horario.deleted)
+        .toArray();
+      const ids = Array.from(new Set(horarios.map((horario) => horario.turma_id)));
+      setTurmasComHorarioIds(ids);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
   };
 
+  const turmasCompativeis = React.useMemo(() => {
+    const disciplinaNormalizada = normalizeDisciplina(plano.disciplina);
+    if (!disciplinaNormalizada) return turmas;
+
+    return turmas.filter((turma) => {
+      const disciplinasCurso = cursoDisciplinasById[turma.curso_id] || [];
+      return disciplinasCurso.includes(disciplinaNormalizada);
+    });
+  }, [turmas, cursoDisciplinasById, plano.disciplina]);
+
+  const turmasCompativeisSemHorario = React.useMemo(
+    () => turmasCompativeis.filter((turma) => !turmasComHorarioIds.includes(turma.id)),
+    [turmasCompativeis, turmasComHorarioIds]
+  );
+
+  const turmasSelecionadasSemHorario = React.useMemo(
+    () => plano.turma_ids.filter((id) => !turmasComHorarioIds.includes(id)),
+    [plano.turma_ids, turmasComHorarioIds]
+  );
+
+  React.useEffect(() => {
+    if (!plano.turma_ids.length) return;
+    const idsCompativeis = new Set(turmasCompativeis.map((turma) => turma.id));
+    const idsFiltrados = plano.turma_ids.filter((id) => idsCompativeis.has(id));
+    if (idsFiltrados.length !== plano.turma_ids.length) {
+      setPlano((prev) => ({ ...prev, turma_ids: idsFiltrados }));
+    }
+  }, [turmasCompativeis, plano.turma_ids]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (plano.disciplina) return;
+    if (!disciplinasDisponiveis.length) return;
+
+    setPlano((prev) => ({
+      ...prev,
+      disciplina: disciplinasDisponiveis[0]
+    }));
+  }, [isOpen, plano.disciplina, disciplinasDisponiveis]);
+
   const handleSalvar = async () => {
     setCarregando(true);
     try {
+      if (!plano.disciplina || !disciplinasDisponiveis.includes(plano.disciplina)) {
+        showAlert({
+          type: 'warning',
+          title: 'Disciplina inválida',
+          message: 'Selecione uma disciplina válida dos cursos cadastrados.',
+          duration: 2500
+        });
+        return;
+      }
+
       let planoSalvo;
       if (!planoExistente) {
-        planoSalvo = await planoAulaService.criarPlano(plano);
+        planoSalvo = await planoAulaService.criarPlano(plano as PlanoAula);
       } else {
         planoSalvo = await planoAulaService.atualizarPlano(planoExistente.id, plano);
       }
-      toast.success(planoExistente ? 'Plano atualizado com sucesso!' : 'Plano de aula criado com sucesso!');
+      showAlert({
+        type: 'success',
+        title: planoExistente ? 'Plano atualizado' : 'Plano criado',
+        message: planoExistente ? 'Plano atualizado com sucesso.' : 'Plano de aula criado com sucesso.',
+        duration: 2500
+      });
       onPlanoCriado?.(planoSalvo);
       onClose();
     } catch (error) {
-      toast.error(planoExistente ? 'Erro ao atualizar plano' : 'Erro ao criar plano de aula');
+      showAlert({
+        type: 'error',
+        title: 'Erro ao salvar plano',
+        message: planoExistente ? 'Não foi possível atualizar o plano.' : 'Não foi possível criar o plano de aula.',
+        duration: 3500
+      });
       console.error(error);
     } finally {
       setCarregando(false);
@@ -141,12 +238,32 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
   const handleGerarAulas = async () => {
     setCarregando(true);
     try {
+      if (!plano.disciplina || !disciplinasDisponiveis.includes(plano.disciplina)) {
+        showAlert({
+          type: 'warning',
+          title: 'Disciplina inválida',
+          message: 'Selecione uma disciplina válida dos cursos cadastrados.',
+          duration: 2500
+        });
+        return;
+      }
+
       const aulasGeradas = await planoAulaService.gerarAulasDoPlano(plano);
-      toast.success(`${aulasGeradas.length} aulas geradas com sucesso!`);
+      showAlert({
+        type: 'success',
+        title: 'Aulas geradas',
+        message: `${aulasGeradas.length} aula(s) gerada(s) com sucesso.`,
+        duration: 2800
+      });
       onPlanoCriado?.({ ...plano, aulas_geradas: aulasGeradas });
       onClose();
     } catch (error) {
-      toast.error('Erro ao gerar aulas');
+      showAlert({
+        type: 'error',
+        title: 'Erro ao gerar aulas',
+        message: 'Não foi possível gerar as aulas do plano.',
+        duration: 3500
+      });
       console.error(error);
     } finally {
       setCarregando(false);
@@ -286,7 +403,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
             </div>
             
             {/* Conteúdo com scroll */}
-            <div className="max-h-[65vh] overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+            <div className="max-h-[65vh] pb-40 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={etapa}
@@ -326,13 +443,16 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Disciplina <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
+                          <SelectTyped
                             value={plano.disciplina}
-                            onChange={(e) => setPlano({...plano, disciplina: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            placeholder="Ex: Matemática"
+                            vect={disciplinasDisponiveis}
+                            onChange={(value: string) => setPlano({ ...plano, disciplina: value })}
                           />
+                          {disciplinasDisponiveis.length === 0 && (
+                            <p className="mt-2 text-xs text-red-500">
+                              Cadastre disciplinas nos cursos para criar planos de aula.
+                            </p>
+                          )}
                         </motion.div>
                       </div>
                       
@@ -685,7 +805,7 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                         </h4>
                         
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {turmas.map((turma) => (
+                          {turmasCompativeis.map((turma) => (
                             <motion.label
                               key={turma.id}
                               whileHover={{ scale: 1.02 }}
@@ -715,6 +835,22 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
                             </motion.label>
                           ))}
                         </div>
+                        {plano.disciplina && turmasCompativeis.length === 0 && (
+                          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                            Nenhuma turma pertence a curso com a disciplina selecionada.
+                          </p>
+                        )}
+                        {turmasCompativeisSemHorario.length > 0 && (
+                          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                            Recomendado: adicione horários nas turmas ({turmasCompativeisSemHorario.length} sem horário) para gerar aulas no dia/hora corretos.
+                            Sem horário, o sistema usa padrão por turno: manhã `08:00-09:00`, tarde `13:00-14:00`, noite `17:00-18:00`.
+                          </p>
+                        )}
+                        {turmasSelecionadasSemHorario.length > 0 && (
+                          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                            {turmasSelecionadasSemHorario.length} turma(s) selecionada(s) sem horário cadastrado usarão horário padrão por turno.
+                          </p>
+                        )}
                       </motion.div>
                     </div>
                   )}

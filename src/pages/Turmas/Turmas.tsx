@@ -13,8 +13,10 @@ import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
 import { TurmaTable } from '../../components/turmas/TurmasTable'; // Ajuste o path conforme necessário
-import { Turma } from '../../types/turma';
+import { HorarioAula, Turma } from '../../types/turma';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
+import { profileService } from '../../services/database/profileService';
 
 interface Estatisticas {
   total: number;
@@ -25,6 +27,7 @@ interface Estatisticas {
 
 const Turmas: React.FC = () => {
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [canManageTurmas, setCanManageTurmas] = useState(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filtroTurno, setFiltroTurno] = useState<string>('Todos Turnos');
@@ -33,6 +36,10 @@ const Turmas: React.FC = () => {
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const [syncStats, setSyncStats] = useState(0);
   const [selectedTurmaIds, setSelectedTurmaIds] = useState<string[]>([]);
+  const [showHorarioModal, setShowHorarioModal] = useState(false);
+  const [horarioModalLoading, setHorarioModalLoading] = useState(false);
+  const [horariosTurmaSelecionada, setHorariosTurmaSelecionada] = useState<HorarioAula[]>([]);
+  const [turmaSelecionadaNome, setTurmaSelecionadaNome] = useState('');
   const anoLectivo = ["Todos ano lectivos", "2024-2025", "2025-2026", "2027-2028", "2028-2029", "2030-2031"];
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert();
@@ -50,11 +57,13 @@ const Turmas: React.FC = () => {
   useEffect(() => {
     const handleOnline = () => setOnlineStatus(true);
     const handleOffline = () => setOnlineStatus(false);
+    const throttledReload = createThrottledCallback(() => {
+      Reload();
+    }, 2500);
     
     const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table || detail.table === 'turmas') {
-        Reload();
+      if (shouldHandleDbChangedEvent(event, ['turmas'])) {
+        throttledReload();
       }
     };
 
@@ -85,6 +94,7 @@ const Turmas: React.FC = () => {
       window.removeEventListener('db-changed', handleDbChanged);
       window.removeEventListener('sync-pending', handleSyncUpdate);
       window.removeEventListener('sync-complete', handleSyncUpdate);
+      throttledReload.cancel();
       clearInterval(interval);
     };
   }, []);
@@ -113,7 +123,21 @@ const Turmas: React.FC = () => {
     const loadTurmas = async (): Promise<void> => {
       try {
         setLoading(true);
-        const turmasData: Turma[] = await turmaService.getTurmas(instituicaoIdValue() || "");
+        const turmasData: Turma[] = await turmaService.getTurmas();
+        const profile = await profileService.getLocalProfile();
+        const role = profile?.role || localStorage.getItem('user_role');
+        setCanManageTurmas(role !== 'teacher');
+        const teacherNameKey = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+
+        if (role === 'teacher' && teacherNameKey) {
+          setTurmas(
+            (turmasData || []).filter(
+              (t) => (t.professor || '').toLowerCase().trim() === teacherNameKey
+            )
+          );
+          return;
+        }
+
         setTurmas(turmasData);
       } catch (error) {
         showAlert({
@@ -143,12 +167,25 @@ const Turmas: React.FC = () => {
   }, [turmas]);
 
   const handleDelete = async (turmaSel: Turma): Promise<void> => {
+    if (!canManageTurmas) {
+      showAlert({
+        type: 'warning',
+        title: 'Ação não permitida',
+        message: 'Professores não podem excluir turmas.',
+        duration: 3000
+      });
+      return;
+    }
+
     const confirmed = await confirm({
       type: 'delete',
       title: 'Excluir Turma',
       message: `Tem certeza que deseja excluir ${turmaSel.nome_turma}? Todos dados ligados a ela permanecerão.`,
       isDestructive: true,
       confirmText: 'Excluir',
+      onClose() {
+        
+      },
       onConfirm: async () => {
         try {
           await turmaService.deleteTurma(turmaSel.id);
@@ -170,6 +207,45 @@ const Turmas: React.FC = () => {
       }
     });
   };
+
+  const handleViewHorario = async (turmaSel: Turma): Promise<void> => {
+    try {
+      setTurmaSelecionadaNome(turmaSel.nome_turma || 'Turma');
+      setShowHorarioModal(true);
+      setHorarioModalLoading(true);
+      const horarios = await turmaService.getHorarios(turmaSel.id);
+      setHorariosTurmaSelecionada((horarios || []).filter((h: HorarioAula) => !h.deleted));
+    } catch (error) {
+      setHorariosTurmaSelecionada([]);
+      showAlert({
+        type: 'error',
+        title: 'Erro ao carregar horarios',
+        message: 'Nao foi possivel carregar os horarios desta turma.',
+        duration: 4000
+      });
+    } finally {
+      setHorarioModalLoading(false);
+    }
+  };
+
+  const horariosOrdenados = useMemo(() => {
+    const ordemDias: Record<string, number> = {
+      segunda: 1,
+      terca: 2,
+      'terca-feira': 2,
+      quarta: 3,
+      quinta: 4,
+      sexta: 5,
+      sabado: 6,
+      domingo: 7
+    };
+    return [...horariosTurmaSelecionada].sort((a, b) => {
+      const diaA = ordemDias[(a.dia_semana || '').toLowerCase()] || 99;
+      const diaB = ordemDias[(b.dia_semana || '').toLowerCase()] || 99;
+      if (diaA !== diaB) return diaA - diaB;
+      return (a.hora_inicio || '').localeCompare(b.hora_inicio || '');
+    });
+  }, [horariosTurmaSelecionada]);
 
   const turmasFiltradas: Turma[] = turmas.filter((turma: Turma) => {
     const matchesSearch = turma.nome_turma?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -221,13 +297,15 @@ const Turmas: React.FC = () => {
               />
             </div>
 
-            <Link
-              to="/turmas/nova"
-              className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
-            >
-              <FiPlus size={18} />
-              <span>Nova Turma</span>
-            </Link>
+            {canManageTurmas && (
+              <Link
+                to="/turmas/nova"
+                className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-4 py-2.5 transition-colors rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
+              >
+                <FiPlus size={18} />
+                <span>Nova Turma</span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -312,10 +390,61 @@ const Turmas: React.FC = () => {
           turmas={turmasFiltradas}
           selectTurmaIds={selectedTurmaIds}
           onDelete={handleDelete}
+          onViewHorario={handleViewHorario}
           onReload={Reload}
           searchTerm={searchTerm}
+          canManageActions={canManageTurmas}
         />
       </div>
+
+      {showHorarioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Horario da turma</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{turmaSelecionadaNome}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowHorarioModal(false);
+                  setHorariosTurmaSelecionada([]);
+                }}
+                className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="p-4 max-h-[65vh] overflow-y-auto">
+              {horarioModalLoading ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">Carregando horarios...</p>
+              ) : horariosOrdenados.length === 0 ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">Nenhum horario cadastrado para esta turma.</p>
+              ) : (
+                <div className="space-y-2">
+                  {horariosOrdenados.map((horario) => (
+                    <div
+                      key={horario.id}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/30"
+                    >
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {horario.disciplina || 'Disciplina'}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        {horario.dia_semana} | {horario.hora_inicio} - {horario.hora_fim}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Sala: {horario.sala || 'N/A'} | Prof: {horario.professor_responsavel || 'N/A'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <ModalComponent />
     </>

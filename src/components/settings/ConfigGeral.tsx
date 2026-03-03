@@ -4,6 +4,7 @@ import { Instituicao } from "../../types";
 import { instituicaoService } from "../../services/database/insitituicao";
 import { Select } from "../ui/Select";
 import { motion } from "framer-motion";
+import { SelectTyped } from "../students/StudentForm";
 
 export const ConfiguracoesGerais = () => {
     const [salvando, setSalvando] = useState(false);
@@ -21,8 +22,7 @@ export const ConfiguracoesGerais = () => {
     
     // Debug para verificar os dados carregados
     useEffect(() => {
-        console.log('Dados da instituição carregados:', instituicao);
-    }, [instituicao]);
+        }, [instituicao]);
 
     async function handelConfigAcademy() {
         setSalvando(true);
@@ -138,7 +138,7 @@ export const ConfiguracoesGerais = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Ano Letivo
                         </label>
-                        <Select
+                        <SelectTyped
                             vect={Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i).map(ano => 
                                 `${ano-1}-${ano}`
                             )}  

@@ -1,4 +1,4 @@
-// services/database/turmaService.ts
+// services/database/turmaService
 import { Student } from '../../types';
 import { Aula } from '../../types/aula';
 import { SyncStatus } from '../../types/base';
@@ -75,10 +75,12 @@ const ensureDisciplinaInCursoDaTurma = async (turmaId: string, disciplina?: stri
   if (disciplinaJaExiste) return false;
 
   const updated_at = new Date().toISOString();
-  await db.cursos.update(curso.id, {
+  await db.cursos.put({
+    ...curso,
     disciplinas: [...disciplinasAtuais, disciplinaLimpa],
     sync_status: 'pending',
-    updated_at
+    updated_at,
+    instituicao_id: instituicaoIdValue()
   });
 
   await db.syncQueue.add({
@@ -116,8 +118,6 @@ export const turmaService = {
         deleted: false,
       } as Turma;
 
-      console.log('💾 Salvando turma:', turma.nome_turma);
-      
       await db.turmas.put(turma);
       
       // Adicionar à fila de sincronização
@@ -130,8 +130,6 @@ export const turmaService = {
         created_at: now
       });
 
-      console.log('✅ Turma salva com ID:', id);
-    
       return id;
       
     } catch (error) {
@@ -146,8 +144,6 @@ export const turmaService = {
     const cacheScope = activeInstituicaoId || 'global';
     const CACHE_KEY = `turmas_all_${cacheScope}`;
     try {
-      console.log('📋 Buscando turmas...');
-      
       // 1. Obter versão/checksum dos dados para cache mais inteligente
       const [turmaCount, cursoCount, aulaCount, alunoCount,lastModified] = await Promise.all([
         db.turmas.count(),
@@ -164,11 +160,8 @@ export const turmaService = {
       // 2. Tentar obter do cache com a nova chave
       const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
-        console.log('✅ Cache HIT para turmas');
         return cached;
       }
-      
-      console.log('🔄 Cache MISS, buscando do banco...');
       
       // 3. Buscar dados em paralelo de forma mais eficiente
       const [todosCursos, aulasDb, alunos, todasTurmasDb] = await Promise.all([
@@ -242,9 +235,6 @@ export const turmaService = {
       // 8. Limpar versões antigas do cache
       this.cleanOldCacheVersions(CACHE_KEY, cacheVersion);
       
-      console.log(`✅ Encontradas ${turmas.length} turmas ativas`);
-
-
       return turmas;
       
     } catch (error) {
@@ -381,11 +371,14 @@ export const turmaService = {
 
       if (turma.sync_status === 'synced' && !turma.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
-        await db.turmas.update(id, { 
-          deleted: true, 
-          sync_status: 'pending_delete' as SyncStatus,
-          updated_at: new Date().toISOString(),
-        });
+        await (db.turmas as any).update(
+          id,
+          {
+            deleted: true,
+            sync_status: 'pending_delete' as SyncStatus,
+            updated_at: new Date().toISOString()
+          }
+        );
 
         await alunosService.getAlunosPorTurma(id).then(alunos => {
           alunos.forEach(async aluno => {
@@ -402,8 +395,7 @@ export const turmaService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Turma ${id} marcada para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.turmas.delete(id);
         
@@ -413,8 +405,7 @@ export const turmaService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Turma ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar turma:', error);
@@ -427,7 +418,7 @@ export const turmaService = {
     try {
       const updated_at = new Date().toISOString();
       
-      await db.turmas.update(id, {
+      await (db.turmas as any).update(id, {
         ...turmaData,
         updated_at,
         sync_status: 'pending'
@@ -443,9 +434,7 @@ export const turmaService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Turma ${id} marcada para atualização`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao editar turma:', error);
       throw error;
     }
@@ -509,8 +498,6 @@ export const turmaService = {
         deleted: false,
       } as HorarioAula;
 
-      console.log('💾 Salvando horario:', horarios.dia_semana);
-      
       await db.turma_horarios.put(horarios);
       const disciplinaAdicionadaAoCurso = await ensureDisciplinaInCursoDaTurma(turmaId, horario.disciplina);
 
@@ -524,8 +511,6 @@ export const turmaService = {
         created_at: now
       });
 
-      console.log('✅ Turma salva com ID:', id);
-    
       return { id, disciplinaAdicionadaAoCurso };
     } catch (error) {
       console.error('Erro ao criar horário:', error);
@@ -590,8 +575,7 @@ export const turmaService = {
         status: 'pending_delete',
         created_at: new Date().toISOString()        
       });
-      console.log('Horario excluido com sucesso');
-    }catch(error){
+      }catch(error){
       console.error('Erro ao excluir horário:', error);
       throw error;
     }

@@ -1,4 +1,4 @@
-// services/notificacaoService.ts
+// services/notificacaoService
 import db from "./db";
 import { generateUniqueId } from "../../utils/idGenarator";
 import { alunosService } from "./alunosService";
@@ -13,6 +13,24 @@ import { getPendingCount } from "../../utils/emitPendingSync";
 export interface NotificacaoMeta {
   [key: string]: any;
 }
+
+type DestinatarioNotificacao = 'aluno' | 'professor' | 'admin' | 'responsavel' | 'todos';
+
+const normalizarDestinatarioNotificacao = (destinatario?: string): DestinatarioNotificacao | undefined => {
+  if (!destinatario) return undefined;
+  const valor = destinatario.toLowerCase();
+
+  if (valor === 'teacher' || valor === 'professor') return 'professor';
+  if (valor === 'manager' || valor === 'admin') return 'admin';
+  if (valor === 'aluno' || valor === 'user') return 'aluno';
+  if (valor === 'responsavel') return 'responsavel';
+  if (valor === 'todos') return 'todos';
+
+  return undefined;
+};
+
+const normalizarRoleParaDestinatario = (role?: string): DestinatarioNotificacao | undefined =>
+  normalizarDestinatarioNotificacao(role);
 
 export enum TipoNotificacao {
   // Sistema
@@ -54,12 +72,12 @@ export interface Notificacao {
   lida: boolean;
   data_envio: string;
   meta: NotificacaoMeta;
-  instituicao_id: string;
+  instituicao_id: string | null;
   aluno_id?: string;
   link?:string;
   turma_id?: string;
   user_id?: string;
-  destinatario_tipo?: 'aluno' | 'professor' | 'admin' | 'responsavel' | 'todos';
+  destinatario_tipo?: DestinatarioNotificacao;
   referencia_id?: string;
   created_at: string;
   updated_at: string;
@@ -105,6 +123,15 @@ const NOTIFICACOES_POR_PERFIL = {
 export const notificacaoService = {
   // ============ CRUD BÁSICO (MANTIDO) ============
   
+  async contarNotificacoesNaoLidas(){
+    const profile= await profileService.getLocalProfile()
+    if(profile){
+      const notif=  db.notificacao.filter(not=> not.user_id===profile.id && !not.lida && !not.deleted).count()
+      return notif
+    }
+    return 0
+  },
+
   async criarNotificacao(notificacaoData: Partial<NotificacaoFormData>): Promise<Notificacao> {
     try {
       const now = new Date().toISOString();
@@ -119,11 +146,11 @@ export const notificacaoService = {
         link:notificacaoData.link||'',
         data_envio: notificacaoData.data_envio || now,
         meta: notificacaoData.meta || {},
-        instituicao_id: notificacaoData.instituicao_id || instituicaoIdValue() || "",
+        instituicao_id: notificacaoData.instituicao_id || instituicaoIdValue() || null,
         aluno_id: notificacaoData.aluno_id,
         turma_id: notificacaoData.turma_id,
         user_id: notificacaoData.user_id,
-        destinatario_tipo: notificacaoData.destinatario_tipo,
+        destinatario_tipo: normalizarDestinatarioNotificacao(notificacaoData.destinatario_tipo),
         referencia_id: notificacaoData.referencia_id,
         created_at: now,
         updated_at: now,
@@ -131,8 +158,6 @@ export const notificacaoService = {
         deleted: false
       };
 
-      console.log(`🔔 Criando notificação [${notificacao.prioridade}]: ${notificacao.titulo}`);
-      
       // Verificar duplicidade (mesmo tipo para mesmo destinatário hoje)
       const hoje = now.split('T')[0];
       const similarExists = await db.notificacao
@@ -142,10 +167,10 @@ export const notificacaoService = {
         .and(n => n.user_id === notificacao.user_id)
         .and(n => n.data_envio.startsWith(hoje))
         .and(n=> n.corpo==notificacao.corpo)
+        .and(n=> n.titulo==notificacao.titulo)
         .count();
       
       if (similarExists > 0 && notificacao.prioridade !== PrioridadeNotificacao.URGENTE) {
-        console.log(`⏭️ Notificação similar já enviada hoje`);
         return notificacao;
       }
       
@@ -167,7 +192,6 @@ export const notificacaoService = {
         this.dispararEventoUI(notificacao);
       }
 
-      console.log(`✅ Notificação criada com ID: ${notificacao.id}`);
       return notificacao;
       
     } catch (error) {
@@ -179,8 +203,6 @@ export const notificacaoService = {
   // ============ NOTIFICAÇÕES INTELIGENTES ============
   
   async verificarNotificacoesAutomaticas() {
-    console.log('🤖 Verificando notificações automáticas...');
-    
     // Verificar apenas uma vez por hora
     const ultimaVerificacao = localStorage.getItem('ultima_verificacao_notif');
     const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000);
@@ -215,8 +237,7 @@ export const notificacaoService = {
       await this.verificarPending();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
-      console.log('✅ Verificações automáticas concluídas');
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro nas verificações automáticas:', error);
     }
   },
@@ -326,14 +347,15 @@ export const notificacaoService = {
         // Verificar se já passou 1 hora da aula
         const horaAula = new Date(`${hoje}T${aula.hora_inicio}`);
         const umaHoraDepois = new Date(horaAula.getTime() + 60 * 60 * 1000);
-        
-        if (new Date() > umaHoraDepois) {
+        const profile=await profileService.getLocalProfile()
+        if (new Date() > umaHoraDepois && profile) {
+          
           await this.criarNotificacao({
             titulo: 'Frequência pendente',
             corpo: `Registre a frequência da aula de ${aula.disciplina || 'hoje'}`,
             tipo: TipoNotificacao.PROF_FREQUENCIA,
             prioridade: PrioridadeNotificacao.MEDIA,
-            user_id: aula.professor_id,
+            user_id: profile.id,
             destinatario_tipo: 'professor',
             referencia_id: aula.id,
             link: '/frequencia',
@@ -372,7 +394,7 @@ export const notificacaoService = {
         .and(aluno => !aluno.deleted)
         .toArray();
       
-      const disciplinas = [...new Set(avaliacoes.map(a => a.disciplina))];
+      const disciplinas = [...new Set(avaliacoes.map((a:Avaliacao) => a.disciplina))];
       const mensagem = `Avaliação${disciplinas.length > 1 ? 's' : ''} de ${disciplinas.join(', ')}`;
       
       for (const aluno of alunosTurma) {
@@ -385,7 +407,7 @@ export const notificacaoService = {
           destinatario_tipo: 'aluno',
           turma_id: turmaId,
           link: '/notas',
-          meta: { avaliacoes_ids: avaliacoes.map(a => a.id) }
+          meta: { avaliacoes_ids: avaliacoes.map((a:Avaliacao) => a.id) }
         });
       }
       
@@ -406,6 +428,9 @@ export const notificacaoService = {
   },
   
   async verificarPagamentosProximos() {
+    const local= await profileService.getLocalProfile();
+    if(local?.role==="teacher")
+      return null
     const tresDias = new Date();
     tresDias.setDate(tresDias.getDate() + 3);
     const dataLimite = tresDias.toISOString().split('T')[0];
@@ -430,20 +455,20 @@ export const notificacaoService = {
       const aluno = await db.alunos.get(alunoId);
       if (!aluno) continue;
       
-      const total = propinas.reduce((sum, p) => sum + (p.valor || 0), 0);
+      const total = propinas.reduce((sum:Propina, p:any) => sum + (p.valor || 0), 0);
       
       await this.criarNotificacao({
         titulo: 'Pagamento próximo do vencimento',
         corpo: `${aluno.nome_completo}: ${propinas.length} pagamento(s) totalizando R$ ${total.toFixed(2)}`,
         tipo: TipoNotificacao.ALUNO_FINANCEIRO,
         prioridade: PrioridadeNotificacao.MEDIA,
-        instituicao_id: instituicaoIdValue()||"",
+        instituicao_id: instituicaoIdValue() || null,
         aluno_id: alunoId,
         
-        destinatario_tipo: 'responsavel',
+        destinatario_tipo: 'admin',
         link: '/financeiro/pagamentos',
         meta: { 
-          propinas_ids: propinas.map(p => p.id),
+          propinas_ids: propinas.map((p:any) => p.id),
           valor_total: total,
           quantidade: propinas.length
         }
@@ -511,6 +536,9 @@ export const notificacaoService = {
   },
   
   async verificarMetasProximas() {
+    const local=await profileService.getLocalProfile()
+    if(local?.role==="teacher" || local?.role==="manager")
+      return null
     const umaSemana = new Date();
     umaSemana.setDate(umaSemana.getDate() + 7);
     
@@ -523,7 +551,7 @@ export const notificacaoService = {
     
     for (const meta of metasProximas) {
       const diasRestantes = Math.ceil(
-        (new Date(meta.data_limite_real).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (new Date(meta.data_limite_real||"").getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
       
       await this.criarNotificacao({
@@ -531,7 +559,6 @@ export const notificacaoService = {
         corpo: `${meta.titulo}: ${diasRestantes} dia(s) restante(s)`,
         tipo: TipoNotificacao.ADMIN_META,
         prioridade: diasRestantes <= 3 ? PrioridadeNotificacao.ALTA : PrioridadeNotificacao.MEDIA,
-        user_id: meta.responsavel_id,
         destinatario_tipo: 'admin',
         referencia_id: meta.id,
         link: `/estrategia/metas/${meta.id}`,
@@ -546,6 +573,9 @@ export const notificacaoService = {
   
   async verificarFrequenciaBaixaAlerta() {
     // Verificar apenas uma vez por semana
+    const local=await profileService.getLocalProfile()
+    if(local?.role==="teacher")
+      return null
     const ultimaVerificacao = localStorage.getItem('ultima_verificacao_frequencia');
     const umaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     
@@ -581,7 +611,7 @@ export const notificacaoService = {
             tipo: TipoNotificacao.ALERTA,
             prioridade: PrioridadeNotificacao.ALTA,
             aluno_id: alunoId,
-            destinatario_tipo: 'responsavel',
+            destinatario_tipo: 'admin',
             link: '/frequencia',
             meta: { 
               frequencia_percentual: percentual,
@@ -652,12 +682,13 @@ export const notificacaoService = {
     meta?: NotificacaoMeta;
     link?:string
   }): Promise<Notificacao> {
-    const instituicao_id=instituicaoIdValue()||""
+    const instituicao_id=instituicaoIdValue() || null
     const profile=await profileService.getLocalProfile()
+
       return this.criarNotificacao({
         ...params,
         instituicao_id,
-        user_id:profile.id,
+        user_id:profile?profile.id:"",
         tipo: params.tipo || TipoNotificacao.ADMIN_RELATORIO,
         prioridade: params.prioridade || PrioridadeNotificacao.MEDIA,
         destinatario_tipo: 'admin',
@@ -671,15 +702,19 @@ export const notificacaoService = {
   async listarNotificacoesUsuario(userRole: string, userId?: string, alunoId?: string) {
     try {
       let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted);
+      const roleNormalizada = normalizarRoleParaDestinatario(userRole);
+      const destinatariosAceitos = new Set<string>(
+        [roleNormalizada, userRole].filter((valor): valor is string => !!valor)
+      );
       
       // Filtrar por tipos relevantes para o perfil
-      const tiposRelevantes = NOTIFICACOES_POR_PERFIL[userRole as keyof typeof NOTIFICACOES_POR_PERFIL] || [];
+      const tiposRelevantes = NOTIFICACOES_POR_PERFIL[roleNormalizada as keyof typeof NOTIFICACOES_POR_PERFIL] || [];
       
       if (tiposRelevantes.length > 0) {
         query = query.filter((notif:Notificacao) => 
           tiposRelevantes.includes(notif.tipo) || 
           notif.destinatario_tipo === 'todos' ||
-          notif.destinatario_tipo === userRole
+          destinatariosAceitos.has(notif.destinatario_tipo || '')
         );
       }
       
@@ -688,7 +723,7 @@ export const notificacaoService = {
         query = query.filter((notif:Notificacao) => 
           notif.user_id === userId || 
           notif.destinatario_tipo === 'todos' ||
-          notif.destinatario_tipo === userRole
+          destinatariosAceitos.has(notif.destinatario_tipo || '')
         );
       }
       
@@ -730,8 +765,6 @@ export const notificacaoService = {
   },
   
   async iniciarServicoNotificacoes() {
-    console.log('🚀 Iniciando serviço de notificações inteligentes...');
-    
     // Verificação inicial
     await this.verificarNotificacoesAutomaticas();
     
@@ -823,8 +856,6 @@ export const notificacaoService = {
         created_at: now
       });
 
-      console.log(`✏️ Notificação ${id} atualizada`);
-      
       const updated = await this.buscarNotificacaoPorId(id);
       if (!updated) throw new Error('Notificação não encontrada');
       return updated;
@@ -864,7 +895,6 @@ export const notificacaoService = {
         })
       );
 
-      console.log(`✅ ${naoLidas.length} notificações marcadas como lidas`);
       return naoLidas.length;
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);
@@ -882,16 +912,13 @@ export const notificacaoService = {
       dataLimite.setDate(dataLimite.getDate() - dias);
       
       const notificacoesAntigas = await db.notificacao
-        .where('deleted')
-        .equals(false)
-        .filter((notif:Notificacao) => new Date(notif.data_envio) < dataLimite)
+        .filter((notif:Notificacao) => new Date(notif.data_envio) < dataLimite&&!notif.deleted)
         .toArray();
 
       await Promise.all(
         notificacoesAntigas.map(notif => this.deletarNotificacao(notif.id))
       );
 
-      console.log(`🧹 ${notificacoesAntigas.length} notificações antigas removidas`);
       return notificacoesAntigas.length;
     } catch (error) {
       console.error('Erro ao limpar notificações antigas:', error);
@@ -901,7 +928,7 @@ export const notificacaoService = {
 
   // ============ FUNÇÃO AUXILIAR DELEÇÃO ============
   
-  async markForDelete(table: string, id: string): Promise<void> {
+  async markForDelete(table:  "notificacao" , id: string): Promise<void> {
     try {
       const record = await db[table].get(id);
       if (!record) return;
@@ -922,8 +949,7 @@ export const notificacaoService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ ${table} ${id} marcado para deleção remota`);
-      } else {
+        } else {
         await db[table].delete(id);
         
         await db.syncQueue
@@ -931,8 +957,7 @@ export const notificacaoService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ ${table} ${id} deletado localmente`);
-      }
+        }
     } catch (error) {
       console.error(`Erro ao deletar ${table}:`, error);
       throw error;

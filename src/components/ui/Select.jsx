@@ -53,7 +53,6 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson,multiIcon=false, onCha
     }
 
     const handleSelect = (item) => {
-        console.log("🔄 Select selecionado:", item)
         setSelected(item)
         setOpen(false)
         
@@ -63,7 +62,6 @@ const SelectChevron = ({ vect = [], icon: Icon = RxPerson,multiIcon=false, onCha
 
     const handleToggle = (e) => {
         blockEvent(e)
-        console.log("🎯 Toggle clicado")
         setOpen(prev => !prev)
     }
 

@@ -8,6 +8,7 @@ export interface UserProfile extends BaseEntity {
   is_local?: boolean;
   supabase_id?: string;
   full_name?: string;
+  nome?: string;
   updated_at: string;
   created_at: string;
 }

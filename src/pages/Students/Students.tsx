@@ -1,4 +1,4 @@
-// Students.tsx - VERSÃO ATUALIZADA
+// Students - VERSÃO ATUALIZADA
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -22,6 +22,8 @@ import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { StudentsTable } from '../../components/students/StudentsTable';
 import { ReforcoSectionModal } from '../../components/students/ReforcoSectionModal';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
+import db from '../../services/database/db';
 
 const Students = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -41,6 +43,7 @@ const Students = () => {
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [creatingSection, setCreatingSection] = useState(false);
   const [availableTurmas, setAvailableTurmas] = useState<Turma[]>([]);
+  const [professorOptions, setProfessorOptions] = useState<string[]>(['Todos Professores']);
   const [sectionForm, setSectionForm] = useState({
     modo: 'nova' as 'nova' | 'existente',
     turmaExistenteId: '',
@@ -58,11 +61,13 @@ const Students = () => {
         // Monitorar status online
         const handleOnline = () => setOnlineStatus(true);
         const handleOffline = () => setOnlineStatus(false);
+        const throttledReload = createThrottledCallback(() => {
+          reload();
+        }, 2500);
         
         const handleDbChanged = (event: Event) => {
-          const detail = (event as CustomEvent).detail;
-          if (!detail?.table || detail.table === 'alunos') {
-            reload();
+          if (shouldHandleDbChangedEvent(event, ['alunos'])) {
+            throttledReload();
           }
         };
 
@@ -97,9 +102,37 @@ const Students = () => {
           window.removeEventListener('db-changed', handleDbChanged);
           window.removeEventListener('sync-pending', handleSyncUpdate);
           window.removeEventListener('sync-complete', handleSyncUpdate);
+          throttledReload.cancel();
           clearInterval(interval);
         };
       }, []);
+
+  useEffect(() => {
+    const loadProfessores = async () => {
+      try {
+        const instituicaoId = instituicaoIdValue();
+        const professores = await db.profiles
+          .where('role')
+          .equals('teacher')
+          .toArray();
+
+        const filtrados = instituicaoId
+          ? professores.filter((p: any) => p.instituicao_id === instituicaoId)
+          : professores;
+
+        const nomes = filtrados
+          .map((p: any) => p.full_name || p.nome || p.email || 'Professor')
+          .filter((n: string) => n && n.trim().length > 0);
+
+        const unique = Array.from(new Set(nomes)).sort((a, b) => a.localeCompare(b));
+        setProfessorOptions(['Todos Professores', ...unique]);
+      } catch (error) {
+        console.error('Erro ao carregar professores:', error);
+      }
+    };
+
+    loadProfessores();
+  }, []);
      
 
   const handleForceSync = async () => {
@@ -149,10 +182,12 @@ const Students = () => {
     });
     
     return {
-      professores: ['Todos Professores', ...Array.from(profsSet)],
+      professores: professorOptions.length > 0
+        ? professorOptions
+        : ['Todos Professores', ...Array.from(profsSet)],
       turmas: ['Todas Turmas', ...Array.from(turmsSet)]
     };
-  }, [students]);
+  }, [students, professorOptions]);
 
   // Carregar alunos
   const reload = async () => {

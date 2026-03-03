@@ -17,17 +17,15 @@ import {
 } from "react-icons/fi";
 import { Meta } from "../../types/eventos";
 import { useNavigate, useParams } from "react-router-dom";
-import toast from "react-hot-toast";
 import { useAlert } from "../ui/AlertBadge";
 import PlaneamentoMensalComponent from "./PlaneamentoMensal";
-import { PlaneamentoSemanal } from "./PlaneamentoSemanal";
 import { RxTable, RxTarget } from "react-icons/rx";
 import { FaPaperPlane, FaToiletPaper, FaTradeFederation } from "react-icons/fa";
 import { logoBlack } from "../auth/Login";
 import { ModalPlaneamento } from "./modals";
 import type {
   PlaneamentoMensal as PlaneamentoMensalType,
-  PlaneamentoSemanal as PlaneamentoSemanalType,
+   PlaneamentoSemanalType,
   PlaneamentoDiario as PlaneamentoDiarioType,
 } from "../../types/planeamento";
 import { es, se } from "date-fns/locale";
@@ -35,8 +33,9 @@ import { estrategiaPlaneamentoService } from "../../services/database/estrategia
 import { generateUniqueId } from "../../utils/idGenarator";
 import { PlaneamentoDiario } from "./PlaneamentoDiario";
 import { SyncStatusBadge } from "../ui/SyncStatusBadge";
+import { PlaneamentoSemanal } from "./PlaneamentoSemanal";
 
-// PlaneamentoComponent.tsx
+// PlaneamentoComponent
 const PlaneamentoComponent = ({ metas, setMetas }: { 
   metas: Meta[], 
   setMetas: React.Dispatch<React.SetStateAction<Meta[]>> 
@@ -129,7 +128,7 @@ async function salvarPlaneamento(
   try {
     // Validar dados mínimos
     if (!planejamento || Object.keys(planejamento).length === 0) {
-      toast.error('Dados do planejamento inválidos');
+      showAlert({ type: 'error', title: 'Dados do planejamento inválidos' });
       return;
     }
 
@@ -169,7 +168,7 @@ async function salvarPlaneamento(
         setPlanejamento(planejamentoAtualizado as any);
         setModo('visualizacao');
         
-        toast.success('Planejamento atualizado com sucesso!');
+        showAlert({ type: 'success', title: 'Planejamento atualizado com sucesso!' });
         showAlert({
           type: 'success',
           title: 'Sucesso!',
@@ -187,18 +186,18 @@ async function salvarPlaneamento(
         progresso: 0,
         // Campos específicos por tipo (já devem vir do modal)
         ...(viewMode === 'diario' && {
-          horarios: planejamento.horarios || [],
-          focos: planejamento.focos || [],
-          lembretes: planejamento.lembretes || []
+          horarios: (planejamento as PlaneamentoDiarioType).horarios || [],
+          focos: (planejamento as PlaneamentoDiarioType).focos || [],
+          lembretes: (planejamento as PlaneamentoDiarioType).lembretes || []
         }),
         ...(viewMode === 'semanal' && {
-          dias: planejamento.dias || [],
-          objetivos_semanais: planejamento.objetivos_semanais || [],
-          metas_prioritarias: planejamento.metas_prioritarias || []
+          dias: (planejamento as PlaneamentoSemanalType).dias || [],
+          objetivos_semanais: (planejamento as PlaneamentoSemanalType).objetivos_semanais || [],
+          metas_prioritarias: (planejamento as PlaneamentoSemanalType).metas_prioritarias || []
         }),
         ...(viewMode === 'mensal' && {
-          semanas: planejamento.semanas || [],
-          metas_mensais: planejamento.metas_mensais || []
+          semanas: (planejamento as PlaneamentoMensalType).semanas || [],
+          metas_mensais: (planejamento as PlaneamentoMensalType).metas_mensais || []
         })
       };
 
@@ -208,7 +207,7 @@ async function salvarPlaneamento(
         // Recarregar planejamento após criar
         await carregarPlanejamento();
         
-        toast.success('Planejamento criado com sucesso!');
+        showAlert({ type: 'success', title: 'Planejamento criado com sucesso!' });
         showAlert({
           type: 'success',
           title: 'Sucesso!',
@@ -220,12 +219,12 @@ async function salvarPlaneamento(
 
     // Fechar modal em ambos os casos
     setOpen(false);
-    setTipoEstrategia(null);
+    
 
   } catch (error) {
     console.error('❌ Erro ao salvar planejamento:', error);
     
-    toast.error('Erro ao salvar planejamento');
+    showAlert({ type: 'error', title: 'Erro ao salvar planejamento' });
     showAlert({
       type: 'error',
       title: 'Erro!',
@@ -340,8 +339,8 @@ async function salvarPlaneamento(
                     carregando={carregando}
                     setCarregando={setCarregando}
                     criarPlaneamento={() => setOpen(true)}
-                    planejamento={planejamento as PlaneamentoMensalType}
                     setPlanejamento={setPlanejamento}
+                    planejamento={planejamento}
                     modo={modo}
                     setModo={setModo}
                     dataAtual={dataAtual}

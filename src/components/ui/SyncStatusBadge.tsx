@@ -79,8 +79,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     
     try {
       setIsSyncing(true);
-      console.log(`🔄 Sincronizando ${tableName}...`);
-      
       await syncManager.uploadBatch();
       
       // Aguardar um pouco e recarregar
@@ -113,8 +111,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     
     try {
       setIsSyncing(true);
-      console.log(`🔄 Reenviando itens com erro para ${tableName}...`);
-      
       // Chamar função específica para retentar erros
       await syncManager.rentryErrorsTable(tableName);
       

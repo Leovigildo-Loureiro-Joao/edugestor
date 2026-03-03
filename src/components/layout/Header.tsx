@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx
+// src/components/layout/Header
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   FiSearch, 
@@ -86,7 +86,6 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
     const initSync = async () => {
       try {
         await initializeSyncSystem();
-        console.log('✅ Sistema de sincronização inicializado');
         await verificarStatusSincronizacao();
       } catch (error) {
         console.error('❌ Erro ao inicializar sincronização:', error);
@@ -128,7 +127,6 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
 
       // Se estiver online e houver pendências, sinalizar estado
       if (isOnline && syncQueue > 0) {
-        console.log(`🔄 ${syncQueue} itens pendentes para sincronizar`);
         setSaveStatus('saving');
       } else if (isOnline && syncQueue === 0) {
         setSaveStatus(syncErrors > 0 ? 'error' : 'saved');
@@ -345,8 +343,6 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
     if (!isOnline) return;
     setSaveStatus('saving');
     try {
-      console.log('♻️ Forçando full sync manual...');
-
       // 1) Enviar pendências locais primeiro
       await syncManager.uploadBatch();
       await syncManager.uploadFailedItems()
@@ -361,8 +357,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
 
       setSaveStatus('saved');
       await verificarStatusSincronizacao();
-      console.log('✅ Full sync concluído');
-    } catch (error) {
+      } catch (error) {
       setSaveStatus('error');
       console.error('Erro na sincronização:', error);
     }
@@ -387,7 +382,7 @@ return (
             />
 
             {/* Placeholder responsivo para mobile */}
-            <style jsx>{`
+            <style>{`
               @media (max-width: 640px) {
                 input::placeholder {
                   content: "Buscar...";
@@ -455,18 +450,7 @@ return (
               {getStatusText()}
             </span>
             
-            {/* Badges - sempre visíveis */}
-            {syncStatus.pending > 0 && (
-              <span className="absolute -top-1 -right-1 sm:static sm:bg-yellow-500 sm:text-white text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center bg-yellow-500">
-                {syncStatus.pending}
-              </span>
-            )}
             
-            {syncStatus.errors > 0 && syncStatus.pending === 0 && (
-              <span className="absolute -top-1 -right-1 sm:static sm:bg-red-500 sm:text-white text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center bg-red-500">
-                {syncStatus.errors}
-              </span>
-            )}
           </button>
 
           {/* Modo Dark/Light */}
@@ -481,7 +465,7 @@ return (
 
           {/* Componente de Notificações */}
           <div className="relative">
-            <NotificacoesBellInteligente userRole={localStorage.getItem("user_role")||"admin"} />
+            <NotificacoesBellInteligente userRole={(localStorage.getItem("user_role") as 'aluno' | 'teacher' | 'admin' | 'manager') ||"admin"} />
           </div>
         </div>
       </div>

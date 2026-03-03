@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { FiUser, FiDollarSign, FiCalendar, FiArrowLeft, FiCheckCircle, FiInfo } from 'react-icons/fi';
-import { Student } from '../../types/aluno.ts';
+import { Student } from '../../types/aluno';
 import { useParams, useNavigate } from 'react-router-dom';
-import { alunosService } from '../../services/database/alunosService.ts';
-import { transacaoService } from '../../services/database/transacaoService.ts';
-import { propinaService } from '../../services/database/propinas.ts';
-import { mesesUtils } from '../../utils/meses.ts';
-import { DadosPagamentoCash } from '../../types/transacao.ts';
-import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
-import { useAlert } from '../../components/ui/AlertBadge.tsx';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { alunosService } from '../../services/database/alunosService';
+import { transacaoService } from '../../services/database/transacaoService';
+import { propinaService } from '../../services/database/propinas';
+import { mesesUtils } from '../../utils/meses';
+import { DadosPagamentoCash } from '../../types/transacao';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { PageLoader } from '../../components/ui/PageLoader';
+import { turmaService } from '../../services/database';
 
 
 export const RegistroPagamentoPage: React.FC = () => {
@@ -40,6 +41,7 @@ const TODOS_MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
+
 
 // Carregar meses disponíveis quando o aluno for carregado
 useEffect(() => {
@@ -82,7 +84,7 @@ useEffect(() => {
           // Normalizar turmas se for array
           const alunoNormalizado = {
             ...alunoData,
-            turmas: Array.isArray(alunoData.turmas) ? (alunoData.turmas[0] ?? null) : (alunoData.turmas ?? null),
+            turmas: await turmaService.getTurmaById(alunoData.turma_id),
           } as Student;
           
           setAluno(alunoNormalizado);
@@ -208,7 +210,7 @@ useEffect(() => {
             O pagamento de {dadosPagamento.meses} mes(es) foi registrado com sucesso para {aluno.nome_completo}.
           </p>
           <div className="text-lg font-semibold text-green-600 mb-6">
-            Total: {formatarMoeda(dadosPagamento.valorTotal)}
+            Total: {formatarMoeda(dadosPagamento.valorTotal ?? 0)}
           </div>
           <button 
             onClick={() => navigate('/financeiro/pagamentos')}
@@ -281,12 +283,12 @@ useEffect(() => {
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="font-medium text-gray-700 dark:text-gray-300">Turma:</span>
-                  <div className="text-gray-900 dark:text-white">{aluno.turmas?.nome_turma || 'Não definida'}</div>
+                  <div className="text-gray-900 dark:text-white">{aluno?.turma_nome || 'Não definida'}</div>
                 </div>
                 
                 <div>
                   <span className="font-medium text-gray-700 dark:text-gray-300">Professor:</span>
-                  <div className="text-gray-900 dark:text-white">{aluno.turmas?.professor || 'Não definido'}</div>
+                  <div className="text-gray-900 dark:text-white">{aluno?.professor || 'Não definido'}</div>
                 </div>
                 
                 <div>
@@ -413,16 +415,16 @@ useEffect(() => {
                     
                     <div className="flex justify-between text-xl font-bold border-t border-blue-200 pt-3 mt-3">
                       <span className="text-blue-900">Total a Pagar:</span>
-                      <span className="text-green-600 text-2xl">{formatarMoeda(dadosPagamento.valorTotal)}</span>
+                      <span className="text-green-600 text-2xl">{formatarMoeda(dadosPagamento.valorTotal??0)}</span>
                     </div>
                   </div>
 
                   {/* Meses de Referência */}
-                  {dadosPagamento.mesReferencia.length > 0 && (
+                  {(dadosPagamento.mesReferencia??[]).length > 0 && (
                     <div className="mt-4 pt-4 border-t border-blue-200">
                       <div className="text-sm text-blue-700 font-medium mb-2">Meses cobertos:</div>
                       <div className="flex flex-wrap gap-2">
-                        {dadosPagamento.mesReferencia.map((mes, index) => (
+                        {dadosPagamento.mesReferencia?.map((mes, index) => (
                           <span 
                             key={index}
                             className="px-3 py-2 bg-white dark:bg-gray-800 text-blue-800 text-sm rounded-lg border border-blue-300 font-medium"

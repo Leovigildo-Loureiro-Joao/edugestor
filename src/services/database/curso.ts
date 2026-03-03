@@ -1,8 +1,9 @@
-// services/database/cursoService.ts
+// services/database/cursoService
 import { alunosService } from ".";
 import { Student } from "../../types";
 import { Course, CourseFormData } from "../../types/curso";
 import { UserProfile } from "../../types/profile";
+import { Turma } from "../../types/turma";
 import { emitPendingSync } from "../../utils/emitPendingSync";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
@@ -36,8 +37,6 @@ export const cursosService = {
         deleted: false,
       } as Course;
 
-      console.log('💾 Salvando curso:', curso.nome);
-      
       await db.cursos.put(curso);
       
       // Adicionar à fila de sincronização
@@ -50,7 +49,6 @@ export const cursosService = {
         created_at: now
       });
 
-      console.log('✅ Curso salvo com ID:', id);
       return id;
       
     } catch (error) {
@@ -65,8 +63,6 @@ export const cursosService = {
     const cacheScope = activeInstituicaoId || 'global';
     const CACHE_KEY = `cursos_all_${cacheScope}`;
     try {
-      console.log('📋 Buscando cursos...');
-      
       // 1. Criar versão de cache baseada em múltiplos fatores
       const [cursoCount, turmaCount, alunoCount, lastModified] = await Promise.all([
         db.cursos.count(),
@@ -82,11 +78,8 @@ export const cursosService = {
       // 3. Tentar cache primeiro
       const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
-        console.log('✅ Cache HIT para cursos');
         return cached;
       }
-      
-      console.log('🔄 Cache MISS para cursos, buscando do banco...');
       
       // 4. Buscar dados em paralelo com otimizações
       const instituicaoId = activeInstituicaoId;
@@ -147,7 +140,7 @@ export const cursosService = {
           
           // Calcular estatísticas adicionais
           const turmasCount = turmasDoCurso.length;
-          const hasActiveTurmas = turmasDoCurso.some(turma => turma.status === 'ativa');
+          const hasActiveTurmas = turmasDoCurso.some(turma => turma.estado === 'ativa');
           
           return {
             ...curso,
@@ -187,7 +180,6 @@ export const cursosService = {
         this.cleanOldCourseCache(CACHE_KEY, cacheVersion);
       }
       
-      console.log(`✅ Encontrados ${cursos.length} cursos ativos`);
       return cursos;
       
     } catch (error) {
@@ -248,8 +240,7 @@ export const cursosService = {
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
       });
-      console.log(`🧹 Removidas ${keysToRemove.length} versões antigas do cache de cursos`);
-    }
+      }
   }
 
   // Método para invalidar cache quando necessário
@@ -261,7 +252,7 @@ export const cursosService = {
       localStorage.removeItem(key);
     });
     
-    console.log(`🧹 Cache de cursos invalidado (${count} itens removidos)`);
+    
     
     // Emitir evento se estiver usando algum sistema de eventos
     cacheManager.emitCacheInvalidated('courses');
@@ -315,13 +306,11 @@ export const cursosService = {
 
   // Método para forçar refresh do cache
   , async refreshCoursesCache(): Promise<Course[]> {
-    console.log('🔄 Forçando refresh do cache de cursos...');
-    
     // Invalidar cache existente
     this.invalidateCourseCache();
     
     // Buscar dados frescos
-    const cursos = await this.getCoursess();
+    const cursos = await this.getCourses();
     
     return cursos;
   },
@@ -366,7 +355,7 @@ export const cursosService = {
     try {
       const updated_at = new Date().toISOString();
       
-      await db.cursos.update(id, {
+      await (db.cursos as any).update(id, {
         ...courseData,
         updated_at,
         sync_status: 'pending'
@@ -382,9 +371,7 @@ export const cursosService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Curso ${id} marcado para atualização`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao atualizar curso:', error);
       throw error;
     }
@@ -398,11 +385,14 @@ export const cursosService = {
 
       if (curso.sync_status === 'synced' && !curso.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
-        await db.cursos.update(id, { 
-          deleted: true, 
-          sync_status: 'pending_delete',
-          updated_at: new Date().toISOString()
-        });
+        await (db.cursos as any).update(
+          id,
+          ({
+            deleted: true,
+            sync_status: 'pending_delete',
+            updated_at: new Date().toISOString()
+          } as any)
+        );
 
         await turmaService.getTurmasPorCurso(id).then(turmas => {
           turmas.forEach(async turma => {
@@ -419,8 +409,7 @@ export const cursosService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Curso ${id} marcado para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.cursos.delete(id);
         
@@ -430,8 +419,7 @@ export const cursosService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Curso ${id} deletado localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar curso:', error);

@@ -1,6 +1,6 @@
 import { BaseEntity, SyncStatus } from "./base";
 
-// services/configService.ts
+// services/configService
 export interface SystemConfig extends BaseEntity{
   id: string;
   category: string;
@@ -27,7 +27,7 @@ export interface PaymentConfig {
   pagamentoPrepago:boolean;
 }
 
-// types/config.ts
+// types/config
 export interface HorarioConfig {
   hora_inicial: string;  // snake_case para compatibilidade com backend
   hora_final: string;
@@ -52,4 +52,6 @@ export interface AcademyConfig {
   permitirMatriculas: boolean;
   horario: HorarioConfig;
   sistemaAvaliacao: SistemaAvaliacao;
+  usarFrequenciaNaSituacaoNotas: boolean;
+  frequenciaMinimaAprovacao: number;
 }

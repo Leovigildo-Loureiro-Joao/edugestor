@@ -14,8 +14,7 @@ import {
   FiList,
   FiX
 } from 'react-icons/fi';
-import { toast } from 'react-hot-toast';
-import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService.ts';
+import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService';
 import { PlaneamentoDiario as PlaneamentoDiarioType, Horario } from '../../types/planeamento';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { generateUniqueId } from '../../utils/idGenarator';
@@ -28,9 +27,9 @@ interface PlaneamentoDiarioProps {
   modo: 'visualizacao' | 'criacao'|'edição';
   carregando?: boolean;
   setCarregando?: React.Dispatch<React.SetStateAction<boolean>>;
-  setModo: React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>
-  dataAtual:string, 
-  setDataAtual:React.Dispatch<React.SetStateAction<string>>;
+  setModo: React.Dispatch<React.SetStateAction<"visualizacao" | "criacao">>,
+  dataAtual:Date, 
+  setDataAtual:React.Dispatch<React.SetStateAction<Date>>;
 }
 
 export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({ 
@@ -189,7 +188,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
       setPlanejamento(atualizado.data as PlaneamentoDiarioType);
       setModalAgenda(false);
       setAgenda({});
-      toast.success('Atividade adicionada ao planejamento!');
+      showAlert({ type: 'success', title: 'Atividade adicionada ao planejamento!' });
     } catch (error) {
       showAlert({
         type: 'error',
@@ -210,7 +209,7 @@ export const PlaneamentoDiario: React.FC<PlaneamentoDiarioProps> = ({
       await estrategiaPlaneamentoService.deletePlano(planejamento.id);
       setPlanejamento(null);
       setModo('criacao');
-      toast.success('Planejamento excluído!');
+      showAlert({ type: 'success', title: 'Planejamento excluído!' });
       
     } catch (error) {
       showAlert({

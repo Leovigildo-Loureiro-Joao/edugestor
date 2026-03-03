@@ -1,9 +1,8 @@
 import { StudentForm } from "../../components/students/StudentForm";
 import { useNavigate } from 'react-router-dom';
-import { alunosService } from "../../services/database/alunosService.ts";
+import { alunosService } from "../../services/database/alunosService";
 import { useState } from 'react';
-import { ModalMatricula } from '../../components/finance/ModalMatricula.tsx';
-import { useAlert } from "../../components/ui/AlertBadge.tsx";
+import { useAlert } from "../../components/ui/AlertBadge";
 
 export const StudentNew = () => {
     const navigate = useNavigate();

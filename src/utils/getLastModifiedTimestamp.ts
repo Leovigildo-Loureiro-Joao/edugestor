@@ -17,7 +17,7 @@ export async function  getLastModifiedTimestamp(): Promise<number> {
     // Encontrar o timestamp mais recente
     const validTimestamps = timestamps
       .filter(item => item && item.updated_at)
-      .map(item => new Date(item.updated_at||"").getTime());
+      .map(item => new Date(item?item.updated_at||"":"").getTime());
     
     if (validTimestamps.length > 0) {
       return Math.max(...validTimestamps);

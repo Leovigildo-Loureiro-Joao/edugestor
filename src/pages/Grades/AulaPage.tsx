@@ -10,49 +10,49 @@ import {
   FiTrendingDown,
   FiChevronDown
 } from 'react-icons/fi';
-import { aulaService } from '../../services/database/aulaService.ts';
-import { AulaForm } from '../../components/aulas/AulaForm.tsx';
-import { AulaCardTurma, AulaStatus } from '../../components/aulas/AulaCard-min.tsx';
-import { Aula, AulaFormData } from '../../types/aula.ts';
-import { HorarioAula, Turma } from '../../types/turma.ts';
-import { SelectTyped } from '../../components/students/StudentForm.tsx';
-import { toast } from 'react-hot-toast';
+import { aulaService } from '../../services/database/aulaService';
+import { AulaForm } from '../../components/aulas/AulaForm';
+import { AulaCardTurma, AulaStatus } from '../../components/aulas/AulaCard-min';
+import { Aula, AulaFormData, PlanoAula } from '../../types/aula';
+import { HorarioAula, Turma } from '../../types/turma';
+import { SelectTyped } from '../../components/students/StudentForm';
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { ModalDetalhesAula } from '../../components/aulas/AulaModal.tsx';
-import { ListaView, ViewModeNavbar } from '../../components/aulas/AulaLista.tsx';
-import { TimelineWindows } from '../../components/aulas/TimelineAulas.tsx';
-import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx';
-import { Student } from '../../types/aluno.ts';
-import { frequenciaService } from '../../services/database/frequenciaService.ts';
-import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
-import { estrategiaService } from '../../services/database/estrategiaService.ts';
-import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
-import {  useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
-import { useAlert } from '../../components/ui/AlertBadge.tsx';
-import { getDiaSemanaFromDate } from '../../utils/getDiaDaSemana.ts';
-import { ModalPlanoAula } from '../../components/aulas/PlanoAulasModal.tsx';
-import { SyncDataDetail } from '../../components/ui/SyncDataDetail.tsx';
-import { planoAulaService, PlanoAula } from '../../services/database/planoAulasService.ts';
-import CalendarioMini from '../../components/aulas/CalendarioMin.tsx';
+import { ModalDetalhesAula } from '../../components/aulas/AulaModal';
+import { ListaView, ViewModeNavbar } from '../../components/aulas/AulaLista';
+import { TimelineWindows } from '../../components/aulas/TimelineAulas';
+import { ModalFrequencia } from '../../components/attendance/FrequeciaModal';
+import { Student } from '../../types/aluno';
+import { frequenciaService } from '../../services/database/frequenciaService';
+import { RegistroFrequenciaLote } from '../../types/frequencia';
+import { estrategiaService } from '../../services/database/estrategiaService';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import {  useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { getDiaSemanaFromDate } from '../../utils/getDiaDaSemana';
+import { ModalPlanoAula } from '../../components/aulas/PlanoAulasModal';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
+import { planoAulaService } from '../../services/database/planoAulasService';
+import CalendarioMini from '../../components/aulas/CalendarioMin';
 import { useNavigate, useParams } from 'react-router-dom';
-import db from '../../services/database/db.ts';
+import db from '../../services/database/db';
 import { useLiveQuery } from '../../hooks/useLiveQuery';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID.ts';
-import { alunosService, turmaService } from '../../services/database/index.ts';
-import { AulasPageHeader } from '../../components/aulas/AulasPageHeader.tsx';
-import { AulasStatsGrid } from '../../components/aulas/AulasStatsGrid.tsx';
-import { AulaQuickAddModal } from '../../components/aulas/AulaQuickAddModal.tsx';
-import { PlanoDetalhes } from '../../components/aulas/PlanoAulaDetalhesModal.tsx';
-import { PlanoAulaComponent } from '../../components/aulas/PlanoAulaPage.tsx';
-import { PlaneamentoComponent } from '../../components/aulas/PlaneametoComponent.tsx';
-import { GraficoComponent } from '../../components/aulas/GraficoComponent.tsx';
-import TabNavigation from '../../components/ui/TabNavigation.tsx';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
-import { usePagination } from '../../hooks/usePagination.ts';
-import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { alunosService, turmaService } from '../../services/database/index';
+import { AulasPageHeader } from '../../components/aulas/AulasPageHeader';
+import { AulasStatsGrid } from '../../components/aulas/AulasStatsGrid';
+import { AulaQuickAddModal } from '../../components/aulas/AulaQuickAddModal';
+import { PlanoDetalhes } from '../../components/aulas/PlanoAulaDetalhesModal';
+import { PlanoAulaComponent } from '../../components/aulas/PlanoAulaPage';
+import { PlaneamentoComponent } from '../../components/aulas/PlaneametoComponent';
+import { GraficoComponent } from '../../components/aulas/GraficoComponent';
+import TabNavigation from '../../components/ui/TabNavigation';
+import { PageLoader } from '../../components/ui/PageLoader';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../../components/ui/PaginationControls';
+import { profileService } from '../../services/database/profileService';
 
 export const AulasPage = () => {
   const {seccao} = useParams()
@@ -81,6 +81,8 @@ export const AulasPage = () => {
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const [syncStats, setSyncStats] = useState(0);
   const [showPlaneamento, setShowPlaneamento] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [teacherNameKey, setTeacherNameKey] = useState<string | null>(null);
   
   const [planosAula, setPlanosAula] = useState<PlanoAula[]>([]);
   const [planoDetalhes, setPlanoDetalhes] = useState<PlanoAula | null>(null);
@@ -107,16 +109,21 @@ export const AulasPage = () => {
       db.frequencias.filter((registro) => !registro.deleted && registro.instituicao_id === instituicaoIdValue()).toArray()
     ]);
 
-    const turmaMap = new Map(todasTurmas.map((turma) => [turma.id, turma]));
+    const turmasFiltradas = isTeacher && teacherNameKey
+      ? todasTurmas.filter((t) => (t.professor || '').toLowerCase().trim() === teacherNameKey)
+      : todasTurmas;
+    const turmaMap = new Map(turmasFiltradas.map((turma) => [turma.id, turma]));
+    const turmaIdsPermitidas = new Set(turmasFiltradas.map((t) => t.id));
 
     return todasAulas
+      .filter((aula) => !isTeacher || turmaIdsPermitidas.has(aula.turma_id))
       .sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime())
       .map((aula) => ({
         ...aula,
         turmas: turmaMap.get(aula.turma_id),
         registro: todasFrequencias.filter((f) => f.aula_id === aula.id)
       }));
-  }, []);
+  }, [isTeacher, teacherNameKey]);
 
   const turmasLive = useLiveQuery<Turma[]>(async () => {
     const [todasTurmas, todosCursos, todasAulas, todosAlunos, todosHorarios] = await Promise.all([
@@ -126,6 +133,10 @@ export const AulasPage = () => {
       alunosService.getAllStudents(),
       db.turma_horarios.filter((horario) => !horario.deleted && horario.instituicao_id === instituicaoIdValue()).toArray()
     ]);
+
+    const turmasFiltradas = isTeacher && teacherNameKey
+      ? todasTurmas.filter((t) => (t.professor || '').toLowerCase().trim() === teacherNameKey)
+      : todasTurmas;
 
     const cursosMap = new Map(todosCursos.map((curso) => [curso.id, curso.nome]));
 
@@ -148,7 +159,7 @@ export const AulasPage = () => {
       return acc;
     }, {} as Record<string, HorarioAula[]>);
 
-    return todasTurmas
+    return turmasFiltradas
       .sort((a, b) => (a.nome_turma || '').localeCompare(b.nome_turma || ''))
       .map((turma) => ({
         ...turma,
@@ -157,7 +168,7 @@ export const AulasPage = () => {
         aulas: aulasPorTurma[turma.id] || [],
         horarios: horariosPorTurma[turma.id] || []
       }));
-  }, []);
+  }, [isTeacher, teacherNameKey]);
 
   const planosAulaLive = useLiveQuery<PlanoAula[]>(async () => {
     const planos = await db.plano_aulas.filter((plano) => !plano.deleted && plano.instituicao_id === instituicaoIdValue()).toArray();
@@ -176,6 +187,35 @@ export const AulasPage = () => {
         return () => window.removeEventListener('resize', checkMobile);
       }, []);
 
+
+  useEffect(() => {
+    const loadRole = async () => {
+      try {
+        const profile = await profileService.getLocalProfile();
+        const role = profile?.role || localStorage.getItem('user_role');
+        if (role === 'teacher') {
+          setIsTeacher(true);
+          const name = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+          setTeacherNameKey(name || null);
+        } else {
+          setIsTeacher(false);
+          setTeacherNameKey(null);
+        }
+      } catch {
+        const role = localStorage.getItem('user_role');
+        if (role === 'teacher') {
+          setIsTeacher(true);
+          const name = (localStorage.getItem('user_full_name') || localStorage.getItem('user_name') || '').toLowerCase().trim();
+          setTeacherNameKey(name || null);
+        } else {
+          setIsTeacher(false);
+          setTeacherNameKey(null);
+        }
+      }
+    };
+
+    loadRole();
+  }, []);
 
 
   const pendentesAulasLive = useLiveQuery<number>(async () => {
@@ -213,7 +253,6 @@ export const AulasPage = () => {
         aulaService.atualizarAula(registros.aula_id,{
           taxa_participacao:participacao
         })
-        console.log('📝 Registrando frequência para aula:', registros);
         await frequenciaService.registrarFrequenciaLote(registros);
         
         setAulas(prev => prev.filter(aula => aula.id !== registros.aula_id));
@@ -375,7 +414,7 @@ export const AulasPage = () => {
         duration: 5000
       });
       console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados das aulas');
+      showAlert({ type: 'error', title: 'Erro ao carregar dados das aulas' });
     } finally {
       setLoading(false);
     }
@@ -441,11 +480,11 @@ export const AulasPage = () => {
           message: 'Uma nova aula adicionada com sucesso a base de dados.',
           duration: 3000
         });
-        toast.success('Aula adicionada com sucesso!');
+        showAlert({ type: 'success', title: 'Aula adicionada com sucesso!' });
       
       } catch (error) {
         console.error("Erro ao salva",error)
-        toast.error('Aula adicionada com sucesso!');
+        showAlert({ type: 'error', title: 'Aula adicionada com sucesso!' });
         showAlert({
           type: 'error',
           title: 'Erro ao salvar',
@@ -469,7 +508,7 @@ export const AulasPage = () => {
           message: 'Uma nova aula adicionada a base de dados.',
           duration: 3000
         });
-        toast.success('Aula atualizada com sucesso!');
+        showAlert({ type: 'success', title: 'Aula atualizada com sucesso!' });
       } catch (error:any) {
         showAlert({
           type: 'error',
@@ -478,7 +517,7 @@ export const AulasPage = () => {
           duration: 5000
         });
           console.error('Erro ao atualizar aula:', error);
-          toast.error(error.message || 'Erro ao atualizar aula');
+          showAlert({ type: 'error', title: error.message || 'Erro ao atualizar aula' });
       }; 
   };
 
@@ -494,7 +533,7 @@ export const AulasPage = () => {
         try {
           await planoAulaService.deletarPlanoAula(aula.id);
           setPlanosAula(prev => prev.filter(s => s.id !== aula.id));
-          toast.success('Plano de aula excluída com sucesso!');
+          showAlert({ type: 'success', title: 'Plano de aula excluída com sucesso!' });
           showAlert({
             type: 'success',
             title: 'Plano de Aula excluída!',
@@ -527,7 +566,7 @@ export const AulasPage = () => {
         try {
           await aulaService.deletarAula(aula.id);
           setAulas(prev => prev.filter(s => s.id !== aula.id));
-          toast.success('Aula excluída com sucesso!');
+          showAlert({ type: 'success', title: 'Aula excluída com sucesso!' });
           showAlert({
             type: 'success',
             title: 'Aula excluída!',
@@ -551,7 +590,7 @@ export const AulasPage = () => {
 
   const handleQuickAdd = async () => {
     if (!quickAddTurma) {
-      toast.error('Selecione uma turma');
+      showAlert({ type: 'error', title: 'Selecione uma turma' });
       showAlert({
         type: 'warning',
         title: 'Selecione uma turma',
@@ -585,7 +624,7 @@ export const AulasPage = () => {
           duration: 3000
         });
       await loadData();
-      toast.success('Aula adicionada rapidamente!');
+      showAlert({ type: 'success', title: 'Aula adicionada rapidamente!' });
     } catch (error) {
       showAlert({
         type: 'error',
@@ -593,7 +632,7 @@ export const AulasPage = () => {
         message: 'Verifique suas permissões',
         duration: 3000
       });
-      toast.error('Erro ao adicionar aula rápida');
+      showAlert({ type: 'error', title: 'Erro ao adicionar aula rápida' });
     }
   };
 
@@ -683,8 +722,7 @@ export const AulasPage = () => {
           onConfirm: async () => {
             const aula=await aulaService.atualizarAula(aulaSelect.id,{status:status,turmas:aulaSelect.turmas})
             setAulas((prev:Aula[]) => prev.map((e:Aula) => aula&&e.id === aula.id ? aula : e));
-            console.log(status+""+aula)
-          }
+            }
         });
     }
     

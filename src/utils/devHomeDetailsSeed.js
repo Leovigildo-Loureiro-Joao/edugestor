@@ -275,7 +275,6 @@ export function registerHomeDetailsSeedHelpers() {
   window.seedHomeDetailsData = seedHomeDetailsData;
   window.clearHomeDetailsData = clearHomeDetailsData;
   window.clearSeedSyncQueue = clearSeedSyncQueue;
-  console.log(
-    '[DEV] Helpers: seedHomeDetailsData({...}) [usa local_hd_* e pending], clearHomeDetailsData(), clearSeedSyncQueue({ allInstituicoes })',
-  );
+  
+  
 }

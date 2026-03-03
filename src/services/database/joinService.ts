@@ -1,6 +1,6 @@
 import db from "./db";
 
-// services/database/joinService.ts
+// services/database/joinService
 export const joinService = {
   // ✅ Join 1:1 usando Promise.all (mais simples)
   async joinOneToOne(tableName: string, id: string, foreignTable: string, foreignKey: string) {

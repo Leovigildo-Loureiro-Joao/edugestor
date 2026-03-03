@@ -29,7 +29,7 @@ const TabNavigation = ({ tabs, activeTab, onTabChange, path }: { tabs: any[], ac
         >
           {renderIcon(tab.icon)}
           <span className="hidden sm:inline font-medium">{tab.label}</span>
-          {tab.count !== undefined && (
+          {tab.count && tab.count !== undefined && (
             <span className={`px-2 py-1 text-xs rounded-full ${
               activeTab === tab.id
                 ? 'bg-blue-600'

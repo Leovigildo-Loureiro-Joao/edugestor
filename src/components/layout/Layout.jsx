@@ -1,6 +1,6 @@
 // src/components/layout/Layout.jsx
 import React, { useState, useEffect } from 'react';
-import Sidebar from './Sidebar.tsx';
+import Sidebar from './Sidebar';
 import Header from './Header';
 
 const Layout = ({ children }) => {
@@ -23,8 +23,7 @@ useEffect(() => {
     root.classList.remove('dark');
     localStorage.setItem('darkMode', 'false');
   }
-  console.log('Dark mode changed to:', isDarkMode);
-}, [isDarkMode]);
+  }, [isDarkMode]);
 
   return (
     <div className={`flex h-screen bg-white dark:bg-gray-900 transition-colors duration-200`}>

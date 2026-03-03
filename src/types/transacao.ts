@@ -1,4 +1,5 @@
 import { BaseEntity } from "./base";
+import { Meta } from "./eventos";
 
 export interface Transacao extends BaseEntity{
   instituicao_id: string;
@@ -33,6 +34,7 @@ export interface DadosPagamentoCash {
 
 export interface AlocacaoRecurso extends BaseEntity{
   meta_id: string;
+  meta:Meta
   valor: number;
   percentual?: number;
   data_alocacao: string;

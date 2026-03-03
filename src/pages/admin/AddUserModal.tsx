@@ -1,4 +1,4 @@
-// src/components/admin/AddUserModal.tsx
+// src/components/admin/AddUserModal
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -10,7 +10,7 @@ import {
   FiSave
 } from 'react-icons/fi';
 import { profileService } from '../../services/database/profileService';
-import { toast } from 'react-hot-toast';
+import { useAlert } from '../../components/ui/AlertBadge';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -27,6 +27,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   adminId,
   instituicaoId
 }) => {
+  const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -41,12 +42,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     e.preventDefault();
     
     if (!adminId) {
-      toast.error('Admin não identificado');
+      showAlert({ type: 'error', title: 'Admin não identificado' });
       return;
     }
 
     if (!formData.email || !formData.nome) {
-      toast.error('Preencha todos os campos obrigatórios');
+      showAlert({ type: 'error', title: 'Preencha todos os campos obrigatórios' });
       return;
     }
 
@@ -60,7 +61,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
       }, adminId);
 
       if (result.success) {
-        toast.success(result.message);
+        showAlert({ type: 'success', title: result.message });
         
         // Resetar formulário
         setFormData({
@@ -76,11 +77,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         // Fechar modal
         onClose();
       } else {
-        toast.error('Erro ao adicionar usuário');
+        showAlert({ type: 'error', title: 'Erro ao adicionar usuário' });
       }
     } catch (error: any) {
       console.error('Erro:', error);
-      toast.error(error.message || 'Erro ao adicionar usuário');
+      showAlert({ type: 'error', title: error.message || 'Erro ao adicionar usuário' });
     } finally {
       setLoading(false);
     }

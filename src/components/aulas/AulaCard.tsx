@@ -315,7 +315,7 @@ export const AulaCardMin: React.FC<AulaCardMinProps> = ({
               )}
             </div>
             
-            {aula.status === 'planeada' && (
+            {aula.status === 'planeada' && new Date(aula.data_aula) <= new Date() && (
               <div className="mt-3 flex gap-5">
                 <button
                   onClick={() => onActualizar("ministrada")}

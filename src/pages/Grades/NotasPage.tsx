@@ -16,6 +16,10 @@ import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { AlunoDesempenho } from '../../types/aluno';
 import { NotasTable } from '../../components/notas/NotasTable';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { profileService } from '../../services/database/profileService';
+import { frequenciaService } from '../../services/database';
+import { configService } from '../../services/database/config';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
 
 type SituacaoNota = 'aprovado' | 'recuperacao' | 'reprovado' | 'pendente';
 
@@ -24,8 +28,21 @@ type AlunoNotas = AlunoDesempenho & {
   situacao_notas: SituacaoNota;
 };
 
-const getSituacao = (media: number, totalAvaliacoes: number): SituacaoNota => {
+type RegraFrequenciaNotas = {
+  usarFrequenciaNaSituacaoNotas: boolean;
+  frequenciaMinimaAprovacao: number;
+};
+
+const getSituacao = (
+  media: number,
+  totalAvaliacoes: number,
+  presenca: number,
+  regra: RegraFrequenciaNotas
+): SituacaoNota => {
   if (totalAvaliacoes === 0) return 'pendente';
+  if (regra.usarFrequenciaNaSituacaoNotas && regra.frequenciaMinimaAprovacao > 0 && presenca < regra.frequenciaMinimaAprovacao) {
+    return 'reprovado';
+  }
   if (media >= 10) return 'aprovado';
   if (media >= 8) return 'recuperacao';
   return 'reprovado';
@@ -79,12 +96,17 @@ export const NotasPage = () => {
   const [modalTab, setModalTab] = useState<'overview' | 'notas' | 'analise'>('overview');
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
   const [syncStats, setSyncStats] = useState(0);
-
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleChecked, setRoleChecked] = useState(false);
   const [search, setSearch] = useState('');
   const [filtroTurma, setFiltroTurma] = useState('Todas turmas');
   const [filtroDisciplina, setFiltroDisciplina] = useState('Todas disciplinas');
   const [filtroSituacao, setFiltroSituacao] = useState<'Todas situações' | SituacaoNota>('Todas situações');
-
+  const [regraFrequenciaNotas, setRegraFrequenciaNotas] = useState<RegraFrequenciaNotas>({
+    usarFrequenciaNaSituacaoNotas: false,
+    frequenciaMinimaAprovacao: 0
+  });
+  const {confirm , ModalComponent } = useConfirmModal(); // ✅ Hook de confirmação
   const loadSyncStats = async () => {
     try {
       const pendentes = await getPendingCount('avaliacoes');
@@ -99,29 +121,60 @@ export const NotasPage = () => {
     try {
       setLoading(true);
 
-      const [alunosBase, avaliacoes, frequencias] = await Promise.all([
-        db.alunos.filter((a) => !a.deleted && a.instituicao_id === instituicaoIdValue()).toArray(),
+      const [alunosBase, avaliacoes, frequencias, academiaConfig] = await Promise.all([
+        alunosService.getAllStudents(),
         db.avaliacoes.filter((a) => !a.deleted && a.instituicao_id === instituicaoIdValue()).toArray(),
-        db.frequencias.filter((f) => !f.deleted && f.instituicao_id === instituicaoIdValue()).toArray()
+        frequenciaService.getAllFrequencias(),
+        configService.getAcademyConfig()
       ]);
-      setAvaliacoesSyncData(avaliacoes);
+      setRegraFrequenciaNotas({
+        usarFrequenciaNaSituacaoNotas: academiaConfig.usarFrequenciaNaSituacaoNotas,
+        frequenciaMinimaAprovacao: academiaConfig.frequenciaMinimaAprovacao
+      });
+      const profile = await profileService.getLocalProfile();
+      const role = profile?.role || localStorage.getItem('user_role');
+      const teacherNameKey = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+
+      let alunosFiltradosBase = alunosBase;
+      let avaliacoesFiltradas = avaliacoes;
+      let frequenciasFiltradas = frequencias;
+
+      if (role === 'teacher' && teacherNameKey) {
+        const turmasProfessor = await db.turmas
+          .filter(
+            (t) =>
+              !t.deleted &&
+              t.instituicao_id === instituicaoIdValue() &&
+              (t.professor || '').toLowerCase().trim() === teacherNameKey
+          )
+          .toArray();
+        const turmaIdSet = new Set(turmasProfessor.map((t) => t.id));
+        alunosFiltradosBase = alunosBase.filter((a) => a.turma_id && turmaIdSet.has(a.turma_id));
+        const alunoIdSet = new Set(alunosFiltradosBase.map((a) => a.id));
+        avaliacoesFiltradas = avaliacoes.filter(
+          (a) => (a.turma_id && turmaIdSet.has(a.turma_id)) || alunoIdSet.has(a.aluno_id)
+        );
+        frequenciasFiltradas = frequencias.filter((f) => alunoIdSet.has(f.aluno_id));
+      }
+
+      setAvaliacoesSyncData(avaliacoesFiltradas);
 
       const avaliacoesPorAluno = new Map<string, Avaliacao[]>();
-      avaliacoes.forEach((av) => {
+      avaliacoesFiltradas.forEach((av) => {
         const current = avaliacoesPorAluno.get(av.aluno_id) || [];
         current.push(av);
         avaliacoesPorAluno.set(av.aluno_id, current);
       });
 
       const frequenciaMap = new Map<string, { total: number; presentes: number }>();
-      frequencias.forEach((f) => {
+      frequenciasFiltradas.forEach((f) => {
         const current = frequenciaMap.get(f.aluno_id) || { total: 0, presentes: 0 };
         current.total += 1;
         current.presentes += f.presente ? 1 : 0;
         frequenciaMap.set(f.aluno_id, current);
       });
 
-      const alunosComNotas: AlunoNotas[] = alunosBase.map((aluno) => {
+      const alunosComNotas: AlunoNotas[] = alunosFiltradosBase.map((aluno) => {
         const notas = (avaliacoesPorAluno.get(aluno.id) || []).sort(
           (a, b) => new Date(b.data_avaliacao).getTime() - new Date(a.data_avaliacao).getTime()
         );
@@ -137,7 +190,10 @@ export const NotasPage = () => {
           media,
           presenca,
           ultimaAvaliacao: notas[0]?.nota || 0,
-          situacao_notas: getSituacao(media, notas.length)
+          situacao_notas: getSituacao(media, notas.length, presenca, {
+            usarFrequenciaNaSituacaoNotas: academiaConfig.usarFrequenciaNaSituacaoNotas,
+            frequenciaMinimaAprovacao: academiaConfig.frequenciaMinimaAprovacao
+          })
         };
       });
 
@@ -154,6 +210,23 @@ export const NotasPage = () => {
     loadNotasData();
     loadSyncStats();
   }, []);
+
+    useEffect(() => {
+      const loadRole = async () => {
+        try {
+          const profile = await profileService.getLocalProfile();
+          const role = profile?.role || localStorage.getItem('user_role');
+          setUserRole(role);
+        } catch {
+          setUserRole(localStorage.getItem('user_role'));
+        } finally {
+          setRoleChecked(true);
+        }
+      };
+  
+      loadRole();
+    }, []);
+  
 
   const handleForceSync = async () => {
     try {
@@ -206,13 +279,18 @@ export const NotasPage = () => {
 
     const taxaAprovacao = comAvaliacao.length > 0 ? (aprovados * 100) / comAvaliacao.length : 0;
     const progressoGlobal = (mediaGeral / 20) * 100;
+    const mediaPresenca =
+      alunosFiltrados.length > 0
+        ? alunosFiltrados.reduce((acc, aluno) => acc + (aluno.presenca || 0), 0) / alunosFiltrados.length
+        : 0;
 
     return {
       total,
       comAvaliacao: comAvaliacao.length,
       mediaGeral,
       taxaAprovacao,
-      progressoGlobal
+      progressoGlobal,
+      mediaPresenca
     };
   }, [alunosFiltrados]);
 
@@ -240,6 +318,9 @@ export const NotasPage = () => {
   if (loading) {
     return <PageLoader title="Carregando notas" subtitle="Preparando avaliações e indicadores..." fullScreen={false} />;
   }
+
+  const regraFrequenciaIncompleta =
+    regraFrequenciaNotas.usarFrequenciaNaSituacaoNotas && regraFrequenciaNotas.frequenciaMinimaAprovacao <= 0;
 
   
 
@@ -292,16 +373,16 @@ export const NotasPage = () => {
           <SelectTyped
             value={filtroSituacao}
             vect={['Todas situações', 'aprovado', 'recuperacao', 'reprovado', 'pendente']}
-            onChange={(value: string) => setFiltroSituacao(value as 'todas' | SituacaoNota)}
+            onChange={(value: string) => setFiltroSituacao(value as 'Todas situações' | SituacaoNota)}
             placeholder="Todas as situações"
           />
 
           <button
             onClick={() => {
               setSearch('');
-              setFiltroTurma('todos');
-              setFiltroDisciplina('todas');
-              setFiltroSituacao('todas');
+              setFiltroTurma('Todas turmas');
+              setFiltroDisciplina('Todas disciplinas');
+              setFiltroSituacao('Todas situações');
             }}
             className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-lg transition-colors"
           >
@@ -310,6 +391,13 @@ export const NotasPage = () => {
           </button>
         </div>
       </div>
+
+      {regraFrequenciaIncompleta && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 text-sm dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
+          A regra de frequência está ativa, mas a frequência mínima ainda não foi definida.
+          Peça ao administrador para configurar em <strong>Configurações Acadêmicas</strong>.
+        </div>
+      )}
 
       {syncStats > 0 && (
         <SyncDataDetail
@@ -333,7 +421,7 @@ export const NotasPage = () => {
 
         <StatCard 
           title="Com avaliações" 
-          value={stats.total}
+          value={stats.comAvaliacao}
           subtitle={stats.comAvaliacao === alunos.length ? 'Todos os alunos' : `${((stats.comAvaliacao / alunos.length) * 100).toFixed(1)}% do total`}
           icon={FiBookOpen}
           color="purple"
@@ -351,16 +439,17 @@ export const NotasPage = () => {
         />  
 
         <StatCard 
-          title="Taxa de desempenho" 
-          value={stats.taxaAprovacao.toFixed(1)+"%"}
-          subtitle={stats.taxaAprovacao>50?"Evolução positiva":"Precisa atenção"}
-          icon={FiTrendingUp}
+          title="Frequência média" 
+          value={stats.mediaPresenca.toFixed(1)+"%"}
+          subtitle={stats.mediaPresenca >= 75 ? "Presença estável" : "Risco por faltas"}
+          icon={FiUsers}
           color="green"
-          trend={stats.taxaAprovacao > 50 ? 'positive' : 'neutral'}
+          trend={stats.mediaPresenca >= 75 ? 'positive' : 'neutral'}
           progress={true}
-          percent={stats.taxaAprovacao}
+          percent={stats.mediaPresenca}
         />  
       </div>
+      
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40">
           <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white">Alunos e Progresso</h3>
@@ -404,9 +493,10 @@ export const NotasPage = () => {
         }}
         loadTurmaDetails={loadNotasData}
         onNotaAdicionada={loadNotasData}
+        confirm={confirm}
         initialTab={modalTab}
       />
-
+<ModalComponent/>    
     </>
       );
 };

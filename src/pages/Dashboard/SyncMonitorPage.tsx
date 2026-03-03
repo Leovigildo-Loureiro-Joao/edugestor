@@ -30,7 +30,7 @@ const SyncMonitorPage: React.FC = () => {
       .toArray();
 
     const pending = queueItems.filter((item) => item.status === 'pending').length;
-    const failed6 = queueItems.filter((item) => item.status === 'failed' && (item.retryCount || 0) >= 6).length;
+    const failed6 = queueItems.filter((item) => item.status === 'failed' && (item.retry_count || 0) >= 6).length;
 
     const orphanDiagnosis = await syncManager.findOrphanedSyncQueueItems({
       statuses: ['pending', 'failed']

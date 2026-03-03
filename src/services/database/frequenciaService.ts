@@ -1,4 +1,4 @@
-// services/database/frequenciaService.ts
+// services/database/frequenciaService
 import { supabase } from '../database/db';
 import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
@@ -7,7 +7,7 @@ import { alunosService } from './alunosService';
 import { aulaService } from './aulaService';
 import { Aula } from '../../types/aula';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
-
+import type { SyncQueueItem } from '../../types/base';
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const frequenciaService = {
@@ -84,14 +84,8 @@ export const frequenciaService = {
         throw new Error('instituicao_id ausente ao registrar frequência.');
       }
       const frequenciasToSave: Frequencia[] = [];
-      const queueToSave: Array<{
-        table: string;
-        record_id: string;
-        instituicao_id: string;
-        operation: 'upsert';
-        status: 'pending';
-        created_at: string;
-      }> = [];
+
+      const queueToSave: SyncQueueItem[] = [];
 
       for (const registroAluno of registro.registros) {
         const id = generateUniqueId();
@@ -104,6 +98,7 @@ export const frequenciaService = {
           aluno_id: registroAluno.aluno_id,
           data_aula: dataAula,
           presente: registroAluno.presente,
+          atraso: registroAluno.atraso || false,
           justificativa: registroAluno.justificativa || '',
           created_at: now,
           updated_at: now,
@@ -118,7 +113,7 @@ export const frequenciaService = {
           operation: 'upsert',
           status: 'pending',
           created_at: now
-        });
+        } as SyncQueueItem);
       }
 
       await db.transaction('rw', db.frequencias, db.syncQueue, async () => {
@@ -126,7 +121,6 @@ export const frequenciaService = {
         await db.syncQueue.bulkAdd(queueToSave);
       });
 
-      console.log(`✅ ${ids.length} frequências registradas localmente para aula ${registro.aula_id}`);
       return ids;
       
     } catch (error) {
@@ -150,8 +144,7 @@ export const frequenciaService = {
         await this.markForSync(freq.id, 'delete');
       }
       
-      console.log(`✅ Frequências deletadas para aluno ${alunoId}`);
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro ao deletar frequências do aluno:', error);
       throw error;
     }
@@ -160,19 +153,17 @@ export const frequenciaService = {
   // ✅ Buscar todas as frequências
   async getAllFrequencias(): Promise<Frequencia[]> {
     try {
-      console.log('📋 Buscando frequências...');
-      
       const todasFrequencias = await db.frequencias.toArray();
+      const activeInstituicaoId = instituicaoIdValue() || '';
       
       // Filtrar as não deletadas
-      const frequenciasAtivas = todasFrequencias.filter(freq => !freq.deleted);
+      const frequenciasAtivas = todasFrequencias.filter(freq => !freq.deleted&&freq.instituicao_id==activeInstituicaoId);
       
       // Ordenar por data (mais recente primeiro)
       frequenciasAtivas.sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
       
-      console.log(`✅ Encontradas ${frequenciasAtivas.length} frequências ativas`);
       return frequenciasAtivas;
     } catch (error) {
       console.error('❌ Erro ao buscar frequências:', error);
@@ -233,7 +224,10 @@ export const frequenciaService = {
 
       const aulasDisciplina:Aula[] = []
       for (const freque of frequencias) {
-        aulasDisciplina.push((await aulaService.getAulaById(freque.aula_id)))
+        const aula = await aulaService.getAulaById(freque.aula_id);
+        if (aula) {
+          aulasDisciplina.push(aula);
+        }
       }
       // Filtrar por período se especificado
       if (dias) {
@@ -248,11 +242,15 @@ export const frequenciaService = {
       // Ordenar por data (mais recente primeiro)
       
       return frequencias.map((p)=>{
-        let aula:Aula= aulasDisciplina.find((aula)=>p.aula_id==aula.id)
-        const disciplina=aula.disciplina
-        return {
-          ...p,
-          disciplina
+        let aula:Aula|undefined= aulasDisciplina.find((aula)=>p.aula_id==aula.id)
+        if(aula){
+          const disciplina=aula.disciplina
+          return {
+            ...p,
+            disciplina
+          }  
+        } else {
+          throw new Error('Aula não encontrada para a frequência.');
         }
       }).sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
@@ -302,8 +300,6 @@ export const frequenciaService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Frequência ${id} marcada para atualização`);
-      
       return await db.frequencias.get(id);
       
     } catch (error) {
@@ -335,8 +331,7 @@ export const frequenciaService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Frequência ${id} marcada para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.frequencias.delete(id);
         
@@ -346,8 +341,7 @@ export const frequenciaService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Frequência ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar frequência:', error);
@@ -364,7 +358,6 @@ export const frequenciaService = {
         await this.deleteFrequencia(frequencia.id);
       }
       
-      console.log(`🗑️ ${frequencias.length} frequências da aula ${aulaId} marcadas para deleção`);
       return frequencias.length;
     } catch (error) {
       console.error('Erro ao deletar frequências da aula:', error);
@@ -375,12 +368,6 @@ export const frequenciaService = {
   // ✅ Estatísticas de frequência (com suporte offline)
   async getEstatisticasFrequencia(turmaId: string, mes?: string) {
     try {
-      // Primeiro precisamos buscar aulas da turma
-      // Como não temos turma_id direto em frequencias, precisamos:
-      // 1. Buscar aulas da turma
-      // 2. Buscar frequências dessas aulas
-      
-      // Esta função é mais complexa offline. Por enquanto, vamos focar em estatísticas gerais.
       
       const todasFrequencias = await this.getAllFrequencias();
       
@@ -640,52 +627,103 @@ export const frequenciaService = {
   async getEstatisticas() {
     try {
       const todasFrequencias = await this.getAllFrequencias();
-      
-      // Agrupar por data
-      const porData: Record<string, { presentes: number; total: number }> = {};
+      const todasAulas = await aulaService.getAllAulas();
+      const todosAlunos = await alunosService.getAllStudents();
+      const turmasAtivas = [...new Set(todosAlunos.map((a) => a.turma_nome))];
+
+      const aulasPendentes = todasAulas.reduce((acc, aula) => {
+        const semRegistro = !aula.registro || aula.registro.length === 0;
+        return acc + (semRegistro ? 1 : 0);
+      }, 0);
+      const aulasRegistradas = todasAulas.length > 0 ? todasAulas.length - aulasPendentes : 0;
+
+      const parseData = (dataAula: string) => {
+        const base = dataAula.includes("T") ? dataAula.split("T")[0] : dataAula;
+        const date = new Date(base);
+        return Number.isNaN(date.getTime()) ? null : date;
+      };
+      const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
+      const addMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
       let totalPresencas = 0;
       let totalRegistros = 0;
-      
-      todasFrequencias.forEach(freq => {
-        const data = freq.data_aula;
-        if (!porData[data]) {
-          porData[data] = { presentes: 0, total: 0 };
+      const evolucaoMap = new Map<string, { soma: number; ausentes: number; presente: number }>();
+      const datasValidas: Date[] = [];
+
+      for (const freq of todasFrequencias) {
+        const data = parseData(freq.data_aula);
+        if (!data) continue;
+        datasValidas.push(data);
+
+        const mes = monthKey(data);
+        if (!evolucaoMap.has(mes)) {
+          evolucaoMap.set(mes, { soma: 0, ausentes: 0, presente: 0 });
         }
-        
-        porData[data].total++;
-        totalRegistros++;
-        
-        if (freq.presente) {
-          porData[data].presentes++;
-          totalPresencas++;
+        const evol = evolucaoMap.get(mes)!;
+        evol.soma += 1;
+        evol.presente += freq.presente ? 1 : 0;
+        evol.ausentes += freq.presente ? 0 : 1;
+
+        totalRegistros += 1;
+        if (freq.presente) totalPresencas += 1;
+      }
+
+      let evolucao: Array<{ data: string; presenca: number; ausencias: number }> = [];
+      if (datasValidas.length > 0) {
+        const ordenadas = [...datasValidas].sort((a, b) => a.getTime() - b.getTime());
+        const inicio = monthStart(ordenadas[0]);
+        const fim = monthStart(ordenadas[ordenadas.length - 1]);
+
+        const meses: string[] = [];
+        let cursor = inicio;
+        while (cursor <= fim) {
+          meses.push(monthKey(cursor));
+          cursor = addMonth(cursor);
         }
-      });
-      
-      // Calcular taxa por data
-      const taxasPorData: Record<string, number> = {};
-      Object.entries(porData).forEach(([data, stats]) => {
-        taxasPorData[data] = stats.total > 0 
-          ? (stats.presentes / stats.total) * 100 
-          : 0;
-      });
-      
+
+        evolucao = meses.map((mes) => {
+          const dados = evolucaoMap.get(mes) || { soma: 0, ausentes: 0, presente: 0 };
+          const presenca = dados.soma > 0 ? (dados.presente / dados.soma) * 100 : 0;
+          const ausencias = dados.soma > 0 ? (dados.ausentes / dados.soma) * 100 : 0;
+
+          return {
+            data: mes,
+            presenca: Number(presenca.toFixed(1)),
+            ausencias: Number(ausencias.toFixed(1))
+          };
+        });
+      }
+
       return {
+        totalAulas: todasAulas.length,
+        totalAlunos: todosAlunos.length,
         totalRegistros,
         totalPresencas,
+        turmasAtivas: turmasAtivas ? turmasAtivas.length : 0,
         taxaPresencaGeral: totalRegistros > 0 ? (totalPresencas / totalRegistros) * 100 : 0,
-        porData: taxasPorData,
-        datasComRegistro: Object.keys(porData).length,
-        ultimaAtualizacao: new Date().toISOString()
+        taxaRegistro: todasAulas.length > 0 ? (aulasRegistradas / todasAulas.length) * 100 : 0,
+        porData: evolucao,
+        datasComRegistro: evolucaoMap.size,
+        ultimaAtualizacao: new Date().toISOString(),
+        aulasRegistradas,
+        aulasPendentes
       };
     } catch (error) {
       console.error('❌ Erro ao gerar estatísticas:', error);
       return {
+        totalAulas: 0,
+        totalAlunos: 0,
         totalRegistros: 0,
         totalPresencas: 0,
+        turmasAtivas: 0,
         taxaPresencaGeral: 0,
-        porData: {},
+        taxaRegistro: 0,
+        porData: [],
         datasComRegistro: 0,
-        ultimaAtualizacao: new Date().toISOString()
+        ultimaAtualizacao: new Date().toISOString(),
+        aulasRegistradas: 0,
+        aulasPendentes: 0
       };
     }
   },

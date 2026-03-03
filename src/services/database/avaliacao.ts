@@ -2,7 +2,7 @@ import { supabase } from '../database/db';
 import db from './db';
 import { syncManager } from './syncManager';
 import { emitDbChanged } from '../../utils/emitPendingSync';
-import { toast } from 'react-hot-toast';
+import { showGlobalAlert } from '../../components/ui/AlertBadge';
 import { turmaService } from './turmas';
 import { cursosService } from '.';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
@@ -36,12 +36,6 @@ export const avaliacaoService = {
         deleted: false,
       };
 
-      console.log('💾 Salvando avaliação:', {
-        aluno: avaliacaoData.aluno_id,
-        disciplina: avaliacaoData.disciplina,
-        nota: avaliacaoData.nota
-      });
-
       await db.avaliacoes.put(avaliacao);
       emitDbChanged('avaliacoes', 'create');
       
@@ -57,8 +51,6 @@ export const avaliacaoService = {
         retry_count: 0
       });
 
-      console.log('✅ Avaliação salva com ID:', id);
-      
       // Tentar sincronizar imediatamente se online
       if (navigator.onLine) {
         setTimeout(() => this.tryImmediateSync(id), 1000);
@@ -82,10 +74,9 @@ export const avaliacaoService = {
         syncManager.uploadTableBatch('avaliacoes'),
         syncManager.downloadTableBatch('avaliacoes', new Date(0))
       ]);
-      toast.success('Avaliação sincronizada com sucesso!');
+      showGlobalAlert({ type: 'success', title: 'Avaliação sincronizada com sucesso!' });
     } catch (error) {
-      console.log('⚠️ Sincronização imediata falhou, mantendo em fila');
-    }
+      }
   },
 
   // ✅ Buscar todas as avaliações com joins otimizados
@@ -105,18 +96,12 @@ export const avaliacaoService = {
         orderDirection = 'desc'
       } = options || {};
 
-      console.log('📋 Buscando avaliações...');
-
       // Construir query base
       let query = db.avaliacoes;
       
-      // Filtrar deletadas
-      if (!includeDeleted) {
-        query = query.where('deleted').equals(false);
-      }
-
+  
       // Executar query
-      const avaliacoes = await query.toArray();
+      const avaliacoes = (await query.toArray()).filter(p=> !p.deleted);
 
       // Ordenar manualmente (IndexedDB não suporta sorting complexo diretamente)
       avaliacoes.sort((a, b) => {
@@ -154,12 +139,11 @@ export const avaliacaoService = {
         ...avaliacao,
         aluno: alunoMap.get(avaliacao.aluno_id) ? {
           nome_completo: alunoMap.get(avaliacao.aluno_id)!.nome_completo,
-          numero_estudante: alunoMap.get(avaliacao.aluno_id)!.numero_estudante,
+          numero_estudante: alunoMap.get(avaliacao.aluno_id)!.numero_estudante.toString(),
           turma_nome: alunoMap.get(avaliacao.aluno_id)!.turma_nome
         } : undefined
       }));
 
-      console.log(`✅ Encontradas ${resultado.length} avaliações`);
       return resultado;
 
     } catch (error) {
@@ -170,6 +154,7 @@ export const avaliacaoService = {
   async getAlunosComMediaAcima(turmaId: string, mediaMinima: number): Promise<Array<{ alunoId: string; nome: string; media: number }>> {  
     try {
       const avaliacoes = await db.avaliacoes.filter(av => av.turma_id === turmaId && !av.deleted).toArray();
+      const alunos=await db.alunos.filter(e=>!e.deleted).toArray()
       const alunoStats = new Map<string, { soma: number; count: number; nome: string }>();
       avaliacoes.forEach(av => {
         if (av.turma_id === turmaId && av.aluno_id) {
@@ -177,7 +162,7 @@ export const avaliacaoService = {
           aluno.soma += av.nota;
           aluno.count += 1;
           if (!aluno.nome) {
-            aluno.nome = av.aluno?.nome_completo || '';
+            aluno.nome = alunos.find(a=>a.id==av.aluno_id)?.nome_completo || '';
           }
           alunoStats.set(av.aluno_id, aluno);
         } 
@@ -202,7 +187,6 @@ export const avaliacaoService = {
   async syncAvaliacoes(lastSync?: Date) {
     try {
       const syncDate = lastSync || new Date(0);
-      console.log('🔄 Sincronizando avaliações desde:', syncDate.toISOString());
       
       if(navigator.onLine){
        await Promise.all([syncManager.uploadTableBatch('avaliacoes'),
@@ -236,8 +220,7 @@ export const avaliacaoService = {
         await db.avaliacoes.delete(avaliacao.id);
       }
 
-      console.log(`🧹 Limpas ${avaliacoesAntigas.length} avaliações antigas`);
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro ao limpar dados antigos:', error);
     }
   },
@@ -320,7 +303,7 @@ export const avaliacaoService = {
       let aprovados = 0;
       let reprovados = 0;
 
-       const turma=await turmaService.getTurmaById(aulas.at(0)?.turma_id||"")
+       const turma=await turmaService.getTurmaById(aulas[0].turma_id)
       const curso= await cursosService.getCoursesById(turma?.curso_id||"")
 
       avaliacoes.forEach((av:Avaliacao) => {
@@ -378,8 +361,7 @@ export const avaliacaoService = {
           frequencia:dados.all/dados.presente
         }))
         .sort((a, b) => a.data.localeCompare(b.data));
-        console.log(evolucao)
-      return {
+        return {
         avaliacoes,
         estatisticas: {
           mediaGeral,
@@ -683,8 +665,6 @@ export const avaliacaoService = {
         created_at: updated_at,
       });
       
-      console.log(`✏️ Avaliação ${id} marcada para atualização`);
-      
       return await db.avaliacoes.get(id);
       
     } catch (error) {
@@ -714,9 +694,7 @@ export const avaliacaoService = {
         created_at: new Date().toISOString(),
       });
       
-      console.log(`🗑️ Avaliação ${id} marcada para deleção`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao deletar avaliação:', error);
       throw error;
     }

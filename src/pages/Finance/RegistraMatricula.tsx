@@ -1,16 +1,16 @@
-// pages/financeiro/CompletarMatricula.tsx
+// pages/financeiro/CompletarMatricula
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiUser, FiDollarSign, FiCheckCircle, FiCalendar, FiCreditCard } from 'react-icons/fi';
-import { alunosService } from '../../services/database/alunosService.ts';
-import { transacaoService } from '../../services/database/transacaoService.ts';
-import { Student } from '../../types/aluno.ts';
-import { instituicaoService } from '../../services/database/insitituicao.ts';
-import { SeletorMeses } from '../../components/ui/SelectMonth.tsx';
-import { useConfirmModal } from '../../components/ui/ComfirmModal.tsx';
-import { useAlert } from '../../components/ui/AlertBadge.tsx';
+import { alunosService } from '../../services/database/alunosService';
+import { transacaoService } from '../../services/database/transacaoService';
+import { Student } from '../../types/aluno';
+import { instituicaoService } from '../../services/database/insitituicao';
+import { SeletorMeses } from '../../components/ui/SelectMonth';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
 import { motion } from 'framer-motion';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 export const CompletarMatricula = () => {
     const { alunoId } = useParams();

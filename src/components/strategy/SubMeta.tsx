@@ -4,7 +4,7 @@ import { SelectTyped } from "../students/StudentForm"
 import { useAlert } from "../ui/AlertBadge"
 
 export const ModalSubmeta=({novaSubMeta,formData,setNovaSubMeta,handleSaveSubMeta,kpis,setShowSubMeta}:{
-    novaSubMeta:any,setNovaSubMeta:any,handleSaveSubMeta:any,setShowSubMeta:any,kpis:[],formData:any
+    novaSubMeta:any,setNovaSubMeta:any,handleSaveSubMeta:any,setShowSubMeta:any,kpis:Array<{ nome?: string }>,formData:any
 })=>{
 const { showAlert } = useAlert(); 
     return   <motion.div
@@ -205,7 +205,7 @@ const { showAlert } = useAlert();
                                       : 'bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                                   }`}
                                 >
-                                  {kpi.nome}
+                                  {kpi.nome || `KPI ${index + 1}`}
                                 </button>
                               ))}
                             </div>

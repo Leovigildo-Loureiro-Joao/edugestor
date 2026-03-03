@@ -1,4 +1,4 @@
-// pages/estrategia/MetaDetailsPage.tsx
+// pages/estrategia/MetaDetailsPage
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,10 +13,8 @@ import {
 } from 'react-icons/fi';
 import { Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
-import { toast } from 'react-hot-toast';
 import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursosModal';
 import { KPIManager } from '../../components/strategy/KPIManager';
-import { SubMetasManager } from '../../components/strategy/SubMetasManager';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { estrategiaMetaService } from '../../services/database/estrategia/metaService';
@@ -61,10 +59,9 @@ export const MetaDetailsPage: React.FC = () => {
     try {
       setLoading(true);
       const metaData = await estrategiaMetaService.getMetasID(id!);
-      console.log(metaData)
       setMeta(metaData);
     } catch (error) {
-      toast.error('Erro ao carregar meta');
+      showAlert({ type: 'error', title: 'Erro ao carregar meta' });
       console.error(error);
     } finally {
       setLoading(false);
@@ -78,9 +75,9 @@ export const MetaDetailsPage: React.FC = () => {
       setAtualizando(true);
       await estrategiaService.calcularProgressoMeta(meta);
       await carregarMeta(); // Recarregar dados atualizados
-      toast.success('Meta atualizada com sucesso!');
+      showAlert({ type: 'success', title: 'Meta atualizada com sucesso!' });
     } catch (error) {
-      toast.error('Erro ao atualizar meta');
+      showAlert({ type: 'error', title: 'Erro ao atualizar meta' });
     } finally {
       setAtualizando(false);
     }
@@ -91,10 +88,10 @@ export const MetaDetailsPage: React.FC = () => {
     
     try {
       await estrategiaService.deleteMeta(meta.id);
-      toast.success('Meta excluída com sucesso!');
+      showAlert({ type: 'success', title: 'Meta excluída com sucesso!' });
       navigate('/estrategia/metas');
     } catch (error) {
-      toast.error('Erro ao excluir meta');
+      showAlert({ type: 'error', title: 'Erro ao excluir meta' });
     }
   };
 
@@ -107,9 +104,9 @@ export const MetaDetailsPage: React.FC = () => {
       
       setShowAlocacaoModal(false);
       await carregarMeta(); // Recarregar dados atualizados
-      toast.success('Recursos alocados com sucesso!');
+      showAlert({ type: 'success', title: 'Recursos alocados com sucesso!' });
     } catch (error) {
-      toast.error('Erro ao alocar recursos');
+      showAlert({ type: 'error', title: 'Erro ao alocar recursos' });
     }
   };
 
@@ -184,7 +181,6 @@ export const MetaDetailsPage: React.FC = () => {
 
   // Estatísticas calculadas
   const kpisCompletos = meta.kpis?.filter(k => k.valor_atual >= k.valor_meta).length || 0;
-  const subMetasCompletas = meta.submetas?.filter(sm => sm.status === 'concluida').length || 0;
   const orcamentoUtilizado = meta.orcamento_previsto 
     ? ((meta.orcamento_alocado || 0) / meta.orcamento_previsto) * 100 
     : 0;

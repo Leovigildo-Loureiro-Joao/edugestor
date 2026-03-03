@@ -1,4 +1,4 @@
-import strict from "assert/strict";
+
 import { Propina } from "./propina";
 import { BaseEntity } from "./base";
 import { Avaliacao } from "./avaliacao";
@@ -20,7 +20,7 @@ export interface Student extends BaseEntity {
   classe_escolar: string;
 
   turma_id: string;
-  estado: 'ativo' | 'transferido' | 'desistente'|'inativo';
+  estado: 'ativo'|'pendente' | 'transferido' | 'desistente'|'inativo';
 
   tipo_matricula: 'regular' | 'reforco_personalizado';
   modalidade_atendimento: 'individual' | 'grupo' | 'ambos';
@@ -57,6 +57,7 @@ export interface StudentFormProps {
 }
 
 export interface AlunoDesempenho extends Student {
+  avaliacao:Avaliacao[];
   media: number;
   presenca: number;
   ultimaAvaliacao: number;

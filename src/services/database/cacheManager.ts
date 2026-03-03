@@ -1,4 +1,4 @@
-// services/cache/CacheManager.ts
+// services/cache/CacheManager
 export class CacheManager {
   private static instance: CacheManager;
   private cache = new Map<string, { data: any; timestamp: number }>();
@@ -74,8 +74,7 @@ export class CacheManager {
   delete(key: string) {
     this.cache.delete(key);
     localStorage.removeItem(key);
-    console.log(`🗑️  Cache removido: ${key}`);
-  }
+    }
 
   // 🔹 CLEAR: Limpar todo o cache
   clear() {
@@ -86,8 +85,7 @@ export class CacheManager {
       localStorage.removeItem(key);
     });
     
-    console.log('🧹 Cache completamente limpo');
-  }
+    }
 
   // 🔹 INVALIDATE: Invalidar cache baseado em padrão
   invalidate(pattern: string) {
@@ -107,8 +105,7 @@ export class CacheManager {
       }
     });
     
-    console.log(`🔄 Cache invalidado para padrão: ${pattern}`);
-  }
+    }
 
   // 🔹 Verificar validade
   private isValid(timestamp: number, maxAge?: number): boolean {

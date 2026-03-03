@@ -1,4 +1,4 @@
-// services/backgroundService.ts
+// services/backgroundService
 import { alunosService } from '.';
 import { estrategiaService } from '../database/estrategiaService';
 import { notificacaoService } from './notificacaoService';
@@ -28,7 +28,6 @@ export const backgroundService = {
   },
 
   inicializar(): void {
-    console.log('🚀 Iniciando serviços de background...');
     this.iniciarMonitoramento();
   
     estrategiaService.verificarPrazosMetas();

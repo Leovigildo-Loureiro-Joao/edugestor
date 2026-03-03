@@ -1,4 +1,4 @@
-// components/dashboard/CardsMetricas.tsx
+// components/dashboard/CardsMetricas
 import React from 'react';
 import { CheckCircle, Target, Clock, TrendingUp, AlertCircle } from 'lucide-react';
 

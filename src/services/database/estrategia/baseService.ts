@@ -25,8 +25,7 @@ export const estrategiaBaseService = {
           created_at: new Date().toISOString(),
         });
 
-        console.log(`🗑️ ${table} ${id} marcado para deleção remota`);
-      } else {
+        } else {
         await db[table].delete(id);
 
         const instituicaoId = instituicaoIdValue();
@@ -36,8 +35,7 @@ export const estrategiaBaseService = {
           .and((item) => item.instituicao_id === instituicaoId)
           .delete();
 
-        console.log(`🗑️ ${table} ${id} deletado localmente`);
-      }
+        }
     } catch (error) {
       console.error(`Erro ao deletar ${table}:`, error);
       throw error;

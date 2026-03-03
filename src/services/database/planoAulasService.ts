@@ -1,10 +1,11 @@
-// services/database/planoAulasService.ts
+// services/database/planoAulasService
 import { BaseEntity } from '../../types/base';
 import { aulaService } from './aulaService';
 import db, { supabase } from './db';
 import { syncManager } from './syncManager';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { PlanoAula } from '../../types/aula';
 
 
 type PlanoAulaCreateInput = Omit<PlanoAula, 'id' | 'created_at' | 'updated_at' | 'aulas_geradas' | 'sync_status' | 'deleted'>;
@@ -23,6 +24,12 @@ const mapDiaSemana = (date: Date): 'segunda' | 'terca' | 'quarta' | 'quinta' | '
   return dias[dia];
 };
 
+  const hasPlanoId = (value: unknown): value is { id: string } =>
+  !!value &&
+  typeof value === 'object' &&
+  'id' in value &&
+  typeof (value as { id?: unknown }).id === 'string';
+
 const diaSemanaToNumber = (
   dia: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado' | 'domingo'
 ): number => {
@@ -38,6 +45,13 @@ const diaSemanaToNumber = (
 
   return dias[dia];
 };
+
+const normalizeTurno = (turno?: string): string =>
+  String(turno || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 
 export const planoAulaService = {
   normalizarIdsAulas(aulasGeradas: string[] = []): string[] {
@@ -187,8 +201,7 @@ export const planoAulaService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Plano de Aula ${id} marcada para deleção remota`);
-      } else {
+        } else {
         await db.plano_aulas.delete(id);
         
         await db.syncQueue
@@ -196,8 +209,7 @@ export const planoAulaService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Plano de Aula ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar Plano de Aula:', error);
@@ -347,17 +359,17 @@ export const planoAulaService = {
     ]);
   },
 
-  // ========== Métodos Específicos ==========
-  async gerarAulasDoPlano(planoIdOrData: string | PlanoAulaCreateInput | Partial<PlanoAula>): Promise<string[]> {
-    let plano: PlanoAula | null = null;
+async gerarAulasDoPlano(planoIdOrData: string | PlanoAulaCreateInput | Partial<PlanoAula>): Promise<string[]> {
+  let plano: PlanoAula | null = null;
 
-    if (typeof planoIdOrData === 'string') {
-      plano = await this.getPlano(planoIdOrData);
-    } else if (planoIdOrData.id) {
-      plano = await this.getPlano(planoIdOrData.id);
-    } else {
-      plano = await this.criarPlano(planoIdOrData as PlanoAulaCreateInput);
-    }
+  if (typeof planoIdOrData === 'string') {
+    plano = await this.getPlano(planoIdOrData);
+  } else if (hasPlanoId(planoIdOrData)) {
+    plano = await this.getPlano(planoIdOrData.id);
+  } else {
+    plano = await this.criarPlano(planoIdOrData as PlanoAulaCreateInput);
+  }
+
 
     if (!plano) throw new Error('Plano não encontrado');
 
@@ -367,18 +379,22 @@ export const planoAulaService = {
     const dataInicio = plano.data_inicio ? new Date(plano.data_inicio) : hoje;
 
     for (const turmaId of plano.turma_ids) {
+      const turma = await db.turmas.get(turmaId);
       const horariosTurma = await this.getHorariosDaTurmaParaDisciplina(turmaId, plano.disciplina);
 
       for (let i = 0; i < plano.aulas_planeadas; i++) {
+
         const conteudo = plano.conteudos[i] || plano.conteudos[0];
         const dataBase = this.calcularDataPorFrequencia(dataInicio, i, plano.frequencia);
         const horarioSelecionado = horariosTurma.length > 0 ? horariosTurma[i % horariosTurma.length] : null;
+        const horarioPadraoTurno = this.getHorarioPadraoPorTurno(turma?.turno);
         const dataAula = horarioSelecionado
           ? this.ajustarDataParaDiaSemana(dataBase, horarioSelecionado.dia_semana)
           : dataBase;
-        const horaInicio = horarioSelecionado?.hora_inicio || '08:00';
+        const horaInicio = horarioSelecionado?.hora_inicio || horarioPadraoTurno.hora_inicio;
         const horaFim =
           horarioSelecionado?.hora_fim ||
+          horarioPadraoTurno.hora_fim ||
           this.calcularHoraFim(horaInicio, conteudo?.duracao || 45);
 
         const aulaData = {
@@ -388,7 +404,7 @@ export const planoAulaService = {
           disciplina: plano.disciplina,
           hora_inicio: horaInicio,
           hora_fim: horaFim,
-          tema_aula: `${plano.titulo} - Aula ${i + 1}`,
+          tema_aula: `${plano.titulo} - Aula ${i + 1}: ${conteudo.titulo||""}`,
           conteudo_ministrado: conteudo?.descricao || plano.descricao,
           status: 'planeada' as const,
           objetivos_aprendizagem: plano.objetivos_aprendizagem
@@ -452,6 +468,21 @@ export const planoAulaService = {
     const novaHora = Math.floor(totalMinutos / 60);
     const novoMinuto = totalMinutos % 60;
     return `${novaHora.toString().padStart(2, '0')}:${novoMinuto.toString().padStart(2, '0')}`;
+  },
+
+  getHorarioPadraoPorTurno(turno?: string): { hora_inicio: string; hora_fim: string } {
+    const turnoNormalizado = normalizeTurno(turno);
+
+    if (turnoNormalizado === 'tarde') {
+      return { hora_inicio: '13:00', hora_fim: '14:00' };
+    }
+
+    if (turnoNormalizado === 'noite') {
+      return { hora_inicio: '17:00', hora_fim: '18:00' };
+    }
+
+    // Padrão para manhã (ou turno não informado)
+    return { hora_inicio: '08:00', hora_fim: '09:00' };
   },
 
   calcularDataPorFrequencia(

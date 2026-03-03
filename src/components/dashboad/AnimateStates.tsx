@@ -52,6 +52,11 @@ const colorMap = {
     bg: 'bg-yellow-50 dark:bg-yellow-900/30',
     text: 'text-yellow-600',
     bar: 'bg-yellow-200 dark:bg-yellow-800/60'
+  },
+  pink: {
+    bg: 'bg-pink-50 dark:bg-pink-900/30',
+    text: 'text-pink-600',
+    bar: 'bg-pink-200 dark:bg-pink-800/60'
   }
 };
 

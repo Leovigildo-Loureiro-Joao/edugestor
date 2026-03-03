@@ -1,4 +1,4 @@
-// components/strategy/modals/ModalPlaneamento.tsx
+// components/strategy/modals/ModalPlaneamento
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,13 +13,14 @@ import {
   FiChevronRight,
   FiChevronLeft
 } from 'react-icons/fi';
-import { Horario, PlaneamentoDiario, DiaAtividades, PlaneamentoSemanal, PlaneamentoMensal, Semanas } from '../../../types/planeamento';
-import { profileService } from '../../../services/database/profileService.ts';
+import { Horario, PlaneamentoDiario, DiaAtividades, PlaneamentoMensal, Semanas, PlaneamentoSemanalType } from '../../../types/planeamento';
+import { profileService } from '../../../services/database/profileService';
+;
 
 type TipoPlaneamento = 'diario' | 'semanal' | 'mensal';
 type DadosPlaneamento = 
   | Omit<PlaneamentoDiario,  'created_at' | 'updated_at' | 'sync_status' | 'tipo'>
-  | Omit<PlaneamentoSemanal, 'created_at' | 'updated_at' | 'sync_status' | 'tipo'>
+  | Omit<PlaneamentoSemanalType, 'created_at' | 'updated_at' | 'sync_status' | 'tipo'>
   | Omit<PlaneamentoMensal,  'created_at' | 'updated_at' | 'sync_status' | 'tipo'>;
 
 interface ModalPlaneamentoProps {
@@ -27,7 +28,7 @@ interface ModalPlaneamentoProps {
   onClose: () => void;
   tipo: TipoPlaneamento;
   onSave: (dados: DadosPlaneamento) => void;
-  planeamentoExistente?: PlaneamentoDiario | PlaneamentoSemanal | PlaneamentoMensal | null|undefined;
+  planeamentoExistente?: PlaneamentoDiario | PlaneamentoSemanalType | PlaneamentoMensal | null|undefined;
   userNome: string;
 }
 
@@ -90,7 +91,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
             setLembretes(diario.lembretes || []);
             break;
           case 'semanal':
-            const semanal = planeamentoExistente as PlaneamentoSemanal;
+            const semanal = planeamentoExistente as PlaneamentoSemanalType;
             setDias(semanal.dias);
             setObjetivosSemanais(semanal.objetivos_semanais);
             setMetasPrioritarias(semanal.metas_prioritarias || []);
@@ -155,7 +156,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
     switch(tipo) {
       case 'diario':
         dados = {
-          id: planeamentoExistente?.id || undefined,
+          id: planeamentoExistente?.id || "",
           user_id: profile?.id || '',
           responsavel,
           titulo,
@@ -174,8 +175,8 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
         
       case 'semanal':
         dados = {
-          id: planeamentoExistente?.id || undefined,
-          user_id: profile.id || '',
+          id: planeamentoExistente?.id || "",
+          user_id: profile?.id || '',
           responsavel,
           titulo,
           descricao: descricao || undefined,
@@ -196,10 +197,11 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
         
       case 'mensal':
         dados = {
-          id: planeamentoExistente?.id || undefined,
-          user_id: profile.id || '',
+          id: planeamentoExistente?.id || "",
+          user_id: profile?.id || '',
           responsavel,
           titulo,
+          
           descricao: descricao || undefined,
           data_inicio: dataInicio,
           data_fim: dataFim,
@@ -210,8 +212,9 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
             objetivos: (s.objetivos || []).filter(o => o.trim() !== '')
           })),
           metas_mensais: metasMensais.filter(m => m.trim() !== ''),
+          kpis: [],
           tarefas_ids,
-          metas_ids: metas_ids.length > 0 ? metas_ids : undefined
+          metas_ids
           
         };
         break;

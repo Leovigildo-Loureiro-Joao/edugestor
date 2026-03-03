@@ -234,7 +234,7 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
         </div>
         
         {/* Badge de ações rápidas */}
-        {aula.status === 'planeada' && (
+        {aula.status === 'planeada' && new Date(aula.data_aula)<=new Date()&&(
           <div className="mt-3 flex gap-5">
             <button
               onClick={()=>onActualizar("ministrada")}

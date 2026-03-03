@@ -2,12 +2,13 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import db, { supabase } from '../../services/database/db';
-import toast from 'react-hot-toast';
 import { profileService } from '../../services/database/profileService';
 import { User } from '@supabase/supabase-js';
+import { useAlert } from '../ui/AlertBadge';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -18,12 +19,8 @@ const AuthCallback = () => {
         if (error) throw error;
         
         if (session) {
-          console.log('✅ OAuth callback bem-sucedido');
-          
           // Setup adicional para usuário OAuth
-          await setupOAuthUser(session.user);
-          
-          navigate('/dashboard');
+          await handleAuthCallback(session.user);
         } else {
           navigate('/login');
         }
@@ -55,8 +52,6 @@ const AuthCallback = () => {
 
       if (pendingUser) {
         // Usuário foi convidado pelo admin
-        console.log('✅ Usuário convidado encontrado:', pendingUser.email);
-        
         // Criar perfil no Supabase (admin já criou via admin panel)
         const { error: createError } = await supabase
           .from('profiles')
@@ -84,13 +79,11 @@ const AuthCallback = () => {
 
       } else {
         // ❌ Usuário NÃO foi convidado - ACESSO NEGADO
-        console.log('❌ Usuário não autorizado:', user.email);
-        
         // Sign out e mostrar mensagem
         await supabase.auth.signOut();
         
         // Mostrar mensagem amigável
-        toast.error('Você precisa ser convidado por um administrador para acessar o sistema.');
+        showAlert({ type: 'error', title: 'Você precisa ser convidado por um administrador para acessar o sistema.' });
         
         // Redirecionar para página de convite
         window.location.href = '/convite-necessario';
@@ -119,11 +112,11 @@ const AuthCallback = () => {
     
     navigate(redirectTo);
     
-    toast.success(`Bem-vindo, ${finalProfile.nome || finalProfile.email}!`);
+    showAlert({ type: 'success', title: `Bem-vindo, ${finalProfile.nome || finalProfile.email}!` });
 
   } catch (error) {
     console.error('❌ Erro no callback de autenticação:', error);
-    toast.error('Erro ao processar login');
+    showAlert({ type: 'error', title: 'Erro ao processar login' });
     await supabase.auth.signOut();
   }
 };

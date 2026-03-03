@@ -1,5 +1,4 @@
-import { FiBarChart2, FiBook, FiPlus, FiSave, FiX, FiChevronRight, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
-import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
+import { FiBarChart2, FiBook, FiPlus, FiSave, FiX, FiChevronRight, FiTrendingUp, FiTrendingDown, FiEdit2, FiTrash2, FiMoreVertical } from "react-icons/fi";
 import { Student } from "../../types";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -9,15 +8,23 @@ import { useAutoSave } from "../../hooks/useAutoSave";
 import { SelectTyped } from "./StudentForm";
 import db from "../../services/database/db";
 import { avaliacaoService } from "../../services/database/avaliacao";
-import { toast } from 'react-hot-toast';
 import { FaChartLine, FaGraduationCap } from 'react-icons/fa';
 import { alunosService } from "../../services/database/alunosService";
+import { useAlert } from "../ui/AlertBadge";
+import { AlunoDesempenho } from "../../types/aluno";
+import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { ConfirmModalProps, useConfirmModal } from "../ui/ComfirmModal";
+import { Avaliacao } from "../../types/avaliacao";
+import { profileService } from "../../services/database/profileService";
+
+type ConfirmFn = (props: Omit<ConfirmModalProps, "isOpen">) => Promise<boolean>;
 
 interface StudentModalProps {
   alunoSelecionado: AlunoDesempenho | null;
   setAlunoSelecionado: (aluno: AlunoDesempenho | null) => void;
   loadTurmaDetails?: ()=>void 
   onNotaAdicionada?: () => void;
+  confirm?: ConfirmFn;
   initialTab?: 'overview' | 'notas' | 'analise';
 }
 
@@ -34,6 +41,7 @@ export const StudentModal = ({
   setAlunoSelecionado,
   loadTurmaDetails,
   onNotaAdicionada,
+  confirm,
   initialTab = 'overview'
 }: StudentModalProps) => {
   const [abaAtiva, setAbaAtiva] = useState<'overview' | 'notas' | 'analise'>('overview');
@@ -43,6 +51,15 @@ export const StudentModal = ({
   const [statsDisciplinas, setStatsDisciplinas] = useState<DisciplinaStats[]>([]);
   const [mediaGeral, setMediaGeral] = useState<number>(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [editandoAvaliacao, setEditandoAvaliacao] = useState<Avaliacao | null>(null);
+  const [menuAberto, setMenuAberto] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const { confirm: localConfirm, ModalComponent: LocalModalComponent } = useConfirmModal();
+  const confirmAction = confirm ?? localConfirm;
+  const canDeleteGrade = userRole === 'admin' || userRole === 'manager';
+  
+  const { showAlert } = useAlert();
+  
 
   // Detectar mobile
   useEffect(() => {
@@ -91,21 +108,27 @@ export const StudentModal = ({
   }, [alunoSelecionado, initialTab]);
 
   useEffect(() => {
-    const avaliacoes= async () =>{
-      const result=await avaliacaoService.getAvaliacoesByAluno(alunoSelecionado?.id||"")
-        if (result) {
-          calcularEstatisticas((await result).avaliacoes);
-        }
+    const carregarAvaliacoes = async () =>{
+      const result = await avaliacaoService.getAvaliacoesByAluno(alunoSelecionado?.id||"")
+      if (result) {
+        calcularEstatisticas(result.avaliacoes);
+      }
     }
-    avaliacoes()
-   
-  }, [alunoSelecionado,calcularEstatisticas]);
+    carregarAvaliacoes()
+  }, [alunoSelecionado, calcularEstatisticas]);
+
+  useEffect(() => {
+    const loadUserRole = async () => {
+      const profile = await profileService.getLocalProfile();
+      setUserRole(profile?.role || localStorage.getItem('user_role'));
+    };
+    loadUserRole();
+  }, []);
 
   // Carrega configurações
   useEffect(() => {
     const loadConfig = async () => {
       if (!alunoSelecionado) return;
-      console.log(alunoSelecionado)
       try {
         const [configValue] = await Promise.all([
           db.system_config
@@ -113,10 +136,10 @@ export const StudentModal = ({
             .equals('assessment_types')
             .and(config => !config.deleted)
             .first(),
-
         ]);
 
         setConfig(configValue?.value?.map((val: any) => val.nome) || []);
+        
         // Buscar disciplinas via turma -> curso
         if (alunoSelecionado.turma_id) {
           const turma = await db.turmas.get(alunoSelecionado.turma_id);
@@ -129,12 +152,17 @@ export const StudentModal = ({
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
-        toast.error('Erro ao carregar configurações');
+        showAlert({
+          type: 'error',
+          title: 'Erro ao carregar',
+          message: 'Não foi possível carregar configurações do aluno.',
+          duration: 3000
+        });
       }
     };
 
     loadConfig();
-  }, [alunoSelecionado]);
+  }, [alunoSelecionado, showAlert]);
 
   // Configuração do auto-save
   const storageKey = useMemo(
@@ -146,12 +174,13 @@ export const StudentModal = ({
     aluno_id: alunoSelecionado?.id || "",
     turma_id: alunoSelecionado?.turma_id || "",
     data_avaliacao: new Date().toISOString().split('T')[0],
-    disciplina: disciplinas[0]||"",
+    disciplina: disciplinas[0] || "",
     nota: 0,
+    instituicao_id: instituicaoIdValue(),
     periodo: "1º trimestre",
-    tipo_avaliacao: config[0]||"",
+    tipo_avaliacao: config[0] || "",
     observacoes: ""
-  }), [alunoSelecionado]);
+  }), [alunoSelecionado, disciplinas, config]);
 
   const {
     data: formData,
@@ -160,22 +189,40 @@ export const StudentModal = ({
     hasUnsavedChanges
   } = useAutoSave(storageKey, initialData, 2000);
 
+  // Atualiza o formulário quando começar a editar uma avaliação
+  useEffect(() => {
+    if (editandoAvaliacao) {
+      setFormData({
+        aluno_id: editandoAvaliacao.aluno_id,
+        turma_id: editandoAvaliacao.turma_id,
+        data_avaliacao: editandoAvaliacao.data_avaliacao,
+        disciplina: editandoAvaliacao.disciplina,
+        nota: editandoAvaliacao.nota,
+        instituicao_id: editandoAvaliacao.instituicao_id,
+        periodo: editandoAvaliacao.periodo,
+        tipo_avaliacao: editandoAvaliacao.tipo_avaliacao,
+        observacoes: editandoAvaliacao.observacoes || ""
+      });
+      setAbaAtiva('notas');
+    }
+  }, [editandoAvaliacao, setFormData]);
+
   // Handlers
   const handleChange = useCallback((field: keyof AvaliacaoFormData, value: string | number) => {
-    setFormData((prev:any) => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   }, [setFormData]);
 
   const handleSelectChange = useCallback((field: keyof AvaliacaoFormData) => 
     (value: string) => {
-      setFormData((prev:any) => ({ ...prev, [field]: value }));
+      setFormData((prev: any) => ({ ...prev, [field]: value }));
     }, [setFormData]
   );
 
-    const cleanForm = ()=>{
-      setFormData(initialData)
-      clearDraft()
-    }
-
+  const cleanForm = () => {
+    setFormData(initialData);
+    clearDraft();
+    setEditandoAvaliacao(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,24 +232,68 @@ export const StudentModal = ({
       setLoading(true);
       
       // Validações
-      if (!formData.disciplina) {
-        toast.error('Selecione uma disciplina');
-        return;
-      }
-      if (formData.nota < 0 || formData.nota > 20) {
-        toast.error('Nota deve estar entre 0 e 20');
+      if (!formData.disciplina || formData.disciplina === "Selecione a disciplina") {
+        showAlert({
+          type: 'warning',
+          title: 'Disciplina obrigatória',
+          message: 'Selecione uma disciplina.',
+          duration: 2500
+        });
         return;
       }
 
-      await avaliacaoService.criarAvaliacao({
-        ...formData,
-        aluno_id: alunoSelecionado.id,
-        turma_id: alunoSelecionado.turma_id
-      });
-     cleanForm()
-      setAbaAtiva("overview")
-      toast.success('Nota adicionada com sucesso!');
-     
+      if (!formData.tipo_avaliacao || formData.tipo_avaliacao === "Selecione o tipo de avalição") {
+        showAlert({
+          type: 'warning',
+          title: 'Tipo obrigatório',
+          message: 'Selecione o tipo de avaliação.',
+          duration: 2500
+        });
+        return;
+      }
+
+      if (formData.nota < 0 || formData.nota > 20) {
+        showAlert({
+          type: 'warning',
+          title: 'Nota inválida',
+          message: 'A nota deve estar entre 0 e 20.',
+          duration: 2500
+        });
+        return;
+      }
+
+      if (editandoAvaliacao) {
+        // Atualizar avaliação existente
+        await avaliacaoService.atualizarAvaliacao(editandoAvaliacao.id, {
+          ...formData,
+          aluno_id: alunoSelecionado.id,
+          turma_id: alunoSelecionado.turma_id
+        });
+        
+        showAlert({
+          type: 'success',
+          title: 'Avaliação atualizada',
+          message: 'Nota atualizada com sucesso.',
+          duration: 2500
+        });
+      } else {
+        // Criar nova avaliação
+        await avaliacaoService.criarAvaliacao({
+          ...formData,
+          aluno_id: alunoSelecionado.id,
+          turma_id: alunoSelecionado.turma_id
+        });
+        
+        showAlert({
+          type: 'success',
+          title: 'Avaliação salva',
+          message: 'Nota adicionada com sucesso.',
+          duration: 2500
+        });
+      }
+      
+      cleanForm();
+      setAbaAtiva("overview");
       
       // Recarregar dados
       if (onNotaAdicionada) onNotaAdicionada();
@@ -211,16 +302,79 @@ export const StudentModal = ({
       const novasAvaliacoes = await avaliacaoService.getAvaliacoesByAluno(alunoSelecionado.id);
       if (novasAvaliacoes) {
         calcularEstatisticas(novasAvaliacoes.avaliacoes);
-        setAlunoSelecionado(await alunosService.getDesempemhoAluno(alunoSelecionado.id))
+        setAlunoSelecionado(await alunosService.getDesempemhoAluno(alunoSelecionado.id));
       }
 
     } catch (error: any) {
       console.error('Erro ao salvar nota:', error);
-      toast.error(error.message || 'Erro ao salvar nota');
+      showAlert({
+        type: 'error',
+        title: 'Erro ao salvar',
+        message: error.message || 'Não foi possível salvar a nota.',
+        duration: 3500
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDeleteClick = async (avaliacao: Avaliacao) => {
+      if (!canDeleteGrade) {
+        showAlert({
+          type: 'warning',
+          title: 'Sem permissão',
+          message: 'Apenas manager ou admin podem apagar notas.',
+          duration: 3000
+        });
+        return;
+      }
+
+      await confirmAction({
+        type: 'delete',
+        title: 'Excluir Avaliação',
+        message: `Tem certeza que deseja excluir esta avaliação de ${avaliacao.disciplina}? Esta ação não pode ser desfeita.`,
+        isDestructive: true,
+        confirmText: 'Excluir',
+        onConfirm: async () => {
+          try {
+            setLoading(true);
+            await avaliacaoService.deletarAvaliacao(avaliacao.id);
+            
+            showAlert({
+              type: 'success',
+              title: 'Avaliação removida',
+              message: 'Nota removida com sucesso.',
+              duration: 2500
+            });
+
+            // Recarregar dados
+            if (onNotaAdicionada) onNotaAdicionada();
+            
+            // Atualizar estatísticas
+            const novasAvaliacoes = await avaliacaoService.getAvaliacoesByAluno(alunoSelecionado?.id || "");
+            if (novasAvaliacoes) {
+              calcularEstatisticas(novasAvaliacoes.avaliacoes);
+              if (alunoSelecionado) {
+                setAlunoSelecionado(await alunosService.getDesempemhoAluno(alunoSelecionado.id));
+              }
+            }
+
+          } catch (error: any) {
+            console.error('Erro ao deletar avaliação:', error);
+            showAlert({
+              type: 'error',
+              title: 'Erro ao remover',
+              message: error.message || 'Não foi possível remover a nota.',
+              duration: 3500
+            });
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
+    };
+
+    
 
   const getSituacaoColor = useCallback((situacao: string) => {
     switch(situacao) {
@@ -241,13 +395,19 @@ export const StudentModal = ({
   if (!alunoSelecionado) return null;
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
-        onClick={() => {setAlunoSelecionado(null);loadTurmaDetails?.();}}
+        onClick={() => {
+          setAlunoSelecionado(null);
+          loadTurmaDetails?.();
+          setEditandoAvaliacao(null);
+          setMenuAberto(null);
+        }}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -286,7 +446,12 @@ export const StudentModal = ({
                   </div>
                 </div>
                 <button
-                  onClick={() => {setAlunoSelecionado(null);loadTurmaDetails?.();}}
+                  onClick={() => {
+                    setAlunoSelecionado(null);
+                    loadTurmaDetails?.();
+                    setEditandoAvaliacao(null);
+                    setMenuAberto(null);
+                  }}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
                   <FiX size={isMobile ? 20 : 24} className="text-gray-500 dark:text-gray-400" />
@@ -300,7 +465,7 @@ export const StudentModal = ({
                 {[
                   { id: 'overview', label: 'Visão Geral', icon: FiBarChart2 },
                   { id: 'analise', label: 'Análise', icon: FaChartLine },
-                  { id: 'notas', label: 'Nova Nota', icon: FiPlus }
+                  { id: 'notas', label: editandoAvaliacao ? 'Editar Nota' : 'Nova Nota', icon: editandoAvaliacao ? FiEdit2 : FiPlus }
                 ].map(aba => (
                   <button
                     key={aba.id}
@@ -340,7 +505,7 @@ export const StudentModal = ({
                   <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3 md:p-4 rounded-lg">
                     <div className="text-xs text-green-600 dark:text-green-400 font-medium">Avaliações</div>
                     <div className={`font-bold text-gray-900 dark:text-white ${isMobile ? 'text-xl' : 'text-2xl'}`}>
-                      {alunoSelecionado.avaliacao?.length || 0}
+                      {(alunoSelecionado.avaliacao ?? []).length || 0}
                     </div>
                   </div>
 
@@ -382,11 +547,22 @@ export const StudentModal = ({
 
                 {/* Tabela de Avaliações */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-hidden">
-                  <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm md:text-base">
                       <FaGraduationCap />
                       Histórico de Avaliações
                     </h4>
+                    {editandoAvaliacao && (
+                      <button
+                        onClick={() => {
+                          setEditandoAvaliacao(null);
+                          cleanForm();
+                        }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Cancelar edição
+                      </button>
+                    )}
                   </div>
                   
                   {/* Mobile: Cards de Avaliações */}
@@ -398,10 +574,10 @@ export const StudentModal = ({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
-                          className="p-3 hover:bg-white dark:hover:bg-gray-800/50 transition-colors"
+                          className="p-3 hover:bg-white dark:hover:bg-gray-800/50 transition-colors relative"
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <div>
+                            <div className="flex-1">
                               <div className="font-medium text-gray-900 dark:text-white text-sm">
                                 {avaliacao.disciplina}
                               </div>
@@ -409,9 +585,52 @@ export const StudentModal = ({
                                 {avaliacao.tipo_avaliacao} • {new Date(avaliacao.data_avaliacao).toLocaleDateString('pt-AO')}
                               </div>
                             </div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-bold ${getNotaColor(avaliacao.nota)}`}>
-                              {avaliacao.nota}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-bold ${getNotaColor(avaliacao.nota)}`}>
+                                {avaliacao.nota}
+                              </span>
+                              
+                              {/* Menu de ações mobile */}
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuAberto(menuAberto === avaliacao.id ? null : avaliacao.id);
+                                  }}
+                                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
+                                >
+                                  <FiMoreVertical size={16} />
+                                </button>
+                                
+                                {menuAberto === avaliacao.id && (
+                                  <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditandoAvaliacao(avaliacao);
+                                        setMenuAberto(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                    >
+                                      <FiEdit2 size={14} />
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClick(avaliacao);
+                                        setMenuAberto(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2"
+                                      disabled={!canDeleteGrade}
+                                    >
+                                      <FiTrash2 size={14} />
+                                      Excluir
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="flex items-center justify-between text-xs">
@@ -428,7 +647,7 @@ export const StudentModal = ({
                       ))}
                     </div>
                   ) : (
-                    /* Desktop: Tabela */
+                    /* Desktop: Tabela com ações */
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-gray-100 dark:bg-gray-800">
@@ -450,6 +669,9 @@ export const StudentModal = ({
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
                               Leitura
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
+                              Ações
                             </th>
                           </tr>
                         </thead>
@@ -485,6 +707,25 @@ export const StudentModal = ({
                                 }`}>
                                   {avaliacao.nota >= 10 ? 'Meta >= 10' : 'Abaixo de 10'}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setEditandoAvaliacao(avaliacao)}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                    title="Editar avaliação"
+                                  >
+                                    <FiEdit2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClick(avaliacao)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    title="Excluir avaliação"
+                                    disabled={!canDeleteGrade}
+                                  >
+                                    <FiTrash2 size={16} />
+                                  </button>
+                                </div>
                               </td>
                             </motion.tr>
                           ))}
@@ -594,13 +835,19 @@ export const StudentModal = ({
               </motion.div>
             )}
 
-            {/* ABA: NOVA NOTA */}
+            {/* ABA: NOVA NOTA / EDITAR NOTA */}
             {abaAtiva === 'notas' && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
               >
                 <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+                  {editandoAvaliacao && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+                      Editando avaliação de {editandoAvaliacao.disciplina} - {new Date(editandoAvaliacao.data_avaliacao).toLocaleDateString('pt-AO')}
+                    </div>
+                  )}
+                  
                   <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-6'}`}>
                     {/* Disciplina */}
                     <div className="space-y-2">
@@ -608,7 +855,7 @@ export const StudentModal = ({
                         Disciplina *
                       </label>
                       <SelectTyped
-                        vect={disciplinas}
+                        vect={["Selecione a disciplina", ...disciplinas]}
                         onChange={handleSelectChange('disciplina')}
                         placeholder="Selecione a disciplina"
                         icon={FiBook}
@@ -659,7 +906,7 @@ export const StudentModal = ({
                         Tipo de Avaliação *
                       </label>
                       <SelectTyped
-                        vect={config}
+                        vect={["Selecione o tipo de avalição", ...config]}
                         value={formData.tipo_avaliacao}
                         icon={RxSection}
                         onChange={handleSelectChange('tipo_avaliacao')}
@@ -724,7 +971,7 @@ export const StudentModal = ({
                         } py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
                         disabled={loading}
                       >
-                        Limpar
+                        {editandoAvaliacao ? 'Cancelar' : 'Limpar'}
                       </button>
                       <button
                         type="submit"
@@ -744,7 +991,7 @@ export const StudentModal = ({
                         ) : (
                           <>
                             <FiSave size={isMobile ? 16 : 18} />
-                            <span>{isMobile ? 'Salvar' : 'Salvar Avaliação'}</span>
+                            <span>{isMobile ? (editandoAvaliacao ? 'Atualizar' : 'Salvar') : (editandoAvaliacao ? 'Atualizar Avaliação' : 'Salvar Avaliação')}</span>
                           </>
                         )}
                       </button>
@@ -756,6 +1003,13 @@ export const StudentModal = ({
           </div>
         </motion.div>
       </motion.div>
+
+      {/* ✅ Modal de Confirmação do Sistema - Renderizado aqui */}
+      {!confirm && <LocalModalComponent />}
+      
     </AnimatePresence>
+    
+    </>
+    
   );
 };

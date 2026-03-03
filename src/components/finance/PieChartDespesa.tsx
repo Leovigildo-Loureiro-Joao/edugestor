@@ -46,8 +46,6 @@ export const CustomPieChart = ({ dados, tipo = 'pagamentos', title }: CustomPieC
     );
   };
 
-  console.log(dados)
-
   return (
     <div className="bg-white dark:bg-gray-800 p-6">
       {title && (
@@ -69,7 +67,7 @@ export const CustomPieChart = ({ dados, tipo = 'pagamentos', title }: CustomPieC
                 outerRadius={100}
                 paddingAngle={2}
                 dataKey="value"
-                label={({ name, porcentagem }) => `${name} (${porcentagem.toFixed(1)}%)`}
+                label={({ name, value }) => `${name} (${value.toFixed(1)}%)`}
                 labelLine={false}
               >
                 {dados.map((entry, index) => (

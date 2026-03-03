@@ -3,7 +3,7 @@ import { Frequencia } from "./frequencia";
 import { Student,StudentFormData,StudentFormProps } from "./aluno";
 import { IconType } from "react-icons";
 import { BaseEntity } from "./base";
-export { Frequencia, Student,StudentFormData,StudentFormProps };
+export type { Frequencia, Student, StudentFormData, StudentFormProps };
 
 
 
@@ -75,25 +75,132 @@ export interface Instituicao extends BaseEntity{
 }
 
 
+export interface FluxoCaixa {
+  mes: string;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+}
+
+export interface NotaDisciplina {
+  disciplina: string;
+  media: number;
+  totalAvaliacoes: number;
+}
+
+export interface TopAluno {
+  id: string;
+  nome: string;
+  media: number;
+  turma: string;
+  presenca: number;
+}
+
+export interface InadimplenciaTurma {
+  turma: string;
+  totalAlunos: number;
+  inadimplentes: number;
+  percentual: number;
+}
+
+export interface MetaKPI {
+  nome: string;
+  valor: number;
+  meta: number;
+  unidade: string;
+  cor: 'green' | 'yellow' | 'red' | 'blue';
+}
+
+export interface ProximoEvento {
+  id: string;
+  titulo: string;
+  data: string;
+  tipo: 'evento' | 'tarefa' | 'meta' | 'aula';
+  descricao?: string;
+}
 
 export interface DashboardStats {
+  // Existente
   totalAlunos: number;
   totalAlunosAnterior: number;
-  propinaPagasCountAnterior: number;
-  propinaPendentesCount: number;
-  propinaPendentesCountAnterior: number;
   alunosAtivos: number;
   propinaPagas: number;
-  propinaPagasCount: number;
   propinaPagasAnterior: number;
   propinaPendentes: number;
   propinaPendentesAnterior: number;
-  frequencias: number; // Percentual
-  frequenciasP:number;
-  totalMensal?: number; // ← ADICIONAR
-  saldoAtual?: number; // ← ADICIONAR
-  aulasMinistradas:number,
-  aulasMinistradasP:number  
+  propinaPagasCount: number;
+  propinaPagasCountAnterior: number;
+  propinaPendentesCount: number;
+  propinaPendentesCountAnterior: number;
+  frequencias: number;
+  frequenciasP: number;
+  aulasMinistradas: number;
+  aulasMinistradasP: number;
+
+  // NOVOS - Financeiro
+  saldoAtual: number;
+  saldoAnterior: number;
+  totalDespesas: number;
+  despesasAnterior: number;
+  despesasPendentes: number;
+  receitaPrevista: number;
+  inadimplencia: number;
+  inadimplenciaAnterior: number;
+  ticketMedio: number;
+  ticketMedioAnterior: number;
+  fluxoCaixa: FluxoCaixa[];
+  inadimplenciaPorTurma: InadimplenciaTurma[];
+
+  // NOVOS - Acadêmico
+  aprovacaoGeral: number;
+  aprovacaoAnterior: number;
+  reprovacaoGeral: number;
+  recuperacaoGeral: number;
+  notasMedias: NotaDisciplina[];
+  topAlunos: TopAluno[];
+  alunosRisco: number;
+  alunosRiscoAnterior: number;
+
+  // NOVOS - Operacional
+  turmasAtivas: number;
+  turmasLotadas: number;
+  professoresAtivos: number;
+  cargaHorariaTotal: number;
+  aulasCanceladas: number;
+  aulasCanceladasAnterior: number;
+  ocupacaoMedia: number;
+  ocupacaoAnterior: number;
+
+  // NOVOS - Estratégico
+  metasAlcancadas: number;
+  metasTotal: number;
+  tarefasAtrasadas: number;
+  proximosEventos: ProximoEvento[];
+  indicadoresChave: MetaKPI[];
+}
+
+export interface StatCard {
+  title: string;
+  value: number | string;
+  change: string;
+  color: 'blue' | 'green' | 'emerald' | 'orange' | 'purple' | 'indigo' | 'red' | 'yellow' | 'pink';
+  icon: IconType;
+  aux?: string;
+  fix?: boolean;
+  linkTo?: string;
+  progress?: number;
+  progressColor?: string;
+  target?: number;
+  description?: string;
+  alert?: boolean;
+}
+
+
+
+export interface AtividadeEstrategica {
+  titulo: string;
+  prioridade: 'alta' | 'media' | 'baixa';
+  data_limite?: string;
 }
 
 export interface EstrategiaStats {
@@ -102,20 +209,3 @@ export interface EstrategiaStats {
   metasAtrasadas: number;
   proximasAtividades: AtividadeEstrategica[];
 }
-
-export interface AtividadeEstrategica {
-  titulo: string;
-  prioridade: 'alta' | 'media' | 'baixa';
-  data_limite?: string;
-}
-interface StatCard {
-  title: string;
-  value: number | string;
-  change: string;
-  color: 'blue' | 'green' | 'emerald' | 'orange' | 'purple' | 'indigo' | 'red' | 'yellow';
-  icon: IconType;
-  aux: string;
-  fix: boolean;
-  linkTo?: string;
-}
-export { StatCard };

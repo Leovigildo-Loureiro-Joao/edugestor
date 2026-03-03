@@ -1,4 +1,4 @@
-// components/ui/AlertBadge.tsx - VERSÃO CORRIGIDA E SIMPLIFICADA
+// components/ui/AlertBadge - VERSÃO CORRIGIDA E SIMPLIFICADA
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   FiAlertCircle, 
@@ -30,6 +30,13 @@ interface AlertContextType {
   removeAlert: (id: string) => void;
   clearAlerts: () => void;
 }
+
+let globalShowAlertHandler: ((alert: Omit<AlertProps, 'id'>) => string) | null = null;
+
+export const showGlobalAlert = (alert: Omit<AlertProps, 'id'>): string => {
+  if (!globalShowAlertHandler) return '';
+  return globalShowAlertHandler(alert);
+};
 
 // Criar contexto
 const AlertContext = createContext<AlertContextType | null>(null);
@@ -175,6 +182,13 @@ export const AlertProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearAlerts = useCallback(() => {
     setAlerts([]);
   }, []);
+
+  useEffect(() => {
+    globalShowAlertHandler = showAlert;
+    return () => {
+      globalShowAlertHandler = null;
+    };
+  }, [showAlert]);
 
   // Renderizar múltiplos alerts com espaçamento
   const renderAlerts = () => {

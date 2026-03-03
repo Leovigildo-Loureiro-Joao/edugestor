@@ -22,9 +22,6 @@ export function emitDbChanged(tableName: string, action?: string) {
 
 export const getPendingCount = async (table: string): Promise<number> => {
     try {
-      
-      
-
       const instituicaoId = instituicaoIdValue();
       if (!instituicaoId) return 0;
       // Tentar do localStorage primeiro
@@ -35,8 +32,7 @@ export const getPendingCount = async (table: string): Promise<number> => {
         .and(item => item.table === table && item.status === 'pending')
         .toArray();
 
-        console.log(pendingItems)
-      return syncManager.processarRegistrosUnicos(pendingItems,table).length;
+        return syncManager.processarRegistrosUnicos(pendingItems,table).length;
     } catch (error) {
       return 0;
     }

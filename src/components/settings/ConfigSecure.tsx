@@ -40,62 +40,7 @@ export const ConfiguracoesSeguranca = () => {
       
       <div className="space-y-8">
         
-        {/* Alteração de Senha */}
-        <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Alterar Senha</h3>
-          <form onSubmit={alterarSenha} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Senha Atual
-              </label>
-              <input
-                type="password"
-                value={novaSenha.atual}
-                onChange={(e) => setNovaSenha(prev => ({...prev, atual: e.target.value}))}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nova Senha
-              </label>
-              <input
-                type="password"
-                value={novaSenha.nova}
-                onChange={(e) => setNovaSenha(prev => ({...prev, nova: e.target.value}))}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
-                required
-                minLength={8}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Confirmar Nova Senha
-              </label>
-              <input
-                type="password"
-                value={novaSenha.confirmar}
-                onChange={(e) => setNovaSenha(prev => ({...prev, confirmar: e.target.value}))}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="submit"
-                disabled={novaSenha.nova !== novaSenha.confirmar || novaSenha.nova.length < 8}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              >
-                Alterar Senha
-              </button>
-            </div>
-          </form>
-        </div>
-
+        
         {/* Configurações de Sessão */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
           <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">Sessão e Autenticação</h3>

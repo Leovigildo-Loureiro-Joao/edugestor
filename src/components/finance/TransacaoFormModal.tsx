@@ -6,9 +6,9 @@ import {
   FiCreditCard, FiBriefcase, FiShoppingBag, FiTruck,
   FiCoffee, FiHome, FiBarChart2
 } from 'react-icons/fi';
-import { toast } from 'react-hot-toast';
 import { TransacaoFormData, Transacao } from '../../types/transacao';
 import { transacaoService } from '../../services/database/transacaoService';
+import { useAlert } from '../ui/AlertBadge';
 
 interface TransacaoFormModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
   onSuccess,
   transacaoEditando
 }) => {
+  const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<TransacaoFormData>({
     data: new Date().toISOString().split('T')[0],
@@ -76,12 +77,12 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
     e.preventDefault();
     
     if (formData.valor <= 0) {
-      toast.error('O valor deve ser maior que zero');
+      showAlert({ type: 'error', title: 'O valor deve ser maior que zero' });
       return;
     }
 
     if (!formData.descricao.trim()) {
-      toast.error('A descrição é obrigatória');
+      showAlert({ type: 'error', title: 'A descrição é obrigatória' });
       return;
     }
 
@@ -91,7 +92,7 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
       if (transacaoEditando) {
         // Atualizar transação existente
         await transacaoService.updateTransacao(transacaoEditando.id, formData);
-        toast.success('Transação atualizada com sucesso!');
+        showAlert({ type: 'success', title: 'Transação atualizada com sucesso!' });
       } else {
         // Criar nova transação
         const transacaoId = await transacaoService.createTransacao(formData);
@@ -103,11 +104,9 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
           onSuccess(novaTransacao);
         }
         
-        toast.success(
-          tipo === 'entrada' 
+        showAlert({ type: 'success', title: tipo === 'entrada' 
             ? 'Investimento registrado com sucesso!' 
-            : 'Despesa registrada com sucesso!'
-        );
+            : 'Despesa registrada com sucesso!' });
       }
       
       onClose();
@@ -121,7 +120,7 @@ export const TransacaoFormModal: React.FC<TransacaoFormModalProps> = ({
       
     } catch (error: any) {
       console.error('Erro ao salvar transação:', error);
-      toast.error(error.message || 'Erro ao salvar transação');
+      showAlert({ type: 'error', title: error.message || 'Erro ao salvar transação' });
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-// pages/EventosPage.tsx
+// pages/EventosPage
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,7 +32,6 @@ import { eventoService } from '../../services/database/eventoService';
 import { estrategiaService } from '../../services/database/estrategiaService';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { useAlert } from '../ui/AlertBadge';
-import toast from 'react-hot-toast';
 import { useConfirmModal } from '../ui/ComfirmModal';
 
 const EventosPage = () => {
@@ -151,32 +150,29 @@ const EventosPage = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
       showAlert({
-          type: 'warning',
-          title: 'Preencha todos campos obrigatórios',
-          message: 'Título é obrigatório',
-          duration: 3000
-        });
+        type: 'warning',
+        title: 'Preencha todos campos obrigatórios',
+        message: 'Título é obrigatório',
+        duration: 3000
+      });
       return;
     }
-    
+
     setSaving(true);
     try {
       if (isEditMode && id) {
-        // Atualizar evento existente
         const updatedEvent = await eventoService.atualizarEvento(id, formData);
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-         showAlert({
+        showAlert({
           type: 'success',
           title: 'Operação concluída',
           message: 'Evento atualizado com sucesso!',
           duration: 3000
         });
-        toast.success('Evento atualizado com sucesso!')
       } else {
-        // Criar novo evento
         const newEvent = await eventoService.criarEvento(formData);
         setEvents(prev => [newEvent, ...prev]);
         showAlert({
@@ -185,10 +181,8 @@ const EventosPage = () => {
           message: 'Evento criado com sucesso!',
           duration: 3000
         });
-        toast.success('Evento criado com sucesso!')
       }
-      
-      // Voltar para lista ou dashboard
+
       navigate('/eventos');
     } catch (error) {
       showAlert({
@@ -197,15 +191,14 @@ const EventosPage = () => {
         message: 'Não foi possivel efectuar a operação',
         duration: 5000
       });
-      toast.error('Erro ao salvar evento')
       console.error('Erro ao salvar evento:', error);
     } finally {
       setSaving(false);
     }
   };
-  
+
   const handleDeleteEvent = async (eventId: string) => {
-      const confirmed = await confirm({
+    await confirm({
       type: 'delete',
       title: 'Excluir Evento',
       message: `'Tem certeza que deseja excluir este evento?'`,
@@ -216,15 +209,13 @@ const EventosPage = () => {
           await eventoService.deletarEvento(eventId.toString());
           setEvents(prev => prev.filter(e => e.id !== eventId));
           showAlert({
-              type: 'success',
-              title: 'Operação concluída',
-              message: 'Evento excluído com sucesso!',
-              duration: 3000
-            });
-          toast.success('Evento excluído com sucesso!');
+            type: 'success',
+            title: 'Operação concluída',
+            message: 'Evento excluído com sucesso!',
+            duration: 3000
+          });
         } catch (error) {
           console.error('Erro ao excluir evento:', error);
-          toast.error('Erro ao excluir evento');
           showAlert({
             type: 'error',
             title: 'Erro ao excluir evento',
@@ -234,15 +225,12 @@ const EventosPage = () => {
         }
       }
     });
-    
-      
   };
   
   const handleDuplicateEvent = (event: EventFormData) => {
     const duplicatedEvent = {
       ...event,
-      title: `${event.title} (CÓPIA)`,
-      id: undefined // Remove ID para criar novo
+      title: `${event.title} (CÓPIA)`
     };
     
     setFormData(duplicatedEvent);

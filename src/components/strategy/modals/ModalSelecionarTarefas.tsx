@@ -1,4 +1,4 @@
-// components/strategy/modals/ModalSelecionarTarefas.tsx
+// components/strategy/modals/ModalSelecionarTarefas
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 

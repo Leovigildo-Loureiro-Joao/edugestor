@@ -176,7 +176,7 @@ export const NotasTable: React.FC<NotasTableProps> = ({
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                           <FiBookOpen size={10} />
-                          {aluno.turma_nome || 'Sem turma'}
+                          {aluno.turma_id || 'Sem turma'}
                         </p>
                       </div>
                     </div>
@@ -196,7 +196,7 @@ export const NotasTable: React.FC<NotasTableProps> = ({
                 {/* Detalhes do Card */}
                 <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700">
                   {/* Grid de informações */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="grid grid-cols-3 gap-3 mb-3">
                     <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
                       <span className="text-xs text-gray-500 dark:text-gray-400 block">Qtd. Notas</span>
                       <span className="text-lg font-bold text-gray-900 dark:text-white">
@@ -208,6 +208,21 @@ export const NotasTable: React.FC<NotasTableProps> = ({
                       <span className="text-xs text-gray-500 dark:text-gray-400 block">Média</span>
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         {aluno.media.toFixed(1)}
+                      </span>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 block">Frequência</span>
+                      <span
+                        className={`text-lg font-bold ${
+                          aluno.presenca >= 75
+                            ? 'text-green-600 dark:text-green-400'
+                            : aluno.presenca >= 60
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}
+                      >
+                        {aluno.presenca.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -283,7 +298,7 @@ export const NotasTable: React.FC<NotasTableProps> = ({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1000px]">
+        <table className="w-full min-w-[1120px]">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
@@ -300,6 +315,9 @@ export const NotasTable: React.FC<NotasTableProps> = ({
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                 Progresso
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                Frequência
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                 Situação
@@ -365,6 +383,22 @@ export const NotasTable: React.FC<NotasTableProps> = ({
                     <ProgressBar value={(aluno.media / 20) * 100} />
                     <span className="text-xs text-gray-500 dark:text-gray-400 w-12">
                       {((aluno.media / 20) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 min-w-[150px]">
+                  <div className="flex items-center gap-2">
+                    <ProgressBar value={aluno.presenca} />
+                    <span
+                      className={`text-xs w-12 font-semibold ${
+                        aluno.presenca >= 75
+                          ? 'text-green-600 dark:text-green-400'
+                          : aluno.presenca >= 60
+                          ? 'text-yellow-600 dark:text-yellow-400'
+                          : 'text-red-600 dark:text-red-400'
+                      }`}
+                    >
+                      {aluno.presenca.toFixed(0)}%
                     </span>
                   </div>
                 </td>

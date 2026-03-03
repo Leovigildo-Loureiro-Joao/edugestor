@@ -1,4 +1,4 @@
-// components/ui/SeletorMeses.tsx
+// components/ui/SeletorMeses
 import { useState, useEffect } from 'react';
 import { FiCalendar, FiChevronDown, FiCheck } from 'react-icons/fi';
 
@@ -34,7 +34,7 @@ export const SeletorMeses = ({ value, onChange, anoLetivo }: SeletorMesesProps) 
         ];
 
         setMesesDisponiveis(mesesAnoLetivo);
-        const mesAtualNome = mesesAnoLetivo.find(m => parseInt(m.numero) === mesAtual)?.nome || 'Novembro';
+        const mesAtualNome = mesesAnoLetivo.find(m => parseInt(m.numero) === parseInt(mesAtual))?.nome || 'Novembro';
     }, [anoLetivo]);
     
         

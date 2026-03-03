@@ -19,7 +19,6 @@ import { Meta } from "../../types/eventos";
 import { useNavigate } from "react-router-dom";
 import { useConfirmModal } from "../ui/ComfirmModal";
 import { estrategiaService } from "../../services/database/estrategiaService";
-import toast from "react-hot-toast";
 import { useAlert } from "../ui/AlertBadge";
 import { SyncStatusBadge } from "../ui/SyncStatusBadge";
 import { SyncDataDetail } from "../ui/SyncDataDetail";
@@ -168,7 +167,7 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
               if (expandedMeta === metaId) {
                 setExpandedMeta(null);
               }
-              toast.success('Meta excluída com sucesso!');
+              showAlert({ type: 'success', title: 'Meta excluída com sucesso!' });
               showAlert({
                 type: 'success',
                 title: 'Meta excluída!',

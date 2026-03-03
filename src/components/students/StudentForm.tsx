@@ -12,15 +12,16 @@ import { RxPerson } from "react-icons/rx";
 import { Student, StudentFormData, StudentFormProps } from "../../types";
 import { useState, useEffect } from "react";
 import { useAutoSave } from "../../hooks/useAutoSave";
-import { turmaService } from "../../services/database/turmas.ts";
+import { turmaService } from "../../services/database/turmas";
+import { cursosService } from "../../services/database/curso";
 import { Turma } from "../../types/turma";
 import { Select } from "../ui/Select.jsx";
-import { configService } from "../../services/database/config.ts";
+import { configService } from "../../services/database/config";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { logoBlack } from "../auth/Login.jsx";
-import { useConfirmModal } from "../ui/ComfirmModal.tsx";
-import { useAlert } from "../ui/AlertBadge.tsx";
+import { useConfirmModal } from "../ui/ComfirmModal";
+import { useAlert } from "../ui/AlertBadge";
 
 // ✅ Chave para localStorage
 const getStorageKey = (studentId?: string) => 
@@ -31,6 +32,7 @@ export const SelectTyped = Select as unknown as React.ComponentType<any>;
 export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: StudentFormProps) => {
   const isEditing = !!student;
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [precoCursoById, setPrecoCursoById] = useState<Record<string, number>>({});
   const navigate=useNavigate()
   const [tipoMatricula, setTipoMatricula] = useState<'regular' | 'reforco_personalizado'>(
     student?.tipo_matricula || 'regular'
@@ -138,12 +140,36 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     setTipoMatricula(formData.tipo_matricula || 'regular');
   }, [formData.tipo_matricula]);
 
+  useEffect(() => {
+    if (tipoMatricula !== 'regular' || !formData.turma_id) return;
+
+    const turmaSelecionada = turmas.find((turma) => turma.id === formData.turma_id);
+    if (!turmaSelecionada?.curso_id) return;
+
+    const valorPropinaCurso = Number(precoCursoById[turmaSelecionada.curso_id]);
+    if (!Number.isFinite(valorPropinaCurso)) return;
+
+    setFormData((prev: StudentFormData) =>
+      prev.propina === valorPropinaCurso ? prev : { ...prev, propina: valorPropinaCurso }
+    );
+  }, [tipoMatricula, formData.turma_id, turmas, precoCursoById, setFormData]);
+
   const loadTurmas = async () => {
     try {
-      const res = await turmaService.getTurmas();
+      const [res, cursos, anoLetivo] = await Promise.all([
+        turmaService.getTurmas(),
+        cursosService.getCourses(),
+        configService.getConfigValue("academic", "academic_year")
+      ]);
+
       setTurmas(res ?? []);
-      const anoLetivo = await configService.getConfigValue("academic", "academic_year");
-      setAno(anoLetivo);
+      const precosMap = (cursos ?? []).reduce((acc, curso) => {
+        acc[curso.id] = Number(curso.preco || 0);
+        return acc;
+      }, {} as Record<string, number>);
+      setPrecoCursoById(precosMap);
+
+      setAno(anoLetivo as string);
       setFormData((prev: StudentFormData) => ({ ...prev, ano_lectivo: prev.ano_lectivo || anoLetivo }));
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
@@ -153,7 +179,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
     if(submit){
-      console.log('📤 Submetendo formulário:', formData);
       e.preventDefault();
       onSubmit(formData);
     }

@@ -1,4 +1,4 @@
-// src/pages/Courses/CourseDetails.tsx
+// src/pages/Courses/CourseDetails
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -832,7 +832,7 @@ export const CourseDetails = () => {
                     Nenhum dado de análise disponível
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 mt-2">
-                    {analise?.turmas?.length === 0 
+                    {course.turmas?.length === 0 
                       ? 'Este curso ainda não possui turmas cadastradas.'
                       : 'Aguardando registros de aulas e avaliações.'}
                   </p>

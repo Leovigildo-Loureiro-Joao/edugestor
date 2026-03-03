@@ -1,9 +1,7 @@
 import { motion } from 'framer-motion';
 import { FiAlertCircle, FiBook, FiUser } from 'react-icons/fi';
-import { useState } from 'react';
-import { aulaService } from '../../services/database/planoAulasService';
-import { SyncStatusBadge } from './SyncStatusBadge';
-import { Aula } from '../../types/aula';
+import { useEffect, useMemo, useState } from 'react';
+import { getPendingCount } from '../../utils/emitPendingSync';
 import { BaseEntity } from '../../types/base';
 
 interface SyncDataDetailProps {
@@ -16,9 +14,77 @@ interface SyncDataDetailProps {
 
 export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, onlineStatus,handleForceSync,table,data}) => {
   const [isExpanded, setExpanded] = useState(false);
+  const [pendingCount, setPendingCount] = useState(syncStats);
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  useEffect(() => {
+    setPendingCount(syncStats);
+  }, [syncStats]);
 
-  const DetalheData=(table:string,data:any,index:number)=>{
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCounts = async () => {
+      try {
+        const pending = await getPendingCount(table);
+        if (!mounted) return;
+        setPendingCount(Math.max(0, pending || 0));
+      } catch (error) {
+        if (!mounted) return;
+        setPendingCount(0);
+        console.error('Erro ao carregar pendentes:', error);
+      }
+    };
+
+    loadCounts();
+
+    const handleSyncEvent = (e: CustomEvent) => {
+      if (e.detail?.table === table || e.detail?.table === 'all') {
+        loadCounts();
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes(`sync_${table}`) || e.key?.includes('sync_status')) {
+        loadCounts();
+      }
+    };
+
+    window.addEventListener('sync-pending', handleSyncEvent as EventListener);
+    window.addEventListener('sync-complete', handleSyncEvent as EventListener);
+    window.addEventListener('sync-failed', handleSyncEvent as EventListener);
+    window.addEventListener('storage', handleStorageChange);
+
+    const interval = setInterval(loadCounts, 20000);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('sync-pending', handleSyncEvent as EventListener);
+      window.removeEventListener('sync-complete', handleSyncEvent as EventListener);
+      window.removeEventListener('sync-failed', handleSyncEvent as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [table]);
+
+  const handleSyncNow = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await handleForceSync();
+    } finally {
+      setTimeout(async () => {
+        try {
+          const pending = await getPendingCount(table);
+          setPendingCount(Math.max(0, pending || 0));
+        } finally {
+          setIsSyncing(false);
+        }
+      }, 400);
+    }
+  };
+
+  const DetalheData = ({ table, data, index }: { table: string; data: any; index: number }) => {
     switch(table){
       case 'aulas':
         return <motion.div
@@ -241,7 +307,12 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
         }
     }
 
-    return syncStats > 0 && ( <motion.div
+    const pendingData = useMemo(
+        () => data.filter((dat) => dat.sync_status === 'pending'),
+        [data]
+    );
+
+    return pendingCount > 0 && ( <motion.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
@@ -258,7 +329,7 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
             </div>
             <div>
                 <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-1">
-                {syncStats} {getInfo(table)}{syncStats !== 1 ? 's' : ''} pendente{syncStats !== 1 ? 's' : ''}
+                {pendingCount} {getInfo(table)}{pendingCount !== 1 ? 's' : ''} pendente{pendingCount !== 1 ? 's' : ''}
                 </h3>
                 <p className="text-sm text-orange-700 dark:text-orange-400/80">
                 {!onlineStatus 
@@ -271,11 +342,12 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
             {(
             <div className="flex gap-2">
                 <button
-                onClick={handleForceSync}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white 
+                onClick={handleSyncNow}
+                disabled={!onlineStatus || isSyncing}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white 
                         font-medium rounded-lg text-sm transition-colors"
                 >
-                Sincronizar Agora
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar Agora'}
                 </button>
                 <button
                 onClick={() => {setExpanded(!isExpanded)}}
@@ -299,17 +371,16 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
             <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
             <div className="space-y-3">
                 {
-                    
-                data.filter(dat => dat.sync_status === 'pending')
+                pendingData
                 .slice(0, 3)
                 .map((dat, index) => (
-                    <DetalheData table={table} data={dat} index={index}/>    
+                    <DetalheData key={dat.id || index} table={table} data={dat} index={index}/>    
                 ))}
                 
-                {syncStats > 3 && (
+                {pendingCount > 3 && (
                 <div className="text-center">
                     <span className="text-sm text-orange-600 dark:text-orange-400">
-                    + {syncStats - 3} mais pendentes
+                    + {pendingCount - 3} mais pendentes
                     </span>
                 </div>
                 )}

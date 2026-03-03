@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { 
   FiCalendar, 
   FiFilter, 
+  FiChevronDown,
+  FiChevronUp,
   FiCheckCircle, 
   FiRefreshCw, 
   FiUsers, 
@@ -13,40 +15,49 @@ import {
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
-import { aulaService } from '../../services/database/aulaService.ts';
-import { alunosService } from '../../services/database/alunosService.ts';
-import { turmaService } from '../../services/database/turmas.ts';
-import { Select } from '../../components/ui/Select.jsx';
-import { ModalFrequencia } from '../../components/attendance/FrequeciaModal.tsx';
-import { EstatisticasView } from '../../components/attendance/EstatisticasView.jsx';
+import { aulaService } from '../../services/database/aulaService';
+import { alunosService } from '../../services/database/alunosService';
+import { turmaService } from '../../services/database/turmas';
+import { ModalFrequencia } from '../../components/attendance/FrequeciaModal';
+import { EstatisticasView } from '../../components/attendance/EstatisticasView';
 import { FrequenciasRegistradasView } from '../../components/attendance/FrequenciasRegistradasView.jsx';
-import { Aula } from '../../types/aula.ts';
-import { Student } from '../../types/aluno.ts';
-import { Turma } from '../../types/turma.ts';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
-import { SelectTyped } from '../../components/students/StudentForm.tsx';
-import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
-import { SyncDataDetail } from '../../components/ui/SyncDataDetail.tsx';
-import { useAlert } from '../../components/ui/AlertBadge.tsx';
-import { frequenciaService } from '../../services/database/frequenciaService.ts';
-import { RegistroFrequenciaLote } from '../../types/frequencia.ts';
-import { getPendingCount } from '../../utils/emitPendingSync.ts';
-import TabNavigation from '../../components/ui/TabNavigation.tsx';
-import { usePagination } from '../../hooks/usePagination.ts';
-import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { OverviewFrequenciaView } from '../../components/attendance/OverviewFrequenciaView';
+import { Aula } from '../../types/aula';
+import { Student } from '../../types/aluno';
+import { Turma } from '../../types/turma';
+import { PageLoader } from '../../components/ui/PageLoader';
+import { SelectTyped } from '../../components/students/StudentForm';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { frequenciaService } from '../../services/database/frequenciaService';
+import { RegistroFrequenciaLote } from '../../types/frequencia';
+import { getPendingCount } from '../../utils/emitPendingSync';
+import TabNavigation from '../../components/ui/TabNavigation';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../../components/ui/PaginationControls';
+import { profileService } from '../../services/database/profileService';
 
 // Tipos de dados
 
-interface Estatisticas {
-  // Defina a estrutura das estatísticas conforme necessário
-  totalAulas?: number;
-  frequenciaMedia?: number;
-  // ...
+export interface Estatisticas {
+  totalRegistros: number;
+  totalPresencas: number;
+  taxaPresencaGeral: number;
+  taxaRegistro: number;
+  porData: Array<{ data: string; presenca: number; ausencias: number }>;
+  totalAulas: number;
+  totalAlunos: number;
+  turmasAtivas: number;
+  aulasPendentes: number;
+  aulasRegistradas: number;
+  datasComRegistro: number;
+  ultimaAtualizacao: string;
 }
 
 
 // Tipos para as abas
-type ViewType = 'pendentes' | 'registradas' | 'estatisticas';
+type ViewType = 'overview' | 'pendentes' | 'registradas' | 'estatisticas';
 
 interface TabConfig {
   id: ViewType;
@@ -65,7 +76,8 @@ export const FrequenciaPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [filtroData, setFiltroData] = useState<string>('');
   const [filtroTurma, setFiltroTurma] = useState<string>('Todas Turmas');
-  const [view, setView] = useState<ViewType>('pendentes');
+  const [mostrarFiltros, setMostrarFiltros] = useState<boolean>(true);
+  const [view, setView] = useState<ViewType>('overview');
   const [estatisticas, setEstatisticas] = useState<Estatisticas | null>(null);
   const [frequenciasRegistradas, setFrequenciasRegistradas] = useState<Aula[]>([]);
   const [modalAberta, setModalAberta] = useState<boolean>(false);
@@ -81,17 +93,13 @@ export const FrequenciaPage: React.FC = () => {
 
   useEffect(() => {
     const secaoParam = seccao as ViewType | undefined;
-    if (secaoParam && ['pendentes', 'registradas', 'estatisticas'].includes(secaoParam)) {
+    if (secaoParam && ['overview', 'pendentes', 'registradas', 'estatisticas'].includes(secaoParam)) {
       setView(secaoParam);
       return;
     }
-    setView('pendentes');
+    setView('overview');
   }, [seccao]);
 
-  const handleViewChange = (viewId: ViewType) => {
-    setView(viewId);
-    navigate(`/frequencia/${viewId}`);
-  };
 
 
   const loadSyncStats = async () => {
@@ -108,20 +116,39 @@ export const FrequenciaPage: React.FC = () => {
   const carregarDados = async (): Promise<void> => {
     try {
       setLoading(true);
-      console.log('🔄 Carregando dados...');
-      
       const aulasRecentes: Aula[] = await aulaService.getAulasRecentes(30);
       const alunosData: Student[] = await alunosService.getAllStudents();
-      setStudents(alunosData);
+      const aulas = await aulaService.getAllAulas();
+      
+      const profile = await profileService.getLocalProfile();
+      const role = profile?.role || localStorage.getItem('user_role');
+      const teacherNameKey = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+
+      let aulasFiltradasPorProfessor = aulasRecentes;
+      let alunosFiltradosPorProfessor = alunosData;
+      const esta = await frequenciaService.getEstatisticas();
+      setEstatisticas(esta);
+
+      if (role === 'teacher' && teacherNameKey) {
+        const turmasProfessor = await turmaService.getTurmas();
+        const turmasFiltradas = (turmasProfessor || []).filter(
+          (t) => (t.professor || '').toLowerCase().trim() === teacherNameKey
+        );
+        const turmaIdSet = new Set(turmasFiltradas.map((t) => t.id));
+        aulasFiltradasPorProfessor = aulasRecentes.filter((aula) => turmaIdSet.has(aula.turma_id));
+        alunosFiltradosPorProfessor = alunosData.filter((aluno) => aluno.turma_id && turmaIdSet.has(aluno.turma_id));
+      }
+      
+      setStudents(alunosFiltradosPorProfessor);
 
       // Filtrar apenas aulas ministradas sem frequência
-      const aulasSemFrequencia: Aula[] = aulasRecentes.filter(aula => 
+      const aulasSemFrequencia: Aula[] = aulasFiltradasPorProfessor.filter(aula => 
         aula.status === 'ministrada' && (!aula.registro || aula.registro.length === 0)
       );
       setAulas(aulasSemFrequencia);
 
       // Filtrar aulas com frequência já registrada
-      const aulasComFrequencia: Aula[] = aulasRecentes.filter(aula => 
+      const aulasComFrequencia: Aula[] = aulasFiltradasPorProfessor.filter(aula => 
         aula.status === 'ministrada' && aula.registro && aula.registro.length > 0
       );
       setFrequenciasRegistradas(aulasComFrequencia);
@@ -142,6 +169,18 @@ export const FrequenciaPage: React.FC = () => {
   const carregarTurmas = async (): Promise<void> => {
     try {
       const turmasData: Turma[] = await turmaService.getTurmas();
+      const profile = await profileService.getLocalProfile();
+      const role = profile?.role || localStorage.getItem('user_role');
+      const teacherNameKey = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+
+      if (role === 'teacher' && teacherNameKey) {
+        const filtradas = (turmasData || []).filter(
+          (t) => (t.professor || '').toLowerCase().trim() === teacherNameKey
+        );
+        setTurmas(filtradas);
+        return;
+      }
+
       setTurmas(turmasData || []);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
@@ -150,8 +189,6 @@ export const FrequenciaPage: React.FC = () => {
 
   const handleRegistrarFrequencia = async (registros: RegistroFrequenciaLote): Promise<void> => {
     try {
-      console.log('📝 Registrando frequência:', registros);
-      
       await frequenciaService.registrarFrequenciaLote(registros);
       setAulas(prev => prev.filter(a => a.id !== registros.aula_id));
       setModalAberta(false);
@@ -215,9 +252,10 @@ export const FrequenciaPage: React.FC = () => {
 
   // Configuração das abas
   const tabs: TabConfig[] = [
+    { id: 'overview', icon: FiUsers, label: 'Overview', count: frequenciasFiltradas.length, color: 'teal' },
     { id: 'pendentes', icon: FiClock, label: 'Pendentes', count: aulasFiltradas.length, color: 'blue' },
     { id: 'registradas', icon: FiCheckSquare, label: 'Registradas', count: frequenciasFiltradas.length, color: 'green' },
-    { id: 'estatisticas', icon: FiBarChart2, label: 'Estatísticas', count: null, color: 'purple' }
+    { id: 'estatisticas', count:null, icon: FiBarChart2, label: 'Estatísticas', color: 'purple' }
   ];
 
   // Animations
@@ -238,7 +276,6 @@ export const FrequenciaPage: React.FC = () => {
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
         stiffness: 100,
         damping: 12
       }
@@ -337,58 +374,81 @@ export const FrequenciaPage: React.FC = () => {
           transition={{ delay: 0.3 }}
           className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mb-8 border border-gray-100 dark:border-gray-700"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FiFilter className="text-blue-600" />
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FiFilter className="text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">Filtros</h3>
             </div>
-            <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">Filtros</h3>
+            <button
+              onClick={() => setMostrarFiltros((prev) => !prev)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              {mostrarFiltros ? 'Ocultar' : 'Mostrar'}
+              {mostrarFiltros ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+            </button>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <span className="flex items-center gap-2">
-                    <FiCalendar size={14} />
-                    Data Específica
-                  </span>
-                </label>
-                <motion.input
-                  whileFocus={{ scale: 1.01 }}
-                  type="date"
-                  value={filtroData}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroData(e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                />
-              </div>
+          <AnimatePresence initial={false}>
+            {mostrarFiltros && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <span className="flex items-center gap-2">
+                          <FiCalendar size={14} />
+                          Data Específica
+                        </span>
+                      </label>
+                      <motion.input
+                        whileFocus={{ scale: 1.01 }}
+                        type="date"
+                        value={filtroData}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroData(e.target.value)}
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      />
+                    </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <span className="flex items-center gap-2">
-                    <FiUsers size={14} />
-                    Turma
-                  </span>
-                </label>
-                <SelectTyped 
-                  vect={turmasSelect} 
-                  onChange={setFiltroTurma}
-                  value={filtroTurma}
-                />
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <span className="flex items-center gap-2">
+                          <FiUsers size={14} />
+                          Turma
+                        </span>
+                      </label>
+                      <SelectTyped 
+                        vect={turmasSelect} 
+                        onChange={setFiltroTurma}
+                        value={filtroTurma}
+                      />
+                    </div>
+                    
+                    <div>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
+                        className="w-full mt-6 h-12 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-100 dark:hover:from-gray-600 dark:hover:to-gray-700 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                      >
+                        <FiRefreshCw size={16} />
+                        Limpar Filtros
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
               
-              <div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => { setFiltroData(''); setFiltroTurma('Todas Turmas'); }}
-                  className="w-full mt-6 h-12 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-100 dark:hover:from-gray-600 dark:hover:to-gray-700 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
-                >
-                  <FiRefreshCw size={16} />
-                  Limpar Filtros
-                </motion.button>
-              </div>
-            </div>
-          </div>
+            )}
+            
+          </AnimatePresence>
         </motion.div>
 
         {/* Conteúdo Principal */}
@@ -408,6 +468,15 @@ export const FrequenciaPage: React.FC = () => {
               />
             ) : (
               <div>
+                {view === 'overview' && (
+                  <OverviewFrequenciaView
+                    alunos={alunos}
+                    frequenciasFiltradas={frequenciasFiltradas}
+                    filtroData={filtroData}
+                    filtroTurma={filtroTurma}
+                  />
+                )}
+
                 {view === 'pendentes' && (
                   <motion.div
                     variants={containerVariants}
@@ -447,9 +516,9 @@ export const FrequenciaPage: React.FC = () => {
                                   <FiCalendar size={14} className="text-gray-400" />
                                   <span className="font-medium">
                                     {new Date(aula.data_aula).toLocaleDateString('pt-AO', {
-                                      weekday: 'short',
-                                      day: 'numeric',
-                                      month: 'short'
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric'
                                     })}
                                   </span>
                                 </span>
@@ -518,6 +587,7 @@ export const FrequenciaPage: React.FC = () => {
                     frequenciasFiltradas={frequenciasFiltradas}
                     filtroData={filtroData}
                     filtroTurma={filtroTurma}
+                    alunos={alunos}
                   />
                 )}
 
@@ -556,7 +626,6 @@ export const FrequenciaPage: React.FC = () => {
                 <ModalFrequencia
                   aula={aulaSelecionada}
                   onRegistrarFrequencia={handleRegistrarFrequencia}
-                  isExpandida={true}
                   setAulaSelect={setAulaSelecionada}
                 />
               </div>

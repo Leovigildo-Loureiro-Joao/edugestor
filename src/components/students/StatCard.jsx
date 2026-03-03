@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProgressBar } from "../../pages/Grades/NotasPage";
 
-  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend,funcion=()=>{},progress=false,percent=-1}) => {
+  export const StatCard = ({ title, value, subtitle, icon: Icon, color, trend="",funcion=()=>{},progress=false,percent=-1}) => {
     const colorClasses = {
         blue: { bg: 'bg-white dark:bg-gray-800',bordBg:'bg-blue-500 ', iconBg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-600', value: 'text-gray-900 dark:text-gray-100' },
         green: { bg: 'bg-white dark:bg-gray-800', bordBg:'bg-green-500',iconBg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-600', value: 'text-green-600' },

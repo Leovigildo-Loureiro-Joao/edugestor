@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, Settings, AlertCircle, Info, Clock, DollarSign, X } from 'lucide-react';
+import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
 import { useNavigate } from 'react-router-dom';
 
 interface NotificacoesBellProps {
-  userRole: 'aluno' | 'professor' | 'admin' | 'responsavel';
+  userRole: 'aluno' | 'teacher' | 'admin' | 'manager';
   userId?: string;
   alunoId?: string;
 }
@@ -49,8 +49,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
 
   const mostrarToast = (notif: any) => {
     // Implemente seu sistema de toast aqui
-    console.log(`🔔 ${notif.titulo}: ${notif.corpo}`);
-  };
+    };
 
   const carregarNotificacoes = async () => {
     try {
@@ -230,16 +229,6 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => notificacaoService.verificarNotificacoesAutomaticas()}
-                      className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-                      title="Verificar agora"
-                    >
-                      <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    </motion.button>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                       onClick={() => setAberto(false)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -361,7 +350,6 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => console.log('Ver todas')}
                         className="text-sm text-blue-500 hover:text-blue-600 font-medium underline transition-colors"
                       >
                         Ver todas

@@ -7,17 +7,21 @@ import { Turma } from '../../types/turma';
 interface TurmaTableProps {
   turmas: Turma[];
   onDelete: (turma: Turma) => void;
+  onViewHorario?: (turma: Turma) => void;
   selectTurmaIds?: string[];
   onReload: () => void;
   searchTerm?: string;
+  canManageActions?: boolean;
 }
 
 export const TurmaTable: React.FC<TurmaTableProps> = ({
   turmas,
   onDelete,
+  onViewHorario,
   selectTurmaIds = [],
   onReload,
-  searchTerm = ''
+  searchTerm = '',
+  canManageActions = true
 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
@@ -157,22 +161,36 @@ export const TurmaTable: React.FC<TurmaTableProps> = ({
                 )}
 
                 {/* Ações */}
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <Link
-                    to={`/turmas/editar/${turma.id}`}
-                    className="p-2 text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                    title="Editar turma"
-                  >
-                    <FiEdit size={18} />
-                  </Link>
-                  <button
-                    onClick={() => onDelete(turma)}
-                    className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    title="Excluir turma"
-                  >
-                    <FiTrash2 size={18} />
-                  </button>
-                </div>
+                {canManageActions ? (
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <Link
+                      to={`/turmas/editar/${turma.id}`}
+                      className="p-2 text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                      title="Editar turma"
+                    >
+                      <FiEdit size={18} />
+                    </Link>
+                    <button
+                      onClick={() => onDelete(turma)}
+                      className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Excluir turma"
+                    >
+                      <FiTrash2 size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  onViewHorario && (
+                    <div className="flex items-center justify-end pt-2">
+                      <button
+                        onClick={() => onViewHorario(turma)}
+                        className="p-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                        title="Ver horario"
+                      >
+                        <FiClock size={18} />
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
             </motion.div>
           })}
@@ -289,18 +307,32 @@ export const TurmaTable: React.FC<TurmaTableProps> = ({
                   {turma.ano_lectivo}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <Link
-                    to={`/turmas/editar/${turma.id}`}
-                    className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 transition-colors inline-block mr-3"
-                  >
-                    <FiEdit size={16} />
-                  </Link>
-                  <button
-                    onClick={() => onDelete(turma)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 transition-colors inline-block"
-                  >
-                    <FiTrash2 size={16} />
-                  </button>
+                  {canManageActions ? (
+                    <>
+                      <Link
+                        to={`/turmas/editar/${turma.id}`}
+                        className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 transition-colors inline-block mr-3"
+                      >
+                        <FiEdit size={16} />
+                      </Link>
+                      <button
+                        onClick={() => onDelete(turma)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 transition-colors inline-block"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    onViewHorario && (
+                      <button
+                        onClick={() => onViewHorario(turma)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors inline-block"
+                        title="Ver horario"
+                      >
+                        <FiClock size={16} />
+                      </button>
+                    )
+                  )}
                 </td>
               </motion.tr>
             ))}

@@ -1,4 +1,4 @@
-// src/pages/Admin/PromoteToAdmin.tsx
+// src/pages/Admin/PromoteToAdmin
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/database/db';

@@ -14,7 +14,7 @@ import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 export const ConfiguracoesPage = () => {
   const { seccao } = useParams();
   const navigate = useNavigate();
-  const secoes = ['geral', 'financeiro', 'academico', 'notificacoes', 'seguranca'];
+  const secoes = ['geral', 'financeiro', 'academico', 'notificacoes'];
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('geral');
 
@@ -108,17 +108,7 @@ export const ConfiguracoesPage = () => {
                   Notificações
                 </button>
 
-                <button
-                  onClick={() => handleTabChange('seguranca')}
-                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${
-                    activeTab === 'seguranca' 
-                      ? 'bg-gray-100 text-gray-700 border border-gray-200' 
-                      : 'text-gray-600 dark:text-gray-200 dark:hover:bg-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <FiShield className="inline mr-3" />
-                  Segurança
-                </button>
+                
               </nav>
             </div>
           </motion.div>
@@ -129,7 +119,7 @@ export const ConfiguracoesPage = () => {
             {activeTab === 'financeiro' && <ConfiguracoesFinanceiras />}
             {activeTab === 'academico' && <ConfiguracoesAcademicas />}
             {activeTab === 'notificacoes' && <ConfiguracoesNotificacoes />}
-            {activeTab === 'seguranca' && <ConfiguracoesSeguranca />}
+            {/*activeTab === 'seguranca' && <ConfiguracoesSeguranca />*/}
           </div>
         </div>
       </div>

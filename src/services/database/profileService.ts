@@ -1,14 +1,27 @@
-// services/database/profileService.ts
+// services/database/profileService
 import db, { supabase } from './db';
 import { syncManager } from './syncManager';
 import { SyncStatus } from '../../types/base';
 import { auditLogService } from '../audit/auditLogService';
+import { UserProfile } from '../../types/profile';
 
 export const profileService = {
+  getSessionUserId(): string | null {
+    try {
+      const rawSession = localStorage.getItem('supabase.auth.session');
+      if (!rawSession) return null;
+      const parsed = JSON.parse(rawSession);
+      return parsed?.user?.id || null;
+    } catch {
+      return null;
+    }
+  },
+
   // ✅ Salvar perfil localmente
-  async saveProfile(profile: any) {
+  async saveProfile(profile: any, options?: { syncStatus?: SyncStatus }) {
     try {
       const now = new Date().toISOString();
+      const syncStatus: SyncStatus = options?.syncStatus || profile.sync_status || 'synced';
       // Se você tem tabela profiles no Dexie
       await db.table('profiles')?.put({
         id: profile.id,
@@ -20,48 +33,57 @@ export const profileService = {
         updated_at: now,
         created_at: profile.created_at || now,
         deleted: false,
-        sync_status: 'pending'
+        sync_status: syncStatus
       });
       
       // Também salvar no localStorage para acesso rápido
-      localStorage.setItem('user_profile', JSON.stringify(profile));
+      localStorage.setItem('user_profile', JSON.stringify({
+        ...profile,
+        sync_status: syncStatus,
+        updated_at: now
+      }));
       localStorage.setItem('has_admin_setup', 'true');
       if (profile?.role) localStorage.setItem('user_role', profile.role);
       if (profile?.id) localStorage.setItem('user_id', profile.id);
       if (profile?.instituicao_id) localStorage.setItem('active_instituicao_id', profile.instituicao_id);
       
-      console.log('✅ Perfil salvo localmente');
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao salvar perfil:', error);
     }
   },
   
   // ✅ Buscar perfil local
-  async getLocalProfile() {
+  async getLocalProfile():Promise<UserProfile|null> {
     try {
+      const currentUserId = localStorage.getItem('user_id') || this.getSessionUserId();
+
       // 1. Tentar localStorage primeiro
       const localProfile = localStorage.getItem('user_profile');
       if (localProfile) {
         const profile = JSON.parse(localProfile);
-        if (profile?.instituicao_id) localStorage.setItem("active_instituicao_id", profile.instituicao_id);
-        if (profile?.id) localStorage.setItem("user_id", profile.id);
-        if (profile?.role) localStorage.setItem("user_role", profile.role);
-        return profile;
+        const isCurrentUser = !currentUserId || profile?.id === currentUserId;
+        if (isCurrentUser) {
+          if (profile?.instituicao_id) localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+          if (profile?.id) localStorage.setItem("user_id", profile.id);
+          if (profile?.role) localStorage.setItem("user_role", profile.role);
+          return profile;
+        }
       }
       
-      // 2. Tentar Dexie
-      const profiles = await db.table('profiles')?.toArray();
-      if (profiles && profiles.length > 0) {
-        const profile = profiles[0] as any;
-        if (profile?.instituicao_id) localStorage.setItem("active_instituicao_id", profile.instituicao_id);
-        if (profile?.id) localStorage.setItem("user_id", profile.id);
-        if (profile?.role) localStorage.setItem("user_role", profile.role);
-        return profile;
+      // 2. Tentar Dexie pelo usuário atual
+      if (currentUserId) {
+        const ownProfile = await db.table('profiles')?.get(currentUserId);
+        if (ownProfile) {
+          if (ownProfile?.instituicao_id) localStorage.setItem("active_instituicao_id", ownProfile.instituicao_id);
+          if (ownProfile?.id) localStorage.setItem("user_id", ownProfile.id);
+          if (ownProfile?.role) localStorage.setItem("user_role", ownProfile.role);
+          return ownProfile;
+        }
       }
-      
+
+      // Sem user_id resolvido, evita assumir perfil de outro usuário em dispositivo compartilhado.
       return null;
     } catch (error) {
-      console.log('⚠️ Não há perfil local');
       return null;
     }
   },
@@ -130,8 +152,6 @@ async addUserByAdmin(userData: {
     pendingUsers.push(offlineUser);
     localStorage.setItem('pending_users', JSON.stringify(pendingUsers));
     
-    console.log('📝 Usuário adicionado localmente:', offlineUser);
-
     // 5. NÃO marcar como synced ainda! Remover esta linha:
     // await syncManager.markAsSynced('profiles', offlineUser.id);
 
@@ -155,12 +175,14 @@ async addUserByAdmin(userData: {
       return false;
     }
 
-    console.log('🔑 Token:', session.access_token.substring(0, 20) + '...');
-    console.log('📧 Email do usuário na sessão:', session.user?.email);
-
+    
     // Testar direto com a API do Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl =
+      import.meta.env.VITE_SUPABASE_URL ||
+      (import.meta as any).env?.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey =
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      (import.meta as any).env?.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -171,7 +193,6 @@ async addUserByAdmin(userData: {
 
     if (response.ok) {
       const userData = await response.json();
-      console.log('✅ Token válido! Usuário:', userData.email);
       return true;
     } else {
       const error = await response.json();
@@ -185,20 +206,15 @@ async addUserByAdmin(userData: {
   }
 },
 
-  // ✅ Sincronizar usuários pendentes (APENAS quando admin quiser)
-// ✅ Sincronizar usuários pendentes (APENAS quando admin quiser)
+
 async syncPendingUsers() {
   try {
-    console.log('🔄 Iniciando sincronização de usuários pendentes...');
-
     // Buscar apenas usuários com sync_status = 'pending'
     const pendingUsers = await db.profiles
       .where('sync_status')
       .equals('pending')
       .toArray();
 
-    console.log(`📋 ${pendingUsers.length} usuário(s) pendente(s) encontrado(s):`, 
-      pendingUsers.map(u => ({ email: u.email, role: u.role, id: u.id })));
 
     if (pendingUsers.length === 0) {
       return { success: true, message: 'Nenhum usuário pendente para sincronizar' };
@@ -220,8 +236,6 @@ async syncPendingUsers() {
       };
     }
 
-    console.log('🔑 Token JWT obtido, usuário:', session.user?.email);
-
     // Preparar dados - filtrar apenas campos necessários
     const usersToSync = pendingUsers.map(user => ({
       id: user.id,
@@ -230,8 +244,6 @@ async syncPendingUsers() {
       role: user.role,
       instituicao_id: user.instituicao_id
     }));
-
-    console.log('🚀 Enviando para Edge Function:', usersToSync);
 
     const EDGE_FUNCTION_URL = 'https://fbgpygnqzcifbfzxqlzh.supabase.co/functions/v1/sync';
     
@@ -249,8 +261,6 @@ async syncPendingUsers() {
       signal: controller.signal
     }).finally(() => clearTimeout(timeoutId));
 
-    console.log('📨 Status da resposta:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Erro na resposta:', errorText);
@@ -267,12 +277,8 @@ async syncPendingUsers() {
     }
 
     const result = await response.json();
-    console.log('📦 Resposta da Edge Function:', result);
-
     // Processar resultados
     if (result.details && Array.isArray(result.details)) {
-      console.log('📊 Processando detalhes dos resultados...');
-      
       let successCount = 0;
       let errorCount = 0;
       
@@ -291,11 +297,10 @@ async syncPendingUsers() {
           localStorage.setItem('pending_users', JSON.stringify(updatedPending));
           
           successCount++;
-          console.log(`✅ Usuário ${detail.email} sincronizado com ID: ${detail.supabaseId}`);
-        } else {
+          } else {
           // Marcar como erro
           await db.profiles.update(detail.id, {
-            sync_status: 'error',
+            sync_status: 'failed',
             sync_error: detail.error,
             updated_at: new Date().toISOString()
           });
@@ -305,7 +310,6 @@ async syncPendingUsers() {
         }
       }
       
-      console.log(`🎯 Finalizado: ${successCount} sucesso(s), ${errorCount} erro(s)`);
       
       return {
         ...result,
@@ -372,7 +376,7 @@ async syncPendingUsers() {
         data: data || [],
         message: `Encontrados ${data?.length || 0} usuários`
       };
-    } catch (error) {
+    } catch (error:any) {
       console.error('Erro ao buscar usuários:', error);
       return { success: false, data: [], error: error.message };
     }
@@ -469,7 +473,7 @@ async syncPendingUsers() {
         }
       }
 
-      return localUsers.filter(user => user.status !== 'deleted');
+      return localUsers.filter(user => !user.deleted);
     } catch (error) {
       console.error('Erro ao buscar todos usuários:', error);
       return [];

@@ -1,4 +1,4 @@
-// services/database/aulaService.ts
+// services/database/aulaService
 import { supabase } from '../database/db';
 import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
@@ -73,7 +73,6 @@ export const aulaService = {
         }
       }
 
-      console.log(`🧩 Aula ${aulaId} removida de ${planos.length} plano(s) de aula`);
     } catch (error) {
       console.error('Erro ao remover aula dos planos:', error);
     }
@@ -121,8 +120,6 @@ export const aulaService = {
           deleted: false,
         } as Aula;
 
-        console.log('💾 Salvando aula:', aula.tema_aula || `Aula ${aula.data_aula}`);
-
         await db.aulas.put(aula);
 
         // Adicionar à fila de sincronização
@@ -135,7 +132,6 @@ export const aulaService = {
           created_at: now
         });
 
-        console.log('✅ Aula salva com ID:', id);
         return id;
       } catch (error) {
         console.error('❌ Erro ao salvar aula:', error);
@@ -152,7 +148,6 @@ export const aulaService = {
   // ✅ Buscar todas as aulas
   async getAllAulas(): Promise<Aula[]> {
     try {
-      console.log('📋 Buscando aulas...');
       const activeInstituicaoId = instituicaoIdValue() || '';
       const cacheScope = activeInstituicaoId || 'global';
       const CACHE_KEY = `aulas_all_${cacheScope}`;
@@ -172,12 +167,9 @@ export const aulaService = {
       // 3. Tentar cache primeiro
       const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
-        console.log('✅ Cache HIT para aulas');
         return cached;
       }
       
-      console.log('🔄 Cache MISS para aulas, buscando do banco...');
-
       const [todasAulas, todasTurmas, frequencia] = await Promise.all([
         db.aulas.toArray(),
         db.turmas.toArray(),
@@ -202,8 +194,7 @@ export const aulaService = {
           registro:frequencia.filter((f)=>f.aula_id==aulas.id)
         }
       });
-      console.log(`✅ Encontradas ${aulasAtivas.length} aulas ativas`);
-       const pendentesCount = aulasAtivas.filter(aula => 
+      const pendentesCount = aulasAtivas.filter(aula => 
         aula.sync_status === 'pending' || aula.sync_status === 'pending_delete'
       ).length;
       
@@ -268,10 +259,10 @@ export const aulaService = {
     try {
       const updated_at = new Date().toISOString();
       
-      await db.aulas.update(id, {
-        ...updates,
-        updated_at,
-        sync_status: 'pending' as const,
+      await (db.aulas as any).update(id, {
+        ...updates ,
+        sync_status: 'pending',
+        instituicao_id:instituicaoIdValue(),
       });
 
       // Adicionar/atualizar na fila
@@ -284,13 +275,17 @@ export const aulaService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Aula ${id} marcada para atualização`);
-      
       // Retornar a aula atualizada
-      const aula=await db.aulas.get(id)
-      const turmas = await turmaService.getTurmaById(aula?aula.turma_id:"")
-      const registro=await frequenciaService.getFrequenciaPorAula(id)
-      return {...aula,turmas,registro};
+      const aula = await db.aulas.get(id);
+      if (!aula) {
+        // caso não exista, joga erro para o chamador
+        throw new Error(`Aula ${id} não encontrada`);
+      }
+
+      const turmas = await turmaService.getTurmaById(aula.turma_id);
+      const registro = await frequenciaService.getFrequenciaPorAula(id);
+      // após a checagem, `aula` não é mais undefined
+      return { ...aula, turmas, registro } as Aula;
       
     } catch (error) {
       console.error('Erro ao atualizar aula:', error);
@@ -305,7 +300,7 @@ export const aulaService = {
       await this.removerAulaDosPlanos(id);
 
       if (aula.sync_status === 'synced' && !aula.id.startsWith('local_')) {
-        await db.aulas.update(id, { 
+        await (db.aulas as any).update(id, { 
           deleted: true, 
           sync_status: 'pending_delete' as const,
           updated_at: new Date().toISOString()
@@ -319,8 +314,7 @@ export const aulaService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Aula ${id} marcada para deleção remota`);
-      } else {
+        } else {
         await db.aulas.delete(id);
         
         await db.syncQueue
@@ -328,8 +322,7 @@ export const aulaService = {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Aula ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar aula:', error);
@@ -540,7 +533,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
         const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         porMes[mesKey] = (porMes[mesKey] || 0) + 1;
       });
-      turmas= turmas.sort((a,b)=> a.aulas?.length>b.aulas?.length);
+      turmas= turmas.sort((a,b)=> ((a.aulas??[]).length)-((b.aulas??[]).length));
       return {
         total: todasAulas.length,
         porTurma,

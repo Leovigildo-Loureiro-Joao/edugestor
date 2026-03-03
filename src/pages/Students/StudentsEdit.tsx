@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { StudentForm } from "../../components/students/StudentForm";
-import { alunosService } from "../../services/database/alunosService.ts";
+import { alunosService } from "../../services/database/alunosService";
 import { Student } from "../../types";
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageLoader } from "../../components/ui/PageLoader";
@@ -14,7 +14,7 @@ export const StudentEdit = ()=>{
     const [alunoExistente, setAlunoExistente]=useState<Student|null>(null);
     alunosService.getStudentById(id||"").then((student)=> {
         loading&&setLoading(false);
-        setAlunoExistente(student);
+        setAlunoExistente(student||null);
     })
     if(!loading&& !alunoExistente){
         return <div className="p-4 text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Aluno não encontrado</div>

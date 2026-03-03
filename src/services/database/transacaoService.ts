@@ -1,4 +1,4 @@
-// services/database/transacaoService.ts
+// services/database/transacaoService
 import { supabase } from '../database/db';
 import { propinaService } from './propinas';
 import db from './db';
@@ -14,6 +14,212 @@ import { financeRulesService } from '../finance/financeRulesService';
 const getActiveInstituicaoId = () => instituicaoIdValue();
 
 export const transacaoService = {
+  async enqueuePendingIfAbsent(
+    table: string,
+    recordId: string,
+    instituicaoId: string,
+    operation: 'upsert' | 'delete',
+    now: string
+  ) {
+    const hasPending = await db.syncQueue
+      .where('table')
+      .equals(table)
+      .and(
+        (item) =>
+          item.record_id === recordId &&
+          item.operation === operation &&
+          item.status === 'pending' &&
+          item.instituicao_id === instituicaoId
+      )
+      .first();
+
+    if (!hasPending) {
+      
+      await db.syncQueue.add({
+        table: table as "alunos" | "turmas" | "cursos" | "alocacao" | "transacoes" | "aulas" | "propina" | "frequencias" | "tarefas" | "metas" | "rotinas" | "evento" | "profiles" | "system_config" | "instituicao" | "notificacao" | "avaliacoes" | "turma_horarios" | "planeamentos" | "plano_aulas",
+        instituicao_id: instituicaoId,
+        record_id: recordId,
+        operation,
+        status: 'pending',
+        created_at: now
+      });
+    }
+  },
+
+  async recalculateMetaFromAlocacoes(metaId: string, instituicaoId: string) {
+    const meta = await db.metas.get(metaId);
+    if (!meta || meta.deleted || meta.instituicao_id !== instituicaoId) return false;
+
+    const alocacoesMeta = await db.alocacao
+      .filter((a) => !a.deleted && a.instituicao_id === instituicaoId && a.meta_id === metaId)
+      .toArray();
+
+    const orcamento_alocado = alocacoesMeta.reduce((sum, a) => sum + Number(a.valor || 0), 0);
+    const progresso = meta.orcamento_previsto
+      ? Number(Math.min((orcamento_alocado / meta.orcamento_previsto) * 100, 100).toFixed(1))
+      : Number(meta.progresso || 0);
+
+    const statusAtual = meta.status;
+    const status =
+      statusAtual === 'suspensa' || statusAtual === 'atrasada'
+        ? statusAtual
+        : progresso >= 100
+        ? 'concluida'
+        : progresso > 0
+        ? 'em_andamento'
+        : 'nao_iniciada';
+
+    const mudouMeta =
+      Number(meta.orcamento_alocado || 0) !== orcamento_alocado ||
+      Number(meta.progresso || 0) !== progresso ||
+      meta.status !== status;
+
+    if (!mudouMeta) return false;
+
+    const now = new Date().toISOString();
+    await db.metas.update(metaId, {
+      orcamento_alocado,
+      progresso,
+      status,
+      updated_at: now,
+      sync_status: 'pending',
+    });
+
+    await this.enqueuePendingIfAbsent('metas', metaId, instituicaoId, 'upsert', now);
+    return true;
+  },
+
+  async runAlocacoesBackfill(options?: { force?: boolean }) {
+    try {
+      const instituicaoId = getActiveInstituicaoId();
+      if (!instituicaoId) {
+        return { skipped: true, alocacoesAtualizadas: 0, metasAtualizadas: 0, transacoesAtualizadas: 0 };
+      }
+
+      const todayKey = new Date().toISOString().split('T')[0];
+      const runKey = `alocacoes_backfill_integrity_v3_${instituicaoId}`;
+      const lastRun = localStorage.getItem(runKey);
+      if (!options?.force && lastRun === todayKey) {
+        return { skipped: true, alocacoesAtualizadas: 0, metasAtualizadas: 0, transacoesAtualizadas: 0 };
+      }
+
+      const now = new Date().toISOString();
+      const todasAlocacoes = await db.alocacao
+        .filter((a) => a.instituicao_id === instituicaoId)
+        .toArray();
+      const alocacoes = todasAlocacoes
+        .filter((a) => !a.deleted && a.instituicao_id === instituicaoId)
+        ;
+
+      let alocacoesAtualizadas = 0;
+      let transacoesAtualizadas = 0;
+      const metasImpactadas = new Set<string>();
+      todasAlocacoes.forEach((a) => {
+        if (a.meta_id) metasImpactadas.add(a.meta_id);
+      });
+
+      for (const alocacao of alocacoes) {
+        if (!alocacao.meta_id) continue;
+        const meta = await db.metas.get(alocacao.meta_id);
+        if (!meta || meta.deleted || meta.instituicao_id !== instituicaoId) continue;
+
+        const valor = Number(alocacao.valor || 0);
+        const orcamentoTotal = Number(meta.orcamento_previsto || alocacao.orcamento_total || 0);
+        const percentual = orcamentoTotal > 0 ? Number(((valor / orcamentoTotal) * 100).toFixed(2)) : 0;
+        const orcamentoActual = Number(meta.orcamento_alocado || 0);
+        const data_alocacao = alocacao.data_alocacao || alocacao.created_at || now;
+        const tipo_alocacao = alocacao.tipo_alocacao || 'parcial';
+
+        const precisaAtualizar =
+          Number(alocacao.percentual || 0) !== percentual ||
+          Number(alocacao.orcamento_total || 0) !== orcamentoTotal ||
+          Number(alocacao.orcamento_actual || 0) !== orcamentoActual ||
+          (alocacao.data_alocacao || '') !== data_alocacao ||
+          (alocacao.tipo_alocacao || '') !== tipo_alocacao;
+
+        if (!precisaAtualizar) {
+          metasImpactadas.add(alocacao.meta_id);
+          continue;
+        }
+
+        await db.alocacao.update(alocacao.id, {
+          percentual,
+          orcamento_total: orcamentoTotal,
+          orcamento_actual: orcamentoActual,
+          data_alocacao,
+          tipo_alocacao,
+          updated_at: now,
+          sync_status: 'pending',
+        });
+
+        await this.enqueuePendingIfAbsent('alocacao', alocacao.id, instituicaoId, 'upsert', now);
+
+        alocacoesAtualizadas += 1;
+        metasImpactadas.add(alocacao.meta_id);
+      }
+
+      const transacoesInvestimento = await db.transacoes
+        .filter((t) =>
+          !t.deleted &&
+          t.instituicao_id === instituicaoId &&
+          t.tipo === 'saida' &&
+          t.categoria === 'investimento'
+        )
+        .toArray();
+
+      for (const transacao of transacoesInvestimento) {
+        const valorAtual = Number((transacao as any).valor);
+        const valorInvalido = !Number.isFinite(valorAtual) || (transacao as any).valor == null;
+        if (!valorInvalido) continue;
+
+        const descricao = String(transacao.descricao || '').trim();
+        if (!descricao) continue;
+
+        const alocacoesCandidatas = alocacoes.filter((a) => {
+          const descPadrao = `Alocação para meta ${a.meta_id}`;
+          return (
+            String(a.motivo || '').trim() === descricao ||
+            descPadrao === descricao
+          );
+        });
+
+        if (alocacoesCandidatas.length === 0) continue;
+
+        const alocacaoRef = alocacoesCandidatas.sort((a, b) => {
+          const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+          const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+          return bTime - aTime;
+        })[0];
+
+        const valorCorrigido = Number(alocacaoRef.valor || 0);
+        if (!Number.isFinite(valorCorrigido)) continue;
+
+        await db.transacoes.update(transacao.id, {
+          valor: valorCorrigido,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        await this.enqueuePendingIfAbsent('transacoes', transacao.id, instituicaoId, 'upsert', now);
+
+        transacoesAtualizadas += 1;
+      }
+
+      let metasAtualizadas = 0;
+      for (const metaId of metasImpactadas) {
+        const mudou = await this.recalculateMetaFromAlocacoes(metaId, instituicaoId);
+        if (mudou) metasAtualizadas += 1;
+      }
+
+      localStorage.setItem(runKey, todayKey);
+      
+      return { skipped: false, alocacoesAtualizadas, metasAtualizadas, transacoesAtualizadas };
+    } catch (error) {
+      console.error('❌ Erro no backfill de alocações:', error);
+      return { skipped: false, alocacoesAtualizadas: 0, metasAtualizadas: 0, transacoesAtualizadas: 0, error: true };
+    }
+  },
+
   // ✅ Criar transação localmente
   async createTransacao(transacaoData: TransacaoFormData): Promise<string> {
     try {
@@ -35,8 +241,6 @@ export const transacaoService = {
         deleted: false,
       } as Transacao;
 
-      console.log('💾 Salvando transação:', transacao.descricao);
-      
       await db.transacoes.put(transacao);
       
       // Adicionar à fila de sincronização
@@ -49,7 +253,6 @@ export const transacaoService = {
         created_at: now
       });
 
-      console.log('✅ Transação salva com ID:', id);
       return id;
       
     } catch (error) {
@@ -76,8 +279,6 @@ export const transacaoService = {
         deleted: false,
       } as AlocacaoRecurso;
 
-      console.log('💾 Salvando alocacao:', alocacao.motivo);
-      
       await db.alocacao.put(alocacao);
       
       // Adicionar à fila de sincronização
@@ -97,15 +298,13 @@ export const transacaoService = {
         tipo:'saida',
         valor:alocacao.valor
       })
-      const meta= await estrategiaService.getMetasID(alocacao.meta_id)
-      const progresso:number=meta&&meta.orcamento_previsto?((100*alocacao.valor)/meta.orcamento_previsto):0
+      const meta = await estrategiaService.getMetasID(alocacao.meta_id);
+      const progresso:number = meta && meta.orcamento_previsto ? ((100 * alocacao.valor) / meta.orcamento_previsto) : 0;
       estrategiaService.updateMeta(alocacao.meta_id,{
-        progresso: Math.round(progresso)+meta.progresso
+        progresso: Math.round(progresso) + (meta?.progresso || 0)
 
       })
 
-
-      console.log('✅ Transação salva com ID:', id);
       return id;
       
     } catch (error) {
@@ -201,7 +400,7 @@ export const transacaoService = {
       // Registrar propinas para cada mês (também deve ter sincronização)
       for (let i = 0; i < dados.meses; i++) {
         const mesRef = (dados.mesReferencia[i].substring(0, 3) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez');
-
+        
         await propinaService.registerPropina({
           aluno_id: alunoId,
           data_vencimento: new Date(new Date().getFullYear(), new Date().getMonth() + i + 1, 0).toISOString(),
@@ -245,7 +444,6 @@ export const transacaoService = {
   // ✅ Buscar todas as transações
   async getAllTransactions(): Promise<Transacao[]> {
     try {
-      console.log('📋 Buscando transações...');
       const instituicaoId = getActiveInstituicaoId();
       if (!instituicaoId) return [];
       
@@ -259,7 +457,6 @@ export const transacaoService = {
         new Date(b.data).getTime() - new Date(a.data).getTime()
       );
       
-      console.log(`✅ Encontradas ${transacoesAtivas.length} transações ativas`);
       return transacoesAtivas;
     } catch (error) {
       console.error('❌ Erro ao buscar transações:', error);
@@ -493,9 +690,7 @@ export const transacaoService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Transação ${id} marcada para atualização`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao atualizar transação:', error);
       throw error;
     }
@@ -525,8 +720,7 @@ export const transacaoService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Transação ${id} marcada para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.transacoes.delete(id);
         
@@ -537,8 +731,7 @@ export const transacaoService = {
           .and((item) => item.instituicao_id === instituicaoId)
           .delete();
           
-        console.log(`🗑️ Transação ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar transação:', error);

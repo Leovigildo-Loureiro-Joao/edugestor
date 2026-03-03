@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   FiUsers, FiBook, FiClock, FiCalendar, 
@@ -7,6 +7,9 @@ import {
   FiX
 } from 'react-icons/fi';
 import { Turma } from '../../types/turma';
+import { SelectTyped } from './StudentForm';
+import db from '../../services/database/db';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 type SectionForm = {
   modo: 'nova' | 'existente';
@@ -39,6 +42,43 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
   onChange,
   onSubmit
 }) => {
+  const [professorOptions, setProfessorOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    const loadProfessores = async () => {
+      try {
+        const instituicaoId = instituicaoIdValue();
+        const professores = await db.profiles
+          .where('role')
+          .equals('teacher')
+          .toArray();
+
+        const filtrados = instituicaoId
+          ? professores.filter((p: any) => p.instituicao_id === instituicaoId)
+          : professores;
+
+        let options = filtrados.map((p: any) => {
+          const label = p.full_name || p.nome || p.email || 'Professor';
+          return { value: label, label };
+        });
+
+        if (options.length === 0) {
+          options = [{ value: '', label: 'Sem professores' }];
+        }
+
+        setProfessorOptions(options);
+
+        if (!form.professor && options.length > 0) {
+          onChange({ professor: options[0].value });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar professores:', error);
+      }
+    };
+
+    loadProfessores();
+  }, []);
+
   const isFormValid = () => {
     if (form.modo === 'existente') {
       return form.turmaExistenteId !== '';
@@ -264,12 +304,12 @@ export const ReforcoSectionModal: React.FC<ReforcoSectionModalProps> = ({
                           <FiUser className="inline mr-1 h-3 w-3" />
                           Professor
                         </label>
-                        <input
-                          type="text"
+                        <SelectTyped
+                          vect={professorOptions}
+                          icon={FiUser}
+                          onChange={(value: string) => onChange({ professor: value })}
                           value={form.professor}
-                          onChange={(e) => onChange({ professor: e.target.value })}
-                          placeholder="Nome do professor"
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
+                          className="w-full"
                         />
                       </div>
 

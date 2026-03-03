@@ -1,4 +1,4 @@
-// src/pages/Setup/InitialSetup.tsx - VERSÃO SIMPLIFICADA
+// src/pages/Setup/InitialSetup - VERSÃO SIMPLIFICADA
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/database/db';

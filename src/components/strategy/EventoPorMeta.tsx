@@ -1,4 +1,4 @@
-// components/dashboard/EventosPorMeta.tsx
+// components/dashboard/EventosPorMeta
 import React, { useState, useEffect } from 'react';
 import { FiCalendar, FiTarget, FiTrendingUp } from 'react-icons/fi';
 import { eventoService } from '../../services/database/eventoService';

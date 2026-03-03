@@ -19,8 +19,17 @@ import { useAlert } from '../ui/AlertBadge';
 import { ModalSelecionarMetas } from './modals/ModalSelecionarMetas';
 import { ModalSelecionarTarefas } from './modals/ModalSelecionarTarefas';
 
+interface AtividadeDetalheSelecionada {
+  diaIndex: number;
+  atividadeIndex: number;
+}
 
-export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,planejamento,setPlanejamento,modo,setModo,carregando,setCarregando}:{criarPlaneamento:any,planejamento:PlaneamentoSemanalType | null,setPlanejamento:(p:PlaneamentoSemanalType | null) => void,modo:'visualizacao' | 'criacao'|'edição',setModo:React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>,dataAtual:string,setDataAtual?:React.Dispatch<React.SetStateAction<string>>,carregando?:boolean,setCarregando?:React.Dispatch<React.SetStateAction<boolean>>}) => {
+interface AtividadeEdicaoSelecionada {
+  diaIndex: number;
+  atividadeIndex: number;
+}
+
+export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,planejamento,setPlanejamento,modo,setModo,carregando,setCarregando}:{criarPlaneamento:any,planejamento:PlaneamentoSemanalType | null,setPlanejamento:(p:PlaneamentoSemanalType | null) => void,modo:'visualizacao' | 'criacao'|'edição',setModo:React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao'>>,dataAtual:Date,setDataAtual?:React.Dispatch<React.SetStateAction<Date>>,carregando?:boolean,setCarregando?:React.Dispatch<React.SetStateAction<boolean>>}) => {
   // Estados para modais
   const [modalMeta, setModalMeta] = useState(false);
   const [modalTarefa, setModalTarefa] = useState(false);
@@ -28,15 +37,30 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
   const [modalPlaneamento, setModalPlaneamento] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<any>(null);
   const [atividadeSelecionada, setAtividadeSelecionada] = useState<any>(null);
+  const [atividadeDetalheSelecionada, setAtividadeDetalheSelecionada] = useState<AtividadeDetalheSelecionada | null>(null);
+  const [atividadeEdicaoSelecionada, setAtividadeEdicaoSelecionada] = useState<AtividadeEdicaoSelecionada | null>(null);
   
   const { showAlert } = useAlert();
   
   const diasDaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const getDiaCurto = (data: Date) => diasDaSemana[data.getDay()];
+  const toIsoDate = (data: Date) => data.toISOString().split('T')[0];
+
   const dias = Array.from({ length: 7 }, (_, i) => {
     const data = new Date(dataAtual);
     data.setDate(data.getDate() - data.getDay() + i);
     return data;
   });
+
+  useEffect(() => {
+    if (!planejamento || !atividadeDetalheSelecionada) return;
+
+    const dia = planejamento.dias?.[atividadeDetalheSelecionada.diaIndex];
+    const atividade = dia?.atividades?.[atividadeDetalheSelecionada.atividadeIndex];
+    if (!atividade) {
+      setAtividadeDetalheSelecionada(null);
+    }
+  }, [planejamento, atividadeDetalheSelecionada]);
   
   // ========== ADICIONAR ATIVIDADE RÁPIDA ==========
   const adicionarAtividade = async () => {
@@ -47,12 +71,22 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
       const diaIndex = novosDias.findIndex(d => d.data === diaSelecionado.data);
       
       if (diaIndex !== -1) {
-        novosDias[diaIndex].atividades.push({
+        const atividadePayload = {
           hora: atividadeSelecionada.hora || '08:00',
           titulo: atividadeSelecionada.titulo,
           tipo: atividadeSelecionada.tipo || 'aula',
           descricao: atividadeSelecionada.descricao
-        });
+        };
+
+        if (
+          atividadeEdicaoSelecionada &&
+          atividadeEdicaoSelecionada.diaIndex === diaIndex &&
+          novosDias[diaIndex].atividades[atividadeEdicaoSelecionada.atividadeIndex]
+        ) {
+          novosDias[diaIndex].atividades[atividadeEdicaoSelecionada.atividadeIndex] = atividadePayload;
+        } else {
+          novosDias[diaIndex].atividades.push(atividadePayload);
+        }
 
         const atualizado = await estrategiaPlaneamentoService.updatePlano(planejamento.id, {
           ...planejamento,
@@ -63,11 +97,14 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
         setModalAtividade(false);
         setDiaSelecionado(null);
         setAtividadeSelecionada(null);
+        setAtividadeEdicaoSelecionada(null);
         
         showAlert({
           type: 'success',
-          title: 'Atividade adicionada!',
-          message: 'Atividade adicionada ao planejamento.',
+          title: atividadeEdicaoSelecionada ? 'Atividade atualizada!' : 'Atividade adicionada!',
+          message: atividadeEdicaoSelecionada
+            ? 'Atividade atualizada no planejamento.'
+            : 'Atividade adicionada ao planejamento.',
           duration: 2000
         });
       }
@@ -120,6 +157,15 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
       });
 
       setPlanejamento(atualizado.data);
+      setAtividadeDetalheSelecionada((current) => {
+        if (!current) return current;
+        if (current.diaIndex !== diaIndex) return current;
+        if (current.atividadeIndex === atvIndex) return null;
+        if (current.atividadeIndex > atvIndex) {
+          return { ...current, atividadeIndex: current.atividadeIndex - 1 };
+        }
+        return current;
+      });
       
       showAlert({
         type: 'success',
@@ -251,6 +297,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               onClick={() => {
                 const novaData = new Date(dataAtual);
                 novaData.setDate(novaData.getDate() - 7);
+                if(setDataAtual)
                 setDataAtual(novaData);
               }}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -266,6 +313,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               onClick={() => {
                 const novaData = new Date(dataAtual);
                 novaData.setDate(novaData.getDate() + 7);
+                if(setDataAtual)
                 setDataAtual(novaData);
               }}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -350,9 +398,10 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
           {/* Calendário Semanal */}
           <div className="grid grid-cols-7 gap-3">
             {dias.map((dia, index) => {
-              const diaSemana = diasDaSemana[index];
+              const diaSemana = getDiaCurto(dia);
+              const dataDiaIso = toIsoDate(dia);
               const diaPlanejamento = planejamento.dias?.find(
-                d => d.dia.toLowerCase() === diasDaSemana[index].toLowerCase()
+                d => d.data === dataDiaIso
               );
               const tarefas = diaPlanejamento?.atividades || [];
               
@@ -371,11 +420,22 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                     {tarefas.slice(0, 3).map((tarefa, tIndex) => (
                       <div 
                         key={tIndex}
+                        onClick={() =>
+                          setAtividadeDetalheSelecionada({
+                            diaIndex: index,
+                            atividadeIndex: tIndex
+                          })
+                        }
                         className={`p-2 rounded-lg text-xs ${
                           tarefa.tipo === 'reuniao' ? 'bg-purple-100 text-purple-800' :
                           tarefa.tipo === 'aula' ? 'bg-green-100 text-green-800' :
                           tarefa.tipo === 'planejamento' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800 dark:text-gray-100'
+                        } cursor-pointer transition-all ${
+                          atividadeDetalheSelecionada?.diaIndex === index &&
+                          atividadeDetalheSelecionada?.atividadeIndex === tIndex
+                            ? 'ring-2 ring-blue-400'
+                            : ''
                         }`}
                       >
                         <div className="font-medium truncate">{tarefa.titulo}</div>
@@ -395,9 +455,16 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                     <button
                       onClick={() => {
                         setDiaSelecionado(diaPlanejamento || {
-                          dia: diasDaSemana[index].toLowerCase(),
-                          data: dia.toISOString().split('T')[0],
+                          dia: diaSemana.toLowerCase(),
+                          data: dataDiaIso,
                           atividades: []
+                        });
+                        setAtividadeEdicaoSelecionada(null);
+                        setAtividadeSelecionada({
+                          hora: '08:00',
+                          tipo: 'aula',
+                          titulo: '',
+                          descricao: ''
                         });
                         setModalAtividade(true);
                       }}
@@ -411,8 +478,98 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
             })}
           </div>
 
+          {atividadeDetalheSelecionada && (() => {
+            const dia = planejamento.dias?.[atividadeDetalheSelecionada.diaIndex];
+            const atividade = dia?.atividades?.[atividadeDetalheSelecionada.atividadeIndex];
+            if (!dia || !atividade) return null;
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100">
+                      Detalhes da Atividade
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {getDiaCurto(new Date(dia.data))} - {new Date(dia.data).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setAtividadeDetalheSelecionada(null)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <FiX className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Título</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{atividade.titulo}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Hora</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{atividade.hora || '--:--'}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
+                    <p className="font-medium text-gray-900 dark:text-white capitalize">{atividade.tipo || 'atividade'}</p>
+                  </div>
+                </div>
+
+                {atividade.descricao && (
+                  <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Descrição</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{atividade.descricao}</p>
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setDiaSelecionado({
+                        dia: dia.dia,
+                        data: dia.data,
+                        atividades: dia.atividades
+                      });
+                      setAtividadeSelecionada({
+                        hora: atividade.hora || '08:00',
+                        titulo: atividade.titulo || '',
+                        tipo: atividade.tipo || 'aula',
+                        descricao: atividade.descricao || ''
+                      });
+                      setAtividadeEdicaoSelecionada({
+                        diaIndex: atividadeDetalheSelecionada.diaIndex,
+                        atividadeIndex: atividadeDetalheSelecionada.atividadeIndex
+                      });
+                      setModalAtividade(true);
+                    }}
+                    className="flex items-center px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                  >
+                    <FiEdit2 className="mr-2" /> Editar atividade
+                  </button>
+                  <button
+                    onClick={() =>
+                      deletarAtividade(
+                        atividadeDetalheSelecionada.diaIndex,
+                        atividadeDetalheSelecionada.atividadeIndex
+                      )
+                    }
+                    className="flex items-center px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                  >
+                    <FiTrash2 className="mr-2" /> Remover atividade
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
+
           {/* Metas e Tarefas Conectadas */}
-          {(planejamento.metas_ids?.length > 0 || planejamento.tarefas_ids?.length > 0) && (
+          {((planejamento.metas_ids?.length??0) > 0 || planejamento.tarefas_ids?.length > 0) && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Itens Conectados</h3>
               <div className="flex flex-wrap gap-3">
@@ -488,7 +645,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                   <FiCalendar className="mr-2 text-blue-600" />
-                  Adicionar Atividade
+                  {atividadeEdicaoSelecionada ? 'Editar Atividade' : 'Adicionar Atividade'}
                 </h3>
                 <button
                   onClick={() => setModalAtividade(false)}
@@ -501,9 +658,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
               {diaSelecionado && (
                 <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-medium">Dia:</span> {diasDaSemana.find(d => 
-                      d.toLowerCase() === diaSelecionado.dia
-                    )} - {new Date(diaSelecionado.data).toLocaleDateString('pt-BR')}
+                    <span className="font-medium">Dia:</span> {getDiaCurto(new Date(diaSelecionado.data))} - {new Date(diaSelecionado.data).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               )}
@@ -515,7 +670,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                   </label>
                   <input
                     type="time"
-                    defaultValue="08:00"
+                    value={atividadeSelecionada?.hora || '08:00'}
                     onChange={(e) => setAtividadeSelecionada({
                       ...atividadeSelecionada,
                       hora: e.target.value
@@ -529,12 +684,12 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                     Tipo de Atividade
                   </label>
                   <select
+                    value={atividadeSelecionada?.tipo || 'aula'}
                     onChange={(e) => setAtividadeSelecionada({
                       ...atividadeSelecionada,
                       tipo: e.target.value
                     })}
                     className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-                    defaultValue="aula"
                   >
                     <option value="aula">Aula</option>
                     <option value="reuniao">Reunião</option>
@@ -551,6 +706,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                   <input
                     type="text"
                     placeholder="Ex: Aula de Matemática"
+                    value={atividadeSelecionada?.titulo || ''}
                     onChange={(e) => setAtividadeSelecionada({
                       ...atividadeSelecionada,
                       titulo: e.target.value
@@ -565,6 +721,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                   </label>
                   <textarea
                     placeholder="Detalhes da atividade..."
+                    value={atividadeSelecionada?.descricao || ''}
                     onChange={(e) => setAtividadeSelecionada({
                       ...atividadeSelecionada,
                       descricao: e.target.value
@@ -580,6 +737,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                       setModalAtividade(false);
                       setDiaSelecionado(null);
                       setAtividadeSelecionada(null);
+                      setAtividadeEdicaoSelecionada(null);
                     }}
                     className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
@@ -590,7 +748,7 @@ export const PlaneamentoSemanal = ({dataAtual,setDataAtual,criarPlaneamento,plan
                     disabled={!atividadeSelecionada?.titulo}
                     className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Adicionar
+                    {atividadeEdicaoSelecionada ? 'Salvar alterações' : 'Adicionar'}
                   </button>
                 </div>
               </div>

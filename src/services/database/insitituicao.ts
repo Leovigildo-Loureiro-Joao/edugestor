@@ -2,25 +2,59 @@ import db from "./db";
 import { Instituicao } from "../../types";
 import { profileService } from "./profileService";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
-import { generateUniqueId } from "../../utils/idGenarator";
+
+const DEFAULT_INSTITUICAO_ID = "local_default_instituicao";
 
 export const instituicaoService = {
+  async resolveActiveInstituicaoId(): Promise<string> {
+    const active = instituicaoIdValue();
+    if (active && active !== DEFAULT_INSTITUICAO_ID) return active;
+
+    const profile = await profileService.getLocalProfile();
+    if (profile?.instituicao_id) {
+      localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+      return profile.instituicao_id;
+    }
+
+    const existentes = await db.instituicao
+      .filter((item) => !item.deleted)
+      .toArray();
+
+    if (existentes.length > 0) {
+      const [maisRecente] = existentes.sort(
+        (a, b) =>
+          new Date(b.updated_at || b.created_at || 0).getTime() -
+          new Date(a.updated_at || a.created_at || 0).getTime()
+      );
+      if (maisRecente?.id) {
+        localStorage.setItem("active_instituicao_id", maisRecente.id);
+        return maisRecente.id;
+      }
+    }
+
+    if (!active) {
+      localStorage.setItem("active_instituicao_id", DEFAULT_INSTITUICAO_ID);
+    }
+    return active || DEFAULT_INSTITUICAO_ID;
+  },
+
   // ============ OBTER CONFIGURAÇÃO ============
   async getConfig(): Promise<Instituicao> {
     try {
-      const profile = await profileService.getLocalProfile();
-      const activeId = instituicaoIdValue() || profile?.instituicao_id || '';
-      const instituicao = activeId ? await db.instituicao.get(activeId) : undefined;
+      const activeId = await this.resolveActiveInstituicaoId();
+      const instituicao = await db.instituicao.get(activeId);
       
       if (!instituicao || instituicao.deleted) {
         // Se não existir, criar configuração padrão minimalista
-        return await this.createDefaultConfig();
+        return await this.createDefaultConfig(activeId);
       }
       
+      localStorage.setItem("active_instituicao_id", instituicao.id);
       return instituicao;
     } catch (error) {
       console.error('Erro ao buscar configuração da instituição:', error);
-      return await this.createDefaultConfig();
+      const fallbackId = await this.resolveActiveInstituicaoId();
+      return await this.createDefaultConfig(fallbackId);
     }
   },
 
@@ -30,7 +64,7 @@ export const instituicaoService = {
       const now = new Date().toISOString();
       
       // Buscar configuração atual
-      const id = instituicaoIdValue() || config.id || '';
+      const id = config.id || (await this.resolveActiveInstituicaoId());
       const existingConfig = id ? await db.instituicao.get(id) : undefined;
       
       const instituicaoAtualizada: Instituicao = {
@@ -48,7 +82,7 @@ export const instituicaoService = {
         
         // Aplicar atualizações
         ...config,
-        id: existingConfig?.id || id || generateUniqueId(),
+        id: existingConfig?.id || id,
         sync_status:existingConfig?.sync_status||"pending",
 
         // Campos fixos
@@ -56,22 +90,19 @@ export const instituicaoService = {
         updated_at: now
       };
 
-      console.log('💾 Atualizando configuração da instituição:', instituicaoAtualizada.nome_escola);
-      
       await db.instituicao.put(instituicaoAtualizada);
+      localStorage.setItem("active_instituicao_id", instituicaoAtualizada.id);
 
       // Adicionar à fila de sincronização se necessário
       await db.syncQueue.add({
         table: 'instituicao',
-        instituicao_id:instituicaoIdValue(),
+        instituicao_id: instituicaoAtualizada.id,
         record_id: instituicaoAtualizada.id,
         operation: 'upsert',
         status: 'pending',
         created_at: now
       });
 
-      console.log('✅ Configuração da instituição atualizada');
-      
       return instituicaoAtualizada;
     } catch (error) {
       console.error('Erro ao atualizar configuração da instituição:', error);
@@ -80,11 +111,17 @@ export const instituicaoService = {
   },
 
   // ============ CRIAR CONFIGURAÇÃO PADRÃO ============
-  async createDefaultConfig(): Promise<Instituicao> {
+  async createDefaultConfig(preferredId?: string): Promise<Instituicao> {
     try {
       const now = new Date().toISOString();
       const currentYear = new Date().getFullYear();
-      const id=generateUniqueId();
+      const id = preferredId || (await this.resolveActiveInstituicaoId()) || DEFAULT_INSTITUICAO_ID;
+      const existente = await db.instituicao.get(id);
+      if (existente && !existente.deleted) {
+        localStorage.setItem("active_instituicao_id", existente.id);
+        return existente;
+      }
+
       const defaultConfig: Instituicao = {
         nome_escola: 'CETE - Centro de Explicação Tia Esperança',
         endereco: '',
@@ -101,27 +138,28 @@ export const instituicaoService = {
         sync_status: "pending"
       };
 
-      console.log('🏫 Criando configuração padrão da instituição');
-      
       await db.instituicao.put(defaultConfig);
+      localStorage.setItem("active_instituicao_id", id);
 
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'instituicao',
         record_id: id,
-        instituicao_id:instituicaoIdValue(),
+        instituicao_id: id,
         operation: 'upsert',
         status: 'pending',
         created_at: now
       });
 
-      console.log('✅ Configuração padrão da instituição criada');
-      
       return defaultConfig;
     } catch (error) {
       console.error('❌ Erro ao criar configuração padrão:', error);
       // Retornar objeto mínimo em caso de erro
+      const fallbackId = preferredId || instituicaoIdValue() || DEFAULT_INSTITUICAO_ID;
+      localStorage.setItem("active_instituicao_id", fallbackId);
       return {
+        id: fallbackId,
+        sync_status:"pending",
         nome_escola: 'CETE',
         ano_lectivo: new Date().getFullYear().toString(),
         created_at: new Date().toISOString(),
@@ -137,15 +175,11 @@ export const instituicaoService = {
       const instituicao = await db.instituicao.get(id);
       
       if (!instituicao) {
-        console.log('📭 Nenhuma instituição para sincronizar');
         return;
       }
 
-      console.log('🔄 Sincronizando instituição...');
-
       try {
         // Aqui você implementaria a sincronização com Supabase
-        console.log(`📤 Enviando instituição para servidor: ${instituicao.nome_escola}`);
         // Exemplo:
         // const { error } = await supabase
         //   .from('instituicao')
@@ -161,8 +195,7 @@ export const instituicaoService = {
           .equals(id)
           .delete();
 
-        console.log('✅ Instituição sincronizada com sucesso');
-      } catch (syncError) {
+        } catch (syncError) {
         console.error('❌ Erro ao sincronizar instituição:', syncError);
         throw syncError;
       }
@@ -262,8 +295,7 @@ export const instituicaoService = {
         .where('record_id')
         .equals(id)
         .delete();
-      console.log('🧹 Configuração da instituição removida');
-    }
+      }
   },
 
   // Método rápido para obter nome da escola

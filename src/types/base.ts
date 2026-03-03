@@ -6,7 +6,7 @@ import { AlocacaoRecurso, Transacao } from "./transacao";
 import { Aula } from "./aula";
 import { Propina } from "./propina";
 import { Frequencia } from "./frequencia";
-import { EventFormData, Meta, PlanoAcao, Rotina, Tarefa } from "./eventos";
+import { EventFormData, Meta, Rotina, Tarefa } from "./eventos";
 import { SystemConfig } from "./config";
 import { UserProfile } from "./profile";
 import { Instituicao } from ".";
@@ -23,6 +23,8 @@ export interface BaseEntity {
   instituicao_id?: string;
   sync_status: SyncStatus;
   deleted?: boolean;
+  sync_error?: {},
+  deleted_at?:string;
   created_at?: string;
   updated_at?: string;
 
@@ -35,7 +37,7 @@ export interface SyncQueueItem {
   record_id: string;
   operation: 'upsert' | 'delete';
   status: SyncStatus;
-  retryCount?: number;
+  retry_count?: number;
   created_at?: string;
   error?:string;
   data?: string; // JSON string dos dados

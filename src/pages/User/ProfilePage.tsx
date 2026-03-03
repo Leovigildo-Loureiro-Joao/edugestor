@@ -17,7 +17,7 @@ import {
   FiCheckCircle
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import { notificacaoService } from '../../services/database/notificacaoService';
+import { notificacaoService, PrioridadeNotificacao, TipoNotificacao } from '../../services/database/notificacaoService';
 
 
 const ProfilePage: React.FC = () => {
@@ -69,6 +69,15 @@ const ProfilePage: React.FC = () => {
       loadProfileStats();
     }
   }, [user, profile]);
+
+  const resetFormData = () => {
+    setFormData({
+      full_name: profile?.full_name || '',
+      email: profile?.email || user?.email || '',
+      role: profile?.role || 'user',
+      created_at: profile?.created_at || user?.created_at || ''
+    });
+  };
 
   const loadProfileStats = async () => {
     try {
@@ -133,10 +142,11 @@ const ProfilePage: React.FC = () => {
       });
 
       // Criar notificação de atualização de perfil
-      await notificacaoService.criarNotificacaoSistema({
+      await notificacaoService.criarNotificacao({
         titulo: 'Perfil Atualizado',
         corpo: 'Seus dados de perfil foram atualizados com sucesso',
-        tipo: 'perfil',
+        tipo: TipoNotificacao.SISTEMA,
+        prioridade: PrioridadeNotificacao.BAIXA,
         meta: { updated_at: new Date().toISOString() }
       });
 
@@ -171,10 +181,11 @@ const ProfilePage: React.FC = () => {
       await changePassword(passwordData.currentPassword, passwordData.newPassword);
 
       // Criar notificação de alteração de senha
-      await notificacaoService.criarNotificacaoSistema({
+      await notificacaoService.criarNotificacao({
         titulo: 'Senha Alterada',
         corpo: 'Sua senha foi alterada com sucesso',
-        tipo: 'segurança',
+        tipo: TipoNotificacao.SISTEMA,
+        prioridade: PrioridadeNotificacao.MEDIA,
         meta: { changed_at: new Date().toISOString() }
       });
 
@@ -342,7 +353,10 @@ const ProfilePage: React.FC = () => {
                           <span>{loading ? 'Salvando...' : 'Salvar'}</span>
                         </button>
                         <button
-                          onClick={() => setIsEditing(false)}
+                          onClick={() => {
+                            resetFormData();
+                            setIsEditing(false);
+                          }}
                           className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg flex items-center space-x-2"
                         >
                           <FiX />
@@ -634,7 +648,7 @@ const ProfilePage: React.FC = () => {
               <div className="p-6">
                 <div className="space-y-3">
                   <button
-                    onClick={() => console.log('Exportar dados')}
+                    onClick={() => {}}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
                   >
                     <FiUpload />
@@ -642,7 +656,7 @@ const ProfilePage: React.FC = () => {
                   </button>
                   
                   <button
-                    onClick={() => console.log('Atividade')}
+                    onClick={() => {}}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
                   >
                     <FiDatabase />
@@ -650,7 +664,7 @@ const ProfilePage: React.FC = () => {
                   </button>
                   
                   <button
-                    onClick={() => console.log('Sessões')}
+                    onClick={() => {}}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg flex items-center space-x-3"
                   >
                     <FiShield />
@@ -658,7 +672,7 @@ const ProfilePage: React.FC = () => {
                   </button>
                   
                   <button
-                    onClick={() => console.log('Suporte')}
+                    onClick={() => {}}
                     className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-3"
                   >
                     <FiBell />
@@ -694,7 +708,7 @@ const ProfilePage: React.FC = () => {
               </ul>
               
               <button
-                onClick={() => console.log('Mais segurança')}
+                onClick={() => {}}
                 className="w-full mt-4 px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
               >
                 Saiba Mais
@@ -721,7 +735,7 @@ const ProfilePage: React.FC = () => {
             </div>
             <div className="mt-4 md:mt-0">
               <button
-                onClick={() => console.log('Recarregar')}
+                onClick={() => {}}
                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Recarregar Dados

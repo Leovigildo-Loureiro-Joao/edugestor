@@ -9,19 +9,18 @@ export type {
   PlaneamentoSemanal as PlaneamentoSemanalType,
   Semanas,
   PlaneamentoMensal,
-} from './planeamento';
+} from './planeamento/index';
 
-export interface PlaneamentoAnual extends PlaneamentoBaseCore {
+export interface PlaneamentoAnual extends Omit<PlaneamentoBaseCore, 'tipo'> {
   tipo: 'anual';
   objetivos_anuais?: string[];
   metas_ids?: string[];
   tarefas_ids?: string[];
 }
 
-export interface PlaneamentoTrimestral extends PlaneamentoBaseCore {
+export interface PlaneamentoTrimestral extends Omit<PlaneamentoBaseCore, 'tipo'> {
   tipo: 'trimestral';
   objetivos_trimestrais?: string[];
   metas_ids?: string[];
   tarefas_ids?: string[];
 }
-

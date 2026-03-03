@@ -1,4 +1,4 @@
-// components/ui/AreaChart.tsx - VERSÃO COM RECHARTS
+// components/ui/AreaChart - VERSÃO COM RECHARTS
 import React from 'react';
 import { 
   AreaChart as RechartsAreaChart, 
@@ -109,7 +109,7 @@ const AreaChart: React.FC<AreaChartProps> = ({
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
               }}
-              formatter={(value: number) => [value, 'Valor']}
+              formatter={(value: number | undefined) => [value ?? 0, 'Valor']}
               labelFormatter={(label) => `Período: ${label}`}
             />
             
@@ -129,7 +129,7 @@ const AreaChart: React.FC<AreaChartProps> = ({
                   <Area
                     key={category}
                     type="monotone"
-                    dataKey={category}
+                    dataKey={category||""}
                     stroke={cores[index % cores.length]}
                     fill={cores[index % cores.length]}
                     fillOpacity={0.3}
@@ -141,7 +141,7 @@ const AreaChart: React.FC<AreaChartProps> = ({
                   <Area
                     key={category}
                     type="monotone"
-                    dataKey={category}
+                    dataKey={category||""}
                     stroke={cores[index % cores.length]}
                     fill="transparent"
                     strokeWidth={2}

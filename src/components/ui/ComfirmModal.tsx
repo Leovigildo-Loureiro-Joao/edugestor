@@ -21,7 +21,7 @@ export type ConfirmActionType =
 
 export interface ConfirmModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onConfirm: () => void;
   title?: string;
   message: string;
@@ -174,10 +174,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 export const useConfirmModal = () => {
   const [modalState, setModalState] = useState({
     isOpen: false,
-    props: {} as Omit<ConfirmModalProps, 'isOpen' | 'onClose'>
+    props: {
+      onConfirm: () => {},
+      message: ''
+    } as Omit<ConfirmModalProps, 'isOpen'>
   });
 
-  const confirm = (props: Omit<ConfirmModalProps, 'isOpen' | 'onClose'>): Promise<boolean> => {
+  const confirm = (props: Omit<ConfirmModalProps, 'isOpen'>): Promise<boolean> => {
     return new Promise((resolve) => {
       setModalState({
         isOpen: true,
@@ -186,11 +189,11 @@ export const useConfirmModal = () => {
           onConfirm: () => {
             props.onConfirm();
             resolve(true);
-            setModalState({ isOpen: false, props: {} });
+            setModalState({ isOpen: false, props: { onConfirm: () => {}, message: '' } });
           },
           onClose: () => {
             resolve(false);
-            setModalState({ isOpen: false, props: {} });
+            setModalState({ isOpen: false, props: { onConfirm: () => {}, message: '' } });
           }
         }
       });
@@ -202,7 +205,7 @@ export const useConfirmModal = () => {
       isOpen={modalState.isOpen}
       onClose={() => {
         modalState.props.onClose?.();
-        setModalState({ isOpen: false, props: {} });
+        setModalState({ isOpen: false, props: { onConfirm: () => {}, message: '' } });
       }}
       {...modalState.props}
     />

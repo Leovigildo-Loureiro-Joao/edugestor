@@ -1,4 +1,4 @@
-// src/components/modals/HorarioModal.tsx
+// src/components/modals/HorarioModal
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -15,9 +15,12 @@ import { HorarioAula, HorarioAulaForm } from '../../types/turma';
 import { cursosService, turmaService } from '../../services/database';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import db from '../../services/database/db';
+import { SelectTyped } from '../students/StudentForm';
 
 
-// No HorarioModal.tsx, adicione estas props:
+// No HorarioModal, adicione estas props:
 interface HorarioModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -43,17 +46,20 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
   horariosExistentes
 }) => {
   const [formData, setFormData] = useState<HorarioAulaForm>({
-    turma_id:turmaId,
+    turma_id:turmaId||"",
     dia_semana: 'segunda',
     hora_inicio: '08:00',
     hora_fim: '09:30',
     disciplina: '',
     sala: '',
+    instituicao_id:instituicaoIdValue(),
+    sync_status:"pending",
     professor_responsavel: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [professorOptions, setProfessorOptions] = useState<{ value: string; label: string }[]>([]);
 
   // Dias da semana
   const diasSemana = [
@@ -76,6 +82,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
        setDisciplina([...(curso?.disciplinas||[])])
     }
     addDisciplinas()
+    loadProfessores()
     if (horarioEdit) {
       setFormData({
         ...horarioEdit,
@@ -85,7 +92,9 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     } else {
       // Reset form
       setFormData({
-        turma_id:turmaId,
+        turma_id:turmaId||"",
+        instituicao_id:instituicaoIdValue(),
+        sync_status:"pending",
         dia_semana: 'segunda',
         hora_inicio: '08:00',
         hora_fim: '09:30',
@@ -96,6 +105,40 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
     }
     setErrors({});
   }, [horarioEdit, isOpen]);
+
+  const loadProfessores = async () => {
+    try {
+      const instituicaoId = instituicaoIdValue();
+      const professores = await db.profiles
+        .where('role')
+        .equals('teacher')
+        .toArray();
+
+      const filtrados = instituicaoId
+        ? professores.filter((p: any) => p.instituicao_id === instituicaoId)
+        : professores;
+
+      let options = filtrados.map((p: any) => {
+        const label = p.full_name || p.nome || p.email || 'Professor';
+        return { value: label, label };
+      });
+
+      if (options.length === 0) {
+        options = [{ value: '', label: 'Sem professores' }];
+      }
+
+      setProfessorOptions(options);
+
+      if (!horarioEdit && !formData.professor_responsavel && options.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          professor_responsavel: options[0].value
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar professores:', error);
+    }
+  };
 
 
   const verificarConflitoNoModal = (
@@ -174,15 +217,17 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
 
     try {
       // Formatar horas para salvar
-      const horarioParaSalvar: HorarioAulaForm = {
-        id: horarioEdit?.id|| undefined,
-        turma_id: turmaId,
+      const horarioParaSalvar: HorarioAulaForm | HorarioAula = {
+        id: horarioEdit?.id|| "",
+        turma_id: turmaId || "",
         dia_semana: formData.dia_semana,
         hora_inicio: formData.hora_inicio.padStart(5, '0'),
         hora_fim: formData.hora_fim.padStart(5, '0'),
         disciplina: formData.disciplina,
         sala: formData.sala,
         professor_responsavel: formData.professor_responsavel,
+        instituicao_id: instituicaoIdValue(),
+        sync_status: "pending",
       };
 
       await onSubmit(horarioParaSalvar);
@@ -546,7 +591,7 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
                     
                     {/* Sugestões de disciplinas */}
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {disciplinasSugeridas.slice(0, 6).map(disciplina => (
+                      {(disciplinasSugeridas??[]).slice(0, 6).map(disciplina => (
                         <button
                           key={disciplina}
                           type="button"
@@ -600,20 +645,17 @@ const HorarioModal: React.FC<HorarioModalProps> = ({
                         <FiUser size={16} />
                         Professor responsável *
                       </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          name="professor_responsavel"
-                          value={formData.professor_responsavel}
-                          onChange={handleChange}
-                          placeholder="Nome do professor"
-                          className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          required
-                        />
-                        {errors.professor_responsavel && (
-                          <p className="text-red-500 text-xs mt-1">{errors.professor_responsavel}</p>
-                        )}
-                      </div>
+                      <SelectTyped
+                        vect={professorOptions}
+                        icon={FiUser}
+                        onChange={(value: string) =>
+                          setFormData((prev) => ({ ...prev, professor_responsavel: value }))
+                        }
+                        value={formData.professor_responsavel}
+                      />
+                      {errors.professor_responsavel && (
+                        <p className="text-red-500 text-xs mt-1">{errors.professor_responsavel}</p>
+                      )}
                     </div>
                   </div>
 

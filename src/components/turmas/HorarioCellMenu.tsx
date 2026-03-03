@@ -1,4 +1,4 @@
-// HorarioCellMenu.tsx
+// HorarioCellMenu
 import React, { useState, useEffect, useRef } from 'react';
 import { FiEdit, FiTrash, FiMoreVertical, FiClock } from 'react-icons/fi';
 import { HorarioAula } from '../../types/turma';
@@ -11,6 +11,7 @@ interface HorarioCellMenuProps {
   showAlert: any;
   setHorarioEditando: (horario: HorarioAula) => void;
   setIsHorarioModalOpen: (isOpen: boolean) => void;
+  showActions?: boolean;
 }
 
 const HorarioCellMenu: React.FC<HorarioCellMenuProps> = ({
@@ -20,7 +21,8 @@ const HorarioCellMenu: React.FC<HorarioCellMenuProps> = ({
   confirm,
   showAlert,
   setHorarioEditando,
-  setIsHorarioModalOpen
+  setIsHorarioModalOpen,
+  showActions = true
 }) => {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -113,36 +115,38 @@ const HorarioCellMenu: React.FC<HorarioCellMenuProps> = ({
             {hora.professor_responsavel}
           </p>
         </div>
-        <div className="relative">
-          <button
-            onClick={abrirMenu}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-            title="Ações"
-          >
-            <FiMoreVertical className="text-gray-500 dark:text-gray-400" size={18} />
-          </button>
-
-          {/* Menu Dropdown */}
-          {menuAberto && (
-            <div
-              ref={menuRef}
-              className="absolute right-0 top-full mt-1  bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 flex py-1 z-50"
+        {showActions && (
+          <div className="relative">
+            <button
+              onClick={abrirMenu}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+              title="Ações"
             >
-              <button
-                onClick={handleEditar}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              <FiMoreVertical className="text-gray-500 dark:text-gray-400" size={18} />
+            </button>
+
+            {/* Menu Dropdown */}
+            {menuAberto && (
+              <div
+                ref={menuRef}
+                className="absolute right-0 top-full mt-1  bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 flex py-1 z-50"
               >
-                <FiEdit className="text-blue-600 dark:text-blue-400" size={16} />
-              </button>
-              <button
-                onClick={handleExcluir}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                <FiTrash size={16} />
-              </button>
-            </div>
-          )}
-        </div>
+                <button
+                  onClick={handleEditar}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FiEdit className="text-blue-600 dark:text-blue-400" size={16} />
+                </button>
+                <button
+                  onClick={handleExcluir}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <FiTrash size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

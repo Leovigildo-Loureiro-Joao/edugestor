@@ -63,7 +63,6 @@ export const PropinasChart = () => {
         taxaPagamento: item.total > 0 ? (item.quitado / item.total) * 100 : 0
       }));
 
-      console.log('Dados finais:', dadosFormatados);
       setData(dadosFormatados);
 
     } catch (error) {

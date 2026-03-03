@@ -60,12 +60,50 @@ export const configService = {
     return undefined;
   },
 
+  async resolveInstituicaoId(preferredId?: string): Promise<string> {
+    const defaultId = "local_default_instituicao";
+    if (preferredId) {
+      localStorage.setItem("active_instituicao_id", preferredId);
+      return preferredId;
+    }
+
+    const active = instituicaoIdValue();
+    if (active && active !== defaultId) return active;
+
+    const profile = await profileService.getLocalProfile();
+    if (profile?.instituicao_id) {
+      localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+      return profile.instituicao_id;
+    }
+
+    const existentes = await db.instituicao
+      .filter((item) => !item.deleted)
+      .toArray();
+    if (existentes.length > 0) {
+      const [maisRecente] = existentes.sort(
+        (a, b) =>
+          new Date(b.updated_at || b.created_at || 0).getTime() -
+          new Date(a.updated_at || a.created_at || 0).getTime()
+      );
+      if (maisRecente?.id) {
+        localStorage.setItem("active_instituicao_id", maisRecente.id);
+        return maisRecente.id;
+      }
+    }
+
+    if (!active) {
+      localStorage.setItem("active_instituicao_id", defaultId);
+    }
+    return active || defaultId;
+  },
+
   // ============ BUSCAR TODAS AS CONFIGURAÇÕES ============
   async getAllConfigOnly(): Promise<SystemConfig[]> {
     try {
+      const instituicaoId = await this.resolveInstituicaoId();
       const configs = await db.system_config
         .where('instituicao_id')
-        .equals(instituicaoIdValue()||"")
+        .equals(instituicaoId)
         .and(config=> !config.deleted)
         .toArray();
       
@@ -131,10 +169,11 @@ export const configService = {
   // ============ BUSCAR POR CATEGORIA ============
   async getConfigByCategory(category: string): Promise<SystemConfig[]> {
     try {
+      const instituicaoId = await this.resolveInstituicaoId();
       const configs = await db.system_config
         .where('category')
         .equals(category)
-        .and(config=> !config.deleted && instituicaoIdValue()==config.instituicao_id)
+        .and(config=> !config.deleted && instituicaoId===config.instituicao_id)
         .toArray();
       
       return configs || [];
@@ -151,7 +190,7 @@ export const configService = {
     defaultValue?: T
   ): Promise<T> {
     try {
-     const instituicaoId = instituicaoIdValue() || "";
+     const instituicaoId = await this.resolveInstituicaoId();
      const config = await db.system_config
       .where('category')
       .equals(category)
@@ -185,7 +224,7 @@ export const configService = {
   async setConfig(dataConfig: SystemConfigFormData): Promise<void> {
     try {
       const now = new Date().toISOString();
-      const instituicaoId = dataConfig.instituicao_id || instituicaoIdValue() || "";
+      const instituicaoId = await this.resolveInstituicaoId(dataConfig.instituicao_id);
       const updatedBy = await this.resolveUpdatedByUuid(dataConfig.updated_by);
       const deterministicId = this.buildConfigIdentityId(
         instituicaoId,
@@ -229,8 +268,6 @@ export const configService = {
         configToSave.created_at = now;
       }
 
-      console.log(`💾 Salvando configuração: ${dataConfig.category}.${dataConfig.key_name}`);
-      
       await db.system_config.put(configToSave as SystemConfig);
 
       // Limpar duplicados antigos (se existirem) mantendo apenas o ID escolhido.
@@ -272,9 +309,7 @@ export const configService = {
       });
       }
 
-      console.log(`✅ Configuração salva: ${dataConfig.category}.${dataConfig.key_name}`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error(`Erro em ${dataConfig.category}.${dataConfig.key_name}:`, error);
       throw error;
     }
@@ -322,6 +357,16 @@ export const configService = {
           academicConfig, 
           'max_students_per_class', 
           45
+        ),
+        usarFrequenciaNaSituacaoNotas: this.getConfigValueFromArray<boolean>(
+          academicConfig,
+          'use_attendance_in_grade_status',
+          false
+        ),
+        frequenciaMinimaAprovacao: this.getConfigValueFromArray<number>(
+          academicConfig,
+          'minimum_attendance_for_approval',
+          0
         )
       };
     } catch (error) {
@@ -386,12 +431,29 @@ export const configService = {
           description: 'Número máximo de estudantes por turma',
           updated_by: 'user',
           instituicao_id:instituicaoIdValue()||""
+        }),
+        this.setConfig({
+          category: 'academic',
+          key_name: 'use_attendance_in_grade_status',
+          value: academicConfig.usarFrequenciaNaSituacaoNotas,
+          data_type: 'boolean',
+          description: 'Controla se a frequência afeta a situação de notas',
+          updated_by: 'user',
+          instituicao_id: instituicaoIdValue() || ""
+        }),
+        this.setConfig({
+          category: 'academic',
+          key_name: 'minimum_attendance_for_approval',
+          value: academicConfig.frequenciaMinimaAprovacao,
+          data_type: 'number',
+          description: 'Percentual mínimo de frequência para aprovação quando a regra estiver ativa',
+          updated_by: 'user',
+          instituicao_id: instituicaoIdValue() || ""
         })
       ];
 
       await Promise.all(updates);
-      console.log('✅ Configurações acadêmicas atualizadas');
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao atualizar configurações acadêmicas:', error);
       throw error;
     }
@@ -534,8 +596,7 @@ export const configService = {
       ];
 
       await Promise.all(updates);
-      console.log('✅ Configurações financeiras atualizadas');
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao atualizar configurações financeiras:', error);
       throw error;
     }
@@ -544,8 +605,7 @@ export const configService = {
   // ============ INICIALIZAR CONFIGURAÇÕES PADRÃO ============
   async initializeDefaultConfigs(): Promise<void> {
     try {
-      console.log('🔄 Inicializando configurações padrão do sistema...');
-      const instituicaoId = instituicaoIdValue() || "";
+      const instituicaoId = await this.resolveInstituicaoId();
 
       // Verificar se já existem configurações
       const existingCount = await db.system_config
@@ -555,7 +615,6 @@ export const configService = {
         .count();
       
       if (existingCount > 0) {
-        console.log('✅ Configurações já existem, pulando inicialização...');
         return;
       }
       const defaultConfigs = [
@@ -643,6 +702,24 @@ export const configService = {
           value: new Date().getFullYear().toString(),
           data_type: 'string',
           description: 'Ano letivo atual',
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
+        },
+        {
+          category: 'academic',
+          key_name: 'use_attendance_in_grade_status',
+          value: false,
+          data_type: 'boolean',
+          description: 'Controla se a frequência afeta a situação de notas',
+          updated_by: 'system',
+          instituicao_id:instituicaoIdValue()||""
+        },
+        {
+          category: 'academic',
+          key_name: 'minimum_attendance_for_approval',
+          value: 0,
+          data_type: 'number',
+          description: 'Percentual mínimo de frequência para aprovação quando a regra estiver ativa',
           updated_by: 'system',
           instituicao_id:instituicaoIdValue()||""
         },
@@ -776,9 +853,7 @@ export const configService = {
       );
 
       await Promise.all(savePromises);
-      console.log('✅ Configurações padrão inicializadas com sucesso!');
-
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro ao inicializar configurações padrão:', error);
       throw error;
     }
@@ -796,7 +871,9 @@ export const configService = {
       maxFaltasPermitidas: 200,
       permitirMatriculas: true,
       sistemaAvaliacao: { min_approval: 10, scale: 20 },
-      maxAlunosTurma: 45
+      maxAlunosTurma: 45,
+      usarFrequenciaNaSituacaoNotas: false,
+      frequenciaMinimaAprovacao: 0
     };
   },
 
@@ -824,16 +901,12 @@ export const configService = {
         .anyOf(['pending', 'pending_delete'])
         .toArray();
 
-      console.log(`🔄 Sincronizando ${configsToSync.length} configurações...`);
-
       for (const config of configsToSync) {
         try {
           // Implementar lógica de sincronização com Supabase aqui
           if (config.sync_status === 'pending_delete') {
-            console.log(`🗑️  Deletando configuração ${config.category}.${config.key_name} do servidor`);
-          } else {
-            console.log(`📤 Enviando configuração ${config.category}.${config.key_name} para servidor`);
-          }
+            } else {
+            }
 
           // Atualizar status após sincronização
           await db.system_config.update(config.id, {
@@ -856,8 +929,7 @@ export const configService = {
         }
       }
 
-      console.log('✅ Sincronização de configurações concluída');
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro ao sincronizar configurações:', error);
       throw error;
     }
@@ -867,8 +939,6 @@ export const configService = {
   async clearConfigs(): Promise<number> {
     try {
       await db.system_config.clear();
-      console.log('🧹 Todas as configurações foram removidas');
-      
       // Reinicializar configurações padrão
       await this.initializeDefaultConfigs();
       

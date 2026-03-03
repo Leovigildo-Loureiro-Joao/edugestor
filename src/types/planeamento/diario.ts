@@ -1,5 +1,5 @@
-// types/planeamento/base.ts
-// types/planeamento/diario.ts
+// types/planeamento/base
+// types/planeamento/diario
 import { PlaneamentoBase } from './base';
 
 export interface Horario {

@@ -1,4 +1,4 @@
-// src/pages/Admin/UsersManagement.tsx
+// src/pages/Admin/UsersManagement
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/database/db';

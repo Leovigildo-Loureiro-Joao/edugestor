@@ -11,10 +11,14 @@
             "id": "84460cb8d59a351f",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Nova aba"
+              "title": "README"
             }
           }
         ]
@@ -179,8 +183,10 @@
       "bases:Create new base": false
     }
   },
-  "active": "84460cb8d59a351f",
+  "active": "ae8e10adfff40c35",
   "lastOpenFiles": [
+    "README.md",
+    "Sem título.md",
     "Estrutura do projecto.canvas",
     "registerPlanner/Estrutura do projecto.canvas",
     "registerPlanner/Welcome.md",
@@ -192,7 +198,6 @@
     "src/contexts/AuthContext.tsx",
     "src/pages/Courses/Curso.tsx",
     "src/pages/Turmas/Turmas.tsx",
-    "node_modules/@types/dexie/README.md",
-    "README.md"
+    "node_modules/@types/dexie/README.md"
   ]
 }

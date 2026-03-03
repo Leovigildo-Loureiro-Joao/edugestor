@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiClock, FiUsers, FiSave, FiX, FiCheck, FiXCircle } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiUsers, FiX, FiCheck } from 'react-icons/fi';
 import { Aula } from '../../types/aula';
 import { Student } from '../../types';
 import { alunosService } from '../../services/database';
 import { FaCalendarWeek } from 'react-icons/fa6';
 import { RegistroFrequenciaLote } from '../../types/frequencia';
 import { useAlert } from '../ui/AlertBadge';
-import { useConfirmModal } from '../ui/ComfirmModal';
-import { set } from 'date-fns';
 
-export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{aula:Aula,onRegistrarFrequencia:(registro:RegistroFrequenciaLote) => Promise<void>,setAulaSelect:(aula:Aula) => void}) => {
+export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{aula:Aula,onRegistrarFrequencia:(registro:RegistroFrequenciaLote) => Promise<void>,setAulaSelect:(aula:Aula|null) => void}) => {
   const [alunos, setAlunos] = useState<Student[]>([]);
-  const [registros, setRegistros] = useState<Record<string, {presente: boolean, participou: boolean}>>({});
+  const [registros, setRegistros] = useState<Record<string, {presente: boolean, participou: boolean, atraso: boolean}>>({});
   const [enviando, setEnviando] = useState(false);
-    const { confirm, ModalComponent } = useConfirmModal();
     const { showAlert } = useAlert(); 
   useEffect(() => {
     loadData();
@@ -24,9 +21,9 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
     setAlunos(alunosTurma);
     
     // Inicializar todos como presentes e participantes
-    const registrosIniciais: Record<string, {presente: boolean, participou: boolean}> = {};
+    const registrosIniciais: Record<string, {presente: boolean, participou: boolean, atraso: boolean}> = {};
     alunosTurma.forEach(aluno => {
-      registrosIniciais[aluno.id] = { presente: true, participou: true };
+      registrosIniciais[aluno.id] = { presente: true, participou: true, atraso: false };
     });
     setRegistros(registrosIniciais);
   }
@@ -37,7 +34,8 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
       [alunoId]: {
         ...prev[alunoId],
         presente: !prev[alunoId].presente,
-        participou: prev[alunoId].presente ? false : true // Se estava ausente e vai para presente, marca como participou
+        participou: prev[alunoId].presente ? false : true, // Se estava ausente e vai para presente, marca como participou
+        atraso: prev[alunoId].presente ? false : prev[alunoId].atraso
       }
     }));
   };
@@ -52,12 +50,23 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
     }));
   };
 
+  const toggleAtraso = (alunoId: string) => {
+    setRegistros(prev => ({
+      ...prev,
+      [alunoId]: {
+        ...prev[alunoId],
+        atraso: !prev[alunoId].atraso
+      }
+    }));
+  };
+
   const handleRegistrar = async () => {
     setEnviando(true);
     try {
       const registrosArray = Object.entries(registros).map(([aluno_id, dados]) => ({
         aluno_id,
         presente: dados.presente,
+        atraso: dados.presente ? dados.atraso : false,
         participacao: dados.participou,
         justificativa: ''
       }));
@@ -182,16 +191,28 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
                     </button>
 
                     {registro?.presente && (
-                      <button
-                        onClick={() => toggleParticipacao(aluno.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          registro?.participou
-                            ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
-                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                        }`}
-                      >
-                        {registro?.participou ? 'Participou' : 'Não Participou'}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => toggleParticipacao(aluno.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            registro?.participou
+                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                          }`}
+                        >
+                          {registro?.participou ? 'Participou' : 'Não Participou'}
+                        </button>
+                        <button
+                          onClick={() => toggleAtraso(aluno.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            registro?.atraso
+                              ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {registro?.atraso ? 'Atrasado' : 'Sem atraso'}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

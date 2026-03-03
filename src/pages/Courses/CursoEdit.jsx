@@ -1,4 +1,4 @@
-import CourseForm from "../../components/cousers/CourserForm.tsx"
+import CourseForm from "../../components/cousers/CourserForm"
 
 
 

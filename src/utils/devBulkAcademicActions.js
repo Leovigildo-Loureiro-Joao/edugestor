@@ -291,7 +291,6 @@ export async function bulkAcademicFill(options = {}) {
   if (propinas) summary.propinas = await addPropinasForAllStudents(options.propinasOptions || {});
   if (planos) summary.planos = await addPlanosAulaForAllTurmas(options.planosOptions || {});
 
-  console.log('[DEV] bulkAcademicFill concluído:', summary);
   return summary;
 }
 
@@ -300,7 +299,4 @@ export function registerBulkAcademicHelpers() {
   window.addPropinasForAllStudents = addPropinasForAllStudents;
   window.addPlanosAulaForAllTurmas = addPlanosAulaForAllTurmas;
   window.bulkAcademicFill = bulkAcademicFill;
-  console.log(
-    '[DEV] Helpers registrados: addAvaliacoesForAllStudents, addPropinasForAllStudents, addPlanosAulaForAllTurmas, bulkAcademicFill'
-  );
-}
+  }

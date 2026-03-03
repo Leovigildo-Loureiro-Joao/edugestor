@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { 
   FiDollarSign, 
   FiTrendingUp, 
@@ -16,34 +16,38 @@ import {
   FiList, 
   FiAlertCircle
 } from 'react-icons/fi';
-import { transacaoService } from '../../services/database/transacaoService.ts';
-import { alunosService } from '../../services/database/alunosService.ts';
+import { transacaoService } from '../../services/database/transacaoService';
+import { alunosService } from '../../services/database/alunosService';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CustomPieChart } from '../../components/finance/PieChartDespesa.tsx';
+import { CustomPieChart } from '../../components/finance/PieChartDespesa';
 import GraficoBarrasDuplas from '../../components/finance/BarraDupla.jsx';
 import GraficoBarrasLucro from '../../components/finance/BarraMensal.jsx';
-import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursosModal.tsx';
-import { Meta } from '../../types/eventos.ts';
-import db from '../../services/database/db.ts';
-import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao.ts';
+import { AlocacaoRecursosModal } from '../../components/finance/AlocacaoRecursosModal';
+import { Meta } from '../../types/eventos';
+import db from '../../services/database/db';
+import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao';
 import { motion } from 'framer-motion';
-import { getPendingCount } from '../../utils/emitPendingSync.ts';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID.ts';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { getPendingCount } from '../../utils/emitPendingSync';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { PageLoader } from '../../components/ui/PageLoader';
 import { IconType } from 'react-icons';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
+
+const secoesFinanceiro = ['VS', 'despesas', 'lucro'] as const;
+type SecaoFinanceiro = (typeof secoesFinanceiro)[number];
 
 // Interfaces/Types
 interface TabOption {
-  value: string;
+  value: SecaoFinanceiro;
   label: string;
-  icon: ReactNode|IconType;
+  icon: IconType;
   descricao: string;
-  cor: string;
+  cor: 'blue' | 'red' | 'green';
 }
 
 interface TabsNavigationProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: SecaoFinanceiro;
+  onChange: (value: SecaoFinanceiro) => void;
 }
 
 interface DadosMensais {
@@ -99,7 +103,7 @@ interface Desconto {
 const SelectorVisualizacao: React.FC<TabsNavigationProps>  = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  const opcoes = [
+  const opcoes: TabOption[] = [
     { 
       value: 'VS', 
       label: 'Receitas vs Despesas', 
@@ -123,7 +127,7 @@ const SelectorVisualizacao: React.FC<TabsNavigationProps>  = ({ value, onChange 
     }
   ];
 
-  const opcaoAtual = opcoes.find(op => op.value === value);
+  const opcaoAtual = opcoes.find(op => op.value === value) || opcoes[0];
 
   return (
     <div className="relative w-full md:w-auto">
@@ -239,8 +243,6 @@ export const FinanceiroPage: React.FC = () => {
   const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
   const [dadosFinanceiros, setDadosFinanceiros] = useState<DadosFinanceiros | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const secoesFinanceiro = ['VS', 'despesas', 'lucro'] as const;
-  type SecaoFinanceiro = (typeof secoesFinanceiro)[number];
   const [select, setSelect] = useState<SecaoFinanceiro>('VS'); 
   const navigate = useNavigate();
   const [propinaPending,setPropinaPending]=useState<number>(0)
@@ -304,21 +306,20 @@ export const FinanceiroPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table) {
-        carregarDadosFinanceiros();
-        return;
-      }
+    const throttledReload = createThrottledCallback(() => {
+      carregarDadosFinanceiros();
+    }, 2500);
 
-      if (['transacoes', 'propina', 'alunos', 'metas', 'alocacao'].includes(detail.table)) {
-        carregarDadosFinanceiros();
+    const handleDbChanged = (event: Event) => {
+      if (shouldHandleDbChangedEvent(event, ['transacoes', 'propina', 'alunos', 'metas', 'alocacao'])) {
+        throttledReload();
       }
     };
 
     window.addEventListener('db-changed', handleDbChanged);
     return () => {
       window.removeEventListener('db-changed', handleDbChanged);
+      throttledReload.cancel();
     };
   }, [anoSelecionado]);
 

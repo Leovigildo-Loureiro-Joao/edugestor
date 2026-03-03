@@ -28,9 +28,9 @@ import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
-import toast from 'react-hot-toast';
-import { RxCalendar, RxLoop, RxStar, RxSwitch, RxUpdate } from 'react-icons/rx';
+import { RxCalendar, RxStar, RxSwitch, RxUpdate } from 'react-icons/rx';
 import { SelectTyped } from '../../components/students/StudentForm';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
 import { FaGolang } from 'react-icons/fa6';
 import { Library, List } from 'lucide-react';
 import { FaCheck } from 'react-icons/fa';
@@ -66,7 +66,7 @@ const TarefaPage = () => {
     titulo: '',
     descricao: '',
     tipo: 'operacional',
-    categoria: 'rotina',
+    categoria: 'importante',
     prioridade: 'media',
     status: 'pendente',
     responsavel_id: 'admin',
@@ -88,7 +88,7 @@ const TarefaPage = () => {
       // Se for edição, carregar a tarefa
       if (isEdicao && id) {
         const tarefaData = await db.tarefas.get(id);
-        setTarefa(tarefaData);
+        setTarefa(tarefaData ?? null);
         setFormData({
           ...tarefaData,
           data_limite: (tarefaData&&tarefaData.data_limite) || ''
@@ -126,16 +126,20 @@ const TarefaPage = () => {
   }, [id, isEdicao]);
 
   useEffect(() => {
+    const throttledReload = createThrottledCallback(() => {
+      carregarDados();
+    }, 2500);
+
     const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table || ['tarefas', 'metas'].includes(detail.table)) {
-        carregarDados();
+      if (shouldHandleDbChangedEvent(event, ['tarefas', 'metas'])) {
+        throttledReload();
       }
     };
 
     window.addEventListener('db-changed', handleDbChanged);
     return () => {
       window.removeEventListener('db-changed', handleDbChanged);
+      throttledReload.cancel();
     };
   }, [id, isEdicao]);
 
@@ -152,7 +156,7 @@ const TarefaPage = () => {
     { value: 'importante', label: 'Importante', cor: 'bg-purple-100 text-purple-800', icon: <FiStar/> },
     { value: 'urgente', label: 'Urgente', cor: 'bg-red-100 text-red-800', icon: <FiAlertCircle/> },
     { value: 'evento', label: 'Evento', cor: 'bg-indigo-100 text-indigo-800', icon: <RxCalendar/> },
-    { value: 'rotina', label: 'Rotina', cor: 'bg-green-100 text-green-800', icon: <RxLoop/> },
+    // 'rotina' descontinuada no fluxo atual (mantida apenas para dados legados)
     { value: 'melhoria', label: 'Melhoria', cor: 'bg-teal-100 text-teal-800', icon: <RxUpdate/> }
   ];
 
@@ -244,7 +248,7 @@ const TarefaPage = () => {
             try {
                if (isEdicao && id) {
                 await estrategiaService.deleteTarefa(id);
-                toast.success('Tarefa excluída com sucesso!');
+                showAlert({ type: 'success', title: 'Tarefa excluída com sucesso!' });
                 showAlert({
                   type: 'success',
                   title: 'Tarefa excluída!',
@@ -410,7 +414,7 @@ const TarefaPage = () => {
                   <SelectTyped
                     value={formData.status}
                     icon={null}
-                    onChange={(e) => setFormData({...formData, status: e as any})}
+                    onChange={(e: string) => setFormData({...formData, status: e as any})}
                     className="px-4 py-2 rounded-lg border font-medium"
                     vect={[...statusOptions]}
                   />
@@ -608,7 +612,7 @@ const TarefaPage = () => {
                     </label>
                     <SelectTyped
                       vect={["Selecione uma Meta",...(metas.map(m=>({'value':m.id,'label':m.titulo})))]}
-                      onChange={(e) => setFormData({...formData, meta_id: e})}
+                      onChange={(e: string) => setFormData({...formData, meta_id: e})}
                       value={formData.meta_id || ''}
                       icon={FiTarget}
                     />

@@ -1,4 +1,4 @@
-// src/pages/Courses/CourseForm.tsx
+// src/pages/Courses/CourseForm
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -52,8 +52,7 @@ export const CourseForm = () => {
 
       const courseData = await cursosService.getCoursesId(id||"");
       setFormData(courseData as CourseFormData);  
-       console.log(courseData)
-    } catch (error) {
+       } catch (error) {
       
       console.error('Erro ao carregar curso:', error);
     }
@@ -71,7 +70,6 @@ export const CourseForm = () => {
           duration:3000,
           message:"Curso atualizado com sucesso"
         })
-        console.log('Curso atualizado:', formData);
         cursosService.updateCourse(id||"",formData)
       } else {
          showAlert({
@@ -80,7 +78,6 @@ export const CourseForm = () => {
           duration:3000,
           message:"Curso criado com sucesso"
         })
-        console.log('Curso criado:', formData);
         cursosService.create(formData)
       }
       

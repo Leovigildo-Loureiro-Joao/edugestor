@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FiSave, FiArrowLeft, FiUsers, FiBook, FiClock, FiUser, FiFileText, FiPaperclip } from 'react-icons/fi';
-import { turmaService } from '../../services/database/turmas.ts';
-import { Turma, TurmaFormData } from '../../types/turma.ts';
+import { turmaService } from '../../services/database/turmas';
+import { Turma, TurmaFormData } from '../../types/turma';
 import { useAutoSave } from '../../hooks/useAutoSave.js';
-import { Course } from '../../types/curso.ts';
-import { cursosService } from '../../services/database/curso.ts';
-import { SelectTyped } from '../students/StudentForm.tsx';
+import { Course } from '../../types/curso';
+import { cursosService } from '../../services/database/curso';
+import { SelectTyped } from '../students/StudentForm';
 import { motion } from 'framer-motion';
-import { instituicaoService } from '../../services/database/insitituicao.ts';
-import { useConfirmModal } from '../ui/ComfirmModal.tsx';
-import { useAlert } from '../ui/AlertBadge.tsx';
+import { instituicaoService } from '../../services/database/insitituicao';
+import { useConfirmModal } from '../ui/ComfirmModal';
+import { useAlert } from '../ui/AlertBadge';
+import db from '../../services/database/db';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
 // Definição de tipo para opções do Select
 interface SelectOption {
@@ -25,6 +27,7 @@ const TurmaForm = () => {
   const { id } = useParams<string>();
   const isEditing = Boolean(id);
   const [loading, setLoading] = useState(false);
+  const [professorOptions, setProfessorOptions] = useState<SelectOption[]>([]);
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); 
   const getStorageKey = (turma_id?: string) => 
@@ -72,10 +75,45 @@ const TurmaForm = () => {
 
   useEffect(() => {
     loadCursos();
+    loadProfessores();
     if (isEditing && id) {
       loadTurma();
     }
   }, [id]);
+
+  const loadProfessores = async () => {
+    try {
+      const instituicaoId = instituicaoIdValue();
+      const professores = await db.profiles
+        .where('role')
+        .equals('teacher')
+        .toArray();
+
+      const filtrados = instituicaoId
+        ? professores.filter((p: any) => p.instituicao_id === instituicaoId)
+        : professores;
+
+      let options = filtrados.map((p: any) => {
+        const label = p.full_name || p.nome || p.email || 'Professor';
+        return { value: label, label };
+      });
+
+      if (options.length === 0) {
+        options = [{ value: '', label: 'Sem professores' }];
+      }
+
+      setProfessorOptions(options);
+
+      if (!isEditing && !formData.professor && options.length > 0) {
+        setFormData((prev: TurmaFormData) => ({
+          ...prev,
+          professor: options[0].value
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar professores:', error);
+    }
+  };
 
   const loadTurma = async () => {
     try {
@@ -186,6 +224,7 @@ const TurmaForm = () => {
   // Encontrar o valor atual para o Select de cursos
   const selectedCursoValue = formData.curso_id || '';
   const selectedTurnoValue = formData.turno || 'manhã';
+  const selectedProfessorValue = formData.professor || '';
 
 
 
@@ -287,17 +326,12 @@ const TurmaForm = () => {
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Professor *
                     </label>
-                    <div className="relative">
-                      <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        required
-                        value={formData.professor || ''}
-                        onChange={(e) => handleChange('professor', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                        placeholder="Nome do professor"
-                      />
-                    </div>
+                    <SelectTyped
+                      vect={professorOptions}
+                      icon={FiUser}
+                      onChange={handleSelectChange('professor')}
+                      value={selectedProfessorValue}
+                    />
                   </div>
 
                  

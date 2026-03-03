@@ -1,4 +1,4 @@
-// pages/EstrategiaPage.tsx
+// pages/EstrategiaPage
 import React, { useState, useEffect } from 'react';
 import { 
   FiTarget, 
@@ -64,11 +64,7 @@ const EstrategiaPage = () => {
       setEstatisticas({
         progressoGeral: progressoData.progressoTotal
       });
-      console.log('Tarefas carregadas:', tarefasData);
-      console.log('Metas carregadas:', metasData);
-      console.log('Progresso geral calculado:', progressoData.progressoTotal);
-
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
@@ -117,7 +113,7 @@ const tabs = [
           Planeamento Estratégico
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-200">
-          Gerencie metas, tarefas e rotinas do centro educacional
+          Gerencie metas, tarefas e planeamento do centro educacional
         </p>
       </motion.div>
 

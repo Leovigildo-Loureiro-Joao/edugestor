@@ -1,4 +1,4 @@
-// src/components/auth/ProtectedRoute.tsx
+// src/components/auth/ProtectedRoute
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -75,8 +75,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 🔥 LOG DE ACESSO (OPCIONAL PARA MONITORAMENTO)
   React.useEffect(() => {
-    console.log(`👤 Acesso autorizado: ${user.email} - Role: ${profile?.role}`);
-  }, [user.email, profile?.role]);
+    }, [user?.email, profile?.role]);
 
   return <>{children}</>;
 };

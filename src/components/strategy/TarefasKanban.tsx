@@ -1,4 +1,4 @@
-// components/TarefasKanban.tsx
+// components/TarefasKanban
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,11 +20,11 @@ import {
   FiRefreshCw,
   FiList
 } from 'react-icons/fi';
-import { Tarefa } from '../../types/eventos.ts';
-import { estrategiaService } from '../../services/database/estrategiaService.ts';
-import { useAuth } from '../../contexts/AuthContext.tsx';
+import { Tarefa } from '../../types/eventos';
+import { estrategiaService } from '../../services/database/estrategiaService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { SyncStatusBadge } from '../ui/SyncStatusBadge.tsx';
+import { SyncStatusBadge } from '../ui/SyncStatusBadge';
 
 interface TarefasKanbanProps {
   showFilters?: boolean;
@@ -88,7 +88,6 @@ const TarefasKanban: React.FC<TarefasKanbanProps> = ({
     }
     
     // Mostrar concluídas?
-    console.log('tarefa.status', tarefa.status);
     if (!showCompleted && tarefa.status === 'concluida') {
       return false;
     }

@@ -2,20 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { FiSearch, FiFilter, FiDollarSign, FiUser, FiCreditCard, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw, FiArrowLeft, FiCalendar, FiTrendingDown, FiBarChart2 } from 'react-icons/fi';
 import { Select } from '../../components/ui/Select.jsx';
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
-import { Student } from '../../types/aluno.ts';
-import { Turma } from '../../types/turma.ts';
-import { Course } from '../../types/curso.ts';
+import { Student } from '../../types/aluno';
+import { Turma } from '../../types/turma';
+import { Course } from '../../types/curso';
 import { propinaService, alunosService, turmaService, cursosService } from '../../services/database'
 import { HistoricoPagamentos } from '../../components/finance/historicoPagamento.jsx';
 import { useNavigate } from 'react-router-dom';
-import { SelectTyped } from '../../components/students/StudentForm.tsx';
-import { configService } from '../../services/database/config.ts';
+import { SelectTyped } from '../../components/students/StudentForm';
+import { configService } from '../../services/database/config';
 import { motion } from 'framer-motion';
 import { RxPerson } from 'react-icons/rx';
-import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge.tsx';
-import { financeRulesService } from '../../services/finance/financeRulesService.ts';
-import { PagamentosTable } from '../../components/finance/PagamentosTable.tsx';
-import { PageLoader } from '../../components/ui/PageLoader.tsx';
+import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
+import { financeRulesService } from '../../services/finance/financeRulesService';
+import { PagamentosTable } from '../../components/finance/PagamentosTable';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -374,7 +374,7 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
            transition={{ delay: 0.5 }}
          
           className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6 shadow-sm">
-            <div className="flex flex-wrap gap-4 justify-around">
+            <div className="flex flex-row  gap-4 justify-around">
 
               {/* Filtro Turma */}
               <div className='w-full'>

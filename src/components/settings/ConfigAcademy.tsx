@@ -18,8 +18,13 @@ export const ConfiguracoesAcademicas = () => {
       maxFaltasPermitidas: 10,
       permitirMatriculas: true,
       horario: { hora_inicial: '08:00', hora_final: '17:00' },
-      sistemaAvaliacao: { min_approval: 10, scale: 20 }
+      sistemaAvaliacao: { min_approval: 10, scale: 20 },
+      usarFrequenciaNaSituacaoNotas: false,
+      frequenciaMinimaAprovacao: 0
     });
+  const regraFrequenciaInvalida =
+    config.usarFrequenciaNaSituacaoNotas &&
+    (!Number.isFinite(config.frequenciaMinimaAprovacao) || config.frequenciaMinimaAprovacao <= 0);
 
   useEffect(() => {
     carregarConfiguracoes();
@@ -260,16 +265,64 @@ export const ConfiguracoesAcademicas = () => {
                   Permitir novas matrículas
                 </label>
               </div>
+
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/60 dark:bg-gray-700/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    id="usarFrequenciaNaSituacaoNotas"
+                    checked={config.usarFrequenciaNaSituacaoNotas}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        usarFrequenciaNaSituacaoNotas: e.target.checked
+                      }))
+                    }
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                  />
+                  <label htmlFor="usarFrequenciaNaSituacaoNotas" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Permitir que frequência afete a situação das notas
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Frequência mínima para aprovação (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={config.frequenciaMinimaAprovacao}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        frequenciaMinimaAprovacao: Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                      }))
+                    }
+                    disabled={!config.usarFrequenciaNaSituacaoNotas}
+                    className="w-full md:w-72 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                    min="0"
+                    max="100"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Se ativo e valor for 0, o módulo de notas vai alertar que o admin precisa definir a quantidade mínima.
+                  </p>
+                  {regraFrequenciaInvalida && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      Defina um valor maior que 0 para poder salvar com esta regra ativa.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {/* Botão Salvar (presente em todas as abas) */}
           <div className="flex justify-end mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button onClick={salvarConfiguracoes} 
-            disabled={salvando} 
-            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+            disabled={salvando || regraFrequenciaInvalida} 
+            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
               <FiSave size={18} />
-               {salvando ? 'Salvando...' : 'Salvar Configurações Financeiras'}
+               {salvando ? 'Salvando...' : 'Salvar Configurações Acâdemicas'}
             </button>
           </div>
         </div>

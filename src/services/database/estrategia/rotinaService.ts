@@ -1,6 +1,7 @@
 import { generateUniqueId } from "../../../utils/idGenarator";
 import db from "../db";
 import { syncManager } from "../syncManager";
+import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
 
 export const estrategiaRotinaService = {
   async getRotinasDiarias() {
@@ -27,18 +28,17 @@ export const estrategiaRotinaService = {
         deleted: false,
       };
 
-      console.log("💾 Salvando rotina:", rotina.titulo || rotina.descricao || rotina.nome);
       await db.rotinas.put(rotina);
 
       await db.syncQueue.add({
         table: "rotinas",
+        instituicao_id: instituicaoIdValue(),
         record_id: id,
         operation: "upsert",
         status: "pending",
         created_at: now,
       });
 
-      console.log("✅ Rotina salva com ID:", id);
       return id;
     } catch (error) {
       console.error("❌ Erro ao salvar rotina:", error);
@@ -62,13 +62,13 @@ export const estrategiaRotinaService = {
 
       await db.syncQueue.add({
         table: "rotinas",
+        instituicao_id: instituicaoIdValue(),
         record_id: rotinaId,
         operation: "upsert",
         status: "pending",
         created_at: updated_at,
       });
 
-      console.log(`✅ Rotina ${rotinaId} executada`);
       return { success: true, id: rotinaId };
     } catch (error) {
       console.error("Erro ao executar rotina:", error);
@@ -87,11 +87,28 @@ export const estrategiaRotinaService = {
   },
 
   async syncPlanosAcao() {
-    console.log("Sync planos de ação...");
-  },
+    },
 
   async deleteRotina(id: string) {
     await this.markForDelete("rotinas", id);
+  },
+
+  async markForDelete(table: "rotinas", id: string) {
+    const now = new Date().toISOString();
+    await db.rotinas.update(id, {
+      deleted: true,
+      sync_status: "pending_delete",
+      updated_at: now
+    });
+
+    await db.syncQueue.add({
+      table,
+      instituicao_id: instituicaoIdValue(),
+      record_id: id,
+      operation: "delete",
+      status: "pending",
+      created_at: now
+    });
   },
 
   async updateRotina(rotinaId: string, rotinaData: Partial<any>) {
@@ -106,13 +123,13 @@ export const estrategiaRotinaService = {
 
       await db.syncQueue.add({
         table: "rotinas",
+        instituicao_id: instituicaoIdValue(),
         record_id: rotinaId,
         operation: "upsert",
         status: "pending",
         created_at: updated_at,
       });
 
-      console.log(`✏️ Rotina ${rotinaId} atualizada`);
       return { success: true, id: rotinaId };
     } catch (error) {
       console.error("Erro ao atualizar rotina:", error);

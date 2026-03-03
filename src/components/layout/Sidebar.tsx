@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FaGraduationCap } from 'react-icons/fa';
 import { initializeSyncSystem } from '../../services/database/syncManager';
 import { logo } from '../auth/Login';
+import { profileService } from '../../services/database/profileService';
 
 // Definindo tipos
 interface NavigationItem {
@@ -54,13 +55,13 @@ const Sidebar: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleChecked, setRoleChecked] = useState(false);
   useEffect(() => {
     // ✅ Inicializar sistema de sincronização
     const initSync = async () => {
       await initializeSyncSystem();
-      console.log('✅ Sistema de sincronização inicializado');
-    };
+      };
     
     initSync();
   }, []);
@@ -76,7 +77,9 @@ const Sidebar: React.FC = () => {
     { name: 'Notas', href: '/notas', icon: FiBook },
     { name: 'Financeiro', href: '/financeiro', icon: FiDollarSign },
     { name: 'Frequência', href: '/frequencia', icon: FiCalendar },
-    { name: 'Configurações', href: '/configuracoes', icon: FiSettings },
+    ...(userRole === 'admin'
+      ? [{ name: 'Configurações', href: '/configuracoes', icon: FiSettings }]
+      : []),
   ];
 
   // Variantes de animação
@@ -91,7 +94,7 @@ const Sidebar: React.FC = () => {
   };
 
   useEffect(() => {
-    let resizeTimeout: NodeJS.Timeout;
+    let resizeTimeout: number;
     
     const handleResize = () => {
       clearTimeout(resizeTimeout);
@@ -114,6 +117,23 @@ const Sidebar: React.FC = () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  useEffect(() => {
+    const loadRole = async () => {
+      try {
+        const profile = await profileService.getLocalProfile();
+        const role = profile?.role || localStorage.getItem('user_role');
+        setUserRole(role);
+      } catch {
+        setUserRole(localStorage.getItem('user_role'));
+      } finally {
+        setRoleChecked(true);
+      }
+    };
+
+    loadRole();
+  }, []);
+    
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -230,6 +250,10 @@ const Sidebar: React.FC = () => {
         {/* Navegação */}
         <nav className="mt-6 px-3">
           {navigation.map((item, index) => {
+            if(userRole==="teacher"&&(item.name=="Financeiro"||item.name=="Estrategia"||item.name=="Cursos"||item.name=="Alunos"||item.name=="Configurações"))
+              return null;
+            if(userRole ==="manager"&& (item.name=="Configurações"))
+              return null
             const Icon = item.icon;
             return (
               <motion.div
@@ -374,16 +398,18 @@ const Sidebar: React.FC = () => {
                               <span>Meu Perfil</span>
                             </button>
                             
-                            <button 
-                              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
-                              onClick={() => {
-                                setShowUserMenu(false);
-                                // Navegar para configurações
-                              }}
-                            >
-                              <FiSettings className="w-4 h-4" />
-                              <span>Configurações</span>
-                            </button>
+                            {userRole === 'admin' && (
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 transition-colors"
+                                onClick={() => {
+                                  setShowUserMenu(false);
+                                  navigate('/configuracoes');
+                                }}
+                              >
+                                <FiSettings className="w-4 h-4" />
+                                <span>Configurações</span>
+                              </button>
+                            )}
 
                             {/* Divisor */}
                             <hr className="my-2 border-gray-200 dark:border-gray-600" />

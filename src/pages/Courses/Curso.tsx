@@ -14,6 +14,7 @@ import { CourseTable } from '../../components/cousers/CourseTable'; // Ajuste o 
 import { cursosService } from '../../services/database';
 import { Course } from '../../types/curso';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
 
 export const Courses = () => {
   const [cursos, setCursos] = useState<Course[]>([]);
@@ -47,11 +48,13 @@ export const Courses = () => {
   useEffect(() => {
     const handleOnline = () => setOnlineStatus(true);
     const handleOffline = () => setOnlineStatus(false);
+    const throttledReload = createThrottledCallback(() => {
+      Reload();
+    }, 2500);
     
     const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table || detail.table === 'cursos') {
-        Reload();
+      if (shouldHandleDbChangedEvent(event, ['cursos'])) {
+        throttledReload();
       }
     };
 
@@ -84,6 +87,7 @@ export const Courses = () => {
       window.removeEventListener('db-changed', handleDbChanged);
       window.removeEventListener('sync-pending', handleSyncUpdate);
       window.removeEventListener('sync-complete', handleSyncUpdate);
+      throttledReload.cancel();
       clearInterval(interval);
     };
   }, []);

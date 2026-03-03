@@ -5,7 +5,6 @@ import { Turma } from '../../types/turma';
 import { syncManager } from "./syncManager";
 import { SyncQueueItem } from "../../types/base";
 import { avaliacaoService } from "./avaliacao";
-import { AlunoDesempenho } from "../../pages/Turmas/TurmasPage";
 import { profileService } from "./profileService";
 import { turmaService } from "./turmas";
 import { frequenciaService } from "./frequenciaService";
@@ -15,10 +14,138 @@ import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
 import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../utils/idGenarator";
 import { paymentChecker } from "./paymentcheker";
+import { AlunoDesempenho } from "../../types/aluno";
+
+const LOCAL_ID_MAP_KEY = 'sync_local_id_map';
+
+const resolveMappedId = (id: string): string => {
+  if (!id || !id.startsWith('local_')) return id;
+
+  try {
+    const instituicaoId = instituicaoIdValue();
+    const scopedKey = instituicaoId ? `${LOCAL_ID_MAP_KEY}_${instituicaoId}` : LOCAL_ID_MAP_KEY;
+    const scopedMapRaw = localStorage.getItem(scopedKey);
+    const scopedMap = scopedMapRaw ? JSON.parse(scopedMapRaw) : {};
+    if (scopedMap?.[id]) return scopedMap[id];
+  } catch {
+    // ignora erro de parse
+  }
+
+  try {
+    const globalMapRaw = localStorage.getItem(LOCAL_ID_MAP_KEY);
+    const globalMap = globalMapRaw ? JSON.parse(globalMapRaw) : {};
+    if (globalMap?.[id]) return globalMap[id];
+  } catch {
+    // ignora erro de parse
+  }
+
+  return id;
+};
+
+const resolveStudentIdForUpdate = async (
+  id: string,
+  studentData: Partial<StudentFormData>
+): Promise<string | null> => {
+  const direct = await db.alunos.get(id);
+  if (direct) return id;
+
+  const mappedId = resolveMappedId(id);
+  if (mappedId !== id) {
+    const mapped = await db.alunos.get(mappedId);
+    if (mapped) return mappedId;
+  }
+
+  // Fallback defensivo para manter atualização funcional após troca local->remoto.
+  if (typeof (studentData as any).numero_estudante === 'number') {
+    const instituicaoId = instituicaoIdValue();
+    const byNumber = await db.alunos
+      .where('numero_estudante')
+      .equals((studentData as any).numero_estudante)
+      .toArray();
+    const match = byNumber.find(
+      (aluno) => !aluno.deleted && (!instituicaoId || aluno.instituicao_id === instituicaoId)
+    );
+    if (match?.id) return match.id;
+  }
+
+  return null;
+};
 
 
 
 export const alunosService = {
+
+  async runEnrollmentStatusBackfill(options?: { force?: boolean }) {
+    try {
+      const instituicaoId = instituicaoIdValue() || '';
+      if (!instituicaoId) return { updated: 0, queued: 0, skipped: true };
+
+      const todayKey = new Date().toISOString().split('T')[0];
+      const runKey = `alunos_backfill_enrollment_status_${instituicaoId}`;
+      const lastRun = localStorage.getItem(runKey);
+
+      if (!options?.force && lastRun === todayKey) {
+        return { updated: 0, queued: 0, skipped: true };
+      }
+
+      const now = new Date().toISOString();
+      const alunos = await db.alunos
+        .where('instituicao_id')
+        .equals(instituicaoId)
+        .and((aluno) => !aluno.deleted)
+        .toArray();
+
+      let updated = 0;
+      let queued = 0;
+
+      for (const aluno of alunos) {
+        const nextEstado = resolveEnrollmentStatus(aluno.data_matricula, aluno.estado);
+        if (nextEstado === aluno.estado) continue;
+
+        await db.alunos.update(aluno.id, {
+          estado: nextEstado as "ativo" | "pendente" | "transferido" | "desistente" | "inativo"
+,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+        updated += 1;
+
+        const hasPending = await db.syncQueue
+          .where('table')
+          .equals('alunos')
+          .and(
+            (item) =>
+              item.record_id === aluno.id &&
+              item.operation === 'upsert' &&
+              item.status === 'pending' &&
+              item.instituicao_id === instituicaoId
+          )
+          .first();
+
+        if (!hasPending) {
+          await db.syncQueue.add({
+            table: 'alunos',
+            record_id: aluno.id,
+            instituicao_id: instituicaoId,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+          queued += 1;
+        }
+      }
+
+      this.invalidateStudentCache();
+      localStorage.setItem(runKey, todayKey);
+
+      return { updated, queued, skipped: false };
+    } catch (error) {
+      console.error('❌ Erro no backfill de matrícula:', error);
+      return { updated: 0, queued: 0, skipped: false, error: true };
+    }
+  },
+
+
   // ✅ Criar aluno
   async saveStudent(studentData: StudentFormData): Promise<string> {
     try {
@@ -37,8 +164,6 @@ export const alunosService = {
         deleted: false,
       };
 
-      console.log('💾 Salvando aluno:', aluno.nome_completo);
-      
       await db.alunos.put(aluno as Student);
       
       // Adicionar à fila de sincronização
@@ -54,7 +179,6 @@ export const alunosService = {
       const insertBatch = [alunosFromQueue] as SyncQueueItem[];
       syncManager.processInsertBatch('alunos', insertBatch);
 
-      console.log('✅ Aluno salvo com ID:', id);
       return id;
       
     } catch (error) {
@@ -65,13 +189,13 @@ export const alunosService = {
 
   async  getAlunosPorTurma(turma_id:string) {
      const alunos = await db.alunos.toArray()
-    console.log(alunos)
     return alunos.filter(alunos=> !alunos.deleted&&alunos.turma_id.includes(turma_id))
   },
 
     // ✅ Buscar todos os alunos - CORRIGIDO
 async getAllStudents(): Promise<Student[]> {
   const activeInstituicaoId = instituicaoIdValue() || '';
+  const profile=await profileService.getLocalProfile()
   const cacheScope = activeInstituicaoId || 'global';
   const CACHE_KEY = `alunos_all_${cacheScope}`;
   try {
@@ -89,11 +213,8 @@ async getAllStudents(): Promise<Student[]> {
     // 3. Tentar cache primeiro
     const cached = cacheManager.get(cacheKeyWithVersion);
     if (cached) {
-      console.log('✅ Cache HIT para alunos');
       return cached;
     }
-    
-    console.log('🔄 Cache MISS para alunos, buscando do banco...');
     
     // 4. Buscar dados em paralelo
     const [alunosAll, todasTurmas] = await Promise.all([
@@ -117,9 +238,12 @@ async getAllStudents(): Promise<Student[]> {
     // Primeiro filtrar, depois ordenar, depois mapear
     const alunos = alunosAll
       .filter(aluno => {
+        const turma = turmaMap.get(aluno.turma_id);
         if (activeInstituicaoId && aluno.instituicao_id !== activeInstituicaoId) {
           return false;
         }
+        if(profile&&profile.role=="teacher")
+          return turma?.professor===profile.full_name
         // Aluno não deletado
         if (aluno.deleted) return false;
         // Aceitar alunos mesmo quando a turma ainda não sincronizou
@@ -175,7 +299,6 @@ async getAllStudents(): Promise<Student[]> {
     // 8. Limpar versões antigas do cache (opcional, mas recomendado)
     this.cleanOldStudentCache(CACHE_KEY, cacheVersion);
     
-    console.log(`✅ Carregados ${alunos.length} alunos`);
     return alunos;
     
   } catch (error) {
@@ -226,8 +349,7 @@ async getAllStudents(): Promise<Student[]> {
   // Invalidar todas as versões do cache de alunos
   const keys = Object.keys(localStorage).filter(key => key.startsWith('alunos_all_'));
   keys.forEach(key => localStorage.removeItem(key));
-  console.log('🧹 Cache de alunos invalidado');
-}
+  }
 
 // Ou invalidar seletivamente:
 , invalidateCacheOnStudentChange(studentId?: string): void {
@@ -330,27 +452,33 @@ async getAllStudents(): Promise<Student[]> {
   async updateStudent(id: string, studentData: Partial<StudentFormData>) {
     try {
       const updated_at = new Date().toISOString();
+      const targetId = await resolveStudentIdForUpdate(id, studentData);
+
+      if (!targetId) {
+        throw new Error(`Aluno não encontrado para atualização: ${id}`);
+      }
       
-      await db.alunos.update(id, {
+      const updatedRows = await db.alunos.update(targetId, {
         ...studentData,
         updated_at,
-        sync_status: 'pending',
-        avaliacao:[]
+        sync_status: 'pending'
       });
+
+      if (!updatedRows) {
+        throw new Error(`Falha ao atualizar aluno: ${targetId}`);
+      }
 
       // Adicionar/atualizar na fila
       await db.syncQueue.add({
         table: 'alunos',
-        record_id: id,
+        record_id: targetId,
         instituicao_id:instituicaoIdValue(),
         operation: 'upsert',
         status: 'pending',
         created_at: updated_at
       });
       
-      console.log(`✏️ Aluno ${id} marcado para atualização`);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Erro ao atualizar aluno:', error);
       throw error;
     }
@@ -383,8 +511,7 @@ async getAllStudents(): Promise<Student[]> {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Aluno ${id} marcado para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.alunos.delete(id);
         
@@ -394,8 +521,7 @@ async getAllStudents(): Promise<Student[]> {
           .equals(id)
           .delete();
           
-        console.log(`🗑️ Aluno ${id} deletado localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar aluno:', error);
@@ -420,6 +546,7 @@ async getAllStudents(): Promise<Student[]> {
       const frenquencia=await frequenciaService.getFrequenciaAluno(alunos!.id||'')
       return alunos?{
         ...alunos,
+        avaliacao:avaliacao.avaliacoes,
         media:avaliacao.estatisticas.mediaGeral,
         presenca:frenquencia.total>0?(frenquencia.presentes*100)/frenquencia.total:0,
         ultimaAvaliacao:avaliacao.avaliacoes[avaliacao.avaliacoes.length-1]?.nota,
@@ -471,7 +598,6 @@ async getAllStudents(): Promise<Student[]> {
     if (confirm('TEM CERTEZA? Isso apaga TODOS os dados locais!')) {
       await db.alunos.clear();
       await db.syncQueue.clear();
-      console.log('🗑️ Banco limpo com sucesso');
       return true;
     }
     return false;
@@ -485,3 +611,26 @@ async getAllStudents(): Promise<Student[]> {
     }
   }
 };
+function resolveEnrollmentStatus(data_matricula: string, estado: string): string {
+  if (!data_matricula) return estado;
+  
+  const matriculaDate = new Date(data_matricula);
+  const today = new Date();
+  
+  // Remove time component for fair comparison
+  matriculaDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  
+  // If enrollment date is in the future, mark as pending
+  if (matriculaDate > today) {
+    return 'pendente';
+  }
+  
+  // If enrollment date has passed, mark as active
+  if (matriculaDate <= today) {
+    return 'ativo';
+  }
+  
+  return estado;
+}
+

@@ -1,4 +1,4 @@
-// components/strategy/DashboardIntegrado.tsx
+// components/strategy/DashboardIntegrado
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -24,6 +24,7 @@ import { Student } from '../../types/aluno';
 import { Avaliacao } from '../../types/avaliacao';
 import { Frequencia } from '../../types/frequencia';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
 
 interface DashboardIntegradoProps {
   metas: Meta[];
@@ -254,10 +255,13 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
       }
     };
 
+    const throttledReload = createThrottledCallback(() => {
+      carregarIndicadoresReais();
+    }, 2500);
+
     const handleDbChanged = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!detail?.table || ['alunos', 'avaliacoes', 'frequencias'].includes(detail.table)) {
-        carregarIndicadoresReais();
+      if (shouldHandleDbChangedEvent(event, ['alunos', 'avaliacoes', 'frequencias'])) {
+        throttledReload();
       }
     };
 
@@ -266,6 +270,7 @@ const DashboardIntegrado: React.FC<DashboardIntegradoProps> = ({ metas, tarefas 
 
     return () => {
       window.removeEventListener('db-changed', handleDbChanged);
+      throttledReload.cancel();
     };
   }, []);
 

@@ -1,4 +1,4 @@
-// components/dashboard/GraficoDesempenho.tsx
+// components/dashboard/GraficoDesempenho
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { format, subDays } from 'date-fns';
@@ -101,7 +101,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
 
   const carregarDados = async (): Promise<DadosGrafico> => {
     // Carregar dados do service
-    const [resumo, tarefas, metas] = await Promise.all([
+    const [, tarefas, metas] = await Promise.all([
       estrategiaService.getResumoEstrategico(),
       estrategiaService.getTarefas(),
       estrategiaService.getMetas()
@@ -109,34 +109,61 @@ export const GraficoDesempenho: React.FC<Props> = ({
 
     // Calcular totais
     const totalTarefas = tarefas.length;
-    const tarefasConcluidas = tarefas.filter(t => t.concluida).length;
+    
     
     const totalMetas = metas.length;
     const metasConcluidas = metas.filter(m => m.status === 'concluida').length;
     
 
-    // Gerar dados de tendência para os últimos 7 dias
-    const datasTendencia = Array.from({ length: 7 }, (_, i) => {
+    // Tendência real dos últimos 7 dias (acumulado de concluídas até cada dia)
+    const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
       const date = subDays(new Date(), 6 - i);
-      return format(date, 'dd/MM', { locale: pt });
+      date.setHours(23, 59, 59, 999);
+      return date;
     });
 
-    // Simular dados de tendência (na prática, você buscaria do histórico)
-    const tarefasTendencia = Array.from({ length: 7 }, (_, i) => 
-      Math.floor(Math.random() * (totalTarefas * 0.3)) + (totalTarefas * 0.5)
+    const normalizarData = (valor?: string) => {
+      if (!valor) return null;
+      const data = new Date(valor);
+      return Number.isNaN(data.getTime()) ? null : data;
+    };
+
+    const resolveDataConclusaoTarefa = (tarefa: any): Date | null =>
+      normalizarData(tarefa.data_conclusao) ||
+      normalizarData(tarefa.updated_at) ||
+      normalizarData(tarefa.created_at);
+
+    const resolveDataConclusaoMeta = (meta: any): Date | null =>
+      normalizarData(meta.updated_at) ||
+      normalizarData(meta.created_at) ||
+      normalizarData(meta.data_fim);
+
+    const tarefasConcluidas = tarefas.filter((t: any) => t.concluida || t.status === 'concluida');
+    const metasConcluidasLista = metas.filter((m: any) => m.status === 'concluida');
+
+    const datasTendencia = ultimos7Dias.map((date) => format(date, 'dd/MM', { locale: pt }));
+
+    const tarefasTendencia = ultimos7Dias.map((limiteDia) =>
+      tarefasConcluidas.filter((tarefa: any) => {
+        const dataConclusao = resolveDataConclusaoTarefa(tarefa);
+        return !!dataConclusao && dataConclusao <= limiteDia;
+      }).length
     );
 
-    const metasTendencia = Array.from({ length: 7 }, (_, i) => 
-      Math.floor(Math.random() * (totalMetas * 0.3)) + (totalMetas * 0.5)
+    const metasTendencia = ultimos7Dias.map((limiteDia) =>
+      metasConcluidasLista.filter((meta: any) => {
+        const dataConclusao = resolveDataConclusaoMeta(meta);
+        return !!dataConclusao && dataConclusao <= limiteDia;
+      }).length
     );
 
     
 
     return {
-      tarefasPendentes: totalTarefas - tarefasConcluidas,
-      tarefasConcluidas,
-      metasConcluidas,
-      metasPendentes: totalMetas - metasConcluidas,
+      tarefasPendentes: totalTarefas - tarefasConcluidas.length,
+      tarefasConcluidas: tarefasConcluidas.length,
+      metasConcluidas: metasConcluidasLista.length,
+      metasPendentes: totalMetas - metasConcluidasLista.length,
       tendencia: {
         datas: datasTendencia,
         tarefas: tarefasTendencia,
@@ -236,7 +263,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
               font: {
                 family: "'Inter', sans-serif",
                 size: 12,
-                weight: '500'
+                weight: 'normal'
               },
               padding: 20,
               usePointStyle: true,
@@ -269,7 +296,6 @@ export const GraficoDesempenho: React.FC<Props> = ({
           x: {
             grid: {
               color: cores.grid,
-              drawBorder: false
             },
             ticks: {
               color: cores.texto,
@@ -283,7 +309,6 @@ export const GraficoDesempenho: React.FC<Props> = ({
             beginAtZero: true,
             grid: {
               color: cores.grid,
-              drawBorder: false
             },
             ticks: {
               color: cores.texto,
@@ -300,7 +325,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
               font: {
                 family: "'Inter', sans-serif",
                 size: 12,
-                weight: '600'
+                weight: 'normal'
               }
             }
           }

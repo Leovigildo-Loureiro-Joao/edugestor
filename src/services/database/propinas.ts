@@ -1,4 +1,4 @@
-// services/database/propinaService.ts
+// services/database/propinaService
 import { supabase } from '../database/db';
 import db from './db';
 import { Propina, PropinaFormData } from '../../types/propina';
@@ -33,7 +33,7 @@ export const propinaService = {
         ...data,
         instituicao_id: instituicaoId,
         id,
-        valor_falta: valorFalta,
+        valor_falta: valorFalta> 0?valorFalta:0,
         estado,
         created_at: now,
         updated_at: now,
@@ -41,8 +41,6 @@ export const propinaService = {
         deleted: false,
       } as Propina;
 
-      console.log('💾 Salvando propina:', propina.mes_referencia, 'para aluno:', data.aluno_id);
-      
       await db.propina.put(propina);
       
       // Adicionar à fila de sincronização
@@ -55,7 +53,6 @@ export const propinaService = {
         created_at: now
       });
 
-      console.log('✅ Propina salva com ID:', id);
       return id;
       
     } catch (error) {
@@ -67,7 +64,6 @@ export const propinaService = {
   // ✅ Buscar todas as propinas
   async getAllPropinas(): Promise<Propina[]> {
     try {
-      console.log('📋 Buscando propinas...');
       const instituicaoId = getActiveInstituicaoId();
       if (!instituicaoId) return [];
       
@@ -83,7 +79,6 @@ export const propinaService = {
         new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()
       );
       
-      console.log(`✅ Encontradas ${propinasAtivas.length} propinas ativas`);
       return propinasAtivas;
     } catch (error) {
       console.error('❌ Erro ao buscar propinas:', error);
@@ -94,24 +89,17 @@ export const propinaService = {
   // ✅ Sincronização bidirecional de propinas
   async syncAllPending() {
     if (!navigator.onLine) {
-      console.log('🌐 Offline - sincronização de propinas adiada');
       return;
     }
 
     try {
-      console.log('🔄 Iniciando sincronização bidirecional de propinas...');
-      
       // FASE 1: DOWNLOAD - Buscar propinas do Supabase
-      console.log('📥 FASE 1: Baixando propinas do Supabase...');
       await this.downloadFromSupabase();
       
       // FASE 2: UPLOAD - Enviar alterações locais para Supabase
-      console.log('📤 FASE 2: Enviando alterações locais...');
       await this.uploadToSupabase();
       
-      console.log('✅ Sincronização de propinas concluída');
-      
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro geral na sincronização de propinas:', error);
     }
   },
@@ -119,13 +107,10 @@ export const propinaService = {
   // ✅ DOWNLOAD: Baixar propinas do Supabase
   async downloadFromSupabase() {
     try {
-      console.log('📥 Buscando últimas propinas do Supabase...');
       const instituicaoId = getActiveInstituicaoId();
       if (!instituicaoId) return;
       
       const lastSync = localStorage.getItem('last_sync_propinas');
-      console.log('Última sincronização de propinas:', lastSync || 'Primeira vez');
-      
       let query = supabase
         .from('propina')
         .select('*, alunos(nome_completo)')
@@ -143,10 +128,7 @@ export const propinaService = {
         return;
       }
       
-      console.log(`📥 ${propinasSupabase?.length || 0} propinas encontradas no Supabase`);
-      
       if (!propinasSupabase || propinasSupabase.length === 0) {
-        console.log('📭 Nenhuma propina nova/atualizada no Supabase');
         return;
       }
       
@@ -164,9 +146,7 @@ export const propinaService = {
             };
             
             await db.propina.put(propinaParaSalvar);
-            console.log(`✅ Nova propina baixada: ${propinaSupabase.mes_referencia} do aluno ${propinaSupabase.aluno_id}`);
-            
-          } else if (propinaLocal.sync_status === 'synced') {
+            } else if (propinaLocal.sync_status === 'synced') {
             // ATUALIZAÇÃO DO SUPABASE - Só atualizar se não tivermos alterações pendentes
             const localUpdated = new Date(propinaLocal.updated_at || 0);
             const remoteUpdated = new Date(propinaSupabase.updated_at || 0);
@@ -180,8 +160,7 @@ export const propinaService = {
               };
               
               await db.propina.put(propinaAtualizada);
-              console.log(`✏️ Propina atualizada do Supabase: ${propinaSupabase.mes_referencia}`);
-            }
+              }
           }
           // Se sync_status = 'pending', não sobrescrever (temos alterações locais não enviadas)
           
@@ -192,9 +171,7 @@ export const propinaService = {
       
       // Atualizar timestamp da última sincronização
       localStorage.setItem('last_sync_propinas', new Date().toISOString());
-      console.log('✅ Download do Supabase concluído');
-      
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro no download do Supabase:', error);
     }
   },
@@ -210,8 +187,6 @@ export const propinaService = {
         .equals(instituicaoId)
         .and(item => item.table === 'propina' && item.status === 'pending')
         .toArray();
-
-      console.log(`📤 ${pendingItems.length} propinas pendentes para envio`);
 
       for (const item of pendingItems) {
         try {
@@ -290,15 +265,13 @@ export const propinaService = {
             await db.syncQueue.delete(item.id || -1);
           }
 
-          console.log(`[Sync] Propina ${item.record_id} sincronizada`);
-          
-        } catch (itemError) {
+          } catch (itemError) {
           console.error(`[Sync] Erro na propina ${item.record_id}:`, itemError);
           
           // Incrementar tentativas
-          const novasTentativas = (item.retryCount || 0) + 1;
+          const novasTentativas = (item.retry_count || 0) + 1;
           await db.syncQueue.update(item.id || -1, {
-            retryCount: novasTentativas,
+            retry_count: novasTentativas,
             status: novasTentativas >= 3 ? 'failed' : 'pending'
           });
         }
@@ -306,8 +279,7 @@ export const propinaService = {
         // Pausa entre operações
         await new Promise(resolve => setTimeout(resolve, 300));
       }
-      console.log('✅ Upload para Supabase concluído');
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Erro no upload para Supabase:', error);
     }
   },
@@ -489,8 +461,6 @@ export const propinaService = {
         created_at: updated_at
       });
       
-      console.log(`✏️ Propina ${id} marcada para atualização`);
-      
       return await db.propina.get(id);
       
     } catch (error) {
@@ -523,8 +493,7 @@ export const propinaService = {
           created_at: new Date().toISOString()
         });
         
-        console.log(`🗑️ Propina ${id} marcada para deleção remota`);
-      } else {
+        } else {
         // Se nunca sincronizado, deletar completamente
         await db.propina.delete(id);
         
@@ -535,8 +504,7 @@ export const propinaService = {
           .and((item) => item.instituicao_id === instituicaoId)
           .delete();
           
-        console.log(`🗑️ Propina ${id} deletada localmente`);
-      }
+        }
       
     } catch (error) {
       console.error('Erro ao deletar propina:', error);
@@ -613,8 +581,7 @@ export const propinaService = {
             // Aplicar multa de 10% se ainda não aplicada
             multa: propina.multa === 0 ? propina.valor_falta * 0.1 : propina.multa
           });
-          console.log(`⚠️ Propina ${propina.id} marcada como atrasada`);
-        }
+          }
       }
       
       return propinasAtrasadas.length;

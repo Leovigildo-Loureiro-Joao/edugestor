@@ -6,9 +6,13 @@ import db from "../db";
 import { syncManager } from "../syncManager";
 
 export const estrategiaMetaService = {
+  getActiveInstituicaoId() {
+    return instituicaoIdValue() || '';
+  },
+
   async getMetas() {
     try {
-      const activeInstituicaoId = instituicaoIdValue() || '';
+      const activeInstituicaoId = this.getActiveInstituicaoId();
       const metas = await db.metas.filter((meta)=> !meta.deleted&&meta.instituicao_id===activeInstituicaoId).toArray();
       return metas || [];
     } catch (error) {
@@ -19,11 +23,12 @@ export const estrategiaMetaService = {
 
   async getMetasID(id: string) {
     try {
-      const metas = await db.metas
-        .orderBy("created_at")
-        .and((a) => a.id === id)
-        .toArray();
-      return metas[0] || [];
+      const activeInstituicaoId = this.getActiveInstituicaoId();
+      const meta = await db.metas.get(id);
+      if (!meta || meta.deleted || meta.instituicao_id !== activeInstituicaoId) {
+        return null;
+      }
+      return meta;
     } catch (error) {
       console.error("Erro ao buscar metas:", error);
       throw error;
@@ -32,11 +37,17 @@ export const estrategiaMetaService = {
 
   async saveMeta(metaData: any) {
     try {
+      const activeInstituicaoId = this.getActiveInstituicaoId();
+      if (!activeInstituicaoId) {
+        throw new Error("Instituição ativa não encontrada para salvar meta.");
+      }
+
       const id = generateUniqueId();
       const now = new Date().toISOString();
 
       const meta = {
         ...metaData,
+        instituicao_id: activeInstituicaoId,
         id,
         created_at: now,
         updated_at: now,
@@ -44,20 +55,17 @@ export const estrategiaMetaService = {
         deleted: false,
       };
 
-      console.log("💾 Salvando meta:", meta.titulo || meta.descricao);
-
       await db.metas.put(meta);
 
       await db.syncQueue.add({
         table: "metas",
-        instituicao_id:instituicaoIdValue(),
+        instituicao_id: activeInstituicaoId,
         record_id: id,
         operation: "upsert",
         status: "pending",
         created_at: now,
       });
 
-      console.log("✅ Meta salva com ID:", id);
       return id;
     } catch (error) {
       console.error("❌ Erro ao salvar meta:", error);
@@ -81,6 +89,12 @@ export const estrategiaMetaService = {
 
   async updateMeta(metaId: string, metaData: Partial<Meta>) {
     try {
+      const activeInstituicaoId = this.getActiveInstituicaoId();
+      const metaAtual = await db.metas.get(metaId);
+      if (!metaAtual || metaAtual.deleted || metaAtual.instituicao_id !== activeInstituicaoId) {
+        throw new Error("Meta não encontrada para a instituição ativa.");
+      }
+
       const updated_at = new Date().toISOString();
 
       await db.metas.update(metaId, {
@@ -91,14 +105,13 @@ export const estrategiaMetaService = {
 
       await db.syncQueue.add({
         table: "metas",
-        instituicao_id:instituicaoIdValue(),
+        instituicao_id: activeInstituicaoId,
         record_id: metaId,
         operation: "upsert",
         status: "pending",
         created_at: updated_at,
       });
 
-      console.log(`✏️ Meta ${metaId} atualizada`);
       return { success: true, id: metaId };
     } catch (error) {
       console.error("Erro ao atualizar meta:", error);
@@ -108,9 +121,11 @@ export const estrategiaMetaService = {
 
   async getMetasAtivas(): Promise<Meta[]> {
     try {
+      const activeInstituicaoId = this.getActiveInstituicaoId();
       const metas = await db.metas
         .where("status")
         .anyOf(["nao_iniciada", "em_andamento"])
+        .and((m) => !m.deleted && m.instituicao_id === activeInstituicaoId)
         .toArray();
       return metas || [];
     } catch (error) {
@@ -121,7 +136,12 @@ export const estrategiaMetaService = {
 
   async getMetasPorTipo(tipo: Meta["tipo"]): Promise<Meta[]> {
     try {
-      const metas = await db.metas.where("tipo").equals(tipo).toArray();
+      const activeInstituicaoId = this.getActiveInstituicaoId();
+      const metas = await db.metas
+        .where("tipo")
+        .equals(tipo)
+        .and((m) => !m.deleted && m.instituicao_id === activeInstituicaoId)
+        .toArray();
       return metas || [];
     } catch (error) {
       console.error("Erro ao buscar metas por tipo:", error);
@@ -131,7 +151,12 @@ export const estrategiaMetaService = {
 
   async getMetasPorPrioridade(prioridade: Meta["prioridade"]): Promise<Meta[]> {
     try {
-      const metas = await db.metas.where("prioridade").equals(prioridade).toArray();
+      const activeInstituicaoId = this.getActiveInstituicaoId();
+      const metas = await db.metas
+        .where("prioridade")
+        .equals(prioridade)
+        .and((m) => !m.deleted && m.instituicao_id === activeInstituicaoId)
+        .toArray();
       return metas || [];
     } catch (error) {
       console.error("Erro ao buscar metas por prioridade:", error);
@@ -149,14 +174,12 @@ export const estrategiaMetaService = {
 
         if (hoje > dataFim && meta.status === "em_andamento") {
           await this.updateMeta(meta.id, { status: "atrasada" });
-          console.log(`⚠️ Meta "${meta.titulo}" marcada como atrasada`);
-        } else if (
+          } else if (
           hoje >= new Date(meta.data_inicio) &&
           meta.status === "nao_iniciada"
         ) {
           await this.updateMeta(meta.id, { status: "em_andamento" });
-          console.log(`▶️ Meta "${meta.titulo}" iniciada automaticamente`);
-        }
+          }
       }
     } catch (error) {
       console.error("Erro ao verificar prazos:", error);
@@ -164,7 +187,10 @@ export const estrategiaMetaService = {
   },
 
   async getMetasAdemicas() {
-    const metas = await db.metas.filter((m) => m.tipo == "academica" && !m.deleted).toArray();
+    const activeInstituicaoId = this.getActiveInstituicaoId();
+    const metas = await db.metas
+      .filter((m) => m.tipo == "academica" && !m.deleted && m.instituicao_id === activeInstituicaoId)
+      .toArray();
     return metas.map((meta: Meta) => {
       return {
         label: meta.titulo,

@@ -1,4 +1,4 @@
-// components/estrategia/KPIManager.tsx
+// components/estrategia/KPIManager
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -20,7 +20,6 @@ import {
 } from 'react-icons/fi';
 import { IndicadorDesempenho, Meta } from '../../types/eventos';
 import { estrategiaService } from '../../services/database/estrategiaService';
-import { toast } from 'react-hot-toast';
 import { FaBusinessTime, FaFileWord, FaRegIdCard } from 'react-icons/fa';
 import { RxCheckCircled, RxGroup, RxText } from 'react-icons/rx';
 import { SelectTyped } from '../students/StudentForm';
@@ -161,8 +160,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
       } else {
         // Criar novo KPI
         await estrategiaService.addKPI(meta.id, {
-          ...novoKPI,
-          id: generateUniqueId(), // ID temporário
+          ...novoKPI
         });
           showAlert({
           type: 'success',
@@ -170,7 +168,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           message: 'KPI adicionado com sucesso!',
           duration: 3000
         });
-        toast.success('KPI adicionado com sucesso!');
+        showAlert({ type: 'success', title: 'KPI adicionado com sucesso!' });
       }
       
       setShowForm(false);
@@ -199,7 +197,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           message: editandoKPI ? 'Erro ao atualizar KPI' : 'Erro ao adicionar KPI',
           duration: 5000
         });
-      toast.error(editandoKPI ? 'Erro ao atualizar KPI' : 'Erro ao adicionar KPI');
+      showAlert({ type: 'error', title: editandoKPI ? 'Erro ao atualizar KPI' : 'Erro ao adicionar KPI' });
     }
   };
 
@@ -220,10 +218,10 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
                   duration: 3000
                 });
                 onUpdate();
-              toast.success('KPI excluído com sucesso!');
+              showAlert({ type: 'success', title: 'KPI excluído com sucesso!' });
             } catch (error) {
               console.error('Erro ao excluir KPI:', error);
-              toast.error('Erro ao excluir KPI');
+              showAlert({ type: 'error', title: 'Erro ao excluir KPI' });
               showAlert({
                 type: 'error',
                 title: 'Erro ao excluir KPI',
@@ -290,7 +288,7 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
           duration: 3000
         });
       onUpdate();
-      toast.success('Valor atualizado!');
+      showAlert({ type: 'success', title: 'Valor atualizado!' });
     } catch (error) {
        showAlert({
           type: 'error',
@@ -528,6 +526,8 @@ export const KPIManager: React.FC<KPIManagerProps> = ({ meta, onUpdate }) => {
         <ModalKPI
           novoKPI={novoKPI}
           setNovoKPI={setNovoKPI}
+          disciplinaOptions={disciplinaOptions}
+          turmaOptions={turmaOptions}
           handleSaveKPI={handleSaveKPI}
           setShowForm={() => {
             setShowForm(false);
@@ -550,6 +550,8 @@ interface ModalKPIProps {
   handleSaveKPI: () => void;
   setShowForm: (show: boolean) => void;
   editando: boolean;
+  turmaOptions:any[];
+  disciplinaOptions:any[];
   modulosDisponiveis: typeof MODULOS_DISPONIVEIS;
   metricasPorModulo: typeof METRICAS_POR_MODULO;
   frequencias: typeof FREQUENCIAS;
@@ -562,6 +564,8 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
   setShowForm,
   editando,
   modulosDisponiveis,
+  turmaOptions,
+  disciplinaOptions,
   metricasPorModulo,
   frequencias
 }) => {
@@ -722,7 +726,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                         value={novoKPI.fonte_dados.modulo}
                         vect={[...(modulosDisponiveis.filter(m => m.value !== 'manual'))]
                         }
-                        onChange={(e) => setNovoKPI({
+                        onChange={(e:any) => setNovoKPI({
                           ...novoKPI,
                           fonte_dados: { 
                             ...novoKPI.fonte_dados, 
@@ -743,7 +747,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                         icon={FiBox}
                         vect={[...metricaAtual]}
                         value={novoKPI.fonte_dados.metrica}
-                        onChange={(e) => setNovoKPI({
+                        onChange={(e:any) => setNovoKPI({
                           ...novoKPI,
                           fonte_dados: { ...novoKPI.fonte_dados, metrica: e }
                         })}
@@ -760,7 +764,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                           <SelectTyped
                             vect={turmaOptions}
                             value={novoKPI.fonte_dados.filtros?.turma_id || ''}
-                            onChange={(e) => {
+                            onChange={(e:any) => {
                               const filtros = novoKPI.fonte_dados.filtros || {};
                               setNovoKPI({
                                 ...novoKPI,
@@ -781,7 +785,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                             <SelectTyped
                               vect={disciplinaOptions}
                               value={novoKPI.fonte_dados.filtros?.disciplina_id || ''}
-                              onChange={(e) => {
+                              onChange={(e:any) => {
                                 const filtros = novoKPI.fonte_dados.filtros || {};
                                 setNovoKPI({
                                   ...novoKPI,
@@ -828,7 +832,7 @@ export const ModalKPI: React.FC<ModalKPIProps> = ({
                   vect={[...frequencias]}
                   icon={FaTimeline}
                   value={novoKPI.frequencia}
-                  onChange={(e) => setNovoKPI({...novoKPI, frequencia: e as any})}
+                  onChange={(e:any) => setNovoKPI({...novoKPI, frequencia: e as any})}
                  />
                 
               </div>

@@ -1,4 +1,4 @@
-// src/pages/Admin/AdminDashboard.tsx
+// src/pages/Admin/AdminDashboard
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -60,7 +60,10 @@ interface AuditLog {
 const AdminDashboard = () => {
   const { seccao } = useParams<{ seccao?: string }>();
   const navigate = useNavigate();
-  const secoesAdmin = ['users', 'audit', 'settings', 'backup'] as const;
+  const showAdminSettings = import.meta.env.DEV;
+  const secoesAdmin = (showAdminSettings
+    ? (['users', 'audit', 'settings', 'backup'] as const)
+    : (['users', 'audit', 'backup'] as const));
   type SecaoAdmin = (typeof secoesAdmin)[number];
   const { profile, loading: authLoading } = useAuth();
   
@@ -163,8 +166,8 @@ const AdminDashboard = () => {
     if (!isAdminVerified) return;
     
     const secaoParam = seccao as SecaoAdmin | undefined;
-    if (secaoParam && secoesAdmin.includes(secaoParam)) {
-      setActiveTab(secaoParam);
+    if (secaoParam && (secoesAdmin as readonly string[]).includes(secaoParam)) {
+      setActiveTab(secaoParam as SecaoAdmin);
     } else {
       setActiveTab('users');
     }
@@ -213,10 +216,17 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
-      const usersWithStatus = data.map(profile => ({
-        ...profile,
-        is_active: profile.status === 'active' || profile.status === 'ativo'
-      }));
+      const usersWithStatus = data.map(profile => {
+        const statusValue = String(profile.status || '').toLowerCase();
+        const statusActive = statusValue === 'active' || statusValue === 'ativo';
+        const statusInactive = statusValue === 'inactive' || statusValue === 'inativo';
+        const isActive =
+          statusValue ? statusActive : (profile.is_active ?? true);
+        return {
+          ...profile,
+          is_active: statusInactive ? false : isActive
+        };
+      });
 
       setUsers(usersWithStatus);
       setFilteredUsers(usersWithStatus);
@@ -245,11 +255,17 @@ const AdminDashboard = () => {
       setLoading(prev => ({ ...prev, logs: true }));
       await auditLogService.flushPendingLogs();
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('audit_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
+
+      if (profile?.instituicao_id) {
+        query = query.eq('instituicao_id', profile.instituicao_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -267,7 +283,7 @@ const AdminDashboard = () => {
 
       const { data: usersData } = await supabase
         .from('profiles')
-        .select('role')
+        .select()
         .eq('instituicao_id', profile?.instituicao_id);
         
       const { data: logs } = await supabase
@@ -276,14 +292,23 @@ const AdminDashboard = () => {
         .eq('instituicao_id', profile?.instituicao_id)
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
+      const usersList = usersData || [];
+      const isActiveUser = (u: any) => {
+        const statusValue = String(u?.status || '').toLowerCase();
+        if (statusValue === 'inactive' || statusValue === 'inativo') return false;
+        if (statusValue === 'active' || statusValue === 'ativo') return true;
+        if (typeof u?.is_active === 'boolean') return u.is_active;
+        return true;
+      };
+
       const statsData: SystemStats = {
-        totalUsers: usersData?.length || 0,
-        activeUsers: usersData?.filter(u => u.role !== 'inactive').length || 0,
-        inactiveUsers: usersData?.filter(u => u.role === 'inactive').length || 0,
-        admins: usersData?.filter(u => u.role === 'admin').length || 0,
-        managers: usersData?.filter(u => u.role === 'manager').length || 0,
-        teachers: usersData?.filter(u => u.role === 'teacher').length || 0,
-        students: usersData?.filter(u => u.role === 'user').length || 0,
+        totalUsers: usersList.length || 0,
+        activeUsers: usersList.filter((u) => isActiveUser(u)).length || 0,
+        inactiveUsers: usersList.filter((u) => !isActiveUser(u)).length || 0,
+        admins: usersList.filter(u => u.role === 'admin').length || 0,
+        managers: usersList.filter(u => u.role === 'manager').length || 0,
+        teachers: usersList.filter(u => u.role === 'teacher').length || 0,
+        students: usersList.filter(u => u.role === 'user').length || 0,
         recentLogins: logs?.length || 0
       };
 
@@ -333,13 +358,56 @@ const AdminDashboard = () => {
     if (!selectedUser) return;
 
     try {
-      const { error: profileError } = await supabase
+      const now = new Date().toISOString();
+      const statusValue = editForm.is_active ? 'active' : 'inactive';
+      let profileError: any = null;
+
+      const fullUpdate = await supabase
         .from('profiles')
         .update({
           role: editForm.role,
-          updated_at: new Date().toISOString()
+          status: statusValue,
+          is_active: editForm.is_active,
+          updated_at: now
         })
         .eq('id', selectedUser.id);
+
+      profileError = fullUpdate.error;
+
+      if (profileError) {
+        const statusOnly = await supabase
+          .from('profiles')
+          .update({
+            role: editForm.role,
+            status: statusValue,
+            updated_at: now
+          })
+          .eq('id', selectedUser.id);
+        profileError = statusOnly.error;
+      }
+
+      if (profileError) {
+        const isActiveOnly = await supabase
+          .from('profiles')
+          .update({
+            role: editForm.role,
+            is_active: editForm.is_active,
+            updated_at: now
+          })
+          .eq('id', selectedUser.id);
+        profileError = isActiveOnly.error;
+      }
+
+      if (profileError) {
+        const roleOnly = await supabase
+          .from('profiles')
+          .update({
+            role: editForm.role,
+            updated_at: now
+          })
+          .eq('id', selectedUser.id);
+        profileError = roleOnly.error;
+      }
 
       if (profileError) throw profileError;
 
@@ -348,11 +416,17 @@ const AdminDashboard = () => {
       }
 
       await logAuditAction('UPDATE_USER', {
-        user_id: selectedUser.id,
-        old_role: selectedUser.role,
-        new_role: editForm.role,
-        old_status: selectedUser.is_active,
-        new_status: editForm.is_active
+        action_label: 'Atualizou usuário',
+        table_name: 'profiles',
+        record_id: selectedUser.id,
+        old_values: {
+          role: selectedUser.role,
+          status: selectedUser.is_active ? 'active' : 'inactive'
+        },
+        new_values: {
+          role: editForm.role,
+          status: editForm.is_active ? 'active' : 'inactive'
+        }
       });
 
       showNotification('success', 'Usuário atualizado com sucesso!');
@@ -377,7 +451,11 @@ const AdminDashboard = () => {
       const { error } = await supabase.auth.admin.deleteUser(userToDelete);
       if (error) throw error;
 
-      await logAuditAction('DELETE_USER', { user_id: userToDelete });
+      await logAuditAction('DELETE_USER', {
+        action_label: 'Deletou usuário',
+        table_name: 'profiles',
+        record_id: userToDelete
+      });
       showNotification('success', 'Usuário deletado com sucesso!');
       await Promise.all([loadUsers(), loadAuditLogs(), loadStats()]);
       setShowConfirmDelete(false);
@@ -390,27 +468,12 @@ const AdminDashboard = () => {
 
   const logAuditAction = async (action: string, details: any) => {
     try {
-      await supabase.from('audit_logs').insert({
-        user_id: profile?.id,
-        user_email: profile?.email,
-        action,
-        details,
-        ip_address: await getClientIP(),
-        user_agent: navigator.userAgent,
-        created_at: new Date().toISOString()
+      await auditLogService.log(action, {
+        ...details,
+        instituicao_id: profile?.instituicao_id
       });
     } catch (error) {
       console.error('Erro ao registrar ação:', error);
-    }
-  };
-
-  const getClientIP = async (): Promise<string> => {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch {
-      return 'unknown';
     }
   };
 
@@ -443,6 +506,13 @@ const AdminDashboard = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      await logAuditAction('EXPORT_DATA', {
+        action_label: 'Exportou dados',
+        table_name: type === 'users' ? 'profiles' : 'audit_logs',
+        record_id: null,
+        new_values: { export_type: type }
+      });
+
       showNotification('success', `Dados exportados com sucesso!`);
     } catch (error) {
       console.error('Erro ao exportar dados:', error);
@@ -463,6 +533,64 @@ const AdminDashboard = () => {
     return isActive 
       ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  };
+
+  const getActionLabel = (log: AuditLog) => {
+    const details = log.details || {};
+    const map: Record<string, string> = {
+      AUTH_LOGIN: 'Fez Login',
+      AUTH_LOGIN_FAILED: 'Login falhou',
+      AUTH_LOGOUT: 'Fez Logout',
+      UPDATE_USER: 'Atualizou usuário',
+      DELETE_USER: 'Deletou usuário',
+      EXPORT_DATA: 'Exportou dados',
+      INSERT: 'Inseriu',
+      UPDATE: 'Atualizou',
+      DELETE: 'Deletou'
+    };
+    return details.action_label || map[log.action] || log.action;
+  };
+
+  const formatAuditValue = (value: any) => {
+    if (value === null || value === undefined || value === '') return '—';
+    if (typeof value === 'object') return '[objeto]';
+    return String(value);
+  };
+
+  const getFieldChanges = (details: any) => {
+    const oldValues = details?.old_values;
+    const newValues = details?.new_values;
+    if (!oldValues || !newValues || typeof oldValues !== 'object' || typeof newValues !== 'object') {
+      return [];
+    }
+    const keys = Array.from(new Set([...Object.keys(oldValues), ...Object.keys(newValues)]));
+    return keys
+      .map((key) => ({
+        field: key,
+        oldValue: oldValues[key],
+        newValue: newValues[key]
+      }))
+      .filter((entry) => JSON.stringify(entry.oldValue) !== JSON.stringify(entry.newValue));
+  };
+
+  const getDetailPairs = (details: any) => {
+    if (!details || typeof details !== 'object') return [];
+    const skipKeys = new Set([
+      'old_values',
+      'new_values',
+      'action_label',
+      'actor_role',
+      'actor_type',
+      'source',
+      'table_name',
+      'table',
+      'record_id',
+      'instituicao_id'
+    ]);
+    return Object.entries(details)
+      .filter(([key, value]) => !skipKeys.has(key) && typeof value !== 'object')
+      .slice(0, 6)
+      .map(([key, value]) => ({ key, value }));
   };
 
   // ✅ LOADING INICIAL
@@ -633,7 +761,7 @@ const AdminDashboard = () => {
             {[
               { id: 'users', label: 'Usuários', icon: FiUsers },
               { id: 'audit', label: 'Logs de Auditoria', icon: FiBarChart2 },
-              { id: 'settings', label: 'Configurações', icon: FiSettings },
+              ...(showAdminSettings ? [{ id: 'settings', label: 'Configurações', icon: FiSettings }] : []),
               { id: 'backup', label: 'Backup', icon: FiDatabase },
             ].map(tab => (
               <button
@@ -890,47 +1018,91 @@ const AdminDashboard = () => {
                     Nenhum log de auditoria encontrado
                   </div>
                 ) : (
-                  auditLogs.map(log => (
+                  auditLogs.map(log => {
+                    const details = log.details || {};
+                    const tableName = details.table_name || details.table || '—';
+                    const recordId = details.record_id || details.target_id || null;
+                    const changes = getFieldChanges(details);
+                    const extraDetails = getDetailPairs(details);
+                    return (
                     <motion.div
                       key={log.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {log.user_email}
-                            </span>
-                            <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                              {log.action}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(log.created_at).toLocaleString('pt-BR')}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            {log.details && (
-                              <pre className="text-xs bg-white dark:bg-gray-800 p-2 rounded overflow-x-auto">
-                                {JSON.stringify(log.details, null, 2)}
-                              </pre>
-                            )}
-                          </div>
-                          <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                            <span>IP: {log.ip_address}</span>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {log.user_email || 'Sistema'}
+                              </span>
+                              <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                {getActionLabel(log)}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(log.created_at).toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              <span>
+                                Onde: {tableName}
+                                {recordId ? ` • ID: ${recordId}` : ''}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500">
+                              IP: {log.ip_address || '—'}
+                            </div>
                           </div>
                         </div>
+
+                        {changes.length > 0 && (
+                          <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-gray-200 dark:border-gray-700">
+                            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+                              Alterações
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {changes.map((change) => (
+                                <div key={change.field} className="text-sm text-gray-700 dark:text-gray-300">
+                                  <div className="font-medium">{change.field}</div>
+                                  <div className="text-xs text-gray-500">
+                                    Antes: {formatAuditValue(change.oldValue)}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Depois: {formatAuditValue(change.newValue)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {changes.length === 0 && extraDetails.length > 0 && (
+                          <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-gray-200 dark:border-gray-700">
+                            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+                              Detalhes
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                              {extraDetails.map((item) => (
+                                <div key={item.key}>
+                                  <span className="font-medium">{item.key}:</span>{' '}
+                                  <span className="text-gray-500">{formatAuditValue(item.value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
-                  ))
+                  )})
                 )}
               </div>
             </div>
           )}
 
           {/* Tab: Configurações */}
-          {activeTab === 'settings' && (
+          {showAdminSettings && activeTab === 'settings' && (
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

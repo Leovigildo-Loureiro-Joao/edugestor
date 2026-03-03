@@ -1,5 +1,5 @@
-// pages/MetaPage.tsx
-import React, { useState, useEffect } from 'react';
+// pages/MetaPage
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -37,8 +37,10 @@ import { generateUniqueId } from '../../utils/idGenarator';
 import { ModalSubmeta } from './SubMeta';
 import { FREQUENCIAS, METRICAS_POR_MODULO, ModalKPI, MODULOS_DISPONIVEIS } from './KPIManager';
 import { useAlert } from '../ui/AlertBadge';
-import toast from 'react-hot-toast';
 import { useConfirmModal } from '../ui/ComfirmModal';
+import { alunosService, cursosService, turmaService } from '../../services/database';
+import { Turma } from '../../types/turma';
+import { Course } from '../../types/curso';
 
 
 const MetaPage = () => {
@@ -48,6 +50,8 @@ const MetaPage = () => {
   const { confirm, ModalComponent } = useConfirmModal();
   const [loading, setLoading] = useState(true);
   const [showSubMeta, setShowSubMeta] = useState(false);
+  const [turmas,setTurmas]=useState<Turma[]>([]);
+  const [cursos,setCursos]=useState<Course[]>([]);
   const [showKPI, setShowKPI] = useState(false);
   const [editandoKpi, setEditandoKpi] = useState<string|null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -61,6 +65,7 @@ const MetaPage = () => {
   observacoes?: string;
 }>>([]);
 
+
  const [subMetas, setSubMetas] = useState<Array<{
   titulo: string;
     descricao: string;
@@ -73,6 +78,7 @@ const MetaPage = () => {
     kpis_afetados?: string[]; // IDs dos KPIs que esta sub-meta impacta
     notas?: string;
 }>>([]);
+
 
 const [novoRecurso, setNovoRecurso] = useState({
   nome: '',
@@ -162,7 +168,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
       ...prev, 
       [field]: value 
     }));
-    console.log(formData)
   };
 
   // Form data
@@ -207,6 +212,10 @@ const custoTotal = recursos.reduce((total, recurso) => {
       try {
         if (isEdicao && id) {
           const metaData = await db.metas.get(id);
+          const cur=await cursosService.getCourses()
+          const tur=await turmaService.getTurmas()
+          setCursos(cur)
+          setTurmas(tur)
           if (metaData) {
              setMeta(metaData);
           setFormData({
@@ -279,6 +288,17 @@ const custoTotal = recursos.reduce((total, recurso) => {
   const unidadesKpi = ['%', 'alunos', 'AKZ', 'horas', 'dias', 'unidades', 'pontos', 'estrelas'];
   const frequenciasKpi = ['diaria', 'semanal', 'mensal', 'trimestral', 'semestral', 'anual'];
   const { showAlert } = useAlert(); 
+
+    const turmasDisponiveis = useMemo( () => {
+      return [turmas.map(tur=>tur.nome_turma)]    
+  },[turmas]);
+
+  const disciplinasDisponiveis = useMemo(() => {
+    const disciplinas = new Set<string>();
+    cursos.forEach((curso) => curso.disciplinas.forEach((a) => disciplinas.add(a)));    
+    return Array.from(disciplinas).sort((a, b) => a.localeCompare(b));
+  }, [cursos]);
+
     // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,11 +332,6 @@ const custoTotal = recursos.reduce((total, recurso) => {
           frequencia: kpi.frequencia as 'diaria' | 'semanal' | 'mensal' | 'trimestral'
         })) || [],
         recursos: recursos.map(rec => ({...rec})) || [],
-        submetas: subMetas.map(sub => ({
-          id: generateUniqueId(), // Importe generateUniqueId ou use Date.now()
-          ...sub,
-          kpis_afetados: sub.kpis_afetados || []
-        })) || [],
         progresso: calcularProgresso(), // Atualiza com base nos KPIs
         updated_at: new Date().toISOString(),
         ...(!isEdicao && {
@@ -339,7 +354,7 @@ const custoTotal = recursos.reduce((total, recurso) => {
           title: 'Erro ao salvar meta',
           duration: 5000
       });
-      toast.error('Erro ao salvar meta');
+      showAlert({ type: 'error', title: 'Erro ao salvar meta' });
     } finally {
       setSalvando(false);
     }
@@ -356,11 +371,11 @@ const custoTotal = recursos.reduce((total, recurso) => {
                 try {
                   if (isEdicao && id) {
                     await estrategiaService.deleteMeta(id);
-                    toast.success('Meta excluída com sucesso!');
+                    showAlert({ type: 'success', title: 'Meta excluída com sucesso!' });
                     showAlert({
                       type: 'success',
                       title: 'Meta excluída!',
-                      message: `Meta da ${m?.titulo} foi removida do sistema.`,
+                      message: `Meta foi removida do sistema.`,
                       duration: 3000
                     });
                     navigate('/estrategia/metas');
@@ -1288,6 +1303,8 @@ const custoTotal = recursos.reduce((total, recurso) => {
             )}
             {showKPI && (    
                <ModalKPI
+                  disciplinaOptions={disciplinasDisponiveis}
+                  turmaOptions={turmasDisponiveis}
                   novoKPI={novoKpi}
                   setNovoKPI={setNovoKpi}
                   handleSaveKPI={adicionarKpi}

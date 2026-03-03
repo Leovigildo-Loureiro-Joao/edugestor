@@ -1,4 +1,4 @@
-// components/strategy/PlaneamentoMensal.tsx
+// components/strategy/PlaneamentoMensal
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -29,11 +29,11 @@ interface PlaneamentoMensalProps {
   planejamento?: PlaneamentoMensalType;
   setPlanejamento: React.Dispatch<React.SetStateAction<PlaneamentoMensalType | null>>;
   modo: 'visualizacao' | 'criacao'|'edição';
-  setModo: React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao' | 'edição'|null>>;
+  setModo: React.Dispatch<React.SetStateAction<'visualizacao' | 'criacao'>>;
   carregando?: boolean;
   setCarregando?: React.Dispatch<React.SetStateAction<boolean>>;
-    dataAtual:string, 
-    setDataAtual:React.Dispatch<React.SetStateAction<string>>;
+    dataAtual:Date, 
+    setDataAtual:React.Dispatch<React.SetStateAction<Date>>;
 }
 
 export const PlaneamentoMensalComponent: React.FC<PlaneamentoMensalProps> = ({ 
@@ -123,7 +123,7 @@ export const PlaneamentoMensalComponent: React.FC<PlaneamentoMensalProps> = ({
     if (!confirm('Tem certeza que deseja excluir este planejamento mensal?')) return;
 
     try {
-      await estrategiaPlaneamentoService.deletarPlanejamento(planejamento.id);
+      await estrategiaPlaneamentoService.deletePlano(planejamento.id);
       setPlanejamento(null);
       setModo('criacao');
       

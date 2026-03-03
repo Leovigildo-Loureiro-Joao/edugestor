@@ -84,6 +84,9 @@ export interface EventFormData  {
   meta_id?: string; 
   meta_titulo?: string;
   objetivo_evento?: string;
+  titulo?: string;
+  turma_id?: string;
+  instituicao_id?: string;
   tarefas_relacionadas?: string[]; 
    sync_status?: SyncStatus;
     deleted?: boolean;
@@ -118,10 +121,10 @@ export interface Meta extends BaseEntity {
   recursos?: Array<{
     nome: string,
     tipo: string,
-    quantidade: number,
-    custo: number | undefined,
+    quantidade?: number,
+    custo?: number,
     prioridade: string,
-    observacoes: string
+    observacoes?: string
   }>;
   
   // Recursos
@@ -179,7 +182,8 @@ export interface IndicadorDesempenho {
         | 'matriculas'
         | 'frequencia' 
         | 'notas'
-        | 'financeiro',
+        | 'financeiro'
+        | 'infraestrutura',
       metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
       filtros?: {
         turma_id?: string;
@@ -260,4 +264,29 @@ export interface TarefaDiaria {
   concluido: boolean;
   horario_previsto?: string;
   tempo_estimado_minutos: number;
+}
+
+export interface Rotina extends BaseEntity {
+  id: string;
+  nome: string;
+  descricao: string;
+  tipo: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
+  fase: 'abertura' | 'operacao' | 'encerramento' | 'administrativa';
+  status: 'ativa' | 'inativa' | 'suspensa';
+  versao?: number;
+  data_implementacao?: string;
+  taxa_conformidade?: number;
+  passos?: Array<{
+    titulo: string;
+    descricao?: string;
+    concluido?: boolean;
+  }>;
+  [key: string]: any;
+}
+
+export interface PlanoAcao extends BaseEntity {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  status?: string;
 }

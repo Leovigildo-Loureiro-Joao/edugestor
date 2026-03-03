@@ -10,7 +10,7 @@ const sameMonthList = (a: string[] = [], b: string[] = []) => {
 };
 
 export const paymentChecker = {
-  // Usa o MESMO fio lógico da página Pagamento.tsx:
+  // Usa o MESMO fio lógico da página Pagamento:
   // meses pagos -> mapa pago -> meses de cobrança por aluno -> meses pendentes.
   async verificarPagamentosAtrasados(): Promise<{
     processados: number;
@@ -80,10 +80,6 @@ export const paymentChecker = {
           atualizados += 1;
         }
       });
-
-      console.log(
-        `✅ Pagamentos verificados | processados: ${alunos.length}, atualizados: ${atualizados}, emDia: ${emDia}, pendentes: ${pendentes}`
-      );
 
       return { processados: alunos.length, atualizados, emDia, pendentes };
     } catch (error) {

@@ -7,7 +7,6 @@ export const useAutoSave = (storageKey, initialData, delay = 2000) => {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log('📂 Rascunho recuperado do localStorage:', parsed.data);
         return parsed.data;
       }
     } catch (error) {
@@ -33,8 +32,7 @@ export const useAutoSave = (storageKey, initialData, delay = 2000) => {
       setHasUnsavedChanges(false);
       
       if (action === 'manual-save') {
-        console.log('💾 Rascunho salvo manualmente:', newData);
-      }
+        }
     } catch (error) {
       console.error('❌ Erro ao salvar rascunho:', error);
     }
@@ -71,8 +69,7 @@ export const useAutoSave = (storageKey, initialData, delay = 2000) => {
     localStorage.removeItem(storageKey);
     setLastSave(null);
     setHasUnsavedChanges(false);
-    console.log('🗑️ Rascunho limpo');
-  }, [storageKey]);
+    }, [storageKey]);
 
   return {
     data,

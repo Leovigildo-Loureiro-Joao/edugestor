@@ -8,9 +8,11 @@ import {
   FiBook, FiTrendingDown, FiCheckCircle, FiClock,
   FiUser, FiUsers
 } from 'react-icons/fi';
-import { toast } from 'react-hot-toast';
 import { Meta } from '../../types/eventos';
 import { AlocacaoRecurso } from '../../types/transacao';
+import { useAlert } from '../ui/AlertBadge';
+import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { generateUniqueId } from '../../utils/idGenarator';
 
 
 interface AlocacaoRecursosModalProps {
@@ -19,20 +21,11 @@ interface AlocacaoRecursosModalProps {
   fundosDisponiveis: number;
   metas: Meta[];
   onAlocacaoSalva: (alocacao: {
-    metas: Array<{
-      meta_id: string;
-      meta_titulo: string;
-      valor: number;
-      percentual: number;
-      motivo: string;
-      tipo_alocacao: string;
-      orcamento_atual: number;
-      orcamento_total: number;
-    }>;
-    totalAlocado: number;
-    mes: number;
-    ano: number;
-    descricao: string;
+     metas: AlocacaoRecurso[],
+      totalAlocado:number,
+      mes: string,
+      ano: string,
+      descricao: string
   }) => void;
   historicoAlocacoes?: Array<{
     id: string;
@@ -53,13 +46,8 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   onAlocacaoSalva,
   historicoAlocacoes = []
 }) => {
-  const [metasSelecionadas, setMetasSelecionadas] = useState<Array<{
-    meta: Meta;
-    valor: number;
-    percentual: number;
-    motivo: string;
-    tipo_alocacao: 'complementar' | 'completo' | 'parcial';
-  }>>([]);
+  const { showAlert } = useAlert();
+  const [metasSelecionadas, setMetasSelecionadas] = useState<Array<AlocacaoRecurso>>([]);
 
   const [modoDistribuicao, setModoDistribuicao] = useState<'valor' | 'percentual'>('valor');
   const [valorDistribuir, setValorDistribuir] = useState(0);
@@ -126,13 +114,21 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
       const selecionadas = ordenadasPorPrioridade.slice(0, 3).map(meta => {
         const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
         const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
+        const valorSugerido = Math.min(orcamentoRestante, fundosDisponiveis * 0.3); // Máximo 30% dos fundos por meta inicialmente
         
         return {
           meta,
-          valor: Math.min(orcamentoRestante, fundosDisponiveis * 0.3), // Máximo 30% dos fundos por meta inicialmente
+          meta_id: meta.id,
+          orcamento_actual: orcamentoAtual,
+          orcamento_total: orcamentoAtual + valorSugerido,
+          data_alocacao: new Date().toISOString(),
+          instituicao_id: instituicaoIdValue(),
+          sync_status: "pending" as const,
+          id: generateUniqueId(),
+          valor: valorSugerido,
           percentual: 0,
           motivo: `Alocação para meta: ${meta.titulo}`,
-          tipo_alocacao: 'parcial' as const
+          tipo_alocacao: valorSugerido >= orcamentoRestante * 0.95 ? 'completo' as const : 'parcial' as const
         };
       });
       setMetasSelecionadas(selecionadas);
@@ -142,12 +138,12 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   // Calcular totais
   const totalAlocado = metasSelecionadas.reduce((sum, item) => sum + item.valor, 0);
   const saldoRestante = fundosDisponiveis - totalAlocado;
-  const percentualTotal = metasSelecionadas.reduce((sum, item) => sum + item.percentual, 0);
+  const percentualTotal = metasSelecionadas.reduce((sum, item) => sum + (metas.find(meta=> meta.id==item.meta_id)?.progresso ?? 0), 0);
 
   // Métodos para gerenciar metas selecionadas
   const adicionarMeta = (meta: Meta) => {
-    if (metasSelecionadas.find(item => item.meta.id === meta.id)) {
-      toast.error('Esta meta já foi adicionada');
+    if (metasSelecionadas.find(item => item.meta_id === meta.id)) {
+      showAlert({ type: 'error', title: 'Esta meta já foi adicionada' });
       return;
     }
 
@@ -159,7 +155,14 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     setMetasSelecionadas([
       ...metasSelecionadas,
       {
-        meta,
+        meta_id:meta.id,
+        meta:meta,
+        orcamento_actual:orcamentoAtual,
+        orcamento_total:orcamentoAtual+valorSugerido,
+        data_alocacao:new Date().toISOString(),
+        instituicao_id:instituicaoIdValue(),
+        sync_status:"pending",
+        id:generateUniqueId(),
         valor: valorSugerido,
         percentual: (valorSugerido / fundosDisponiveis) * 100,
         motivo: `Alocação para meta: ${meta.titulo}`,
@@ -169,14 +172,16 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   };
 
   const removerMeta = (metaId: string) => {
-    setMetasSelecionadas(metasSelecionadas.filter(item => item.meta.id !== metaId));
+    setMetasSelecionadas(metasSelecionadas.filter(item => item.meta_id !== metaId));
   };
 
   const atualizarValor = (metaId: string, valor: number) => {
     setMetasSelecionadas(metasSelecionadas.map(item => {
-      if (item.meta.id === metaId) {
-        const orcamentoAtual = item.meta.progresso * (item.meta.orcamento_previsto || 0) / 100;
-        const orcamentoRestante = (item.meta.orcamento_previsto || 0) - orcamentoAtual;
+      const meta=metas.find(met=> met.id==metaId)
+      if (meta) {
+        
+        const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
+        const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
         
         // Validar valor máximo
         const valorMaximo = Math.min(orcamentoRestante, fundosDisponiveis);
@@ -204,12 +209,13 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
 
   const atualizarPercentual = (metaId: string, percentual: number) => {
     setMetasSelecionadas(metasSelecionadas.map(item => {
-      if (item.meta.id === metaId) {
+      const meta=metas.find(met=> met.id==metaId)
+      if (meta) {
         const novoPercentual = Math.max(0, Math.min(percentual, 100));
         const valor = (fundosDisponiveis * novoPercentual) / 100;
         
-        const orcamentoAtual = item.meta.progresso * (item.meta.orcamento_previsto || 0) / 100;
-        const orcamentoRestante = (item.meta.orcamento_previsto || 0) - orcamentoAtual;
+        const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
+        const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
         
         // Validar valor máximo
         const valorMaximo = Math.min(orcamentoRestante, fundosDisponiveis);
@@ -237,15 +243,16 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
 
   const atualizarMotivo = (metaId: string, motivo: string) => {
     setMetasSelecionadas(metasSelecionadas.map(item => 
-      item.meta.id === metaId ? { ...item, motivo } : item
+      item.meta_id === metaId ? { ...item, motivo } : item
     ));
   };
 
   const atualizarTipoAlocacao = (metaId: string, tipo: 'complementar' | 'completo' | 'parcial') => {
     setMetasSelecionadas(metasSelecionadas.map(item => {
-      if (item.meta.id === metaId) {
-        const orcamentoAtual = item.meta.progresso * (item.meta.orcamento_previsto || 0) / 100;
-        const orcamentoRestante = (item.meta.orcamento_previsto || 0) - orcamentoAtual;
+      const meta=metas.find(met=> met.id==metaId)
+      if (meta) {
+        const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
+        const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
         
         let novoValor = item.valor;
         
@@ -272,7 +279,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   // Distribuir valor igualmente
   const distribuirIgualmente = () => {
     if (metasSelecionadas.length === 0) {
-      toast.error('Adicione pelo menos uma meta');
+      showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
       return;
     }
 
@@ -291,10 +298,11 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }));
   };
 
+  
   // Distribuir baseado na prioridade
   const distribuirPorPrioridade = () => {
     if (metasSelecionadas.length === 0) {
-      toast.error('Adicione pelo menos uma meta');
+      showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
       return;
     }
 
@@ -323,7 +331,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   // Distribuir baseado na necessidade de orçamento
   const distribuirPorNecessidade = () => {
     if (metasSelecionadas.length === 0) {
-      toast.error('Adicione pelo menos uma meta');
+      showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
       return;
     }
 
@@ -334,7 +342,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }, 0);
 
     if (totalNecessidade === 0) {
-      toast.error('Todas as metas já têm orçamento completo');
+      showAlert({ type: 'error', title: 'Todas as metas já têm orçamento completo' });
       return;
     }
 
@@ -357,17 +365,17 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   // Salvar alocação
   const salvarAlocacao = () => {
     if (metasSelecionadas.length === 0) {
-      toast.error('Adicione pelo menos uma meta');
+      showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
       return;
     }
 
     if (totalAlocado > fundosDisponiveis) {
-      toast.error(`O valor alocado (${formatarMoeda(totalAlocado)}) excede os fundos disponíveis (${formatarMoeda(fundosDisponiveis)})`);
+      showAlert({ type: 'error', title: `O valor alocado (${formatarMoeda(totalAlocado)}) excede os fundos disponíveis (${formatarMoeda(fundosDisponiveis)})` });
       return;
     }
 
     if (!descricaoAlocacao.trim()) {
-      toast.error('Forneça uma descrição para esta alocação');
+      showAlert({ type: 'error', title: 'Forneça uma descrição para esta alocação' });
       return;
     }
 
@@ -375,26 +383,31 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
       const orcamentoAtual = item.meta.progresso * (item.meta.orcamento_previsto || 0) / 100;
       
       return {
-        meta_id: item.meta.id,
+        meta_id: item.meta_id,
+        meta: item.meta,
         meta_titulo: item.meta.titulo,
         valor: item.valor,
         percentual: (item.valor / fundosDisponiveis) * 100,
         motivo: item.motivo,
         tipo_alocacao: item.tipo_alocacao,
         orcamento_atual: orcamentoAtual,
-        orcamento_total: item.meta.orcamento_previsto || 0
+        orcamento_actual: orcamentoAtual,
+        orcamento_total: item.meta.orcamento_previsto || 0,
+        data_alocacao: new Date().toISOString(),
+        id: item.id,
+        sync_status: item.sync_status
       };
     });
 
     onAlocacaoSalva({
       metas: alocacoes,
       totalAlocado,
-      mes: mesSelecionado,
-      ano: anoSelecionado,
+      mes: meses[mesSelecionado],
+      ano: anoSelecionado.toString(),
       descricao: descricaoAlocacao
     });
 
-    toast.success('Recursos alocados com sucesso!');
+    showAlert({ type: 'success', title: 'Recursos alocados com sucesso!' });
   };
 
   const meses = [
@@ -481,7 +494,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                         ? (orcamentoAtual / (meta.orcamento_previsto || 1)) * 100 
                         : 0;
                       
-                      const isSelecionada = metasSelecionadas.find(item => item.meta.id === meta.id);
+                      const isSelecionada = metasSelecionadas.find(item => item.meta_id === meta.id);
                       
                       return (
                         <div
@@ -812,7 +825,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                         
                         return (
                           <div
-                            key={item.meta.id}
+                            key={item.meta_id}
                             className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4"
                           >
                             <div className="flex justify-between items-start mb-4">
@@ -835,14 +848,14 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                         {formatarMoeda(item.valor)}
                                       </div>
                                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                                        {item.percentual.toFixed(1)}% dos fundos
+                                        {(item.percentual??0).toFixed(1)}% dos fundos
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               <button
-                                onClick={() => removerMeta(item.meta.id)}
+                                onClick={() => removerMeta(item.meta_id)}
                                 className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg ml-2"
                               >
                                 <FiX className="h-5 w-5" />
@@ -860,7 +873,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                   max={Math.min(orcamentoRestante, fundosDisponiveis)}
                                   step="0.01"
                                   value={item.valor || ''}
-                                  onChange={(e) => atualizarValor(item.meta.id, parseFloat(e.target.value) || 0)}
+                                  onChange={(e) => atualizarValor(item.meta_id, parseFloat(e.target.value) || 0)}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                                 />
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -874,7 +887,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                 </label>
                                 <select
                                   value={item.tipo_alocacao}
-                                  onChange={(e) => atualizarTipoAlocacao(item.meta.id, e.target.value as any)}
+                                  onChange={(e) => atualizarTipoAlocacao(item.meta_id, e.target.value as any)}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                                 >
                                   <option value="parcial">Parcial</option>
@@ -924,7 +937,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                               <input
                                 type="text"
                                 value={item.motivo}
-                                onChange={(e) => atualizarMotivo(item.meta.id, e.target.value)}
+                                onChange={(e) => atualizarMotivo(item.meta_id, e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
                                 placeholder="Descreva o motivo específico desta alocação..."
                               />

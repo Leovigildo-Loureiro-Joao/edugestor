@@ -29,8 +29,6 @@ export const updateJWTClaims = async (claims: Record<string, any>): Promise<bool
     }
     
     const result = await response.json();
-    console.log('✅ JWT claims atualizados:', result);
-    
     // Forçar refresh do token para pegar os novos claims
     await supabase.auth.refreshSession();
     

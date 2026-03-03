@@ -9,7 +9,6 @@ import { IconType } from "react-icons";
 import EventModalForm from "../event/EventosPage";
 import { useAlert } from "../ui/AlertBadge";
 import { useConfirmModal } from "../ui/ComfirmModal";
-import toast from "react-hot-toast";
 
 // Adicione este tipo
 type ModalMode = 'list' | 'view' | 'edit' | 'create';
@@ -72,7 +71,7 @@ export const CalendarWithEvents = () => {
           : new Date(holiday.date);
           
         return {
-          id: -(index + 1000),
+          id: -(index + 1000)+"",
           title: holiday.name,
           date: holidayDate.toISOString().split('T')[0],
           time: '00:00',
@@ -185,7 +184,7 @@ export const CalendarWithEvents = () => {
               setEvents(prev => prev.filter(s => s.id !== eventId));
               setModalMode('list');
               setSelectedEvent(null);
-              toast.success('Aula excluída com sucesso!');
+              showAlert({ type: 'success', title: 'Aula excluída com sucesso!' });
               showAlert({
                 type: 'success',
                 title: 'Evento excluido com sucesso!',
@@ -310,7 +309,7 @@ export const CalendarWithEvents = () => {
           <div className="mt-1 space-y-1 max-h-16 overflow-y-auto">
             {dayEvents.slice(0, 2).map((event) => {
               const EventIcon = getEventTypeIcon(event.type);
-              const isAutoHoliday = event.id && event.id < 0;
+              const isAutoHoliday = event.id;
               
               return (
                 <div
@@ -350,7 +349,7 @@ export const CalendarWithEvents = () => {
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {dayEvents.map(event => {
           const EventIcon = getEventTypeIcon(event.type);
-          const isAutoHoliday = event.id && event.id < 0;
+          const isAutoHoliday = event.id;
           
           return (
             <div

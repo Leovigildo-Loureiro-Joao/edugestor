@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { RxPerson } from 'react-icons/rx';
+import { RxPerson, RxSection, RxStar } from 'react-icons/rx';
 import { AlunoDesempenho } from '../../../types/aluno';
 import { usePagination } from '../../../hooks/usePagination';
 import { PaginationControls } from '../../ui/PaginationControls';
+import { SelectTyped } from '../../students/StudentForm';
 
 interface TurmaAlunosSectionProps {
   alunosFiltrados: AlunoDesempenho[];
@@ -66,47 +67,40 @@ export const TurmaAlunosSection: React.FC<TurmaAlunosSectionProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+      <div className="flex flex-col  justify-between mb-4 gap-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Lista de Alunos ({alunosFiltrados.length}/{totalAlunos})
         </h2>
 
-        <div className="flex flex-wrap gap-2">
-          <select
+        <div className="flex gap-2 ">
+
+          <SelectTyped
+            vect={[
+              { value: 'todos', label: 'Todos os tipos' },
+              { value: 'regular', label: 'Turma Regular' },
+              { value: 'reforco_personalizado', label: 'Reforço Personalizado' }
+            ]}
+            icon={RxPerson}
             value={filtroTipoMatricula}
-            onChange={(e) => setFiltroTipoMatricula(e.target.value as 'todos' | 'regular' | 'reforco_personalizado')}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="todos">Todos os tipos</option>
-            <option value="regular">Turma Regular</option>
-            <option value="reforco_personalizado">Reforço Personalizado</option>
-          </select>
+            onChange={(e:any) => setFiltroTipoMatricula(e)}
+            
+          />
+            
 
-          <select
+          <SelectTyped
+            vect={gruposAprendizado}
             value={filtroGrupoAprendizado}
-            onChange={(e) => setFiltroGrupoAprendizado(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="todos">Todos os grupos</option>
-            {gruposAprendizado.map((grupo) => (
-              <option key={grupo.value} value={grupo.value}>
-                {grupo.label}
-              </option>
-            ))}
-          </select>
+            onChange={(e:any) => setFiltroGrupoAprendizado(e)}
+            icon={RxSection}
+          />
+          
 
-          <select
+          <SelectTyped
+            vect={niveisConhecimento}
             value={filtroNivelConhecimento}
-            onChange={(e) => setFiltroNivelConhecimento(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="todos">Todos os níveis</option>
-            {niveisConhecimento.map((nivel) => (
-              <option key={nivel.value} value={nivel.value}>
-                {nivel.label}
-              </option>
-            ))}
-          </select>
+            onChange={(e:any) => setFiltroNivelConhecimento(e)}
+            icon={RxStar}
+          />
         </div>
       </div>
 

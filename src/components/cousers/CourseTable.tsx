@@ -316,7 +316,7 @@ export const CourseTable: React.FC<CourseTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-white text-gray-900">
   <div className="flex items-center gap-2">
-    <span className={curso.alunos > curso.vagas ? 'text-red-600 font-bold' : ''}>
+    <span className={(curso.alunos??0) > curso.vagas ? 'text-red-600 font-bold' : ''}>
       {curso.alunos ?? 0}/{curso.vagas}
     </span>
     <div className="w-16 max-w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 relative">
@@ -335,7 +335,7 @@ export const CourseTable: React.FC<CourseTableProps> = ({
       />
       
       {/* Indicador de excesso (se > 100%) */}
-      {curso.alunos > curso.vagas && (
+      {(curso.alunos??0) > curso.vagas && (
         <div 
           className="h-2 rounded-full bg-red-700 absolute top-0 left-0"
           style={{ 
