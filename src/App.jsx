@@ -299,7 +299,19 @@ function AppContent() {
                       
                       {/* 👇 ROTAS BLOQUEADAS PARA PROFESSORES */}
                       <Route 
-                        path="/admin/*" 
+                        path="/admin" 
+                        element={<Navigate to="/admin/dashboard" replace />} 
+                      />
+                      <Route 
+                        path="/admin/dashboard" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <AdminDashboard />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/admin/dashboard/:seccao" 
                         element={
                           <ProtectedRoute allowedRoles={['admin']}>
                             <AdminDashboard />
@@ -308,46 +320,287 @@ function AppContent() {
                       />
                       
                       <Route 
-                        path="/financeiro/*" 
+                        path="/financeiro" 
                         element={
                           <ProtectedRoute allowedRoles={['admin', 'manager']}>
                             <FinanceiroPage />
                           </ProtectedRoute>
                         } 
                       />
+                      <Route 
+                        path="/financeiro/:seccao" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <FinanceiroPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/financeiro/transacoes" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TransacoesPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/financeiro/pagamentos" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <PagamentosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/financeiro/pagamento/:alunoId" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <RegistroPagamentoPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/financeiro/matricula/:alunoId" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <CompletarMatricula />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route path="/pagamentos" element={<Navigate to="/financeiro/pagamentos" replace />} />
                       
                       <Route 
-                        path="/cursos/*" 
+                        path="/cursos" 
                         element={
                           <ProtectedRoute allowedRoles={['admin', 'manager']}>
                             <Courses />
                           </ProtectedRoute>
                         } 
                       />
+                      <Route 
+                        path="/cursos/novo" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <CursoNew />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/cursos/editar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <CursoEdit />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/cursos/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <CourseDetails />
+                          </ProtectedRoute>
+                        } 
+                      />
                       
                       <Route 
-                        path="/alunos/*" 
+                        path="/alunos" 
                         element={
                           <ProtectedRoute allowedRoles={['admin', 'manager']}>
                             <Students />
                           </ProtectedRoute>
                         } 
                       />
+                      <Route 
+                        path="/alunos/novo" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <StudentNew />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/alunos/editar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <StudentEdit />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/alunos/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <StudentPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/alunos/:id/:seccao" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <StudentPage />
+                          </ProtectedRoute>
+                        } 
+                      />
                       
                       <Route 
-                        path="/estrategia/*" 
+                        path="/estrategia" 
                         element={
                           <ProtectedRoute allowedRoles={['admin', 'manager']}>
                             <EstrategiaPage />
                           </ProtectedRoute>
                         } 
                       />
+                      <Route 
+                        path="/estrategia/:seccao" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EstrategiaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/metas/nova" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <MetaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/metas/editar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <MetaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/metas/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <MetaDetailsPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/metas/:id/:seccao" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <MetaDetailsPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/tarefas/nova" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TarefaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/tarefas/editar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TarefaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/tarefas/deletar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TarefaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/eventos" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/eventos/novo" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/estrategia/eventos/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/eventos" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/eventos/novo" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/eventos/add/:date" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/eventos/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EventosPage />
+                          </ProtectedRoute>
+                        } 
+                      />
                       
                       <Route 
-                        path="/configuracoes/*" 
+                        path="/configuracoes" 
                         element={
                           <ProtectedRoute allowedRoles={['admin']}>
                             <ConfiguracoesPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/configuracoes/:seccao" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <ConfiguracoesPage />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/turmas/nova" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TurmaForm />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/turmas/editar/:id" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <TurmaForm />
                           </ProtectedRoute>
                         } 
                       />
