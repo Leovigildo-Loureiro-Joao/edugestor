@@ -29,7 +29,7 @@ export const InadimplenciaChart: React.FC<InadimplenciaChartProps> = ({ data }) 
       <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
         <XAxis 
-          dataKey="turma" 
+          dataKey="abreviacao" 
           tick={{ fill: '#6B7280', fontSize: 12 }}
           axisLine={{ stroke: '#374151' }}
         />
