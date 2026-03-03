@@ -19,7 +19,7 @@ import { Notificacao } from './notificacaoService';
 import { Avaliacao } from '../../types/avaliacao';
 import { PlaneamentoBase } from '../../types/planeamento';
 import { PlanoAula } from "../../types/aula";
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue, isValidInstituicaoId } from '../../utils/getInsitituicaoID';
 
 // Configurar Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -198,9 +198,10 @@ class EduGestorDatabase extends Dexie {
       });
 
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
-      if (!obj.instituicao_id) {
-        obj.instituicao_id = instituicaoIdValue();
-      }
+      const fallbackInstituicaoId = instituicaoIdValue();
+      obj.instituicao_id = isValidInstituicaoId(obj.instituicao_id)
+        ? obj.instituicao_id
+        : (isValidInstituicaoId(fallbackInstituicaoId) ? fallbackInstituicaoId : '');
       if (!obj.created_at) {
         obj.created_at = new Date().toISOString();
       }

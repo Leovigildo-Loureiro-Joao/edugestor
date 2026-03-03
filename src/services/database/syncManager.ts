@@ -4,7 +4,7 @@ import { SyncQueueItem } from "../../types/base";
 import { avaliacaoService } from "./avaliacao";
 import db, { supabase } from "./db";
 import { emitDbChanged } from "../../utils/emitPendingSync";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInsitituicaoID";
 import { auditLogService } from "../audit/auditLogService";
 
 
@@ -172,6 +172,15 @@ const useSyncAuthInManager = () => {
 };
 
 const getSyncQueueInstitutionId = (): string => instituicaoIdValue();
+const LEGACY_INSTITUICAO_IDS = new Set(['local_default_instituicao', '']);
+const isLegacyInstituicaoId = (value?: string | null): boolean =>
+  !isValidInstituicaoId(value) && LEGACY_INSTITUICAO_IDS.has(value || '');
+const resolveValidInstituicaoId = (value?: string | null, allowNull = false): string | null => {
+  if (isValidInstituicaoId(value)) return value;
+  const active = getSyncQueueInstitutionId();
+  if (isValidInstituicaoId(active)) return active;
+  return allowNull ? null : '';
+};
 const isUuid = (value?: string | null): boolean =>
   !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const isSeedRecordId = (value?: string | null): boolean =>
@@ -381,9 +390,10 @@ export const syncManager: SyncManager = {
       
       // 1. Agrupar itens por tabela
       const pendingItems = await db.syncQueue
-        .where('instituicao_id')
-        .equals(instituicaoId)
-        .and((item) => item.status === 'pending')
+        .filter((item) =>
+          item.status === 'pending' &&
+          (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
+        )
         .toArray();
       
       if (pendingItems.length === 0) {
@@ -403,13 +413,15 @@ export const syncManager: SyncManager = {
       throw error;
     }
   },
-   async uploadTableBatch (tableName: string) {
+  async uploadTableBatch (tableName: string) {
     const instituicaoId = getSyncQueueInstitutionId();
     if (!instituicaoId) return;
     const pendingItems = await db.syncQueue
-        .where('instituicao_id')
-        .equals(instituicaoId)
-        .and(item => item.status === 'pending' && item.table === tableName )
+        .filter((item) =>
+          item.status === 'pending' &&
+          item.table === tableName &&
+          (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
+        )
         .toArray();
       await this.processTableBatch(tableName, pendingItems);
       
@@ -434,9 +446,10 @@ export const syncManager: SyncManager = {
     
     // Buscar TODOS os itens com status 'failed' (qualquer número de tentativas)
     const failedItems = await db.syncQueue
-      .where('instituicao_id')
-      .equals(instituicaoId)
-      .and((item) => item.status === 'failed')
+      .filter((item) =>
+        item.status === 'failed' &&
+        (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
+      )
       .toArray();
     
     if (failedItems.length === 0) {
@@ -906,10 +919,12 @@ export const syncManager: SyncManager = {
   , cleanRecordForSupabase(record: any) {
     // Remove campos internos do Dexie
     const { sync_status, deleted, ...cleanRecord } = record;
+    const sanitizedInstituicaoId = resolveValidInstituicaoId(cleanRecord.instituicao_id, true);
     
     // Garante timestamps no formato ISO
     return {
       ...cleanRecord,
+      ...(cleanRecord.instituicao_id !== undefined ? { instituicao_id: sanitizedInstituicaoId } : {}),
       created_at: record.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       
@@ -982,7 +997,7 @@ export const syncManager: SyncManager = {
           const { id, ...rest } = record;
           return {
             ...rest,
-            instituicao_id: rest.instituicao_id || instituicaoIdValue()
+            instituicao_id: resolveValidInstituicaoId(rest.instituicao_id) || ''
           };
         });
      case 'avaliacoes':
@@ -990,7 +1005,7 @@ export const syncManager: SyncManager = {
           const { id, peso,...rest } = record;
           return {
             ...rest,
-            instituicao_id: rest.instituicao_id || instituicaoIdValue()
+            instituicao_id: resolveValidInstituicaoId(rest.instituicao_id) || ''
           };
         }); 
       case 'cursos':
@@ -1006,7 +1021,7 @@ export const syncManager: SyncManager = {
           return {
             ...rest,
             destinatario_tipo,
-            instituicao_id: rest.instituicao_id || null
+            instituicao_id: resolveValidInstituicaoId(rest.instituicao_id, true)
           };
         });
       case 'system_config':
@@ -1014,7 +1029,7 @@ export const syncManager: SyncManager = {
           const { id, updated_by, ...rest } = record;
           return {
             ...rest,
-            instituicao_id: rest.instituicao_id || instituicaoIdValue()
+            instituicao_id: resolveValidInstituicaoId(rest.instituicao_id) || ''
           };
         });
         

@@ -98,14 +98,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] shadow-xl"
+            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md h-auto max-h-[90vh] overflow-y-auto shadow-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-6">

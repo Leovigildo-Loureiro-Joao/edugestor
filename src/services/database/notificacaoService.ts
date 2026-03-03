@@ -5,7 +5,7 @@ import { alunosService } from "./alunosService";
 import { turmaService } from "./turmas";
 import { Avaliacao } from "../../types/avaliacao";
 import { Propina } from "../../types/propina";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInsitituicaoID";
 import { profileService } from "./profileService";
 import { getPendingCount } from "../../utils/emitPendingSync";
 
@@ -31,6 +31,8 @@ const normalizarDestinatarioNotificacao = (destinatario?: string): DestinatarioN
 
 const normalizarRoleParaDestinatario = (role?: string): DestinatarioNotificacao | undefined =>
   normalizarDestinatarioNotificacao(role);
+const getSafeInstituicaoId = (value?: string | null): string | null =>
+  isValidInstituicaoId(value) ? value : null;
 
 export enum TipoNotificacao {
   // Sistema
@@ -146,7 +148,7 @@ export const notificacaoService = {
         link:notificacaoData.link||'',
         data_envio: notificacaoData.data_envio || now,
         meta: notificacaoData.meta || {},
-        instituicao_id: notificacaoData.instituicao_id || instituicaoIdValue() || null,
+        instituicao_id: getSafeInstituicaoId(notificacaoData.instituicao_id || instituicaoIdValue()),
         aluno_id: notificacaoData.aluno_id,
         turma_id: notificacaoData.turma_id,
         user_id: notificacaoData.user_id,
@@ -179,7 +181,7 @@ export const notificacaoService = {
       // Adicionar à fila de sincronização
       await db.syncQueue.add({
         table: 'notificacao',
-        instituicao_id:instituicaoIdValue(),
+        instituicao_id: getSafeInstituicaoId(notificacao.instituicao_id || instituicaoIdValue()) || '',
         record_id: notificacao.id,
         operation: 'upsert',
         status: 'pending',
@@ -887,7 +889,7 @@ export const notificacaoService = {
           await db.syncQueue.add({
             table: 'notificacao',
             record_id: notif.id,
-            instituicao_id:instituicaoIdValue(),
+            instituicao_id: getSafeInstituicaoId(notif.instituicao_id || instituicaoIdValue()) || '',
             operation: 'upsert',
             status: 'pending',
             created_at: now
@@ -942,7 +944,7 @@ export const notificacaoService = {
         
         await db.syncQueue.add({
           table,
-          instituicao_id:instituicaoIdValue(),
+          instituicao_id: getSafeInstituicaoId(record.instituicao_id || instituicaoIdValue()) || '',
           record_id: id,
           operation: 'delete',
           status: 'pending',

@@ -57,6 +57,7 @@ const Sidebar: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleChecked, setRoleChecked] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   useEffect(() => {
     // ✅ Inicializar sistema de sincronização
     const initSync = async () => {
@@ -150,11 +151,17 @@ const Sidebar: React.FC = () => {
   }, []);
 
   const handleLogout = async (): Promise<void> => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
     try {
       await logout();
-      navigate('/login');
+      if (window.innerWidth < 1024) setIsOpen(false);
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -439,10 +446,11 @@ const Sidebar: React.FC = () => {
                                 setShowUserMenu(false);
                                 handleLogout();
                               }}
-                              className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md flex items-center gap-2 transition-colors"
+                              disabled={isLoggingOut}
+                              className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md flex items-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               <FiLogOut className="w-4 h-4" />
-                              <span>Sair</span>
+                              <span>{isLoggingOut ? 'Saindo...' : 'Sair'}</span>
                             </button>
                           </div>
                         </motion.div>

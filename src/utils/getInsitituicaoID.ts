@@ -1,6 +1,9 @@
 import { profileService } from "../services/database/profileService"
 
-const DEFAULT_INSTITUICAO_ID = "local_default_instituicao";
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const isValidInstituicaoId = (value: unknown): value is string =>
+  typeof value === "string" && UUID_V4_REGEX.test(value);
 
 export const instituicaoIdValue = () => {
     const currentUserId = localStorage.getItem("user_id");
@@ -12,7 +15,7 @@ export const instituicaoIdValue = () => {
         try {
             const profile = JSON.parse(profileRaw);
             const isCurrentUser = !currentUserId || profile?.id === currentUserId;
-            if (isCurrentUser && profile?.instituicao_id) {
+            if (isCurrentUser && isValidInstituicaoId(profile?.instituicao_id)) {
                 profileInstituicaoId = profile.instituicao_id;
             }
         } catch {
@@ -27,14 +30,15 @@ export const instituicaoIdValue = () => {
         return profileInstituicaoId;
     }
 
-    if (active && active !== DEFAULT_INSTITUICAO_ID) return active;
+    if (isValidInstituicaoId(active)) return active;
 
     void profileService.getLocalProfile().then((profile) => {
         const isCurrentUser = !currentUserId || profile?.id === currentUserId;
-        if (isCurrentUser && profile?.instituicao_id) {
-            localStorage.setItem("active_instituicao_id", profile.instituicao_id);
+        const instituicaoId = profile?.instituicao_id;
+        if (isCurrentUser && isValidInstituicaoId(instituicaoId)) {
+            localStorage.setItem("active_instituicao_id", instituicaoId);
         }
     });
 
-    return active || DEFAULT_INSTITUICAO_ID;
+    return "";
 }

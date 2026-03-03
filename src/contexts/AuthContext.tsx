@@ -511,34 +511,40 @@ const handleSuccessfulLogin = async (user: User) => {
     try {
       setError('');
       const previousUser = user;
-      const previousProfile = await profileService.getLocalProfile();
-
-      try {
-        await auditLogService.log('AUTH_LOGOUT', {
-          action_label: 'Fez Logout',
-          source: 'auth',
-          table_name: 'profiles',
-          record_id: previousUser?.id || null,
-          new_values: {
-            email: previousUser?.email || previousProfile?.email || null
-          },
-          instituicao_id: previousProfile?.instituicao_id
-        });
-      } catch (logError) {
-        console.warn('⚠️ Falha ao registrar logout na auditoria:', logError);
-      }
-
-      // Tenta encerrar sessão remota, mas não bloqueia o logout local se falhar.
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
-      if (error) {
-        console.warn('⚠️ Falha ao encerrar sessão no Supabase, limpando sessão local:', error);
-      }
+      const previousProfilePromise = profileService.getLocalProfile().catch(() => null);
 
       // Limpeza local sempre
       clearLocalAuthState();
       setUser(null);
       setProfile(null);
       setSession(null);
+
+      // Executa tarefas remotas em background para não atrasar a UI.
+      void (async () => {
+        try {
+          const previousProfile = await previousProfilePromise;
+          await auditLogService.log('AUTH_LOGOUT', {
+            action_label: 'Fez Logout',
+            source: 'auth',
+            table_name: 'profiles',
+            record_id: previousUser?.id || null,
+            new_values: {
+              email: previousUser?.email || previousProfile?.email || null
+            },
+            instituicao_id: previousProfile?.instituicao_id
+          });
+        } catch (logError) {
+          console.warn('⚠️ Falha ao registrar logout na auditoria:', logError);
+        }
+      })();
+
+      // Tenta encerrar sessão remota, mas sem bloquear o logout local.
+      void (async () => {
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) {
+          console.warn('⚠️ Falha ao encerrar sessão no Supabase, sessão local já foi limpa:', error);
+        }
+      })();
 
       } catch (error: any) {
       console.error('❌ Erro no logout:', error);
