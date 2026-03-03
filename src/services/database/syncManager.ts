@@ -29,6 +29,7 @@ interface SyncManager {
   processarRegistrosUnicos(records: any[], tabela: string): any[];
   handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
   downloadTableBatch(tableName: string, since: Date): Promise<void>;
+  reconcileHardDeletes(tableName: string): Promise<void>;
   uploadTableBatch(tableName: string): Promise<void>;
   rentryErrorsTable(tableName: string): Promise<void>;
   processDownloadBatch(tableName: string, batch: any[]): Promise<void>;
@@ -172,6 +173,26 @@ const useSyncAuthInManager = () => {
 };
 
 const getSyncQueueInstitutionId = (): string => instituicaoIdValue();
+const HARD_DELETE_RECONCILE_TABLES = new Set([
+  'cursos',
+  'turmas',
+  'alunos',
+  'alocacao',
+  'transacoes',
+  'aulas',
+  'propina',
+  'frequencias',
+  'tarefas',
+  'metas',
+  'rotinas',
+  'evento',
+  'system_config',
+  'notificacao',
+  'avaliacoes',
+  'turma_horarios',
+  'planeamentos',
+  'plano_aulas'
+]);
 const LEGACY_INSTITUICAO_IDS = new Set(['local_default_instituicao', '']);
 const isLegacyInstituicaoId = (value?: string | null): boolean =>
   !isValidInstituicaoId(value) && LEGACY_INSTITUICAO_IDS.has(value || '');
@@ -1868,7 +1889,7 @@ export const syncManager: SyncManager = {
       const { hasPermission } = useSyncAuthInManager();
       
       const tables = [
-        'cursos', 'turmas', 'alunos', 'transacoes', 'aulas', 
+        'cursos', 'turmas', 'alunos', 'alocacao', 'transacoes', 'aulas', 
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
         'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios',"planeamentos","plano_aulas"
       ];
@@ -1931,6 +1952,10 @@ export const syncManager: SyncManager = {
       }
       
       if (!remoteData || remoteData.length === 0) {
+        if (HARD_DELETE_RECONCILE_TABLES.has(tableName)) {
+          await this.reconcileHardDeletes(tableName);
+          emitDbChanged(tableName, 'download');
+        }
         localStorage.setItem(`last_sync_${tableName}`, new Date().toISOString());
         return;
       }
@@ -1940,6 +1965,11 @@ export const syncManager: SyncManager = {
       for (let i = 0; i < remoteData.length; i += batchSize) {
         const batch = remoteData.slice(i, i + batchSize);
         await this.processDownloadBatch(tableName, batch);
+      }
+
+      // Reconciliação de hard-delete para tabelas críticas em multi-dispositivo.
+      if (HARD_DELETE_RECONCILE_TABLES.has(tableName)) {
+        await this.reconcileHardDeletes(tableName);
       }
 
       const latestUpdatedAt = remoteData.reduce((acc, record) => {
@@ -1962,6 +1992,14 @@ export const syncManager: SyncManager = {
   // ✅ Processar lote de download
   async processDownloadBatch(tableName: string, batch: any[]) {
     const table = db.table<any>(tableName);
+    const pendingQueueRecordIds = new Set(
+      (await db.syncQueue
+        .where('table')
+        .equals(tableName as any)
+        .and((item) => item.status === 'pending' || item.status === 'failed' || item.status === 'conflict')
+        .toArray())
+        .map((item) => item.record_id)
+    );
     
     // Usar transaction para melhor performance
     await db.transaction('rw', table, async () => {
@@ -1975,15 +2013,19 @@ export const syncManager: SyncManager = {
             await table.put({
               ...remoteRecord,
               sync_status: 'synced',
-              deleted: false
+              deleted: Boolean(remoteRecord.deleted)
             });
-          } else if (localRecord.sync_status === 'synced') {
-            // Atualizar apenas se já estiver sincronizado
-            const localUpdated = new Date(localRecord.updated_at || 0);
-            const remoteUpdated = new Date(remoteRecord.updated_at || 0);
-            
-            if (remoteUpdated > localUpdated) {
-              // Manter campos de controle do Dexie
+          } else {
+            const localUpdated = new Date(localRecord.updated_at || localRecord.created_at || 0);
+            const remoteUpdated = new Date(remoteRecord.updated_at || remoteRecord.created_at || 0);
+            const hasQueueForRecord = pendingQueueRecordIds.has(localRecord.id);
+            const localPendingWithoutQueue = localRecord.sync_status !== 'synced' && !hasQueueForRecord;
+            const remoteIsNewer = remoteUpdated > localUpdated;
+            const shouldApplyRemote =
+              (localRecord.sync_status === 'synced' && remoteIsNewer) ||
+              (localPendingWithoutQueue && (remoteIsNewer || Boolean(remoteRecord.deleted)));
+
+            if (shouldApplyRemote) {
               await table.put({
                 ...localRecord,
                 ...remoteRecord,
@@ -1991,13 +2033,73 @@ export const syncManager: SyncManager = {
               });
             }
           }
-          // Se está 'pending', mantém as alterações locais
           
         } catch (recordError) {
           console.error(`❌ Erro processando registro ${remoteRecord.id}:`, recordError);
         }
       }
     });
+  }
+
+  , async reconcileHardDeletes(tableName: string) {
+    try {
+      const { hasPermission } = useSyncAuthInManager();
+      const instituicaoId = localStorage.getItem('active_instituicao_id') || '';
+
+      let from = 0;
+      const pageSize = 1000;
+      const remoteIds = new Set<string>();
+
+      while (true) {
+        let query = supabase
+          .from(tableName)
+          .select('id')
+          .order('id', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (tableName !== 'profiles' && tableName !== 'instituicao' && !hasPermission('admin') && instituicaoId) {
+          query = query.eq('instituicao_id', instituicaoId);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.error(`❌ Erro ao reconciliar deleções em ${tableName}:`, error);
+          return;
+        }
+
+        const ids = (data || [])
+          .map((row: any) => row?.id)
+          .filter((id: any): id is string => typeof id === 'string');
+
+        ids.forEach((id) => remoteIds.add(id));
+
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      const localRecords = await db.table<any>(tableName).toArray();
+      const staleLocalIds = localRecords
+        .filter((record) => {
+          if (!record || typeof record.id !== 'string') return false;
+          if (record.id.startsWith('local_')) return false;
+          if (record.sync_status !== 'synced') return false;
+          if (record.deleted) return false;
+          if (tableName !== 'profiles' && tableName !== 'instituicao' && instituicaoId && record.instituicao_id !== instituicaoId) {
+            return false;
+          }
+          return !remoteIds.has(record.id);
+        })
+        .map((record) => record.id);
+
+      if (staleLocalIds.length === 0) return;
+
+      await db.transaction('rw', db.table(tableName), db.syncQueue, async () => {
+        await db.table(tableName).bulkDelete(staleLocalIds);
+        await db.syncQueue.where('table').equals(tableName as any).and((item) => staleLocalIds.includes(item.record_id)).delete();
+      });
+    } catch (error) {
+      console.error(`❌ Erro ao reconciliar hard-deletes de ${tableName}:`, error);
+    }
   }
 
 
