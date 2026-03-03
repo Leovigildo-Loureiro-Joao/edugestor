@@ -85,8 +85,8 @@ const AuthCallback = () => {
         // Mostrar mensagem amigável
         showAlert({ type: 'error', title: 'Você precisa ser convidado por um administrador para acessar o sistema.' });
         
-        // Redirecionar para página de convite
-        window.location.href = '/convite-necessario';
+        // Redirecionar para login com mensagem (rota existente)
+        navigate('/login?error=' + encodeURIComponent('Você precisa ser convidado por um administrador para acessar o sistema.'));
         return;
       }
     }
