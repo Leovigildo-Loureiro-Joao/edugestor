@@ -1,5 +1,5 @@
 // src/components/layout/Layout.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -11,6 +11,9 @@ const Layout = ({ children }) => {
     }
     return false;
   });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const openMobileMenu = useCallback(() => setIsMobileSidebarOpen(true), []);
+  const closeMobileMenu = useCallback(() => setIsMobileSidebarOpen(false), []);
 
 // src/components/layout/Layout.jsx - MANTENHA ESTE
 useEffect(() => {
@@ -27,10 +30,17 @@ useEffect(() => {
 
   return (
     <div className={`flex h-screen bg-white dark:bg-gray-900 transition-colors duration-200`}>
-      <Sidebar isDarkMode={isDarkMode} />
+      <Sidebar
+        mobileMenuOpen={isMobileSidebarOpen}
+        onCloseMobileMenu={closeMobileMenu}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header setIsDarkMode={setIsDarkMode} isDarkMode={isDarkMode} />
-        <main className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+        <Header
+          setIsDarkMode={setIsDarkMode}
+          isDarkMode={isDarkMode}
+          onOpenMobileMenu={openMobileMenu}
+        />
+        <main className="flex-1 overflow-auto p-3 sm:p-6 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
           {children}
         </main>
       </div>

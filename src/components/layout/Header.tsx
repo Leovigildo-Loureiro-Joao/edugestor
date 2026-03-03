@@ -1,6 +1,7 @@
 // src/components/layout/Header
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
+  FiMenu,
   FiSearch, 
   FiMoon,
   FiSun,
@@ -43,6 +44,7 @@ interface AuthContextType {
 interface HeaderProps {
   setIsDarkMode: (isDark: boolean) => void;
   isDarkMode: boolean;
+  onOpenMobileMenu: () => void;
 }
 
 interface SearchResultItem {
@@ -53,7 +55,7 @@ interface SearchResultItem {
   type: 'page' | 'aluno' | 'turma' | 'curso';
 }
 
-const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode }) => {
+const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobileMenu }) => {
   const { logout, user } = useAuth() as AuthContextType;
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -368,7 +370,14 @@ return (
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Lado Esquerdo - Busca */}
-        <div className="flex items-center flex-1 min-w-0"> {/* min-w-0 permite encolher */}
+        <div className="flex items-center flex-1 min-w-0 gap-2"> {/* min-w-0 permite encolher */}
+          <button
+            onClick={onOpenMobileMenu}
+            className="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Abrir menu"
+          >
+            <FiMenu className="h-5 w-5" />
+          </button>
           <div ref={searchContainerRef} className="relative w-full max-w-2xl"> {/* Removido max-w-lg e aumentado */}
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 flex-shrink-0" />
             <input

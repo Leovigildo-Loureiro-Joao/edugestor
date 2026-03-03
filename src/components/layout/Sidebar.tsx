@@ -9,7 +9,6 @@ import {
   FiSettings, 
   FiBookOpen,
   FiChevronDown,
-  FiMenu,
   FiX,
   FiChevronLeft,
   FiUser,
@@ -48,12 +47,18 @@ interface AuthContextType {
   profile: UserProfile | null;
 }
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  mobileMenuOpen: boolean;
+  onCloseMobileMenu: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, onCloseMobileMenu }) => {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout, profile } = useAuth() as AuthContextType;
-  const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleChecked, setRoleChecked] = useState(false);
@@ -101,11 +106,13 @@ const Sidebar: React.FC = () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         const width = window.innerWidth;
+        const mobile = width < 1024;
+        setIsMobile(mobile);
         
         if (width >= 1024) {
-          setIsOpen(true);
+          onCloseMobileMenu();
         } else if (width < 1024) {
-          setIsOpen(false);
+          setIsCollapsed(false);
         }
       }, 100);
     };
@@ -117,7 +124,26 @@ const Sidebar: React.FC = () => {
       clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [onCloseMobileMenu]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      document.body.style.overflow = '';
+      return;
+    }
+
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen, isMobile]);
+
+  useEffect(() => {
+    setShowUserMenu(false);
+    if (isMobile) {
+      onCloseMobileMenu();
+    }
+  }, [location.pathname, isMobile, onCloseMobileMenu]);
 
   useEffect(() => {
     const loadRole = async () => {
@@ -156,7 +182,7 @@ const Sidebar: React.FC = () => {
     setIsLoggingOut(true);
     try {
       await logout();
-      if (window.innerWidth < 1024) setIsOpen(false);
+      if (window.innerWidth < 1024) onCloseMobileMenu();
       navigate('/login', { replace: true });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -175,26 +201,20 @@ const Sidebar: React.FC = () => {
     return 'U';
   };
 
+  const isDesktopCollapsed = !isMobile && isCollapsed;
+  const shouldShowSidebar = isMobile ? mobileMenuOpen : true;
+
   return (
     <>
-      {/* Botão Hamburguer para Mobile */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
-        aria-label="Abrir menu"
-      >
-        <FiMenu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-      </button>
-
       {/* Overlay para Mobile */}
       <AnimatePresence>
-        {isOpen && (
+        {isMobile && mobileMenuOpen && (
           <motion.div
             variants={overlayVariants}
             initial="closed"
             animate="open"
             exit="closed"
-            onClick={() => setIsOpen(false)}
+            onClick={onCloseMobileMenu}
             className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           />
         )}
@@ -204,15 +224,15 @@ const Sidebar: React.FC = () => {
       <motion.div
         variants={sidebarVariants}
         initial="closed"
-        animate={isOpen ? "open" : "closed"}
-        className={`fixed lg:relative lg:translate-x-0 z-50 h-screen bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 transition-colors duration-200 ${
-          isCollapsed ? 'w-20' : 'w-64'
+        animate={shouldShowSidebar ? "open" : "closed"}
+        className={`fixed inset-y-0 left-0 lg:relative lg:translate-x-0 z-50 h-screen bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 transition-colors duration-200 flex flex-col ${
+          isDesktopCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Header da Sidebar */}
         <div className="flex bg-cover relative items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <AnimatePresence mode="wait">
-            {!isCollapsed && (
+            {!isDesktopCollapsed && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -234,18 +254,18 @@ const Sidebar: React.FC = () => {
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="hidden lg:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
+              aria-label={isDesktopCollapsed ? "Expandir menu" : "Recolher menu"}
             >
               <FiChevronLeft 
                 className={`h-4 w-4 text-gray-600 dark:text-gray-400 transition-transform ${
-                  isCollapsed ? 'rotate-180' : ''
+                  isDesktopCollapsed ? 'rotate-180' : ''
                 }`} 
               />
             </button>
 
             {/* Botão Fechar (apenas mobile) */}
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onCloseMobileMenu}
               className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Fechar menu"
             >
@@ -255,7 +275,7 @@ const Sidebar: React.FC = () => {
         </div>
 
         {/* Navegação */}
-        <nav className="mt-6 px-3">
+        <nav className="mt-6 px-3 flex-1 overflow-y-auto pb-4">
           {navigation.map((item, index) => {
             if(userRole==="teacher"&&(item.name=="Financeiro"||item.name=="Estrategia"||item.name=="Cursos"||item.name=="Alunos"||item.name=="Configurações"))
               return null;
@@ -271,7 +291,7 @@ const Sidebar: React.FC = () => {
               >
                 <NavLink
                   to={item.href}
-                  onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
+                  onClick={() => window.innerWidth < 1024 && onCloseMobileMenu()}
                   className={({ isActive }: { isActive: boolean }) =>
                     `flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all group relative ${
                       isActive
@@ -280,10 +300,10 @@ const Sidebar: React.FC = () => {
                     }`
                   }
                 >
-                  <Icon className={`h-5 w-5 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
+                  <Icon className={`h-5 w-5 ${isDesktopCollapsed ? 'mx-auto' : 'mr-3'}`} />
                   
                   <AnimatePresence>
-                    {!isCollapsed && (
+                    {!isDesktopCollapsed && (
                       <motion.span
                         initial={{ opacity: 0, width: 0 }}
                         animate={{ opacity: 1, width: "auto" }}
@@ -296,7 +316,7 @@ const Sidebar: React.FC = () => {
                   </AnimatePresence>
 
                   {/* Tooltip quando collapsed */}
-                  {isCollapsed && (
+                  {isDesktopCollapsed && (
                     <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-200 text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                       {item.name}
                     </div>
@@ -309,8 +329,8 @@ const Sidebar: React.FC = () => {
 
         {/* User Info */}
         <motion.div 
-          className={`absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 ${
-            isCollapsed ? 'text-center' : ''
+          className={`mt-auto p-4 border-t border-gray-200 dark:border-gray-700 ${
+            isDesktopCollapsed ? 'text-center' : ''
           }`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -318,7 +338,7 @@ const Sidebar: React.FC = () => {
         >
           <div className="flex items-center gap-3">
             <AnimatePresence>
-              {!isCollapsed && (
+              {!isDesktopCollapsed && (
                 <motion.div
                   initial={{ opacity: 0, width: 0 }}
                   animate={{ opacity: 1, width: "auto" }}
@@ -343,7 +363,7 @@ const Sidebar: React.FC = () => {
                         )}
                       </div>
                       
-                      <div className="hidden md:block text-left">
+                      <div className="block text-left">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]">
                           {profile?.full_name || user?.email || 'Usuário'}
                         </p>
@@ -365,7 +385,7 @@ const Sidebar: React.FC = () => {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute bottom-full -right-20 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                          className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
                         >
                           <div className="p-2">
                             {/* Info do usuário */}
@@ -462,7 +482,7 @@ const Sidebar: React.FC = () => {
             </AnimatePresence>
 
             {/* Avatar collapsed */}
-            {isCollapsed && (
+            {isDesktopCollapsed && (
               <div className="w-8 h-8 bg-gray-500 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden mx-auto">
                 {user?.photoURL ? (
                   <img 
