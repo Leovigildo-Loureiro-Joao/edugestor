@@ -275,7 +275,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileMenuOpen, onCloseMobileMenu }) 
         </div>
 
         {/* Navegação */}
-        <nav className="mt-6 px-3 flex-1 overflow-y-auto pb-4">
+        <nav
+          className={`mt-6 px-3 flex-1 pb-4 ${
+            isDesktopCollapsed ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
+        >
           {navigation.map((item, index) => {
             if(userRole==="teacher"&&(item.name=="Financeiro"||item.name=="Estrategia"||item.name=="Cursos"||item.name=="Alunos"||item.name=="Configurações"))
               return null;

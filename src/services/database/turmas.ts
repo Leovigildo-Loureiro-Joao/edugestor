@@ -9,8 +9,10 @@ import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { supabase } from '../database/db';
 import { alunosService } from './alunosService';
+import { aulaService } from './aulaService';
 import { cacheManager } from './cacheManager';
 import db from './db';
+import { frequenciaService } from './frequenciaService';
 import { notificacaoService, PrioridadeNotificacao, TipoNotificacao } from './notificacaoService';
 import { syncManager } from './syncManager';
 
@@ -369,6 +371,54 @@ export const turmaService = {
       const turma = await db.turmas.get(id);
       if (!turma) return;
 
+      // Deletar dependências primeiro para evitar conflito de FK no Supabase
+      const aulasDaTurma = await db.aulas
+        .where('turma_id')
+        .equals(id)
+        .and((aula) => !aula.deleted)
+        .toArray();
+
+      for (const aula of aulasDaTurma) {
+        await frequenciaService.deleteFrequenciasPorAula(aula.id);
+        await aulaService.deletarAula(aula.id);
+      }
+
+      const horariosDaTurma = await db.turma_horarios
+        .where('turma_id')
+        .equals(id)
+        .and((horario) => !horario.deleted)
+        .toArray();
+
+      for (const horario of horariosDaTurma) {
+        if (horario.sync_status === 'synced' && !horario.id.startsWith('local_')) {
+          await db.turma_horarios.update(horario.id, {
+            deleted: true,
+            sync_status: 'pending_delete',
+            updated_at: new Date().toISOString()
+          });
+
+          await db.syncQueue.add({
+            table: 'turma_horarios',
+            record_id: horario.id,
+            instituicao_id: instituicaoIdValue(),
+            operation: 'delete',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+        } else {
+          await db.turma_horarios.delete(horario.id);
+          await db.syncQueue
+            .where('record_id')
+            .equals(horario.id)
+            .delete();
+        }
+      }
+
+      const alunosDaTurma = await alunosService.getAlunosPorTurma(id);
+      for (const aluno of alunosDaTurma) {
+        await alunosService.deleteStudent(aluno.id);
+      }
+
       if (turma.sync_status === 'synced' && !turma.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
         await (db.turmas as any).update(
@@ -379,12 +429,6 @@ export const turmaService = {
             updated_at: new Date().toISOString()
           }
         );
-
-        await alunosService.getAlunosPorTurma(id).then(alunos => {
-          alunos.forEach(async aluno => {
-            await alunosService.deleteStudent(aluno.id);
-          });
-        });
         
         await db.syncQueue.add({
           table: 'turmas',
@@ -583,7 +627,7 @@ export const turmaService = {
 
     async syncTurmas() {
       if(navigator.onLine)
-        return await Promise.all([syncManager.uploadTableBatch('turmas'),
+        return await Promise.all([syncManager.uploadBatch(),
           syncManager.downloadTableBatch('turmas', new Date(0))
         ])
       throw new Error("sem net")

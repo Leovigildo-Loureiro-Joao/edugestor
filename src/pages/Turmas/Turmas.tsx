@@ -46,7 +46,6 @@ const Turmas: React.FC = () => {
   const nav = useNavigate();
 
   useEffect(() => {
-    localStorage.setItem("last_rota", "/turmas");
     Reload();
   }, []);
 

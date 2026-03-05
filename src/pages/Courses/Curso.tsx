@@ -113,7 +113,6 @@ export const Courses = () => {
   };
 
   function Reload() {
-    localStorage.setItem("last_rota", "/cursos");
     const loadCursos = async () => {
       try {
         setLoading(true);
@@ -171,7 +170,7 @@ export const Courses = () => {
     const confirmed = await confirm({
       type: 'delete',
       title: 'Excluir Curso',
-      message: `Tem certeza que deseja excluir ${curso.nome}? Todos dados ligados a ele permanecerão.`,
+      message: `Tem certeza que deseja excluir ${curso.nome}? As turmas, aulas e frequências relacionadas também serão removidas.`,
       isDestructive: true,
       confirmText: 'Excluir',
       onConfirm: async () => {
@@ -184,11 +183,19 @@ export const Courses = () => {
             message: `${curso.nome} foi removido do sistema.`,
             duration: 3000
           });
-        } catch (error) {
+        } catch (error: any) {
+          const detalhes = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+          const isFkConflict =
+            error?.code === '23503' ||
+            detalhes.includes('foreign key') ||
+            detalhes.includes('violates foreign key');
+
           showAlert({
             type: 'error',
             title: 'Erro ao excluir',
-            message: 'Não foi possível excluir o curso. Verifique sua conexão.',
+            message: isFkConflict
+              ? 'Não foi possível excluir agora porque ainda existem registros dependentes. Tente sincronizar novamente.'
+              : 'Não foi possível excluir o curso. Verifique sua conexão.',
             duration: 5000
           });
         }

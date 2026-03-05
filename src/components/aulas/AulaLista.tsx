@@ -37,7 +37,7 @@ export const ViewModeNavbar: React.FC<ViewModeNavbarProps> = ({
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4 px-6 shadow-sm">
+    <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4 px-6 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Lado Esquerdo - Título e Filtros */}
         <div className="flex items-center gap-4">

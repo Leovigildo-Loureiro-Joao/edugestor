@@ -208,7 +208,6 @@ const Students = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem("last_rota", "/alunos");
     reload();
   }, []);
 

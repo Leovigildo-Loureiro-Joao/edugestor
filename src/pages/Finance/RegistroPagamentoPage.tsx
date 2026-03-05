@@ -11,11 +11,13 @@ import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { turmaService } from '../../services/database';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 
 export const RegistroPagamentoPage: React.FC = () => {
   const { alunoId } = useParams<{ alunoId: string }>();
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); 
   const [aluno, setAluno] = useState<Student | null>(null);
@@ -190,10 +192,11 @@ useEffect(() => {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Aluno não encontrado</h2>
           <button 
-            onClick={() => navigate('/financeiro/pagamentos')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => goBack('/financeiro/pagamentos')}
+            className="mt-4 p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            Voltar para Pagamentos
+            <FiArrowLeft className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -213,10 +216,11 @@ useEffect(() => {
             Total: {formatarMoeda(dadosPagamento.valorTotal ?? 0)}
           </div>
           <button 
-            onClick={() => navigate('/financeiro/pagamentos')}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => goBack('/financeiro/pagamentos')}
+            className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            Voltar para Pagamentos
+            <FiArrowLeft className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -229,12 +233,12 @@ useEffect(() => {
         <ModalComponent/>
         {/* Header */}
         <div className="mb-8">
-          <button 
-            onClick={() => navigate('/financeiro/pagamentos')}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
+          <button
+            onClick={() => goBack('/financeiro/pagamentos')}
+            className="p-2.5 mb-6 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            <FiArrowLeft size={20} />
-            Voltar para Lista de Pagamentos
+            <FiArrowLeft className="h-5 w-5" />
           </button>
           
           <div className="flex items-center justify-between">

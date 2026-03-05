@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import Layout from './components/layout/Layout.jsx';
 import { Login } from './components/auth/Login.jsx';
@@ -42,6 +42,7 @@ import { notificacaoService } from './services/database/notificacaoService.ts';
 import { AlertProvider } from './components/ui/AlertBadge.tsx';
 import { NotasPage } from './pages/Grades/NotasPage.tsx';
 import { auditLogService } from './services/audit/auditLogService.ts';
+import { EventoPage } from './pages/Estrategia/Evento.js';
 
 // ✅ ProtectedRoute CORRIGIDO
 // Modifique o ProtectedRoute para aceitar um array de roles permitidas
@@ -126,6 +127,46 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
   return children;
 };
 // Componente principal corrigido
+const LAST_ROUTE_KEY = 'last_rota';
+const CURRENT_ROUTE_KEY = 'current_rota';
+const ROUTE_TRACKER_INIT_KEY = 'route_tracker_initialized';
+
+function LastRouteTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const pathname = location.pathname || '';
+    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/auth/callback');
+
+    if (isPublicRoute) return;
+
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+    const isTrackerInitialized = sessionStorage.getItem(ROUTE_TRACKER_INIT_KEY) === '1';
+
+    // Evita herdar rota antiga de outra sessão/aba no primeiro carregamento
+    if (!isTrackerInitialized) {
+      sessionStorage.setItem(ROUTE_TRACKER_INIT_KEY, '1');
+      sessionStorage.setItem(CURRENT_ROUTE_KEY, currentPath);
+      localStorage.setItem(CURRENT_ROUTE_KEY, currentPath);
+      return;
+    }
+
+    const previousPath =
+      sessionStorage.getItem(CURRENT_ROUTE_KEY) ||
+      localStorage.getItem(CURRENT_ROUTE_KEY);
+
+    if (previousPath && previousPath !== currentPath) {
+      sessionStorage.setItem(LAST_ROUTE_KEY, previousPath);
+      localStorage.setItem(LAST_ROUTE_KEY, previousPath);
+    }
+
+    sessionStorage.setItem(CURRENT_ROUTE_KEY, currentPath);
+    localStorage.setItem(CURRENT_ROUTE_KEY, currentPath);
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+}
+
 function AppContent() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
@@ -251,6 +292,7 @@ function AppContent() {
     return (
       <AuthProvider>
         <Router>
+          <LastRouteTracker />
           <Routes>
             <Route path="*" element={<InitialSetup />} />
           </Routes>
@@ -459,6 +501,14 @@ function AppContent() {
                           </ProtectedRoute>
                         } 
                       />
+                       <Route 
+                        path="/estrategia/planeamento/:tipo" 
+                        element={
+                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                            <EstrategiaPage />
+                          </ProtectedRoute>
+                        } 
+                      />
                       <Route 
                         path="/estrategia/metas/nova" 
                         element={
@@ -515,14 +565,7 @@ function AppContent() {
                           </ProtectedRoute>
                         } 
                       />
-                      <Route 
-                        path="/estrategia/eventos" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
+                      
                       <Route 
                         path="/estrategia/eventos/novo" 
                         element={

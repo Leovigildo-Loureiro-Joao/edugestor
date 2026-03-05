@@ -22,9 +22,11 @@ import { PageLoader } from '../../components/ui/PageLoader';
 import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
 import { getPendingCount } from '../../utils/emitPendingSync';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 export const TransacoesPage = () => {
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const { confirm, ModalComponent } = useConfirmModal();
   const { showAlert } = useAlert(); 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -272,12 +274,8 @@ export const TransacoesPage = () => {
   return (
 
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-       <button
-          onClick={() => navigate("/financeiro")}
-          className="flex items-center gap-2 mb-4 text-blue-600 hover:text-blue-800"
-        >
-          <FiArrowLeft /> Voltar ao Dashboard
-        </button>
+     
+      
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -286,8 +284,16 @@ export const TransacoesPage = () => {
           className="  p-6 px-0 mb-6"
         >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-            
+            <div className="flex items-center gap-2">
+             <motion.button
+          whileHover={{ scale: 1.1, x: -3 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => goBack('/financeiro')}
+          className="p-2.5 mb-4 max-w-min hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+          aria-label="Voltar"
+        >
+          <FiArrowLeft className="h-5 w-5" />
+        </motion.button>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   Gestão de Transações

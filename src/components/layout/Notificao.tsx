@@ -3,6 +3,7 @@ import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X } from 'lu
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 
 interface NotificacoesBellProps {
   userRole: 'aluno' | 'teacher' | 'admin' | 'manager';
@@ -123,26 +124,26 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
   const getCorClassesPorPrioridade = (prioridade: PrioridadeNotificacao) => {
     switch (prioridade) {
       case PrioridadeNotificacao.URGENTE:
-        return 'text-red-600 bg-red-50 border-red-100';
+        return 'text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800/50';
       case PrioridadeNotificacao.ALTA:
-        return 'text-amber-600 bg-amber-50 border-amber-100';
+        return 'text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border-amber-100 dark:border-amber-800/50';
       case PrioridadeNotificacao.MEDIA:
-        return 'text-blue-600 bg-blue-50 border-blue-100';
+        return 'text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800/50';
       default:
-        return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-gray-100';
+        return 'text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700';
     }
   };
 
   const getBadgeClassesPorPrioridade = (prioridade: PrioridadeNotificacao) => {
     switch (prioridade) {
       case PrioridadeNotificacao.URGENTE:
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200';
       case PrioridadeNotificacao.ALTA:
-        return 'bg-amber-100 text-amber-800';
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
       case PrioridadeNotificacao.MEDIA:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
       default:
-        return 'bg-gray-100 text-gray-800 dark:text-gray-100';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100';
     }
   };
 
@@ -154,11 +155,11 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
         whileTap={{ scale: 0.95 }}
         onClick={() => setAberto(!aberto)}
         className={`relative p-2 rounded-lg transition-colors ${
-          aberto ? 'bg-gray-100' : 'hover:bg-gray-50 dark:bg-gray-900'
+          aberto ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
         }`}
         title={`${countNaoLidas} notificação(ões) não lida(s)`}
       >
-        <Bell className={`w-5 h-5 ${countNaoLidas > 0 ? 'text-blue-500' : 'text-gray-400'}`} />
+        <Bell className={`w-5 h-5 ${countNaoLidas > 0 ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-300'}`} />
         
         {/* Badge de contagem */}
         {countNaoLidas > 0 && (
@@ -176,28 +177,30 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
       </motion.button>
 
       {/* Dropdown de notificações */}
-      <AnimatePresence>
-        {aberto && (
-          <>
-            {/* Overlay de fundo */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setAberto(false)}
-              className="fixed inset-0 bg-black/20 z-30"
-            />
-            
-            {/* Painel de notificações */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute right-0 top-12 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-40 max-h-[500px] flex flex-col"
-            >
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {aberto && (
+              <>
+                {/* Overlay de fundo */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setAberto(false)}
+                  className="fixed inset-0 bg-black/30 dark:bg-black/60 z-[9998]"
+                />
+                
+                {/* Painel de notificações */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98, y: 8 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900 sm:inset-auto sm:right-4 sm:top-20 sm:w-96 sm:rounded-xl sm:shadow-xl sm:border sm:border-gray-200 sm:dark:border-gray-700 sm:max-h-[500px] flex flex-col"
+                >
               {/* Cabeçalho */}
-              <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-xl">
+              <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 sm:rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -230,7 +233,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setAberto(false)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     >
                       <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </motion.button>
@@ -239,7 +242,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
               </div>
 
               {/* Lista de notificações */}
-              <div className="flex-1 overflow-y-auto max-h-[350px]">
+              <div className="flex-1 overflow-y-auto sm:max-h-[350px]">
                 {notificacoes.length === 0 ? (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -264,8 +267,10 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: index * 0.05 }}
                         onClick={() => abrirNotificacao(notif)}
-                        className={`px-4 py-4 border-b border-gray-100 cursor-pointer transition-colors ${
-                          !notif.lida ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50 dark:bg-gray-900'
+                        className={`px-4 py-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${
+                          !notif.lida
+                            ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                            : 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
                         }`}
                       >
                         <div className="flex gap-3">
@@ -282,12 +287,12 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                               {notif.titulo}
                             </div>
                             
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
+                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-2">
                               {notif.corpo}
                             </p>
 
                             {notif.link && (
-                              <p className="text-xs text-blue-600 mb-2">Clique para abrir</p>
+                              <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">Clique para abrir</p>
                             )}
                             
                             {/* Meta informações */}
@@ -318,7 +323,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={(e) => deletarNotificacao(notif.id, e)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                  className="p-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                                   title="Deletar"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -340,7 +345,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
 
               {/* Rodapé */}
               {notificacoes.length > 0 && (
-                <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-xl">
+                <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 sm:rounded-b-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       Mostrando {Math.min(notificacoes.length, 15)} de {notificacoes.length}
@@ -358,10 +363,12 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                   </div>
                 </div>
               )}
-            </motion.div>
-          </>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 };

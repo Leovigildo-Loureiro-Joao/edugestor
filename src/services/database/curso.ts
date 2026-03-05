@@ -383,6 +383,11 @@ export const cursosService = {
       const curso = await db.cursos.get(id);
       if (!curso) return;
 
+      const turmasDoCurso = await turmaService.getTurmasPorCurso(id);
+      for (const turma of turmasDoCurso) {
+        await turmaService.deleteTurma(turma.id);
+      }
+
       if (curso.sync_status === 'synced' && !curso.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
         await (db.cursos as any).update(
@@ -393,12 +398,6 @@ export const cursosService = {
             updated_at: new Date().toISOString()
           } as any)
         );
-
-        await turmaService.getTurmasPorCurso(id).then(turmas => {
-          turmas.forEach(async turma => {
-            await turmaService.deleteTurma(turma.id);
-          });
-        });
         
         await db.syncQueue.add({
           table: 'cursos',
@@ -430,7 +429,7 @@ export const cursosService = {
  async syncCursos() {
   
    if(navigator.onLine)
-      return Promise.all([syncManager.uploadTableBatch('cursos'),
+      return Promise.all([syncManager.uploadBatch(),
         syncManager.downloadTableBatch('cursos', new Date(0))
       ])
     throw new Error("sem net")

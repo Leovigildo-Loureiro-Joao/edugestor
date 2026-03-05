@@ -55,6 +55,7 @@ import { planoAulaService } from '../../services/database/planoAulasService';
 import { AlunoDesempenho } from '../../types/aluno';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { profileService } from '../../services/database/profileService';
+import { useSmartBack } from '../../hooks/useSmartBack';
 const TurmaAlunosSection = lazy(() =>
   import('../../components/turmas/details/TurmaAlunosSection').then((module) => ({ default: module.TurmaAlunosSection }))
 );
@@ -76,6 +77,7 @@ const TurmaDetails = () => {
   const [compactar,setCompactar] = useState(false);
   const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const secoesTurma = ['overview', 'alunos', 'aulas', 'horario'] as const;
   type SecaoTurma = (typeof secoesTurma)[number];
   const [turma, setTurma] = useState<TurmaDetailsData | null>(null);
@@ -259,7 +261,6 @@ const TurmaDetails = () => {
 
   const loadTurmaDetails = useCallback(async () => {
     try {
-      localStorage.setItem("last_rota", "/turmas/" + id);
       setLoading(true);
       const turmaData = await turmaService.findById(id || '');
 
@@ -612,10 +613,11 @@ const TurmaDetails = () => {
         <div className="text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">Turma não encontrada</h2>
           <button
-            onClick={() => navigate('/turmas')}
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            onClick={() => goBack('/turmas')}
+            className="mt-4 p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            Voltar para a lista de turmas
+            <FiArrowLeft className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -659,75 +661,81 @@ const TurmaDetails = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Cabeçalho */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate('/turmas')}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
-          >
-            <FiArrowLeft size={20} />
-            Voltar para Turmas
-          </button>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
-                  {turma.nome_turma}
-                </h1>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  turma.estado === 'ativa' 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                }`}>
-                  {turma.estado === 'ativa' ? 'Ativa' : 'Inativa'}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                {canManageTurmas ? (
-                  <MotionLink
-                    to={`/cursos/${turma.curso_id}`}
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
-                    title="Abrir curso"
+          <div className="flex items-start gap-3 mb-4">
+            <motion.button
+              whileHover={{ scale: 1.1, x: -3 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => goBack('/turmas')}
+              className="p-2.5 flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              aria-label="Voltar"
+            >
+              <FiArrowLeft className="h-5 w-5" />
+            </motion.button>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+                      {turma.nome_turma}
+                    </h1>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
+                      turma.estado === 'ativa' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                    }`}>
+                      {turma.estado === 'ativa' ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                    {canManageTurmas ? (
+                      <MotionLink
+                        to={`/cursos/${turma.curso_id}`}
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
+                        title="Abrir curso"
+                      >
+                        <FiBook size={16} />
+                        <span>{turma.curso_nome}</span>
+                        <FiExternalLink size={13} className="opacity-0 transition-opacity group-hover:opacity-100" />
+                      </MotionLink>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-1">
+                        <FiBook size={16} />
+                        <span>{turma.curso_nome}</span>
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <FiCalendar size={16} />
+                      {turma.ano_lectivo}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FiUsers size={16} />
+                      {loadingAlunos && !alunosLoaded ? '...' : turma.alunos.length} alunos
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={abrirPlanoModal}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
                   >
-                    <FiBook size={16} />
-                    <span>{turma.curso_nome}</span>
-                    <FiExternalLink size={13} className="opacity-0 transition-opacity group-hover:opacity-100" />
-                  </MotionLink>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-1">
-                    <FiBook size={16} />
-                    <span>{turma.curso_nome}</span>
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <FiCalendar size={16} />
-                  {turma.ano_lectivo}
-                </span>
-                <span className="flex items-center gap-1">
-                  <FiUsers size={16} />
-                  {loadingAlunos && !alunosLoaded ? '...' : turma.alunos.length} alunos
-                </span>
+                    <FiBook size={18} />
+                    Plano de Aula
+                  </button>
+                  {canManageTurmas && (
+                    <Link
+                      to={`/turmas/editar/${turma.id}`}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                    >
+                      <FiEdit size={18} />
+                      Editar Turma
+                    </Link>
+                  )}
+                </div>
               </div>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={abrirPlanoModal}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-              >
-                <FiBook size={18} />
-                Plano de Aula
-              </button>
-              {canManageTurmas && (
-                <Link
-                  to={`/turmas/editar/${turma.id}`}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                >
-                  <FiEdit size={18} />
-                  Editar Turma
-                </Link>
-              )}
             </div>
           </div>
         </div>

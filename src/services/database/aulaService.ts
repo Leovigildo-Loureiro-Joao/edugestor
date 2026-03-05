@@ -297,6 +297,7 @@ export const aulaService = {
     try {
       const aula = await db.aulas.get(id);
       if (!aula) return;
+      await frequenciaService.deleteFrequenciasPorAula(id);
       await this.removerAulaDosPlanos(id);
 
       if (aula.sync_status === 'synced' && !aula.id.startsWith('local_')) {

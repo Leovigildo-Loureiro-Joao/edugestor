@@ -23,6 +23,7 @@ import {
 import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { EventoPage } from './Evento';
 
 
 const EstrategiaPage = () => {
@@ -120,12 +121,12 @@ const tabs = [
       {/* Tabs Navigation */}
       
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-8">
+        <nav className="flex space-x-8 justify-between sm:justify-start">
           {tabs.map(aba => (
             <button
               key={aba.id}
               onClick={() => {setActiveTab(aba.id as any); navigate('/estrategia/'+aba.id)}}
-              className={`flex items-center justify-center gap-2 py-4 px-2 sm:px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center justify-center  gap-2 py-4 px-2 sm:px-1 border-b-2 font-medium text-sm ${
                 activeTab === aba.id
                   ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -169,24 +170,7 @@ const tabs = [
           
           {
             activeTab === 'eventos' && (
-              <div className="p-6">
-                <div className='p-4'>
-                  <div className='flex items-center gap-3'>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center">
-                    <FiCalendar className="mr-2" />
-                    Calendário de Eventos
-                  </h2>
-                  <SyncStatusBadge tableName='evento'></SyncStatusBadge>
-                </div>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
-                    Gerencie e acompanhe os seus eventos bem como os feriados
-                  </p>
-              </div>
-                <div className="space-y-8 p-4 grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <EventosPorMeta />
-                  <CalendarWithEvents />
-                </div>
-              </div>
+             <EventoPage/>
             )
           }
           

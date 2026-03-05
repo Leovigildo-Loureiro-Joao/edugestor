@@ -19,10 +19,12 @@ import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge';
 import { estrategiaMetaService } from '../../services/database/estrategia/metaService';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 export const MetaDetailsPage: React.FC = () => {
   const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const secoesMeta = ['overview', 'kpis', 'submetas', 'financas'] as const;
   type SecaoMeta = (typeof secoesMeta)[number];
   
@@ -121,10 +123,11 @@ export const MetaDetailsPage: React.FC = () => {
           <FiAlertCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Meta não encontrada</h2>
           <button
-            onClick={() => navigate('/estrategia/metas')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => goBack('/estrategia/metas')}
+            className="mt-4 p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            Voltar para Metas
+            <FiArrowLeft className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -203,7 +206,7 @@ export const MetaDetailsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate('/estrategia/metas')}
+                onClick={() => goBack('/estrategia/metas')}
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <FiArrowLeft className="h-5 w-5" />

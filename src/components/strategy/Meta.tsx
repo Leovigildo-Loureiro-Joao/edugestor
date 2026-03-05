@@ -305,218 +305,242 @@ const MetaComponent = ({ metas, setMetas,loadData }: {
             
             return (
               <motion.div
-                key={meta.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-shadow"
-              >
-                {/* Cabeçalho da Meta */}
-                <div 
-                  className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  onClick={() => toggleMeta(meta.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
-                        {getMetaIcon(meta.tipo)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold text-gray-900 dark:text-white">
-                            {meta.titulo}
-                          </h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(meta.status)}`}>
-                            {meta.status === 'em_andamento' ? 'Em Andamento' : 
-                             meta.status === 'concluida' ? 'Concluída' : 
-                             meta.status === 'atrasada' ? 'Atrasada' : 
-                             meta.status === 'suspensa' ? 'Suspensa' : 'Não Iniciada'}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getPrioridadeColor(meta.prioridade)}`}>
-                            {meta.prioridade}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">
-                          {meta.descricao}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <FiCalendar className="h-3 w-3" />
-                            {formatarData(meta.data_inicio)} - {formatarData(meta.data_fim)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <FiUsers className="h-3 w-3" />
-                            {meta.responsavel_principal}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <FiClock className="h-3 w-3" />
-                            {isAtrasada ? `${Math.abs(diasRestantes)} dias atrasado` : `${diasRestantes} dias restantes`}
-                          </span>
-                        </div>
-                      </div>
+  key={meta.id}
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-shadow"
+>
+  {/* Cabeçalho da Meta */}
+  <div 
+    className="p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+    onClick={() => toggleMeta(meta.id)}
+  >
+    {/* Layout flexível para mobile */}
+    <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+      {/* Ícone e informações principais */}
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-lg flex-shrink-0">
+          {getMetaIcon(meta.tipo)}
+        </div>
+        
+        {/* Título e badges - agora com wrapping adequado */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h3 className="font-bold text-gray-900 dark:text-white break-words">
+              {meta.titulo}
+            </h3>
+            
+            {/* Badges em linha no mobile, mas com wrapping */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(meta.status)}`}>
+                {meta.status === 'em_andamento' ? 'Em Andamento' : 
+                 meta.status === 'concluida' ? 'Concluída' : 
+                 meta.status === 'atrasada' ? 'Atrasada' : 
+                 meta.status === 'suspensa' ? 'Suspensa' : 'Não Iniciada'}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${getPrioridadeColor(meta.prioridade)}`}>
+                {meta.prioridade}
+              </span>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 sm:line-clamp-1">
+            {meta.descricao}
+          </p>
+          
+          {/* Metadados - empilhados no mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <FiCalendar className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{formatarData(meta.data_inicio)} - {formatarData(meta.data_fim)}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <FiUsers className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{meta.responsavel_principal}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <FiClock className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">
+                {isAtrasada ? `${Math.abs(diasRestantes)} dias atrasado` : `${diasRestantes} dias restantes`}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Progresso e expansão - agora com layout adaptativo */}
+      <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0">
+        {/* Progresso - oculto em mobile muito pequeno, opcional */}
+        <div className="hidden xs:flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-lg font-bold text-gray-900 dark:text-white">
+              {meta.progresso}%
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+              Progresso
+            </div>
+          </div>
+          
+          <div className="w-20 sm:w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-500 ${
+                meta.progresso >= 80 ? 'bg-green-500' :
+                meta.progresso >= 50 ? 'bg-blue-500' :
+                meta.progresso >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
+              style={{ width: `${meta.progresso}%` }}
+            />
+          </div>
+        </div>
+        
+        {/* Indicador de expansão */}
+        <FiChevronRight className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${
+          isExpanded ? 'rotate-90' : ''
+        }`} />
+      </div>
+    </div>
+  </div>
+
+  {/* Conteúdo Expandido */}
+  {isExpanded && (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      className="border-t border-gray-200 dark:border-gray-600 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50"
+    >
+      {/* Grid responsivo para KPIs e Prazos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4">
+        {/* KPIs */}
+        <div>
+          <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+            <FiBarChart2 className="h-4 w-4 flex-shrink-0" />
+            <span>Indicadores (KPIs)</span>
+          </h4>
+          {meta.kpis && meta.kpis.length > 0 ? (
+            <div className="space-y-2">
+              {meta.kpis.map((kpi, index) => {
+                const progressoKPI = kpi.valor_meta > 0 
+                  ? Math.min((kpi.valor_atual / kpi.valor_meta) * 100, 100)
+                  : 0;
+                
+                return (
+                  <div key={index} className="bg-white dark:bg-gray-700 rounded-lg p-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-900 dark:text-white break-words">
+                        {kpi.nome}
+                      </span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                        {kpi.valor_atual} / {kpi.valor_meta} {kpi.unidade}
+                      </span>
                     </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-gray-900 dark:text-white">
-                          {meta.progresso}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Progresso
-                        </div>
-                      </div>
-                      
-                      <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-500 ${
-                            meta.progresso >= 80 ? 'bg-green-500' :
-                            meta.progresso >= 50 ? 'bg-blue-500' :
-                            meta.progresso >= 30 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${meta.progresso}%` }}
-                        />
-                      </div>
-                      
-                      <FiChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${
-                        isExpanded ? 'rotate-90' : ''
-                      }`} />
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                      <div 
+                        className={`h-1.5 rounded-full ${
+                          progressoKPI >= 100 ? 'bg-green-500' :
+                          progressoKPI >= 70 ? 'bg-blue-500' :
+                          progressoKPI >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(progressoKPI, 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {progressoKPI.toFixed(1)}%
                     </div>
                   </div>
-                  <ModalComponent/>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Nenhum indicador definido.
+            </p>
+          )}
+        </div>
+        
+        {/* Prazos e Recursos */}
+        <div>
+          <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+            <FiCalendar className="h-4 w-4 flex-shrink-0" />
+            <span>Prazos e Recursos</span>
+          </h4>
+          <div className="space-y-3">
+            <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
+              <div className="flex flex-col xs:flex-row xs:justify-between gap-2 mb-1">
+                <span className="text-gray-600 dark:text-gray-400">Data Início:</span>
+                <span className="font-medium">{formatarData(meta.data_inicio)}</span>
+              </div>
+              <div className="flex flex-col xs:flex-row xs:justify-between gap-2">
+                <span className="text-gray-600 dark:text-gray-400">Data Fim:</span>
+                <span className={`font-medium ${isAtrasada ? 'text-red-600 dark:text-red-400' : ''}`}>
+                  {formatarData(meta.data_fim)}
+                </span>
+              </div>
+            </div>
+            
+            {meta.orcamento_previsto && (
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
+                <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 mb-1">
+                  <span className="text-gray-600 dark:text-gray-400">Orçamento:</span>
+                  <span className="font-bold text-gray-900 dark:text-white break-words">
+                    {new Intl.NumberFormat('pt-AO', {
+                      style: 'currency',
+                      currency: 'AOA'
+                    }).format(meta.orcamento_previsto)}
+                  </span>
                 </div>
-
-                {/* Conteúdo Expandido */}
-                {isExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="border-t border-gray-200 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-800/50"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                      <div>
-                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                          <FiBarChart2 className="h-4 w-4" />
-                          Indicadores (KPIs)
-                        </h4>
-                        {meta.kpis && meta.kpis.length > 0 ? (
-                          <div className="space-y-2">
-                            {meta.kpis.map((kpi, index) => {
-                              const progressoKPI = kpi.valor_meta > 0 
-                                ? Math.min((kpi.valor_atual / kpi.valor_meta) * 100, 100)
-                                : 0;
-                              
-                              return (
-                                <div key={index} className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-gray-900 dark:text-white">
-                                      {kpi.nome}
-                                    </span>
-                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                      {kpi.valor_atual} / {kpi.valor_meta} {kpi.unidade}
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
-                                    <div 
-                                      className={`h-1.5 rounded-full ${
-                                        progressoKPI >= 100 ? 'bg-green-500' :
-                                        progressoKPI >= 70 ? 'bg-blue-500' :
-                                        progressoKPI >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                                      }`}
-                                      style={{ width: `${Math.min(progressoKPI, 100)}%` }}
-                                    />
-                                  </div>
-                                  <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {progressoKPI.toFixed(1)}%
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 dark:text-gray-400 text-sm">
-                            Nenhum indicador definido.
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                          <FiCalendar className="h-4 w-4" />
-                          Prazos e Recursos
-                        </h4>
-                        <div className="space-y-3">
-                          <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-gray-600 dark:text-gray-400">Data Início:</span>
-                              <span className="font-medium">{formatarData(meta.data_inicio)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Data Fim:</span>
-                              <span className={`font-medium ${isAtrasada ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                {formatarData(meta.data_fim)}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {meta.orcamento_previsto && (
-                            <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-gray-600 dark:text-gray-400">Orçamento:</span>
-                                <span className="font-bold text-gray-900 dark:text-white">
-                                  {new Intl.NumberFormat('pt-AO', {
-                                    style: 'currency',
-                                    currency: 'AOA'
-                                  }).format(meta.orcamento_previsto)}
-                                </span>
-                              </div>
-                              {meta.orcamento_alocado && (
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-gray-500 dark:text-gray-400">Alocado:</span>
-                                  <span className="text-green-600 dark:text-green-400">
-                                    {new Intl.NumberFormat('pt-AO', {
-                                      style: 'currency',
-                                      currency: 'AOA'
-                                    }).format(meta.orcamento_alocado)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
-                      <button
-                        onClick={() => navigate(`/estrategia/metas/${meta.id}`)}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all flex items-center justify-center gap-2"
-                      >
-                        <FiBarChart2 className="h-4 w-4" />
-                        Ver Detalhes Completos
-                      </button>
-                      
-                      <button
-                        onClick={() => navigate(`/estrategia/metas/editar/${meta.id}`)}
-                        className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
-                      >
-                        <FiSettings className="h-4 w-4" />
-                        Editar
-                      </button>
-                      
-                      <button
-                        onClick={(e) => handleDelete(meta.id, e)}
-                        className="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-2"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </motion.div>
+                {meta.orcamento_alocado && (
+                  <div className="flex flex-col xs:flex-row xs:justify-between gap-2 text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Alocado:</span>
+                    <span className="text-green-600 dark:text-green-400 break-words">
+                      {new Intl.NumberFormat('pt-AO', {
+                        style: 'currency',
+                        currency: 'AOA'
+                      }).format(meta.orcamento_alocado)}
+                    </span>
+                  </div>
                 )}
-                
-              </motion.div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Botões de ação - empilhados no mobile */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+        <button
+          onClick={() => navigate(`/estrategia/metas/${meta.id}`)}
+          className="w-full sm:flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all flex items-center justify-center gap-2"
+        >
+          <FiBarChart2 className="h-4 w-4 flex-shrink-0" />
+          <span>Ver Detalhes</span>
+        </button>
+        
+        <button
+          onClick={() => navigate(`/estrategia/metas/editar/${meta.id}`)}
+          className="w-full sm:w-auto px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center gap-2"
+        >
+          <FiSettings className="h-4 w-4 flex-shrink-0" />
+          <span>Editar</span>
+        </button>
+        
+        <button
+          onClick={(e) => handleDelete(meta.id, e)}
+          className="w-full sm:w-auto px-4 py-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center justify-center gap-2"
+        >
+          <span>Excluir</span>
+        </button>
+      </div>
+    </motion.div>
+  )}
+  
+</motion.div>
             );
           })
         )}
+
+       
       </div>
+       <ModalComponent/>
     </div>
   );
 };

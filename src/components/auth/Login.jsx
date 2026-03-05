@@ -219,7 +219,7 @@ const Login = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <div className='flex flex-col lg:flex-row w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
         {/* Lado Esquerdo - Imagem com overlay e máquina de escrever */}
         <div className='lg:w-1/2 relative'>

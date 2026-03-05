@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FiSearch, FiFilter, FiDollarSign, FiUser, FiCreditCard, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw, FiArrowLeft, FiCalendar, FiTrendingDown, FiBarChart2 } from 'react-icons/fi';
-import { Select } from '../../components/ui/Select.jsx';
+import { Select } from '../../components/ui/Select.jsx';        
+import { FiX, FiDownload, FiEye } from 'react-icons/fi';
+
 import { FaBookAtlas, FaUserTie } from 'react-icons/fa6';
 import { Student } from '../../types/aluno';
 import { Turma } from '../../types/turma';
@@ -10,12 +12,14 @@ import { HistoricoPagamentos } from '../../components/finance/historicoPagamento
 import { useNavigate } from 'react-router-dom';
 import { SelectTyped } from '../../components/students/StudentForm';
 import { configService } from '../../services/database/config';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { RxPerson } from 'react-icons/rx';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { financeRulesService } from '../../services/finance/financeRulesService';
 import { PagamentosTable } from '../../components/finance/PagamentosTable';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { useSmartBack } from '../../hooks/useSmartBack';
+import { HistoricoPagamentosModal } from '../../components/finance/ModalHistoricoPagamento.js';
 
 export const PagamentosPage = () => {
   const [alunos, setAlunos] = useState<Student[]>([]);
@@ -29,19 +33,71 @@ export const PagamentosPage = () => {
   const [mesesDoAno, setMesesDoano] = useState<string[] | []>([]);
   const [alunoSelecionado, setAlunoSelecionado] = useState<Student | null>(null);
   const [historicoPagamentos, setHistoricoPagamentos] = useState<any[]>([]);
+  const [historicoAluno, setHistoricoAluno] = useState<any[]>([]);
+  const [alunoHistoricoSelecionado, setAlunoHistoricoSelecionado] = useState<Student | null>(null);
   const [mesesPagamentos, setMesesPagamentos] = useState<{ [alunoId: string]: string[] }>({});
   const [mesesPendente, setMesesPendentes] = useState<{ [alunoId: string]: string[] }>({});
 
   const navigate = useNavigate();
+  const goBack = useSmartBack();
 
-  const abrirAluno = (alunoId: string) => {
-    navigate(`/alunos/${alunoId}`);
+  const abrirAluno = async (alunoId: string) => {
+    const aluno = alunos.find((a) => a.id === alunoId) || null;
+    setAlunoHistoricoSelecionado(aluno);
+    try {
+      const propinasAluno = await propinaService.getByAluno(alunoId);
+      const historicoRegistado = propinasAluno
+        .map((item: any) => ({
+          id: item.id,
+          mes_referencia: item.mes_referencia,
+          data_vencimento: item.data_vencimento,
+          data_pagamento: item.data_pagamento || item.data_vencimento,
+          valor_pago: item.valor_pago || 0,
+          valor_falta: item.valor_falta || 0,
+          estado: item.estado,
+          transacao_id: item.transacao_id || '',
+          observacoes: item.multa ? `Multa: ${item.multa}` : undefined
+        }));
+
+      const mesesPendentes = (aluno ? getMesesPendentesAluno(aluno) : []).filter((mes) => {
+        const mesAbreviado = financeRulesService.toMonthAbbr(mes);
+        return !propinasAluno.some(
+          (propina: any) => financeRulesService.toMonthAbbr(propina.mes_referencia) === mesAbreviado
+        );
+      });
+
+      const mesesPendentesSemRegisto = mesesPendentes.map((mes) => ({
+        id: `pendente-${alunoId}-${mes}`,
+        mes_referencia: mes,
+        data_vencimento: '',
+        data_pagamento: '',
+        valor_pago: 0,
+        valor_falta: Number(aluno?.propina || 0),
+        estado: 'pendente',
+        transacao_id: '',
+        observacoes: 'Mês pendente sem registo de pagamento'
+      }));
+
+      const historicoDoAluno = [...historicoRegistado, ...mesesPendentesSemRegisto].sort(
+        (a: any, b: any) => {
+          const dataB = new Date(b.data_pagamento || b.data_vencimento || 0).getTime();
+          const dataA = new Date(a.data_pagamento || a.data_vencimento || 0).getTime();
+          return dataB - dataA;
+        }
+      );
+
+      setHistoricoAluno(historicoDoAluno);
+    } catch (error) {
+      console.error('Erro ao carregar histórico do aluno:', error);
+      setHistoricoAluno([]);
+    }
   };
   
 
   // Carregar dados iniciais
   useEffect(() => {
     carregarDados();
+    carregarHistoricoPagamentos();
   }, []);
 
   const carregarHistoricoPagamentos = async () => {
@@ -256,52 +312,63 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
 
   return (
     <div className='p-4 md:p-6'>
-      <button
-        onClick={() => navigate("/financeiro")}
-        className="flex items-center gap-2 mb-4 text-blue-600 hover:text-blue-800"
-      >
-        <FiArrowLeft /> Voltar ao Dashboard
-      </button>
-
       <div className="min-h-screen ">
         <div className="max-w-7xl mx-auto">
 
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
-              <div className="flex items-start sm:items-center gap-3">
-                <FiDollarSign className="h-8 w-8 text-green-600" />
+        <div className="mb-8">
+  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    {/* Left side: Back button and title */}
+    <div className="flex items-start gap-3 min-w-0">
+      <motion.button
+        whileHover={{ scale: 1.1, x: -3 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => goBack('/financeiro')}
+        className="p-2.5 flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+        aria-label="Voltar"
+      >
+        <FiArrowLeft className="h-5 w-5" />
+      </motion.button>
 
-                <data  className='flex flex-col sm:flex-row sm:items-center gap-2'>
+      <div className="min-w-0">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+            Pagamento de Propinas
+          </h1>
+          <SyncStatusBadge tableName='propina' />
+        </div>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+          Gerencie os pagamentos dos estudantes por mês
+        </p>
+      </div>
+    </div>
 
-                  <div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Pagamento de Propinas</h1>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Gerencie os pagamentos dos estudantes por mês</p>
-                </div>
-                <SyncStatusBadge tableName='propina'   />
-                </data>
-              </div>
-              <div className='flex gap-2'>
-                <div className="relative ">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                  <input
-                    type="text"
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    placeholder="Nome ou número de estudante..."
-                    className="w-full max pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <button
-                  onClick={carregarDados}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <FiRefreshCw size={16} />
-                  Atualizar
-                </button>
-              </div>
-            </div>
-          </div>
+    {/* Right side: Search and refresh - Full width on mobile, auto on desktop */}
+    <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3">
+      {/* Search input - takes full width on mobile */}
+      <div className="relative flex-1">
+        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+        <input
+          type="text"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Nome ou número do estudante..."
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      
+      {/* Refresh button */}
+      <button
+        onClick={carregarDados}
+        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap"
+        title="Atualizar dados"
+      >
+        <FiRefreshCw size={16} />
+        <span className="hidden sm:inline">Atualizar</span>
+      </button>
+    </div>
+  </div>
+</div>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <motion.div 
@@ -486,6 +553,19 @@ const getMesesPagosFormatados = (aluno: Student, mesReferencia: string) => {
             <HistoricoPagamentos historico={historicoPagamentos} />
           </div>
 
+
+            <HistoricoPagamentosModal aluno={
+              {
+                id:alunoHistoricoSelecionado?.id||"",
+                nome_completo:alunoHistoricoSelecionado?.nome_completo||"",
+                numero_estudante:alunoHistoricoSelecionado?.numero_estudante?.toString() || "",
+                turma:alunoHistoricoSelecionado?.turma_id,
+              }
+            }
+              historico={historicoAluno}
+              isOpen={alunoHistoricoSelecionado!=null}
+                onClose={()=>setAlunoHistoricoSelecionado(null)}
+            />
         </div>
       </div>
     </div>

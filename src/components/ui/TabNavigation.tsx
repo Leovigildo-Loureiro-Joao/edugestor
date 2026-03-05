@@ -13,7 +13,7 @@ const TabNavigation = ({ tabs, activeTab, onTabChange, path }: { tabs: any[], ac
 
   return (
     <div className=" w-full">
-    <div className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1 overflow-x-auto">
+    <div className="flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-start gap-1 bg-white dark:bg-gray-700 rounded-xl shadow-md p-1 overflow-x-visible sm:overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -21,14 +21,14 @@ const TabNavigation = ({ tabs, activeTab, onTabChange, path }: { tabs: any[], ac
             onTabChange(tab.id);
             navigate(path + tab.id);
           }}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${
+          className={`flex-1 sm:flex-none min-w-[108px] sm:min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-lg transition-all duration-200 whitespace-nowrap ${
             activeTab === tab.id
               ? 'bg-blue-500 text-white shadow-lg'
               : 'text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600'
           }`}
         >
           {renderIcon(tab.icon)}
-          <span className="hidden sm:inline font-medium">{tab.label}</span>
+          <span className="font-medium text-xs sm:text-sm">{tab.label}</span>
           {tab.count && tab.count !== undefined && (
             <span className={`px-2 py-1 text-xs rounded-full ${
               activeTab === tab.id

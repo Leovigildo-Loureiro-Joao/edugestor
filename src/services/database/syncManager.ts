@@ -389,6 +389,35 @@ const hasPendingParent = (tableName: string, record: any): boolean => {
   }
 };
 
+const DELETE_TABLE_ORDER = [
+  'frequencias',
+  'avaliacoes',
+  'propina',
+  'plano_aulas',
+  'aulas',
+  'turma_horarios',
+  'alunos',
+  'turmas',
+  'cursos'
+];
+
+const UPSERT_TABLE_ORDER = [
+  'cursos',
+  'turmas',
+  'alunos',
+  'aulas',
+  'frequencias',
+  'avaliacoes',
+  'propina',
+  'turma_horarios',
+  'plano_aulas'
+];
+
+const getTableOrderIndex = (tableName: string, order: string[]) => {
+  const idx = order.indexOf(tableName);
+  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+};
+
 // Instância do SyncManager
 export const syncManager: SyncManager = {
   // ✅ UPLOAD em BATCH (otimizado)
@@ -421,11 +450,29 @@ export const syncManager: SyncManager = {
         return;
       }
       
-      // 2. Agrupar por tabela
-      const itemsByTable = this.groupByTable(pendingItems);
-      
-      // 3. Processar cada tabela em batch
-      for (const [tableName, items] of Object.entries(itemsByTable)) {
+      const deleteItems = pendingItems.filter((item) => item.operation === 'delete');
+      const upsertItems = pendingItems.filter((item) => item.operation === 'upsert');
+
+      const deleteByTable = this.groupByTable(deleteItems);
+      const upsertByTable = this.groupByTable(upsertItems);
+
+      // Primeiro deletar dependências (filhos -> pais) para evitar FK 23503
+      const deleteTableEntries = Object.entries(deleteByTable).sort(
+        ([tableA], [tableB]) =>
+          getTableOrderIndex(tableA, DELETE_TABLE_ORDER) - getTableOrderIndex(tableB, DELETE_TABLE_ORDER)
+      );
+
+      for (const [tableName, items] of deleteTableEntries) {
+        await this.processDeleteBatch(tableName, items);
+      }
+
+      // Depois processar upserts (pais -> filhos)
+      const upsertTableEntries = Object.entries(upsertByTable).sort(
+        ([tableA], [tableB]) =>
+          getTableOrderIndex(tableA, UPSERT_TABLE_ORDER) - getTableOrderIndex(tableB, UPSERT_TABLE_ORDER)
+      );
+
+      for (const [tableName, items] of upsertTableEntries) {
         await this.processTableBatch(tableName, items);
       }
       
@@ -444,7 +491,15 @@ export const syncManager: SyncManager = {
           (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
         )
         .toArray();
-      await this.processTableBatch(tableName, pendingItems);
+    const deletes = pendingItems.filter((item) => item.operation === 'delete');
+    const upserts = pendingItems.filter((item) => item.operation === 'upsert');
+
+    if (deletes.length > 0) {
+      await this.processDeleteBatch(tableName, deletes);
+    }
+    if (upserts.length > 0) {
+      await this.processTableBatch(tableName, upserts);
+    }
       
   }
 
@@ -1763,24 +1818,6 @@ export const syncManager: SyncManager = {
   
   // ✅ Processar DELETEs em batch
   async processDeleteBatch(tableName: string, items: SyncQueueItem[]) {
-    const { getAuthData } = useSyncAuthInManager();
-    const authData = getAuthData();
-    
-    // Filtrar apenas IDs que não são locais
-    const idsToDelete = items
-      .filter(item => !item.record_id.startsWith('local_'))
-      .map(item => item.record_id);
-    
-    
-    if (idsToDelete.length === 0) {
-      // Apenas deletar localmente
-      for (const item of items) {
-        await this.deleteLocalRecord(tableName, item.record_id);
-        await db.syncQueue.delete(item.id!);
-      }
-      return;
-    }
-    
     // Verificar permissões para deletar
     if (tableName === 'profiles' || tableName === 'instituicao') {
       const { hasPermission } = useSyncAuthInManager();
@@ -1795,22 +1832,40 @@ export const syncManager: SyncManager = {
         throw new Error(`Permissão insuficiente para deletar ${tableName}`);
       }
     }
-    
-    // Deletar no Supabase em batch
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .in('id', idsToDelete);
-    
-    if (error) {
-      console.error(`❌ Erro deletando batch de ${tableName}:`, error);
-      throw error;
-    }
-    
-    // Deletar localmente
+
+    // Primeiro remove IDs locais sem chamada remota
     for (const item of items) {
+      if (!item.record_id.startsWith('local_')) continue;
       await this.deleteLocalRecord(tableName, item.record_id);
       await db.syncQueue.delete(item.id!);
+    }
+
+    // Processa remotos individualmente para permitir retry granular
+    const remoteItems = items.filter((item) => !item.record_id.startsWith('local_'));
+    for (const item of remoteItems) {
+      try {
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', item.record_id);
+
+        if (error) throw error;
+
+        await this.deleteLocalRecord(tableName, item.record_id);
+        await db.syncQueue.delete(item.id!);
+      } catch (error: any) {
+        if (error?.code === '23503') {
+          await db.syncQueue.update(item.id!, {
+            status: 'failed',
+            retry_count: (item.retry_count || 0) + 1,
+            error: `FK_CONFLICT:${tableName}:${item.record_id}:${error.message || 'registro dependente encontrado'}`,
+            data: new Date().toISOString()
+          });
+          continue;
+        }
+
+        await this.handleSyncError(item, error);
+      }
     }
     
     },
@@ -1919,8 +1974,6 @@ export const syncManager: SyncManager = {
   // ✅ Baixar tabela específica em batch
   async downloadTableBatch(tableName: string, since: Date) {
     try {
-      const { getAuthData, hasPermission } = useSyncAuthInManager();
-      const authData = getAuthData();
       const localCount = await db.table(tableName).count();
       const shouldForceFullSync = localCount === 0;
       
@@ -1936,9 +1989,10 @@ export const syncManager: SyncManager = {
       } else if (shouldForceFullSync) {
         }
       
-      // Filtrar por instituição se não for admin
-      if (tableName !== 'profiles' && tableName !== 'instituicao' && !hasPermission('admin')) {
-        const instituicaoId = localStorage.getItem('active_instituicao_id');
+      // Filtrar por instituição ativa quando existir.
+      // Sem instituição ativa, mantém download global (todas).
+      if (tableName !== 'profiles' && tableName !== 'instituicao') {
+        const instituicaoId = getSyncQueueInstitutionId();
         if (instituicaoId) {
           query = query.eq('instituicao_id', instituicaoId);
         }
@@ -2043,8 +2097,7 @@ export const syncManager: SyncManager = {
 
   , async reconcileHardDeletes(tableName: string) {
     try {
-      const { hasPermission } = useSyncAuthInManager();
-      const instituicaoId = localStorage.getItem('active_instituicao_id') || '';
+      const instituicaoId = getSyncQueueInstitutionId();
 
       let from = 0;
       const pageSize = 1000;
@@ -2057,7 +2110,7 @@ export const syncManager: SyncManager = {
           .order('id', { ascending: true })
           .range(from, from + pageSize - 1);
 
-        if (tableName !== 'profiles' && tableName !== 'instituicao' && !hasPermission('admin') && instituicaoId) {
+        if (tableName !== 'profiles' && tableName !== 'instituicao' && instituicaoId) {
           query = query.eq('instituicao_id', instituicaoId);
         }
 

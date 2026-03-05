@@ -48,6 +48,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
 }) => {
   const { showAlert } = useAlert();
   const [metasSelecionadas, setMetasSelecionadas] = useState<Array<AlocacaoRecurso>>([]);
+  const [mobileMetasOpen, setMobileMetasOpen] = useState(false);
 
   const [modoDistribuicao, setModoDistribuicao] = useState<'valor' | 'percentual'>('valor');
   const [valorDistribuir, setValorDistribuir] = useState(0);
@@ -134,6 +135,12 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
       setMetasSelecionadas(selecionadas);
     }
   }, [metasFiltradas, fundosDisponiveis]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setMobileMetasOpen(false);
+    }
+  }, [isOpen]);
 
   // Calcular totais
   const totalAlocado = metasSelecionadas.reduce((sum, item) => sum + item.valor, 0);
@@ -430,6 +437,174 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     });
   };
 
+  const headingH1 =
+    'font-bold text-gray-900 dark:text-white';
+  const headingH2 =
+    'font-semibold text-gray-900 dark:text-white';
+  const headingH3 =
+    'font-medium text-gray-900 dark:text-white';
+
+  const renderMetasSidebar = () => (
+    <>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className={headingH2}>
+            Metas Disponíveis ({metasFiltradas.length})
+          </h2>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Clique para adicionar/remover
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          {metasFiltradas.map((meta) => {
+            const Icon = getIconByTipo(meta.tipo);
+            const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
+            const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
+            const isSelecionada = metasSelecionadas.find(item => item.meta_id === meta.id);
+            
+            return (
+              <div
+                key={meta.id}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  isSelecionada
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
+                }`}
+                onClick={() => {
+                  if (isSelecionada) {
+                    removerMeta(meta.id);
+                  } else {
+                    adicionarMeta(meta);
+                  }
+                  setMobileMetasOpen(false);
+                }}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                      <Icon className="text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div className="max-w-[200px]">
+                      <h3 className={`${headingH3} truncate`}>
+                        {meta.titulo}
+                      </h3>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 capitalize">
+                        {meta.tipo}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {isSelecionada ? (
+                    <div className="p-1 bg-blue-100 dark:bg-blue-800 rounded-full">
+                      <FiCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  ) : (
+                    <div className="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+                      <FiPlus className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Progresso e Orçamento */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Progresso: {meta.progresso}%
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${getColorByStatus(meta.status)}`}>
+                        {meta.status === 'em_andamento' ? 'Em andamento' :
+                          meta.status === 'concluida' ? 'Concluída' :
+                          meta.status === 'atrasada' ? 'Atrasada' :
+                          meta.status === 'suspensa' ? 'Suspensa' : 'Não iniciada'}
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 h-5 rounded-full text-xs ${getColorByPrioridade(meta.prioridade)}`}>
+                      {meta.prioridade}
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-1">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full" 
+                      style={{ width: `${Math.min(meta.progresso, 100)}%` }}
+                    />
+                  </div>
+                  
+                  {meta.orcamento_previsto && (
+                    <div className="text-sm">
+                      <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                        <span>Orçamento:</span>
+                        <div className="text-right">
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {formatarMoeda(orcamentoAtual)} / {formatarMoeda(meta.orcamento_previsto)}
+                          </div>
+                          <div className="text-xs">
+                            Restante: {formatarMoeda(orcamentoRestante)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Responsável e Datas */}
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <FiUser className="h-3 w-3" />
+                    <span className="truncate max-w-[100px]">{meta.responsavel_principal}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1">
+                      <FiCalendar className="h-3 w-3" />
+                      <span>Até {formatarData(meta.data_fim)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Histórico de Alocações */}
+      {historicoAlocacoes.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h2 className={`${headingH2} mb-4`}>
+            Histórico de Alocações
+          </h2>
+          <div className="space-y-3">
+            {historicoAlocacoes.slice(0, 3).map((hist) => (
+              <div
+                key={hist.id}
+                className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {meses[hist.mes - 1]} {hist.ano}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatarData(hist.data_registro)}
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+                  {hist.descricao}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {hist.alocacoes.length} meta(s)
+                </div>
+                <div className="mt-2 text-right font-medium text-green-600 dark:text-green-400">
+                  {formatarMoeda(hist.total_alocado)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -437,214 +612,97 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end min-[936px]:items-center justify-center p-0 min-[936px]:p-4"
           onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl"
+            className="bg-white dark:bg-gray-800 rounded-none min-[936px]:rounded-lg w-full max-w-none min-[936px]:max-w-6xl h-screen min-[936px]:h-auto min-[936px]:max-h-[90vh] overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+            <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 min-[936px]:p-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                     <FiTarget className="text-blue-600 dark:text-blue-400 text-xl" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    <h1 className={headingH1}>
                       Alocação de Recursos para Metas
-                    </h3>
+                    </h1>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
                       Distribua recursos entre as metas estratégicas da escola
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMobileMetasOpen(true)}
+                    className="min-[936px]:hidden px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700"
+                  >
+                    Metas ({metasSelecionadas.length})
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex h-[calc(90vh-80px)]">
-              {/* Lista de Metas Disponíveis */}
-              <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium text-gray-900 dark:text-white">
-                      Metas Disponíveis ({metasFiltradas.length})
-                    </h4>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Clique para adicionar/remover
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {metasFiltradas.map((meta) => {
-                      const Icon = getIconByTipo(meta.tipo);
-                      const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
-                      const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
-                      const porcentagemCompleta = (meta.orcamento_previsto || 0) > 0 
-                        ? (orcamentoAtual / (meta.orcamento_previsto || 1)) * 100 
-                        : 0;
-                      
-                      const isSelecionada = metasSelecionadas.find(item => item.meta_id === meta.id);
-                      
-                      return (
-                        <div
-                          key={meta.id}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                            isSelecionada
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
-                          }`}
-                          onClick={() => {
-                            if (isSelecionada) {
-                              removerMeta(meta.id);
-                            } else {
-                              adicionarMeta(meta);
-                            }
-                          }}
+            <div className="relative flex h-[calc(100vh-88px)] min-[936px]:h-[calc(90vh-80px)]">
+              {/* Drawer Mobile de Metas */}
+              <AnimatePresence>
+                {mobileMetasOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-black/40 z-20 min-[936px]:hidden"
+                      onClick={() => setMobileMetasOpen(false)}
+                    />
+                    <motion.aside
+                      initial={{ x: '-100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '-100%' }}
+                      transition={{ duration: 0.22, ease: 'easeOut' }}
+                      className="absolute inset-y-0 left-0 z-30 min-[936px]:hidden w-[88%] max-w-[360px] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-2xl p-4 overflow-y-auto"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className={headingH2}>Metas</h2>
+                        <button
+                          onClick={() => setMobileMetasOpen(false)}
+                          className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                <Icon className="text-gray-600 dark:text-gray-400" />
-                              </div>
-                              <div className="max-w-[200px]">
-                                <h5 className="font-medium text-gray-900 dark:text-white truncate">
-                                  {meta.titulo}
-                                </h5>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 capitalize">
-                                  {meta.tipo}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {isSelecionada ? (
-                              <div className="p-1 bg-blue-100 dark:bg-blue-800 rounded-full">
-                                <FiCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              </div>
-                            ) : (
-                              <div className="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-                                <FiPlus className="h-4 w-4 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Progresso e Orçamento */}
-                          <div className="mb-3">
-                            <div className="flex justify-between text-sm mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Progresso: {meta.progresso}%
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${getColorByStatus(meta.status)}`}>
-                                  {meta.status === 'em_andamento' ? 'Em andamento' :
-                                   meta.status === 'concluida' ? 'Concluída' :
-                                   meta.status === 'atrasada' ? 'Atrasada' :
-                                   meta.status === 'suspensa' ? 'Suspensa' : 'Não iniciada'}
-                                </span>
-                              </div>
-                              <span className={`px-2 py-0.5 rounded-full text-xs ${getColorByPrioridade(meta.prioridade)}`}>
-                                {meta.prioridade}
-                              </span>
-                            </div>
-                            
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-1">
-                              <div 
-                                className="bg-green-600 h-2 rounded-full" 
-                                style={{ width: `${Math.min(meta.progresso, 100)}%` }}
-                              />
-                            </div>
-                            
-                            {meta.orcamento_previsto && (
-                              <div className="text-sm">
-                                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                                  <span>Orçamento:</span>
-                                  <div className="text-right">
-                                    <div className="font-medium text-gray-900 dark:text-white">
-                                      {formatarMoeda(orcamentoAtual)} / {formatarMoeda(meta.orcamento_previsto)}
-                                    </div>
-                                    <div className="text-xs">
-                                      Restante: {formatarMoeda(orcamentoRestante)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Responsável e Datas */}
-                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                            <div className="flex items-center gap-1">
-                              <FiUser className="h-3 w-3" />
-                              <span className="truncate max-w-[100px]">{meta.responsavel_principal}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="flex items-center gap-1">
-                                <FiCalendar className="h-3 w-3" />
-                                <span>Até {formatarData(meta.data_fim)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Histórico de Alocações */}
-                {historicoAlocacoes.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-4">
-                      Histórico de Alocações
-                    </h4>
-                    <div className="space-y-3">
-                      {historicoAlocacoes.slice(0, 3).map((hist) => (
-                        <div
-                          key={hist.id}
-                          className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
-                        >
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {meses[hist.mes - 1]} {hist.ano}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {formatarData(hist.data_registro)}
-                            </div>
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                            {hist.descricao}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-300">
-                            {hist.alocacoes.length} meta(s)
-                          </div>
-                          <div className="mt-2 text-right font-medium text-green-600 dark:text-green-400">
-                            {formatarMoeda(hist.total_alocado)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                          <FiX className="h-5 w-5" />
+                        </button>
+                      </div>
+                      {renderMetasSidebar()}
+                    </motion.aside>
+                  </>
                 )}
+              </AnimatePresence>
+
+              {/* Lista de Metas Disponíveis */}
+              <div className="hidden min-[936px]:block w-1/3 border-r border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
+                {renderMetasSidebar()}
               </div>
 
               {/* Configuração da Alocação */}
-              <div className="w-2/3 p-6 overflow-y-auto">
+              <div className="w-full min-[936px]:w-2/3 p-4 min-[936px]:p-6 overflow-y-auto">
                 {/* Fundos Disponíveis */}
                 <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg p-6 mb-8">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-gray-900 dark:text-white text-lg">
+                      <h2 className={headingH2}>
                         Fundos Disponíveis para Alocação
-                      </h4>
+                      </h2>
                       <p className="text-gray-600 dark:text-gray-300">
                         {meses[mesSelecionado - 1]} de {anoSelecionado}
                       </p>
@@ -661,7 +719,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                 </div>
 
                 {/* Período e Descrição */}
-                <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Mês da Alocação
@@ -708,12 +766,12 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
 
                 {/* Ferramentas de Distribuição */}
                 <div className="mb-8">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+                  <h2 className={`${headingH2} mb-4`}>
                     Ferramentas de Distribuição
-                  </h4>
+                  </h2>
                   <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div className="col-span-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                      <div className="sm:col-span-2">
                         <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                           Valor Total a Distribuir
                         </label>
@@ -753,7 +811,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <button
                         onClick={distribuirIgualmente}
                         disabled={valorDistribuir <= 0 || metasSelecionadas.length === 0}
@@ -800,9 +858,9 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                 {/* Metas Selecionadas */}
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium text-gray-900 dark:text-white">
+                    <h2 className={headingH2}>
                       Metas Selecionadas ({metasSelecionadas.length})
-                    </h4>
+                    </h2>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       {metasSelecionadas.length === 0 ? 'Nenhuma meta selecionada' : 'Clique no ✕ para remover'}
                     </div>
@@ -836,9 +894,9 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                                 <div className="flex-1">
                                   <div className="flex items-start gap-5 justify-between">
                                     <div>
-                                      <h5 className="font-bold text-gray-900 dark:text-white">
+                                      <h3 className={headingH3}>
                                         {item.meta.titulo}
-                                      </h5>
+                                      </h3>
                                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                                         {item.meta.descricao}
                                       </p>
@@ -862,7 +920,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                               </button>
                             </div>
 
-                            <div className="grid grid-cols-4 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
                               <div>
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                                   Valor (AOA)
@@ -977,10 +1035,10 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
 
                 {/* Resumo da Alocação */}
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-6 mb-8">
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-4">
+                  <h2 className={`${headingH2} mb-4`}>
                     Resumo da Alocação
-                  </h4>
-                  <div className="grid grid-cols-4 gap-4">
+                  </h2>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-gray-900 dark:text-white">
                         {formatarMoeda(fundosDisponiveis)}
@@ -1020,7 +1078,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
                 </div>
 
                 {/* Ações */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={salvarAlocacao}
                     disabled={totalAlocado === 0 || totalAlocado > fundosDisponiveis || !descricaoAlocacao.trim()}

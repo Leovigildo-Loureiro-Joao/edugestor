@@ -8,8 +8,62 @@ input,select,textarea,button {
 
 html{
     scroll-behavior: smooth;
-    font-size: 90%;
+    font-size: 87.5%;
     background: linear-gradient(white,rgb(208, 228, 241)) ;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 90%;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 90%;
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 90%;
+  }
+}
+
+body {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+}
+
+:root {
+  --h1-fluid: clamp(1.35rem, 1.06rem + 0.58vw, 1.62rem);
+  --h2-fluid: clamp(1.08rem, 0.98rem + 0.35vw, 1.24rem);
+  --h3-fluid: clamp(0.96rem, 0.9rem + 0.2vw, 1.06rem);
+  --h4-fluid: clamp(0.9rem, 0.86rem + 0.14vw, 0.98rem);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.22 !important;
+  letter-spacing: -0.015em !important;
+}
+
+h1 {
+  font-size: var(--h1-fluid) !important;
+}
+
+h2 {
+  font-size: var(--h2-fluid) !important;
+}
+
+h3 {
+  font-size: var(--h3-fluid) !important;
+}
+
+h4 {
+  font-size: var(--h4-fluid);
 }
 
   .timeline-container {

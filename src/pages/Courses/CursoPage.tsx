@@ -20,6 +20,7 @@ import { PageLoader } from '../../components/ui/PageLoader';
 import { StatCard } from '../../components/students/StatCard';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { aulaService } from '../../services/database';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 interface TurmaDesempenho extends Turma {
   estatisticas: {
@@ -57,13 +58,13 @@ interface AnaliseCurso {
 export const CourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'info' | 'analise'>('info');
   const [analise, setAnalise] = useState<AnaliseCurso | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("last_rota", "/cursos/" + id);
     loadCourseDetails();
   }, [id]);
 
@@ -241,10 +242,11 @@ export const CourseDetails = () => {
         <div className="text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">Curso não encontrado</h2>
           <button
-            onClick={() => navigate('/cursos')}
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            onClick={() => goBack('/cursos')}
+            className="mt-4 p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            aria-label="Voltar"
           >
-            Voltar para a lista de cursos
+            <FiArrowLeft className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -255,71 +257,76 @@ export const CourseDetails = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Cabeçalho */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/cursos')}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
-          >
-            <FiArrowLeft size={20} />
-            Voltar para Cursos
-          </button>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
-                  {course.nome}
-                </h1>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  course.ativo 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                }`}>
-                  {course.ativo ? 'Ativo' : 'Inativo'}
-                </span>
-              </div>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                Gerencie as informações e acompanhe o desempenho do curso
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Tabs */}
-              <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                <button
-                  onClick={() => setAbaAtiva('info')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    abaAtiva === 'info'
-                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <FiBook size={16} />
-                  <span>Informações</span>
-                </button>
-                <button
-                  onClick={() => setAbaAtiva('analise')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    abaAtiva === 'analise'
-                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <FiBarChart2 size={16} />
-                  <span>Análise</span>
-                </button>
-              </div>
-
-              <Link
-                to={`/cursos/editar/${course.id}`}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-              >
-                <FiEdit size={18} />
-                Editar Curso
-              </Link>
-            </div>
+       <div className="mb-8">
+   
+      <div className="flex items-start gap-3 mb-4">
+        <motion.button
+          whileHover={{ scale: 1.1, x: -3 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => goBack('/cursos')}
+          className="p-2.5 flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+          aria-label="Voltar"
+        >
+          <FiArrowLeft className="h-5 w-5" />
+        </motion.button>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+              {course.nome}
+            </h1>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
+              course.ativo 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+            }`}>
+              {course.ativo ? 'Ativo' : 'Inativo'}
+            </span>
           </div>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Gerencie as informações e acompanhe o desempenho do curso
+          </p>
         </div>
+      </div>
+
+  {/* Ações e tabs - agora abaixo do título no mobile */}
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    {/* Tabs */}
+    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
+      <button
+        onClick={() => setAbaAtiva('info')}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+          abaAtiva === 'info'
+            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+        }`}
+      >
+        <FiBook size={16} />
+        <span>Informações</span>
+      </button>
+      <button
+        onClick={() => setAbaAtiva('analise')}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+          abaAtiva === 'analise'
+            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+        }`}
+      >
+        <FiBarChart2 size={16} />
+        <span>Análise</span>
+      </button>
+    </div>
+
+    {/* Botão editar */}
+    <Link
+      to={`/cursos/editar/${course.id}`}
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium w-full sm:w-auto"
+    >
+      <FiEdit size={18} />
+      Editar Curso
+    </Link>
+  </div>
+</div>
 
         <AnimatePresence mode="wait">
           {abaAtiva === 'info' ? (

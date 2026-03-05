@@ -23,10 +23,12 @@ import { transacaoService } from '../../services/database';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../../components/ui/PaginationControls';
+import { useSmartBack } from '../../hooks/useSmartBack';
 
 const StudentPage: React.FC = () => {
   const { id, seccao } = useParams<{ id: string; seccao?: string }>();
   const navigate = useNavigate();
+  const goBack = useSmartBack();
   const tabSections = ['overview', 'propinas', 'frequencia', 'desempenho', 'informacoes'] as const;
   type StudentSection = (typeof tabSections)[number];
   const [activeTab, setActiveTab] = useState(0);
@@ -294,7 +296,7 @@ const StudentPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* HEADER REFINADO */}
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/80 dark:border-gray-700 sticky top-0 z-30 shadow-sm">
+      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/80 dark:border-gray-700  top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 py-4">
             {/* Informações do Aluno */}
@@ -302,7 +304,7 @@ const StudentPage: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.1, x: -3 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(localStorage.getItem("last_rota") || "/alunos")}
+                onClick={() => goBack('/alunos')}
                 className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
               >
                 <FiArrowLeft className="h-5 w-5" />
