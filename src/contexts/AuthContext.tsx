@@ -361,14 +361,25 @@ const handleSuccessfulLogin = async (user: User) => {
         // 🔥 BUSCAR PERFIL DO USUÁRIO
         if (session?.user) {
           localStorage.setItem('user_id', session.user.id);
-          const userProfile = await fetchUserProfile(session.user.id);
-          setProfile(userProfile);
-          persistAuthBootstrap(userProfile);
-          
-          // Se não tem perfil, criar um com role padrão 'user'
-          if (!userProfile) {
-            await createUserProfile(session.user);
+          // Prioriza perfil local para liberar a UI rapidamente.
+          const localProfile = await profileService.getLocalProfile().catch(() => null);
+          if (localProfile) {
+            setProfile(localProfile);
+            persistAuthBootstrap(localProfile);
           }
+          setLoading(false);
+
+          // Atualiza perfil remoto em background sem bloquear render inicial.
+          void (async () => {
+            const userProfile = await fetchUserProfile(session.user!.id);
+            setProfile(userProfile);
+            persistAuthBootstrap(userProfile);
+
+            if (!userProfile) {
+              await createUserProfile(session.user!);
+            }
+          })();
+          return;
         }
       } catch (error) {
         console.error('Erro na inicialização:', error);
@@ -379,32 +390,33 @@ const handleSuccessfulLogin = async (user: User) => {
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event:any, newSession:any) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        
-        // 🔥 ATUALIZAR PERFIL QUANDO MUDAR AUTENTICAÇÃO
-        if (newSession?.user) {
-          const userProfile = await fetchUserProfile(newSession.user.id);
-          setProfile(userProfile);
-          persistAuthBootstrap(userProfile);
-          localStorage.setItem('user_id', newSession.user.id);
-          
-          // Salvar sessão no localStorage (fallback offline) sem quebrar em quota.
-          try {
-            localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
-          } catch {
-            console.warn('⚠️ Não foi possível salvar sessão local (quota/storage indisponível)');
-          }
-        } else {
-          setProfile(null);
-          clearLocalAuthState();
-        }
-        
-        setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setLoading(false);
+
+      if (!newSession?.user) {
+        setProfile(null);
+        clearLocalAuthState();
+        return;
       }
-    );
+
+      localStorage.setItem('user_id', newSession.user.id);
+
+      // Salvar sessão no localStorage (fallback offline) sem quebrar em quota.
+      try {
+        localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
+      } catch {
+        console.warn('⚠️ Não foi possível salvar sessão local (quota/storage indisponível)');
+      }
+
+      // Perfil atualizado em background para não segurar a navegação.
+      void (async () => {
+        const userProfile = await fetchUserProfile(newSession.user.id);
+        setProfile(userProfile);
+        persistAuthBootstrap(userProfile);
+      })();
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -422,9 +434,9 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      // ⭐ NOVO: Após login, verificar/atualizar metadados do usuário
-      await handleSuccessfulLogin(data.user!);
-      await auditLogService.log('AUTH_LOGIN', {
+      // Tarefas pós-login em background para não travar entrada no sistema.
+      void handleSuccessfulLogin(data.user!);
+      void auditLogService.log('AUTH_LOGIN', {
         action_label: 'Fez Login',
         source: 'auth',
         table_name: 'profiles',

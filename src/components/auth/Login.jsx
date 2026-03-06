@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import logo from '../../assets/logo.png';
 import logoBlack from '../../assets/logoblack1.png';
-import bg from '../../assets/funcionario-que-trabalha-num-ambiente-de-comercializacao.jpg';
+import adminBg from '../../assets/admin.jpg';
 import { FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -13,6 +13,15 @@ import { supabase } from '../../services/database/db';
 import { auditLogService } from '../../services/audit/auditLogService';
 
 export {logo,logoBlack};
+const PHRASES = [
+  'Gestão Académica Inteligente',
+  'Controle de Frequência Avançado',
+  'Sistema Financeiro Completo',
+  'Relatórios em Tempo Real',
+  'Plataforma de Aprendizagem',
+  'Comunicação Eficiente'
+];
+
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
@@ -25,25 +34,24 @@ const Login = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [showIllustration, setShowIllustration] = useState(false);
   
   const { user, login, register, loginWithGoogle, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
   const { showAlert } = useAlert(); 
   const location = useLocation();
 
-  // Frases para a máquina de escrever
-  const phrases = [
-    "Gestão Académica Inteligente",
-    "Controle de Frequência Avançado",
-    "Sistema Financeiro Completo",
-    "Relatórios em Tempo Real",
-    "Plataforma de Aprendizagem",
-    "Comunicação Eficiente"
-  ];
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const onMediaChange = () => setShowIllustration(mediaQuery.matches);
+    onMediaChange();
+    mediaQuery.addEventListener('change', onMediaChange);
+    return () => mediaQuery.removeEventListener('change', onMediaChange);
+  }, []);
 
   // Máquina de escrever
   useEffect(() => {
-    const currentPhrase = phrases[currentIndex];
+    const currentPhrase = PHRASES[currentIndex];
     
     const timeout = setTimeout(() => {
       if (!isDeleting) {
@@ -61,13 +69,13 @@ const Login = () => {
         } else {
           // Terminou de apagar, vai para próxima frase
           setIsDeleting(false);
-          setCurrentIndex((prev) => (prev + 1) % phrases.length);
+          setCurrentIndex((prev) => (prev + 1) % PHRASES.length);
         }
       }
     }, isDeleting ? 50 : 100);
 
     return () => clearTimeout(timeout);
-  }, [currentText, currentIndex, isDeleting, phrases]);
+  }, [currentText, currentIndex, isDeleting]);
 
   // Verificar se há erro na query string (do callback)
   useEffect(() => {
@@ -222,12 +230,19 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <div className='flex flex-col lg:flex-row w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden'>
         {/* Lado Esquerdo - Imagem com overlay e máquina de escrever */}
+        {showIllustration && (
         <div className='lg:w-1/2 relative'>
           <div className="relative h-64 lg:h-full">
-            <img 
-              src={bg} 
-              className='w-full h-full object-cover' 
-              alt="Ambiente educativo" 
+            <motion.img
+              initial={{ opacity: 0.3 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
+              src={adminBg}
+              className='w-full h-full object-cover'
+              alt="Ambiente educacional"
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
             />
             {/* Overlay escuro gradiente */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-black/30"></div>
@@ -257,12 +272,13 @@ const Login = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Lado Direito - Formulário */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="lg:w-1/2 p-6 lg:p-8 flex flex-col justify-center"
+          className={`${showIllustration ? 'lg:w-1/2' : 'w-full'} p-6 lg:p-8 flex flex-col justify-center`}
         >
           <div className='flex flex-col items-center justify-center mb-6'>
             <img src={logo} className='w-24 h-24 lg:w-32 lg:h-32 mb-4' alt="EduGestor Logo" />

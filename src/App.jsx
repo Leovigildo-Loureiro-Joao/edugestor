@@ -1,56 +1,66 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import Layout from './components/layout/Layout.jsx';
 import { Login } from './components/auth/Login.jsx';
-import Dashboard from './pages/Dashboard/Dashboard.tsx';
-import SyncMonitorPage from './pages/Dashboard/SyncMonitorPage.tsx';
-import Students from './pages/Students/Students.tsx';
-import { StudentNew } from './pages/Students/StudentsNew.tsx';
-import { StudentEdit } from './pages/Students/StudentsEdit.tsx';
-import { FrequenciaPage } from './pages/Attendance/Frequencia.tsx';
-import { AulasPage } from './pages/Grades/AulaPage.tsx';
-import Turmas from './pages/Turmas/Turmas.tsx';
-import StudentPage from './pages/Students/StudentPage.tsx';
-import PagamentosPage from './pages/Finance/Pagamento.tsx';
-import { FinanceiroPage } from './pages/Finance/Financeiro.tsx';
-import RegistroPagamentoPage from './pages/Finance/RegistroPagamentoPage.tsx';
-import { ConfiguracoesPage } from './pages/Settings/ConfigPage.jsx';
-import { MetaDetailsPage } from './pages/Estrategia/MetasDetails.tsx';
-import Courses from './pages/Courses/Curso.tsx';
-import { CursoNew } from './pages/Courses/CursoNew.jsx';
-import { CursoEdit } from './pages/Courses/CursoEdit.jsx';
-import TurmaDetails from './pages/Turmas/TurmasPage.tsx';
-import CourseDetails from './pages/Courses/CursoPage.tsx';
-import { CompletarMatricula } from './pages/Finance/RegistraMatricula.tsx';
-import { configService } from './services/database/config.ts';
-import EstrategiaPage from './pages/Estrategia/Estrategia.tsx';
-import TarefaPage from './pages/Estrategia/TarefaPage.tsx';
-import MetaPage from './components/strategy/MetaForm.tsx';
-import EventosPage from './components/event/EventosPage.tsx';
-import TurmaForm from './components/turmas/TurmasForm.tsx';
 import AuthCallback from './components/auth/AuthCallback.tsx';
-import db, { supabase, syncDatabase } from './services/database/db.js'; // ✅ IMPORT CORRETO
-import InitialSetup from './pages/setup/InitialSetup.tsx';
-import PromoteToAdmin from './pages/admin/PromoteToAdmin.tsx';
-import AdminDashboard from './pages/admin/AdminDashboard.tsx';
-import { ShowTimeot } from './components/ui/ShowTimeout.jsx';
-import ProfilePage from './pages/User/ProfilePage.tsx';
-import { TransacoesPage } from './pages/Finance/TransacaoPage.tsx';
+import { configService } from './services/database/config.ts';
+import db, { supabase, syncDatabase } from './services/database/db.js';
 import { backgroundService } from './services/database/backgroundService.ts';
 import { notificacaoService } from './services/database/notificacaoService.ts';
 import { AlertProvider } from './components/ui/AlertBadge.tsx';
-import { NotasPage } from './pages/Grades/NotasPage.tsx';
 import { auditLogService } from './services/audit/auditLogService.ts';
-import { EventoPage } from './pages/Estrategia/Evento.js';
 
-// ✅ ProtectedRoute CORRIGIDO
-// Modifique o ProtectedRoute para aceitar um array de roles permitidas
+const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard.tsx'));
+const SyncMonitorPage = lazy(() => import('./pages/Dashboard/SyncMonitorPage.tsx'));
+const Students = lazy(() => import('./pages/Students/Students.tsx'));
+const StudentNew = lazy(() => import('./pages/Students/StudentsNew.tsx').then((m) => ({ default: m.StudentNew })));
+const StudentEdit = lazy(() => import('./pages/Students/StudentsEdit.tsx').then((m) => ({ default: m.StudentEdit })));
+const StudentPage = lazy(() => import('./pages/Students/StudentPage.tsx'));
+const FrequenciaPage = lazy(() => import('./pages/Attendance/Frequencia.tsx').then((m) => ({ default: m.FrequenciaPage })));
+const AulasPage = lazy(() => import('./pages/Grades/AulaPage.tsx').then((m) => ({ default: m.AulasPage })));
+const NotasPage = lazy(() => import('./pages/Grades/NotasPage.tsx').then((m) => ({ default: m.NotasPage })));
+const Turmas = lazy(() => import('./pages/Turmas/Turmas.tsx'));
+const TurmaDetails = lazy(() => import('./pages/Turmas/TurmasPage.tsx'));
+const TurmaForm = lazy(() => import('./components/turmas/TurmasForm.tsx'));
+const PagamentosPage = lazy(() => import('./pages/Finance/Pagamento.tsx'));
+const FinanceiroPage = lazy(() => import('./pages/Finance/Financeiro.tsx').then((m) => ({ default: m.FinanceiroPage })));
+const RegistroPagamentoPage = lazy(() => import('./pages/Finance/RegistroPagamentoPage.tsx'));
+const TransacoesPage = lazy(() => import('./pages/Finance/TransacaoPage.tsx').then((m) => ({ default: m.TransacoesPage })));
+const CompletarMatricula = lazy(() => import('./pages/Finance/RegistraMatricula.tsx').then((m) => ({ default: m.CompletarMatricula })));
+const Courses = lazy(() => import('./pages/Courses/Curso.tsx'));
+const CursoNew = lazy(() => import('./pages/Courses/CursoNew.jsx').then((m) => ({ default: m.CursoNew })));
+const CursoEdit = lazy(() => import('./pages/Courses/CursoEdit.jsx').then((m) => ({ default: m.CursoEdit })));
+const CourseDetails = lazy(() => import('./pages/Courses/CursoPage.tsx'));
+const EstrategiaPage = lazy(() => import('./pages/Estrategia/Estrategia.tsx'));
+const TarefaPage = lazy(() => import('./pages/Estrategia/TarefaPage.tsx'));
+const MetaPage = lazy(() => import('./components/strategy/MetaForm.tsx'));
+const MetaDetailsPage = lazy(() => import('./pages/Estrategia/MetasDetails.tsx').then((m) => ({ default: m.MetaDetailsPage })));
+const EventosPage = lazy(() => import('./components/event/EventosPage.tsx'));
+const ConfiguracoesPage = lazy(() => import('./pages/Settings/ConfigPage.jsx').then((m) => ({ default: m.ConfiguracoesPage })));
+const InitialSetup = lazy(() => import('./pages/setup/InitialSetup.tsx'));
+const PromoteToAdmin = lazy(() => import('./pages/admin/PromoteToAdmin.tsx'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.tsx'));
+const ProfilePage = lazy(() => import('./pages/User/ProfilePage.tsx'));
+
+const LAST_ROUTE_KEY = 'last_rota';
+const CURRENT_ROUTE_KEY = 'current_rota';
+const ROUTE_TRACKER_INIT_KEY = 'route_tracker_initialized';
+
+const RouteLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto"></div>
+      <p className="mt-3 text-gray-600">Carregando...</p>
+    </div>
+  </div>
+);
+
 const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager'] }) => {
   const { user, profile, loading, logout } = useAuth();
   const [showTimeout, setShowTimeout] = useState(false);
   const [loggingOutUser, setLoggingOutUser] = useState(false);
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
@@ -58,7 +68,7 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
         setShowTimeout(true);
       }
     }, 8000);
-    
+
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -79,7 +89,6 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
     forceLogoutIfBasicUser();
   }, [loading, user, profile?.role, logout]);
 
-  // Mostrar loading enquanto verifica
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -89,7 +98,7 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
             {showTimeout ? 'Ainda estamos verificando...' : 'Verificando autenticação...'}
           </p>
           {showTimeout && (
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
             >
@@ -112,13 +121,10 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
     );
   }
 
-  // Se não estiver logado, redirecionar para login
-  
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // 👇 VERIFICAR SE O USUÁRIO TEM PERMISSÃO PARA ACESSAR A ROTA
   if (!allowedRoles.includes(profile?.role)) {
     console.warn(`⚠️ Acesso negado: Usuário com role "${profile?.role}" tentou acessar rota permitida apenas para: ${allowedRoles.join(', ')}`);
     return <Navigate to="/dashboard" replace />;
@@ -126,10 +132,6 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin', 'teacher', 'manager
 
   return children;
 };
-// Componente principal corrigido
-const LAST_ROUTE_KEY = 'last_rota';
-const CURRENT_ROUTE_KEY = 'current_rota';
-const ROUTE_TRACKER_INIT_KEY = 'route_tracker_initialized';
 
 function LastRouteTracker() {
   const location = useLocation();
@@ -143,7 +145,6 @@ function LastRouteTracker() {
     const currentPath = `${location.pathname}${location.search}${location.hash}`;
     const isTrackerInitialized = sessionStorage.getItem(ROUTE_TRACKER_INIT_KEY) === '1';
 
-    // Evita herdar rota antiga de outra sessão/aba no primeiro carregamento
     if (!isTrackerInitialized) {
       sessionStorage.setItem(ROUTE_TRACKER_INIT_KEY, '1');
       sessionStorage.setItem(CURRENT_ROUTE_KEY, currentPath);
@@ -167,38 +168,60 @@ function LastRouteTracker() {
   return null;
 }
 
-function AppContent() {
-  const [needsSetup, setNeedsSetup] = useState(false);
-  const [checkingSetup, setCheckingSetup] = useState(true);
+function ServicesInitializer() {
+  const { user } = useAuth();
+  const initializedRef = useRef(false);
 
-  // ✅ Inicializar serviços apenas uma vez
   useEffect(() => {
-    const initializeServices = async () => {
+    if (!user || initializedRef.current) return;
+
+    initializedRef.current = true;
+
+    const initializeServices = () => {
       try {
         auditLogService.initializeListeners();
-        // Sincronização inicial
-        const syncResult = await syncDatabase.syncAll();
-        if (syncResult.success) {
-          }
-
-        // Iniciar serviços de fundo
-        backgroundService.inicializar();
-        notificacaoService.iniciarServicoNotificacoes();
       } catch (error) {
-        console.error('❌ Erro ao inicializar serviços:', error);
+        console.error('❌ Erro ao iniciar listeners de auditoria:', error);
+      }
+
+      // Adia tarefas pesadas para não impactar a navegação logo após login.
+      const scheduleHeavyTasks = () => {
+        void syncDatabase.syncAll().catch((error) => {
+          console.error('❌ Erro ao sincronizar dados:', error);
+        });
+
+        try {
+          backgroundService.inicializar();
+          notificacaoService.iniciarServicoNotificacoes();
+        } catch (error) {
+          console.error('❌ Erro ao inicializar serviços em background:', error);
+        }
+      };
+
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => {
+          window.setTimeout(scheduleHeavyTasks, 1200);
+        }, { timeout: 3000 });
+      } else {
+        window.setTimeout(scheduleHeavyTasks, 1200);
       }
     };
 
     initializeServices();
-  }, []); // Executa apenas uma vez
+  }, [user]);
 
-  // ✅ Verificar necessidade de setup (CORRIGIDO)
+  return null;
+}
+
+function SetupGuard({ children }) {
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
+
   useEffect(() => {
     let isMounted = true;
 
     const checkIfNeedsSetup = async () => {
       try {
-        // Cache local
         const hasAdminInLocalStorage = localStorage.getItem('has_admin_setup') === 'true';
         if (hasAdminInLocalStorage) {
           if (isMounted) {
@@ -208,14 +231,10 @@ function AppContent() {
           return;
         }
 
-        // Verificar no Dexie primeiro (mais rápido)
         try {
           if (db && db.table('profiles')) {
-            const localAdmins = await db.table('profiles')
-              .where('role')
-              .equals('admin')
-              .count();
-            
+            const localAdmins = await db.table('profiles').where('role').equals('admin').count();
+
             if (localAdmins > 0) {
               localStorage.setItem('has_admin_setup', 'true');
               if (isMounted) {
@@ -225,10 +244,10 @@ function AppContent() {
               return;
             }
           }
-        } catch (dexieError) {
-          }
+        } catch {
+          // No-op: fallback para verificação remota
+        }
 
-        // Verificar no Supabase
         const { data: admins, error } = await supabase
           .from('profiles')
           .select('id')
@@ -253,414 +272,414 @@ function AppContent() {
       }
     };
 
-    checkIfNeedsSetup();
+    void checkIfNeedsSetup();
 
     return () => {
       isMounted = false;
     };
-  }, []); // Executa apenas uma vez
+  }, []);
 
-  // ✅ Inicializar configurações apenas se não precisa de setup
   useEffect(() => {
-    if (!needsSetup && !checkingSetup) {
-      const initConfigs = async () => {
-        try {
-          await configService.initializeDefaultConfigs();
-        } catch (error) {
-          console.warn('⚠️ Erro ao inicializar configurações:', error);
-        }
-      };
-      
-      initConfigs();
-    }
+    if (needsSetup || checkingSetup) return;
+
+    const initConfigs = async () => {
+      try {
+        await configService.initializeDefaultConfigs();
+      } catch (error) {
+        console.warn('⚠️ Erro ao inicializar configurações:', error);
+      }
+    };
+
+    void initConfigs();
   }, [needsSetup, checkingSetup]);
 
-  // Loading enquanto verifica setup
   if (checkingSetup) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verificando configuração do sistema...</p>
-        </div>
-      </div>
-    );
+    return <RouteLoader />;
   }
 
-  // Fluxo de setup inicial
   if (needsSetup) {
-    return (
-      <AuthProvider>
-        <Router>
-          <LastRouteTracker />
-          <Routes>
-            <Route path="*" element={<InitialSetup />} />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    );
+    return <Navigate to="/setup/initial" replace />;
   }
+
+  return children;
+}
+
+function ProtectedAppRoutes() {
+  return (
+    <Layout>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/aulas" element={<AulasPage />} />
+          <Route path="/aulas/:seccao" element={<AulasPage />} />
+          <Route path="/frequencia" element={<FrequenciaPage />} />
+          <Route path="/frequencia/:seccao" element={<FrequenciaPage />} />
+          <Route path="/notas" element={<NotasPage />} />
+          <Route path="/turmas" element={<Turmas />} />
+          <Route path="/turmas/:id" element={<TurmaDetails />} />
+          <Route path="/turmas/:id/:seccao" element={<TurmaDetails />} />
+
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/financeiro"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <FinanceiroPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/financeiro/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <FinanceiroPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/financeiro/transacoes"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TransacoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/financeiro/pagamentos"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <PagamentosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/financeiro/pagamento/:alunoId"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <RegistroPagamentoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/financeiro/matricula/:alunoId"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <CompletarMatricula />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/pagamentos" element={<Navigate to="/financeiro/pagamentos" replace />} />
+
+          <Route
+            path="/cursos"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <Courses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cursos/novo"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <CursoNew />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cursos/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <CursoEdit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cursos/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <CourseDetails />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/alunos"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <Students />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alunos/novo"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <StudentNew />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alunos/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <StudentEdit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alunos/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <StudentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alunos/:id/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <StudentPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/estrategia"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EstrategiaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EstrategiaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/planeamento/:tipo"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EstrategiaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/metas/nova"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <MetaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/metas/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <MetaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/metas/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <MetaDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/metas/:id/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <MetaDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/tarefas/nova"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TarefaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/tarefas/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TarefaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/tarefas/deletar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TarefaPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/estrategia/eventos/novo"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estrategia/eventos/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/eventos"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/eventos/novo"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/eventos/add/:date"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/eventos/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <EventosPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/configuracoes"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ConfiguracoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/configuracoes/:seccao"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ConfiguracoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/turmas/nova"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TurmaForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/turmas/editar/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <TurmaForm />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sync-monitor"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <SyncMonitorPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
+    </Layout>
+  );
+}
+
+function AppContent() {
   return (
     <AlertProvider>
       <AuthProvider>
         <Router>
+          <ServicesInitializer />
+          <LastRouteTracker />
+
           <Routes>
-            {/* Rotas públicas */}
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/setup/initial"
+              element={
+                <Suspense fallback={<RouteLoader />}>
+                  <InitialSetup />
+                </Suspense>
+              }
+            />
             <Route path="/" element={<Navigate to="/login" replace />} />
-            
-            {/* Rota de promoção a admin */}
-            <Route 
-              path="/setup/promote-admin" 
+
+            <Route
+              path="/setup/promote-admin"
               element={
                 <ProtectedRoute>
-                  <PromoteToAdmin />
+                  <Suspense fallback={<RouteLoader />}>
+                    <PromoteToAdmin />
+                  </Suspense>
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* Todas as rotas protegidas */}
+
             <Route
               path="/*"
               element={
                 <ProtectedRoute>
-                  <Layout>
-                    <Routes>
-                      {/* Rotas que TODOS podem acessar */}
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/profile" element={<ProfilePage />} />
-                      <Route path="/aulas" element={<AulasPage />} />
-                      <Route path="/aulas/:seccao" element={<AulasPage />} />
-                      <Route path="/frequencia" element={<FrequenciaPage />} />
-                      <Route path="/frequencia/:seccao" element={<FrequenciaPage />} />
-                      <Route path="/notas" element={<NotasPage />} />
-                      <Route path="/turmas" element={<Turmas />} />
-                      <Route path="/turmas/:id" element={<TurmaDetails />} />
-                      <Route path="/turmas/:id/:seccao" element={<TurmaDetails />} />
-                      
-                      {/* 👇 ROTAS BLOQUEADAS PARA PROFESSORES */}
-                      <Route 
-                        path="/admin" 
-                        element={<Navigate to="/admin/dashboard" replace />} 
-                      />
-                      <Route 
-                        path="/admin/dashboard" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <AdminDashboard />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/dashboard/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <AdminDashboard />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/financeiro" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <FinanceiroPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/financeiro/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <FinanceiroPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/financeiro/transacoes" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TransacoesPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/financeiro/pagamentos" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <PagamentosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/financeiro/pagamento/:alunoId" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <RegistroPagamentoPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/financeiro/matricula/:alunoId" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <CompletarMatricula />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route path="/pagamentos" element={<Navigate to="/financeiro/pagamentos" replace />} />
-                      
-                      <Route 
-                        path="/cursos" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <Courses />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/cursos/novo" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <CursoNew />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/cursos/editar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <CursoEdit />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/cursos/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <CourseDetails />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/alunos" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <Students />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/alunos/novo" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <StudentNew />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/alunos/editar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <StudentEdit />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/alunos/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <StudentPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/alunos/:id/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <StudentPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/estrategia" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EstrategiaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EstrategiaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                       <Route 
-                        path="/estrategia/planeamento/:tipo" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EstrategiaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/metas/nova" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <MetaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/metas/editar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <MetaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/metas/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <MetaDetailsPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/metas/:id/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <MetaDetailsPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/tarefas/nova" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TarefaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/tarefas/editar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TarefaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/tarefas/deletar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TarefaPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/estrategia/eventos/novo" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/estrategia/eventos/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/eventos" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/eventos/novo" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/eventos/add/:date" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/eventos/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <EventosPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/configuracoes" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <ConfiguracoesPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/configuracoes/:seccao" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <ConfiguracoesPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/turmas/nova" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TurmaForm />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/turmas/editar/:id" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                            <TurmaForm />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      <Route 
-                        path="/sync-monitor" 
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <SyncMonitorPage />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
-                      {/* Rota 404 */}
-                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                    </Routes>
-                  </Layout>
+                  <SetupGuard>
+                    <ProtectedAppRoutes />
+                  </SetupGuard>
                 </ProtectedRoute>
               }
             />
@@ -671,7 +690,6 @@ function AppContent() {
   );
 }
 
-// Componente principal
 function App() {
   return <AppContent />;
 }
