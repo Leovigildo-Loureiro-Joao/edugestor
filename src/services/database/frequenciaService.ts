@@ -4,10 +4,12 @@ import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
 import { syncManager } from './syncManager';
 import { alunosService } from './alunosService';
+import { configService } from './config';
 import { aulaService } from './aulaService';
 import { Aula } from '../../types/aula';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import type { SyncQueueItem } from '../../types/base';
+import { emitDbChanged } from '../../utils/emitPendingSync';
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const frequenciaService = {
@@ -120,6 +122,10 @@ export const frequenciaService = {
         await db.frequencias.bulkPut(frequenciasToSave);
         await db.syncQueue.bulkAdd(queueToSave);
       });
+
+      await this.updateEnrollmentStatusFromAttendance(
+        registro.registros.map((item) => item.aluno_id)
+      );
 
       return ids;
       
@@ -299,8 +305,13 @@ export const frequenciaService = {
         status: 'pending',
         created_at: updated_at
       });
+
+      const frequenciaAtualizada = await db.frequencias.get(id);
+      if (frequenciaAtualizada?.aluno_id) {
+        await this.updateEnrollmentStatusFromAttendance([frequenciaAtualizada.aluno_id]);
+      }
       
-      return await db.frequencias.get(id);
+      return frequenciaAtualizada;
       
     } catch (error) {
       console.error('Erro ao atualizar frequência:', error);
@@ -343,10 +354,85 @@ export const frequenciaService = {
           
         }
       
+      if (frequencia.aluno_id) {
+        await this.updateEnrollmentStatusFromAttendance([frequencia.aluno_id]);
+      }
+      
     } catch (error) {
       console.error('Erro ao deletar frequência:', error);
       throw error;
     }
+  },
+
+  // ✅ Ajustar estado do aluno a partir da frequência
+  async updateEnrollmentStatusFromAttendance(alunoIds: string[]) {
+    const uniqueIds = Array.from(new Set(alunoIds.filter(Boolean)));
+    if (uniqueIds.length === 0) return { updated: 0 };
+
+    const instituicaoId = instituicaoIdValue() || '';
+    const configAcademica = await configService.getAcademyConfig();
+    const maxFaltas = Number(configAcademica?.maxFaltasPermitidas || 0);
+    const now = new Date().toISOString();
+
+    let updated = 0;
+
+    await db.transaction('rw', db.alunos, db.frequencias, db.syncQueue, async () => {
+      for (const alunoId of uniqueIds) {
+        const aluno = await db.alunos.get(alunoId);
+        if (!aluno || aluno.deleted) continue;
+        if (instituicaoId && aluno.instituicao_id !== instituicaoId) continue;
+
+        const frequencias = await db.frequencias
+          .where('aluno_id')
+          .equals(alunoId)
+          .and((freq) => !freq.deleted)
+          .toArray();
+
+        const temPresenca = frequencias.some((freq) => freq.presente);
+        const totalFaltas = frequencias.filter((freq) => !freq.presente).length;
+
+        let novoEstado = aluno.estado;
+
+        if (aluno.tipo_matricula === 'reforco_personalizado') {
+          if (temPresenca && aluno.estado !== 'ativo' && aluno.estado !== 'transferido') {
+            novoEstado = 'ativo';
+          }
+        } else if (aluno.tipo_matricula === 'regular') {
+          if (
+            maxFaltas > 0 &&
+            totalFaltas >= maxFaltas &&
+            !['desistente', 'transferido'].includes(aluno.estado)
+          ) {
+            novoEstado = 'desistente';
+          }
+        }
+
+        if (novoEstado === aluno.estado) continue;
+
+        await db.alunos.update(alunoId, {
+          estado: novoEstado,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        await db.syncQueue.add({
+          table: 'alunos',
+          record_id: alunoId,
+          instituicao_id: aluno.instituicao_id || instituicaoId,
+          operation: 'upsert',
+          status: 'pending',
+          created_at: now
+        });
+
+        updated += 1;
+      }
+    });
+
+    if (updated > 0) {
+      emitDbChanged('alunos', 'attendance_status');
+    }
+
+    return { updated };
   },
 
   // ✅ Deletar todas frequências de uma aula

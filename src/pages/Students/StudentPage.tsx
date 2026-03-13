@@ -5,7 +5,7 @@ import {
   FiX, FiUser, FiBook, FiCalendar, FiClock, 
   FiDollarSign, FiTrendingUp, FiTrendingDown, 
   FiCheckCircle, FiAlertCircle, FiEdit2,
-  FiArrowLeft, FiCreditCard, FiBarChart2,
+  FiArrowLeft, FiCreditCard, FiBarChart2, FiUserCheck,
   FiUsers, FiStar, FiAward
 } from 'react-icons/fi';
 import { FaIdCard } from 'react-icons/fa';
@@ -24,6 +24,13 @@ import { PageLoader } from '../../components/ui/PageLoader';
 import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../../components/ui/PaginationControls';
 import { useSmartBack } from '../../hooks/useSmartBack';
+import { useConfirmModal } from '../../components/ui/ComfirmModal';
+import { useAlert } from '../../components/ui/AlertBadge';
+import { Instituicao } from '../../types';
+import { financeRulesService } from '../../services/finance/financeRulesService';
+import { configService } from '../../services/database/config';
+import { turmaService } from '../../services/database/turmas';
+import { cursosService } from '../../services/database/curso';
 
 const StudentPage: React.FC = () => {
   const { id, seccao } = useParams<{ id: string; seccao?: string }>();
@@ -39,6 +46,11 @@ const StudentPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isOpen, setOpen] = useState(false);
   const [cartao, setCartao] = useState(0);
+  const [instituicaoConfig, setInstituicaoConfig] = useState<Instituicao | null>(null);
+  const [confirmandoRetorno, setConfirmandoRetorno] = useState(false);
+  const [billingInfo, setBillingInfo] = useState({ required: 0, paid: 0 });
+  const { confirm, ModalComponent } = useConfirmModal();
+  const { showAlert } = useAlert();
 
   const CartaoPagar = async () => {
     const resultadoCartao = await transacaoService.processarPagamento({
@@ -86,17 +98,52 @@ const StudentPage: React.FC = () => {
       const alunoData = await alunosService.getStudentById(id!);
       setAluno(alunoData);
 
-      const propinasData = await propinaService.getByAluno(id!);
+      const [
+        propinasData,
+        frequenciasData,
+        notasData,
+        cartaoData,
+        paymentConfig,
+        turmasData,
+        cursosData
+      ] = await Promise.all([
+        propinaService.getByAluno(id!),
+        frequenciaService.getByAluno(id!, 30),
+        avaliacaoService.getAvaliacoesByAluno(id!),
+        instituicaoService.getConfig(),
+        configService.getPaymentConfig(),
+        turmaService.getTurmas(),
+        cursosService.getCourses()
+      ]);
+
       setPropinas(propinasData);
-
-      const frequenciasData = await frequenciaService.getByAluno(id!, 30);
       setFrequencias(frequenciasData);
-
-      const notasData = await avaliacaoService.getAvaliacoesByAluno(id!);
       setNotas(notasData);
-
-      const cartaoData = await instituicaoService.getConfig();
       setCartao(cartaoData?.valor_cartao || 1000);
+      setInstituicaoConfig(cartaoData || null);
+
+      if (alunoData && paymentConfig) {
+        const mesesBase = (paymentConfig.mesesPagamento || []).map((mes) =>
+          financeRulesService.toMonthAbbr(mes)
+        );
+        const plano = financeRulesService.getBillingMonthsForStudent(
+          alunoData,
+          mesesBase,
+          turmasData || [],
+          cursosData || []
+        );
+        const anoReferencia = cartaoData?.ano_lectivo || alunoData.ano_lectivo;
+        const paidSet = new Set(
+          propinasData
+            .filter((p) => p.estado === 'pago' && !p.deleted)
+            .filter((p) => (alunoData.tipo_matricula === 'regular' ? p.ano_lectivo === anoReferencia : true))
+            .map((p) => financeRulesService.toMonthAbbr(p.mes_referencia))
+        );
+        const paidCount = plano.filter((mes) => paidSet.has(mes)).length;
+        setBillingInfo({ required: plano.length, paid: paidCount });
+      } else {
+        setBillingInfo({ required: 0, paid: 0 });
+      }
 
     } catch (error) {
       console.error('Erro ao carregar dados do aluno:', error);
@@ -127,8 +174,92 @@ const StudentPage: React.FC = () => {
     };
   };
 
+  const handleConfirmarRetorno = async () => {
+    if (!aluno) return;
+    if (!podeConfirmar) {
+      showAlert({
+        type: 'warning',
+        title: 'Confirmação bloqueada',
+        message: 'O aluno precisa estar com os pagamentos em dia e ter os meses necessários quitados.',
+        duration: 4000
+      });
+      return;
+    }
+
+    const valorConfirmacao = Number(instituicaoConfig?.valor_confirmacao || 0);
+    const anoAtual = instituicaoConfig?.ano_lectivo || aluno.ano_lectivo;
+    const valorLabel = valorConfirmacao > 0 ? `${valorConfirmacao.toLocaleString('pt-BR')} Kz` : 'sem cobrança';
+
+    await confirm({
+      type: 'warning',
+      title: 'Confirmar matrícula',
+      message: `Deseja confirmar a matrícula de ${aluno.nome_completo}? Valor de confirmação: ${valorLabel}.`,
+      confirmText: 'Confirmar',
+      onConfirm: async () => {
+        try {
+          setConfirmandoRetorno(true);
+
+          if (valorConfirmacao > 0) {
+            const resultado = await transacaoService.processarPagamento({
+              categoria: 'matricula',
+              data: new Date().toISOString(),
+              descricao: `Confirmação de matrícula - ${aluno.nome_completo}`,
+              tipo: 'entrada',
+              valor: valorConfirmacao
+            });
+
+            if (!resultado.sucesso) {
+              throw new Error(resultado.mensagem);
+            }
+          }
+
+          await alunosService.updateStudent(aluno.id, {
+            estado: 'ativo',
+            data_matricula: new Date().toISOString(),
+            ano_lectivo: anoAtual
+          });
+
+          await carregarDadosAluno();
+          showAlert({
+            type: 'success',
+            title: 'Matrícula confirmada',
+            message: `${aluno.nome_completo} foi confirmado para o ano ${anoAtual}.`,
+            duration: 3500
+          });
+        } catch (error: any) {
+          console.error('Erro ao confirmar matrícula:', error);
+          showAlert({
+            type: 'error',
+            title: 'Erro na confirmação',
+            message: error?.message || 'Não foi possível confirmar a matrícula.',
+            duration: 5000
+          });
+        } finally {
+          setConfirmandoRetorno(false);
+        }
+      }
+    });
+  };
+
   const stats = calcularEstatisticas();
+  const anoLectivoAtual = instituicaoConfig?.ano_lectivo;
+  const pagamentoEmDia =
+    Boolean(aluno?.pagamento_em_dia) ||
+    (Array.isArray(aluno?.meses_em_aberto) && (aluno?.meses_em_aberto || []).length === 0);
+  const precisaConfirmar = Boolean(
+    aluno &&
+      aluno.tipo_matricula === 'regular' &&
+      (aluno.estado !== 'ativo' || (anoLectivoAtual && aluno.ano_lectivo !== anoLectivoAtual))
+  );
+  const podeConfirmar = Boolean(
+    aluno &&
+      aluno.tipo_matricula === 'regular' &&
+      pagamentoEmDia &&
+      (billingInfo.required === 0 || billingInfo.paid >= billingInfo.required)
+  );
   const disciplinasReforcoSelecionadas = aluno?.disciplinas_reforco || [];
+  const billingLabel =
+    billingInfo.required > 0 ? `${billingInfo.paid}/${billingInfo.required}` : '--';
   const {
     page: propinasPage,
     setPage: setPropinasPage,
@@ -365,6 +496,28 @@ const StudentPage: React.FC = () => {
                 {aluno.estado}
               </span>
 
+              {precisaConfirmar && (
+                <motion.button
+                  whileHover={{ scale: podeConfirmar ? 1.02 : 1 }}
+                  whileTap={{ scale: podeConfirmar ? 0.98 : 1 }}
+                  onClick={handleConfirmarRetorno}
+                  disabled={!podeConfirmar || confirmandoRetorno}
+                  title={
+                    podeConfirmar
+                      ? `Confirmar matrícula (${billingLabel} meses pagos)`
+                      : 'Aluno precisa estar com pagamentos em dia e meses quitados'
+                  }
+                  className={`px-4 py-2 rounded-xl flex items-center gap-2 text-white transition-all ${
+                    podeConfirmar
+                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <FiUserCheck className="h-4 w-4" />
+                  {confirmandoRetorno ? 'Confirmando...' : 'Confirmar Matrícula'}
+                </motion.button>
+              )}
+
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -422,6 +575,16 @@ const StudentPage: React.FC = () => {
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Média</span>
                 <span className="ml-2 font-semibold text-gray-900 dark:text-white">{stats.mediaNotas.toFixed(1)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <FiCalendar className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Meses Pagos</span>
+                <span className="ml-2 font-semibold text-gray-900 dark:text-white">{billingLabel}</span>
               </div>
             </div>
 
@@ -1060,6 +1223,8 @@ const StudentPage: React.FC = () => {
           </>
         )}
       </AnimatePresence>
+
+      <ModalComponent />
     </div>
   );
 };

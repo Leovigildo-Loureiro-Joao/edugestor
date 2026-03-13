@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const Layout = ({ children }) => {
+const Layout = ({ children }) =>  {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('darkMode');

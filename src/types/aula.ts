@@ -1,6 +1,5 @@
 import { BaseEntity } from "./base";
 import { Frequencia } from "./frequencia";
-import { Turma } from "./turma";
 
 export interface Aula extends BaseEntity{
   turma_id: string; // "10A", "11B", etc.
@@ -15,9 +14,17 @@ export interface Aula extends BaseEntity{
   observacoes_professor?: string;
   taxa_participacao?: number;
   tema_aula: string;
-  turmas?: Turma,
+  turmas?: AulaTurmaRef,
   registro?:Frequencia[]
   dia_semana: 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sabado' | 'domingo';
+}
+
+export interface AulaTurmaRef {
+  id: string;
+  nome_turma?: string;
+  professor?: string;
+  curso_id?: string;
+  ano_lectivo?: string;
 }
 
 export type AulaFormData = Omit<Aula, 

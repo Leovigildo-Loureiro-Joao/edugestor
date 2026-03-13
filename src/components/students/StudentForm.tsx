@@ -141,6 +141,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   }, [formData.tipo_matricula]);
 
   useEffect(() => {
+    if (isEditing) return;
+
+    if (tipoMatricula === 'reforco_personalizado' && formData.estado !== 'inativo') {
+      setFormData((prev: StudentFormData) => ({ ...prev, estado: 'inativo' }));
+      return;
+    }
+
+    if (tipoMatricula === 'regular' && formData.estado === 'inativo') {
+      setFormData((prev: StudentFormData) => ({ ...prev, estado: 'ativo' }));
+    }
+  }, [tipoMatricula, isEditing, formData.estado, setFormData]);
+
+  useEffect(() => {
     if (tipoMatricula !== 'regular' || !formData.turma_id) return;
 
     const turmaSelecionada = turmas.find((turma) => turma.id === formData.turma_id);

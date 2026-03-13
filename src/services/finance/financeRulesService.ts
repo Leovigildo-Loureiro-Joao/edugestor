@@ -41,6 +41,22 @@ const normalizeMonthToken = (value: string): string =>
     .toLowerCase()
     .trim();
 
+const MES_INICIO_ANO_LETIVO_PADRAO = 9;
+
+const parseDuracaoEmMeses = (duracao?: string): number => {
+  if (!duracao) return 0;
+  const raw = duracao.toLowerCase();
+  const numeros = raw.match(/\d+/g)?.map((n) => Number(n)).filter((n) => Number.isFinite(n)) || [];
+  if (!numeros.length) return 0;
+  if (raw.includes('ano')) {
+    if (raw.includes('mes')) {
+      return Math.max(...numeros);
+    }
+    return Math.max(...numeros) * 12;
+  }
+  return Math.max(...numeros);
+};
+
 export const financeRulesService = {
   toMonthAbbr(input: string): string {
     if (!input) return '';
@@ -61,18 +77,31 @@ export const financeRulesService = {
   ): string[] {
     if (!mesesBase.length) return [];
 
+    if (aluno.tipo_matricula === 'regular') {
+      const mesInicioAno = this.toMonthAbbr(
+        new Date(2024, MES_INICIO_ANO_LETIVO_PADRAO - 1, 1).toLocaleDateString('pt-BR', { month: 'long' })
+      );
+      const startIndex = Math.max(0, mesesBase.indexOf(mesInicioAno));
+      const sequence: string[] = [];
+      for (let i = 0; i < mesesBase.length; i += 1) {
+        sequence.push(mesesBase[(startIndex + i) % mesesBase.length]);
+      }
+      const currentMonth = this.getCurrentMonthAbbr();
+      const currentIndex = sequence.indexOf(currentMonth);
+      if (currentIndex >= 0) {
+        return sequence.slice(0, currentIndex + 1);
+      }
+      return sequence;
+    }
+
     const mesMatriculaAbrev = this.toMonthAbbr(
       new Date(aluno.data_matricula).toLocaleDateString('pt-BR', { month: 'long' })
     );
     const startIndex = Math.max(0, mesesBase.indexOf(mesMatriculaAbrev));
 
-    if (aluno.tipo_matricula === 'regular') {
-      return mesesBase.slice(startIndex);
-    }
-
     const turma = turmasSource.find((t) => t.id === aluno.turma_id);
     const curso = cursosSource.find((c) => c.id === turma?.curso_id);
-    const duracaoMeses = Number((curso?.duracao || '').match(/\d+/)?.[0] || 0);
+    const duracaoMeses = parseDuracaoEmMeses(curso?.duracao);
     const totalMeses = duracaoMeses > 0 ? duracaoMeses : mesesBase.length;
 
     const meses: string[] = [];
