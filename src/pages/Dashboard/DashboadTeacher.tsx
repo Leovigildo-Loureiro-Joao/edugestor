@@ -53,6 +53,7 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis
 } from 'recharts';
+import Avatar from '../../components/ui/Avatar';
 
 // ============ DADOS REAIS BASEADOS NO PROFESSOR ============
 type DashboardProfile = {
@@ -61,6 +62,10 @@ type DashboardProfile = {
   nome?: string;
   email?: string;
   instituicao_id?: string;
+  avatar_url?: string;
+  photo_url?: string;
+  foto_url?: string;
+  foto?: string;
 };
 
 const getDistribuicaoNotas = (alunos: any[]) => [
@@ -279,7 +284,7 @@ const buildProfessorDashboardData = async (params: {
       nome: professorNome,
       disciplina: professorDisciplina,
       turmas: turmas.map((t) => t.nome_turma),
-      foto: params.photoURL || `https://i.pravatar.cc/150?u=${profile?.id || professorNome}`,
+      foto: params.photoURL || null,
       email: profile?.email || '',
       telefone: ''
     },
@@ -326,11 +331,21 @@ const ProfessorDashboard: React.FC<ProfessorDashboardProps> = ({
       setLoading(true);
       try {
         const teacherNameKey = (profile?.full_name || profile?.nome || profile?.email || '').toLowerCase().trim();
+        const photoURL =
+          (profile as any)?.avatar_url ||
+          (profile as any)?.photo_url ||
+          (profile as any)?.foto_url ||
+          (profile as any)?.foto ||
+          (user as any)?.user_metadata?.avatar_url ||
+          (user as any)?.user_metadata?.picture ||
+          (user as any)?.user_metadata?.picture_url ||
+          (user as any)?.user_metadata?.avatar ||
+          null;
         const data = await buildProfessorDashboardData({
           professorId,
           profile,
           teacherNameKey,
-          photoURL: user?.photoURL || null
+          photoURL
         });
         if (!alive) return;
         setDados(data);
@@ -346,7 +361,7 @@ const ProfessorDashboard: React.FC<ProfessorDashboardProps> = ({
     return () => {
       alive = false;
     };
-  }, [professorId]);
+  }, [professorId, profile, user]);
 
   if (loading) {
     return (
@@ -444,10 +459,12 @@ const ProfessorDashboard: React.FC<ProfessorDashboardProps> = ({
       >
         <div className="flex items-center gap-4">
           <div className="relative">
-            <img 
-              src={professor.foto} 
+            <Avatar
+              name={professor.nome}
+              src={professor.foto}
               alt={professor.nome}
-              className="w-16 h-16 rounded-full border-4 border-white shadow-lg"
+              size={64}
+              className="border-4 border-white shadow-lg"
             />
             <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
           </div>
