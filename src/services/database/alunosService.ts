@@ -147,50 +147,69 @@ export const alunosService = {
 
 
   // ✅ Criar aluno
-  async saveStudent(studentData: StudentFormData): Promise<string> {
-    try {
-      const id = generateUniqueId();
-      const now = new Date().toISOString();
-      const instituicao_id = instituicaoIdValue() || "";
-      const n=await this.gerarProximoNumeroEstudante();
+async saveStudent(studentData: StudentFormData): Promise<string> {
+  try {
+    const id = generateUniqueId();
+    const now = new Date().toISOString();
+    const instituicao_id = instituicaoIdValue() || "";
+    const n = await this.gerarProximoNumeroEstudante();
+    
+    // Tratar turma_id: se for string vazia, converter para null
     const aluno = {
-        ...studentData,
-        id,
-        instituicao_id,
-        numero_estudante:n,
-        created_at: now,
-        updated_at: now,
-        sync_status: 'pending',
-        deleted: false,
-      };
+      ...studentData,
+      id,
+      instituicao_id,
+      numero_estudante: n,
+      turma_id: studentData.turma_id && studentData.turma_id.trim() !== '' 
+        ? studentData.turma_id 
+        : null, // Converter string vazia para null
+      created_at: now,
+      updated_at: now,
+      sync_status: 'pending',
+      deleted: false,
+    };
 
-      await db.alunos.put(aluno as Student);
-      
-      // Adicionar à fila de sincronização
-     const syncRecord = await db.syncQueue.add({
-        table: 'alunos',
-        record_id: id,
-        instituicao_id:instituicaoIdValue(),
-        operation: 'upsert',
-        status: 'pending',
-        created_at: now
-      });
-      const alunosFromQueue = await db.syncQueue.get(syncRecord);
-      const insertBatch = [alunosFromQueue] as SyncQueueItem[];
-      syncManager.processInsertBatch('alunos', insertBatch);
+    await db.alunos.put(aluno as Student);
+    
+    // Adicionar à fila de sincronização
+    const syncRecord = await db.syncQueue.add({
+      table: 'alunos',
+      record_id: id,
+      instituicao_id: instituicaoIdValue(),
+      operation: 'upsert',
+      status: 'pending',
+      created_at: now
+    });
+    
+    const alunosFromQueue = await db.syncQueue.get(syncRecord);
+    const insertBatch = [alunosFromQueue] as SyncQueueItem[];
+    syncManager.processInsertBatch('alunos', insertBatch);
 
-      return id;
-      
-    } catch (error) {
-      console.error('❌ Erro ao salvar aluno:', error);
-      throw error;
-    }
-  },
+    return id;
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar aluno:', error);
+    throw error;
+  }
+},
 
-  async  getAlunosPorTurma(turma_id:string) {
-     const alunos = await db.alunos.toArray()
-    return alunos.filter(alunos=> !alunos.deleted&&alunos.turma_id.includes(turma_id))
-  },
+async getAlunosPorTurma(turma_id: string | null) {
+  const alunos = await db.alunos.toArray();
+  
+  // Se turma_id for null, retornar alunos sem turma
+  if (turma_id === null) {
+    return alunos.filter(aluno => 
+      !aluno.deleted && 
+      (!aluno.turma_id || aluno.turma_id.trim() === '')
+    );
+  }
+  
+  // Caso contrário, filtrar pela turma específica
+  return alunos.filter(aluno => 
+    !aluno.deleted && 
+    aluno.turma_id === turma_id
+  );
+} ,
 
     // ✅ Buscar todos os alunos - CORRIGIDO
 async getAllStudents(): Promise<Student[]> {
@@ -449,40 +468,50 @@ async getAllStudents(): Promise<Student[]> {
   },
 
   // ✅ Atualizar aluno
-  async updateStudent(id: string, studentData: Partial<StudentFormData>) {
-    try {
-      const updated_at = new Date().toISOString();
-      const targetId = await resolveStudentIdForUpdate(id, studentData);
+ async updateStudent(id: string, studentData: Partial<StudentFormData>) {
+  try {
+    const updated_at = new Date().toISOString();
+    const targetId = await resolveStudentIdForUpdate(id, studentData);
 
-      if (!targetId) {
-        throw new Error(`Aluno não encontrado para atualização: ${id}`);
-      }
-      
-      const updatedRows = await db.alunos.update(targetId, {
-        ...studentData,
-        updated_at,
-        sync_status: 'pending'
-      });
-
-      if (!updatedRows) {
-        throw new Error(`Falha ao atualizar aluno: ${targetId}`);
-      }
-
-      // Adicionar/atualizar na fila
-      await db.syncQueue.add({
-        table: 'alunos',
-        record_id: targetId,
-        instituicao_id:instituicaoIdValue(),
-        operation: 'upsert',
-        status: 'pending',
-        created_at: updated_at
-      });
-      
-      } catch (error) {
-      console.error('Erro ao atualizar aluno:', error);
-      throw error;
+    if (!targetId) {
+      throw new Error(`Aluno não encontrado para atualização: ${id}`);
     }
-  },
+    
+    // Preparar dados para atualização, tratando turma_id vazio
+    const dataToUpdate = { ...studentData };
+    
+    // Se turma_id estiver presente e for string vazia, converter para null
+    if (dataToUpdate.turma_id !== undefined) {
+      dataToUpdate.turma_id = dataToUpdate.turma_id && dataToUpdate.turma_id.trim() !== '' 
+        ? dataToUpdate.turma_id 
+        : null;
+    }
+    
+    const updatedRows = await db.alunos.update(targetId, {
+      ...dataToUpdate,
+      updated_at,
+      sync_status: 'pending'
+    });
+
+    if (!updatedRows) {
+      throw new Error(`Falha ao atualizar aluno: ${targetId}`);
+    }
+
+    // Adicionar/atualizar na fila
+    await db.syncQueue.add({
+      table: 'alunos',
+      record_id: targetId,
+      instituicao_id: instituicaoIdValue(),
+      operation: 'upsert',
+      status: 'pending',
+      created_at: updated_at
+    });
+    
+  } catch (error) {
+    console.error('Erro ao atualizar aluno:', error);
+    throw error;
+  }
+},
 
   // ✅ Deletar aluno (soft delete)
   async deleteStudent(id: string) {
@@ -634,3 +663,9 @@ function resolveEnrollmentStatus(data_matricula: string, estado: string): string
   return estado;
 }
 
+// Adicione este método auxiliar no início da classe ou como função separada
+function normalizeTurmaId(turma_id: string | null | undefined): string | null {
+  if (!turma_id) return null;
+  if (typeof turma_id === 'string' && turma_id.trim() === '') return null;
+  return turma_id;
+}
