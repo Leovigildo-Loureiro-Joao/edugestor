@@ -413,6 +413,24 @@ const UPSERT_TABLE_ORDER = [
   'plano_aulas'
 ];
 
+
+interface GhostDataCleanupResult {
+  totalScanned: number;
+  ghostsFound: number;
+  ghostsRemoved: number;
+  byTable: Record<string, { found: number; removed: number }>;
+  errors: Array<{ table: string; recordId: string; error: string }>;
+  timestamp: string;
+}
+
+interface GhostDataOptions {
+  tables?: string[];
+  dryRun?: boolean;
+  force?: boolean;
+  batchSize?: number;
+  excludeTables?: string[];
+}
+
 const getTableOrderIndex = (tableName: string, order: string[]) => {
   const idx = order.indexOf(tableName);
   return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
@@ -481,6 +499,392 @@ export const syncManager: SyncManager = {
       throw error;
     }
   },
+
+async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanupResult> {
+  const {
+    tables = ['alunos', 'turmas', 'cursos', 'aulas', 'frequencias', 'avaliacoes', 'propina', 'transacoes'],
+    dryRun = false,
+    force = false,
+    batchSize = 50,
+    excludeTables = ['profiles', 'instituicao', 'system_config'] // Tabelas sensíveis ou de sistema
+  } = options;
+
+  // Verificar conectividade
+  if (!navigator.onLine && !force) {
+    throw new Error('⛔ Limpeza de dados fantasmas requer conexão online para verificar existência remota');
+  }
+
+  const { getAuthData } = useSyncAuthInManager();
+  const authData = getAuthData();
+  
+  if (!authData.isAuthenticated && !force) {
+    throw new Error('⛔ Limpeza de dados fantasmas requer autenticação');
+  }
+
+  const instituicaoId = getSyncQueueInstitutionId();
+  const startTime = Date.now();
+  
+  const result: GhostDataCleanupResult = {
+    totalScanned: 0,
+    ghostsFound: 0,
+    ghostsRemoved: 0,
+    byTable: {},
+    errors: [],
+    timestamp: new Date().toISOString()
+  };
+
+  // Filtrar tabelas para processar
+  const tablesToProcess = tables.filter(table => !excludeTables.includes(table));
+
+  for (const tableName of tablesToProcess) {
+    try {
+      // Verificar se a tabela existe no Dexie
+      const tableExists = db.tables.some(t => t.name === tableName);
+      if (!tableExists) continue;
+
+      const table = db.table<any>(tableName);
+      
+      // Buscar registros locais com sync_status = 'synced' E que NÃO são locais (já têm ID remoto)
+      const localRecords = await table
+        .filter(record => 
+          record.sync_status === 'synced' && 
+          !String(record.id || '').startsWith('local_') &&
+          !record.deleted &&
+          (tableName === 'profiles' || tableName === 'instituicao' || !instituicaoId || record.instituicao_id === instituicaoId)
+        )
+        .toArray();
+
+      if (localRecords.length === 0) {
+        result.byTable[tableName] = { found: 0, removed: 0 };
+        continue;
+      }
+
+      result.totalScanned += localRecords.length;
+
+      // Processar em lotes para não sobrecarregar
+      const ghostsInTable: string[] = [];
+      
+      for (let i = 0; i < localRecords.length; i += batchSize) {
+        const batch = localRecords.slice(i, i + batchSize);
+        
+        // Verificar existência remota em paralelo (mas limitado)
+        const existenceChecks = await Promise.allSettled(
+          batch.map(async (record) => {
+            try {
+              const exists = await this.checkRemoteExistence(tableName, record.id);
+              return { recordId: record.id, exists };
+            } catch (error) {
+              return { 
+                recordId: record.id, 
+                exists: false, 
+                error: error instanceof Error ? error.message : String(error) 
+              };
+            }
+          })
+        );
+
+        // Processar resultados
+        for (const check of existenceChecks) {
+          if (check.status === 'fulfilled') {
+            if (!check.value.exists) {
+              ghostsInTable.push(check.value.recordId);
+            }
+          } else {
+            // Erro na verificação - registrar mas não marcar como fantasma
+            result.errors.push({
+              table: tableName,
+              recordId: 'unknown',
+              error: check.reason?.message || 'Erro na verificação'
+            });
+          }
+        }
+
+        // Pequena pausa entre lotes
+        if (i + batchSize < localRecords.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      // Atualizar estatísticas
+      result.byTable[tableName] = {
+        found: ghostsInTable.length,
+        removed: 0
+      };
+      
+      result.ghostsFound += ghostsInTable.length;
+
+      // Remover fantasmas (se não for dry run)
+      if (!dryRun && ghostsInTable.length > 0) {
+        const removedCount = await this.removeGhostRecords(tableName, ghostsInTable);
+        result.byTable[tableName].removed = removedCount;
+        result.ghostsRemoved += removedCount;
+      }
+
+    } catch (error) {
+      console.error(`❌ Erro ao processar tabela ${tableName}:`, error);
+      result.errors.push({
+        table: tableName,
+        recordId: 'batch_error',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  // Log de auditoria
+  const executionTime = Date.now() - startTime;
+  await auditLogService.log('GHOST_DATA_CLEANUP', {
+    ...result,
+    executionTimeMs: executionTime,
+    dryRun,
+    force,
+    online: navigator.onLine
+  });
+
+  // Emitir evento para UI
+  if (!dryRun && result.ghostsRemoved > 0) {
+    const event = new CustomEvent('ghost-data-cleanup', { 
+      detail: { 
+        count: result.ghostsRemoved,
+        tables: Object.entries(result.byTable)
+          .filter(([_, stats]) => stats.removed > 0)
+          .map(([table, stats]) => `${table}: ${stats.removed}`)
+      } 
+    });
+    window.dispatchEvent(event);
+  }
+
+  return result;
+},
+/**
+ * Verifica se um registro existe remotamente no Supabase
+ */
+async checkRemoteExistence(tableName: string, recordId: string): Promise<boolean> {
+  try {
+    // Tentar buscar apenas o ID para minimizar transferência
+    const { data, error, status } = await supabase
+      .from(tableName)
+      .select('id')
+      .eq('id', recordId)
+      .maybeSingle();
+
+    if (error) {
+      // Erro 404 significa que não existe
+      if (status === 404 || error.code === 'PGRST116') {
+        return false;
+      }
+      // Erro de permissão - assumir que existe para não deletar acidentalmente
+      if (error.code === '42501' || error.code === '403') {
+        console.warn(`⚠️ Permissão negada ao verificar ${tableName}/${recordId}`);
+        return true; // Assume que existe por segurança
+      }
+      throw error;
+    }
+
+    return !!data;
+
+  } catch (error) {
+    console.error(`❌ Erro ao verificar existência remota de ${tableName}/${recordId}:`, error);
+    // Em caso de erro, assumir que existe para não deletar dados potencialmente válidos
+    return true;
+  }
+},
+
+/**
+ * Remove registros fantasmas do banco local
+ */
+async removeGhostRecords(tableName: string, recordIds: string[]): Promise<number> {
+  if (recordIds.length === 0) return 0;
+
+  try {
+    const table = db.table<any>(tableName);
+    const instituicaoId = getSyncQueueInstitutionId();
+    
+    // Verificação adicional de segurança: garantir que os registros realmente são fantasmas
+    // antes de deletar (double-check)
+    const recordsToDelete: string[] = [];
+    
+    for (const recordId of recordIds) {
+      const record = await table.get(recordId);
+      
+      // Só deletar se ainda estiver synced e não for local
+      if (record && 
+          record.sync_status === 'synced' && 
+          !String(record.id).startsWith('local_') &&
+          (!instituicaoId || record.instituicao_id === instituicaoId)) {
+        
+        // Verificação final: tentar buscar do Supabase mais uma vez (cache pode estar desatualizado)
+        const stillMissing = !(await this.checkRemoteExistence(tableName, recordId));
+        
+        if (stillMissing) {
+          recordsToDelete.push(recordId);
+        }
+      }
+    }
+
+    if (recordsToDelete.length === 0) return 0;
+
+    // Deletar em transação para garantir consistência
+    await db.transaction('rw', table, db.syncQueue, async () => {
+      // Deletar registros
+      await table.bulkDelete(recordsToDelete);
+      
+      // Remover também da syncQueue se houver entradas órfãs
+      await db.syncQueue
+        .where('table')
+        .equals(tableName as any)
+        .filter(item => recordsToDelete.includes(item.record_id))
+        .delete();
+    });
+
+    console.log(`🧹 Removidos ${recordsToDelete.length} registros fantasmas de ${tableName}:`, recordsToDelete);
+
+    return recordsToDelete.length;
+
+  } catch (error) {
+    console.error(`❌ Erro ao remover registros fantasmas de ${tableName}:`, error);
+    
+    // Tentar deletar um por um se o bulk falhar
+    let removedCount = 0;
+    for (const recordId of recordIds) {
+      try {
+        await db.table(tableName).delete(recordId);
+        removedCount++;
+      } catch (singleError) {
+        console.error(`❌ Falha ao deletar ${tableName}/${recordId}:`, singleError);
+      }
+    }
+    
+    return removedCount;
+  }
+},
+
+/**
+ * Versão segura da limpeza que pode ser chamada periodicamente
+ */
+async safeGhostDataCleanup(options: Omit<GhostDataOptions, 'dryRun' | 'force'> = {}) {
+  // Verificar se estamos online
+  if (!navigator.onLine) {
+    console.log('📱 Offline: pulando limpeza de dados fantasmas');
+    return { skipped: true, reason: 'offline' };
+  }
+
+  // Verificar última limpeza para não executar com muita frequência
+  const lastCleanupKey = `ghost_cleanup_last_run`;
+  const lastRun = localStorage.getItem(lastCleanupKey);
+  const now = Date.now();
+  
+  // Executar no máximo uma vez por dia (24 horas)
+  if (lastRun && (now - parseInt(lastRun)) < 24 * 60 * 60 * 1000 && !options.force) {
+    return { skipped: true, reason: 'throttled' };
+  }
+
+  try {
+    // Executar limpeza
+    const result = await this.cleanupGhostData({
+      ...options,
+      dryRun: false,
+      force: false
+    });
+
+    // Atualizar timestamp da última execução
+    localStorage.setItem(lastCleanupKey, now.toString());
+
+    return result;
+
+  } catch (error) {
+    console.error('❌ Erro na limpeza segura de dados fantasmas:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error),
+      skipped: true 
+    };
+  }
+},
+
+/**
+ * Modo de diagnóstico: apenas identifica fantasmas sem remover
+ */
+async diagnoseGhostData(options: Omit<GhostDataOptions, 'dryRun'> = {}) {
+  return this.cleanupGhostData({
+    ...options,
+    dryRun: true
+  });
+},
+
+// ============ MÉTODOS AUXILIARES ADICIONAIS ============
+
+/**
+ * Verifica a saúde dos dados locais comparando com o Supabase
+ */
+async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
+  const {
+    tables = ['alunos', 'turmas', 'cursos'],
+    sample = 10 // Verificar apenas uma amostra para não sobrecarregar
+  } = options;
+
+  if (!navigator.onLine) {
+    return { online: false, message: 'Offline: não é possível verificar saúde dos dados' };
+  }
+
+  const health: Record<string, { local: number; remote: number; mismatches: any[] }> = {};
+
+  for (const tableName of tables) {
+    try {
+      // Contar registros locais synced
+      const localSynced = await db.table(tableName)
+        .filter(r => r.sync_status === 'synced' && !String(r.id).startsWith('local_'))
+        .count();
+
+      // Buscar amostra remota
+      const instituicaoId = getSyncQueueInstitutionId();
+      let query = supabase
+        .from(tableName)
+        .select('id', { count: 'exact', head: true });
+
+      if (tableName !== 'profiles' && tableName !== 'instituicao' && instituicaoId) {
+        query = query.eq('instituicao_id', instituicaoId);
+      }
+
+      const { count: remoteCount, error } = await query;
+
+      if (error) throw error;
+
+      health[tableName] = {
+        local: localSynced,
+        remote: remoteCount || 0,
+        mismatches: []
+      };
+
+      // Se houver diferença significativa, verificar amostra
+      if (Math.abs(localSynced - (remoteCount || 0)) > 10 && sample > 0) {
+        const sampleSize = Math.min(sample, localSynced);
+        const localSample = await db.table(tableName)
+          .filter(r => r.sync_status === 'synced' && !String(r.id).startsWith('local_'))
+          .limit(sampleSize)
+          .toArray();
+
+        // Verificar cada item da amostra
+        for (const record of localSample) {
+          const exists = await this.checkRemoteExistence(tableName, record.id);
+          if (!exists) {
+            health[tableName].mismatches.push({
+              id: record.id,
+              nome: record.nome_completo || record.nome_turma || record.nome || 'N/A'
+            });
+          }
+        }
+      }
+
+    } catch (error) {
+      health[tableName] = {
+        local: 0,
+        remote: 0,
+        mismatches: [{ error: error instanceof Error ? error.message : String(error) }]
+      };
+    }
+  }
+
+  return health;
+},
   async uploadTableBatch (tableName: string) {
     const instituicaoId = getSyncQueueInstitutionId();
     if (!instituicaoId) return;
@@ -501,11 +905,11 @@ export const syncManager: SyncManager = {
       await this.processTableBatch(tableName, upserts);
     }
       
-  }
+  },
 
 // Adicione esta função ao objeto syncManager
 
-, async uploadFailedItems() {
+ async uploadFailedItems() {
   try {
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
@@ -2783,6 +3187,33 @@ export const setupAutoSync = () => {
   if (onlineSyncHandler) {
     window.removeEventListener('online', onlineSyncHandler);
   }
+
+  const GHOST_CLEANUP_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 dias
+  
+  let ghostCleanupInterval: ReturnType<typeof setInterval> | null = null;
+  
+  if (ghostCleanupInterval) {
+    clearInterval(ghostCleanupInterval);
+  }
+  
+  ghostCleanupInterval = setInterval(async () => {
+    if (navigator.onLine) {
+      console.log('🧹 Executando limpeza programada de dados fantasmas...');
+      await syncManager.safeGhostDataCleanup({
+        tables: ['alunos', 'turmas', 'cursos', 'aulas', 'frequencias', 'avaliacoes']
+      });
+    }
+  }, GHOST_CLEANUP_INTERVAL);
+
+  // Também executar limpeza quando voltar online (mas com throttling)
+  const onlineHandler = async () => {
+    await syncManager.safeGhostDataCleanup({
+      tables: ['alunos', 'turmas', 'cursos']
+    });
+    await runScopedSyncForCurrentRoute();
+  };
+
+
   onlineSyncHandler = async () => {
     await runScopedSyncForCurrentRoute();
   };
@@ -2832,7 +3263,7 @@ export const setupAutoSync = () => {
       if (onlineSyncHandler) window.removeEventListener('online', onlineSyncHandler);
       if (quickSyncHandler) window.removeEventListener('sync-queue-enqueued', quickSyncHandler);
       if (quickSyncTimeout) clearTimeout(quickSyncTimeout);
-
+      if (ghostCleanupInterval) clearInterval(ghostCleanupInterval);
       autoSyncInterval = null;
       cleanupInterval = null;
       integrityInterval = null;

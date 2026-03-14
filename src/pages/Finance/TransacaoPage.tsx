@@ -208,23 +208,27 @@ export const TransacoesPage = () => {
   }, [transacoesFiltradas]);
 
   // Handler para deletar transação
-  const handleDeletarTransacao = async () => {
-    if (!comfirm) {
-      setComfirm(true)
-    }else if(transacaoSel){
-      setComfirm(false)
-      try {
-        await transacaoService.deleteTransacao(transacaoSel.id);
-        showAlert({ type: 'success', title: 'Transação excluída com sucesso!' });
-        carregarTransacoes();
-      } catch (error) {
-        console.error('Erro ao excluir transação:', error);
-        showAlert({ type: 'error', title: 'Erro ao excluir transação' });
-      }
-      setTransacaoSel(null)
-    }  
-    
-  };
+    const handleDeletarTransacao = async (transacao:Transacao) => {
+      const confirmed = await confirm({
+  
+        type: 'delete',
+        title: 'Excluir Transação',
+        message: `Tem certeza que deseja excluir este tipo de transacao de ${transacao.tipo}.`,
+        isDestructive: true,
+        confirmText: 'Excluir',
+        onConfirm: async () => {
+          try {
+            await transacaoService.deleteTransacao(transacao.id);
+            carregarTransacoes();
+            showAlert({ type: 'success', title: 'Transação excluída com sucesso!' });
+          } catch (error) {
+             showAlert({ type: 'error', title: 'Transação não foi excluída com sucesso!' });
+          }
+        }
+      });
+    };
+  
+
 
   // Exportar para CSV
   const exportarCSV = () => {
@@ -680,11 +684,7 @@ export const TransacoesPage = () => {
                 setTransacaoEditando(transacao);
                 setShowFormModal(true);
               }}
-              onExcluir={(transacao) => {
-                setTransacaoSel(transacao);
-                setComfirm(true)
-                handleDeletarTransacao()
-              }}
+              onExcluir={handleDeletarTransacao}
               mes={filtros.mes}
               ano={filtros.ano}
             />
@@ -706,7 +706,7 @@ export const TransacoesPage = () => {
           transacaoEditando={transacaoEditando}
         />
       </div>
-       
+       <ModalComponent/>
     </div>
   );
 };
