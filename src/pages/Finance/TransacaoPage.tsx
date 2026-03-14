@@ -682,6 +682,7 @@ export const TransacoesPage = () => {
               }}
               onExcluir={(transacao) => {
                 setTransacaoSel(transacao);
+                setComfirm(true)
                 handleDeletarTransacao()
               }}
               mes={filtros.mes}
