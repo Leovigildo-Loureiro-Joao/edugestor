@@ -150,6 +150,9 @@ export const StudentModal = ({
             setDisciplinas([]);
           }
         }
+        if (alunoSelecionado.disciplinas_reforco.length>0) {
+          setDisciplinas([...(new Set(...disciplinas,alunoSelecionado.disciplinas_reforco))]);
+        }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
         showAlert({

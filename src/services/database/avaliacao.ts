@@ -254,7 +254,7 @@ export const avaliacaoService = {
         .and(av => !av.deleted);
       let freque=await db.frequencias.filter(f=> !f.deleted).toArray()
        var aulas= await db.aulas.filter(f=> !f.deleted&&f.status=="ministrada").toArray()
-
+      var aluno=await db.alunos.get(alunoId)
       // Aplicar filtros
       if (options?.disciplina) {
         query = query.filter(av => av.disciplina === options.disciplina);
@@ -302,8 +302,8 @@ export const avaliacaoService = {
       let totalSoma = 0;
       let aprovados = 0;
       let reprovados = 0;
-
-       const turma=await turmaService.getTurmaById(aulas[0].turma_id)
+      
+      const turma=await turmaService.getTurmaById(aluno.turma_id)
       const curso= await cursosService.getCoursesById(turma?.curso_id||"")
 
       avaliacoes.forEach((av:Avaliacao) => {
