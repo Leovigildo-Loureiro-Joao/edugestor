@@ -141,18 +141,20 @@ export const StudentModal = ({
         setConfig(configValue?.value?.map((val: any) => val.nome) || []);
         
         // Buscar disciplinas via turma -> curso
+        let disciplinasCurso: string[] = [];
         if (alunoSelecionado.turma_id) {
           const turma = await db.turmas.get(alunoSelecionado.turma_id);
           if (turma?.curso_id) {
             const curso = await db.cursos.get(turma.curso_id);
-            setDisciplinas(curso?.disciplinas || []);
-          } else {
-            setDisciplinas([]);
+            disciplinasCurso = curso?.disciplinas || [];
           }
         }
-        if (alunoSelecionado.disciplinas_reforco.length>0) {
-          setDisciplinas([...(new Set(...disciplinas,alunoSelecionado.disciplinas_reforco))]);
-        }
+
+        const disciplinasReforco = Array.isArray(alunoSelecionado.disciplinas_reforco)
+          ? alunoSelecionado.disciplinas_reforco
+          : [];
+
+        setDisciplinas(Array.from(new Set([...disciplinasCurso, ...disciplinasReforco])));
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
         showAlert({
