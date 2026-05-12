@@ -259,7 +259,9 @@ export const dashboardService = {
       const calcularResumoMensal = (targetMonth: string, referenceDate: Date) => {
         const estudantesElegiveis = alunosAtivosInstituicao.filter((aluno) =>
           financeRulesService
-            .getBillingMonthsForStudent(aluno as any, mesesBase, turmasInstituicao as any, cursosInstituicao as any)
+            .getBillingMonthsForStudent(aluno as any, mesesBase, turmasInstituicao as any, cursosInstituicao as any, {
+              paidMonths: paidMonthsMap[aluno.id] || []
+            })
             .includes(targetMonth)
         );
         const elegiveisIds = new Set(estudantesElegiveis.map((aluno) => aluno.id));

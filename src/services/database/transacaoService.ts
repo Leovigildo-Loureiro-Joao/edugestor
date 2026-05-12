@@ -10,8 +10,65 @@ import { progress } from 'framer-motion';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 import { generateUniqueId } from '../../utils/idGenarator';
 import { financeRulesService } from '../finance/financeRulesService';
+import { propinaCascadeService } from './propinaCascade';
+import { setStudentBillingStartMonth } from '../../utils/studentBillingStartMonth';
 
 const getActiveInstituicaoId = () => instituicaoIdValue();
+
+const MONTH_INDEX_BY_ABBR: Record<string, number> = {
+  Jan: 0,
+  Fev: 1,
+  Mar: 2,
+  Abr: 3,
+  Mai: 4,
+  Jun: 5,
+  Jul: 6,
+  Ago: 7,
+  Set: 8,
+  Out: 9,
+  Nov: 10,
+  Dez: 11
+};
+
+const parseAcademicYear = (value?: string) => {
+  const match = String(value || '').match(/(\d{4})\D+(\d{4})/);
+  if (!match) return null;
+
+  const startYear = Number(match[1]);
+  const endYear = Number(match[2]);
+
+  if (!Number.isFinite(startYear) || !Number.isFinite(endYear)) {
+    return null;
+  }
+
+  return { startYear, endYear };
+};
+
+const resolveDueDateForReferenceMonth = (
+  monthLabel: string,
+  anoLectivo: string,
+  dueDay: number
+) => {
+  const monthAbbr = financeRulesService.toMonthAbbr(monthLabel);
+  const monthIndex = MONTH_INDEX_BY_ABBR[monthAbbr];
+
+  if (monthIndex == null) {
+    return new Date().toISOString();
+  }
+
+  const parsedAcademicYear = parseAcademicYear(anoLectivo);
+  const currentYear = new Date().getFullYear();
+  const targetYear = parsedAcademicYear
+    ? monthIndex >= 8
+      ? parsedAcademicYear.startYear
+      : parsedAcademicYear.endYear
+    : currentYear;
+
+  const safeDueDay = Math.max(1, Number(dueDay || 10));
+  const lastDayOfMonth = new Date(targetYear, monthIndex + 1, 0).getDate();
+
+  return new Date(targetYear, monthIndex, Math.min(safeDueDay, lastDayOfMonth)).toISOString();
+};
 
 export const transacaoService = {
   async enqueuePendingIfAbsent(
@@ -376,9 +433,11 @@ export const transacaoService = {
   // ✅ Processar mensalidade com sincronização
   async processarMensalidade(alunoId: string, dados: DadosPagamentoCash): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
     try {
-      const valorTotal = parseFloat(dados.valor) * dados.meses;
+      const mesesReferencia = Array.from(
+        new Set((dados.mesReferencia || []).map((mes) => String(mes || '').trim()).filter(Boolean))
+      );
       
-      if (!dados.mesReferencia) {
+      if (!mesesReferencia.length) {
         return {
           sucesso: false,
           mensagem: `Mês de referência não informado`,
@@ -386,31 +445,60 @@ export const transacaoService = {
       }
 
       // Criar transação localmente
+      const valorMensal = parseFloat(dados.valor);
+      const valorTotal = valorMensal * mesesReferencia.length;
+      const [paymentConfig, anoLectivo, aluno] = await Promise.all([
+        configService.getPaymentConfig(),
+        configService.getConfigValue("academic", "academic_year"),
+        db.alunos.get(alunoId)
+      ]);
+
+      const propinasDoAno = await db.propina
+        .where('aluno_id')
+        .equals(alunoId)
+        .and((propina) => !propina.deleted && propina.ano_lectivo === anoLectivo)
+        .count();
+
+      if (aluno && propinasDoAno === 0) {
+        setStudentBillingStartMonth(
+          {
+            numero_estudante: aluno.numero_estudante,
+            ano_lectivo: String(anoLectivo || aluno.ano_lectivo || '').trim(),
+            instituicao_id: aluno.instituicao_id
+          },
+          mesesReferencia[0]
+        );
+      }
+
       const transacaoData: TransacaoFormData = {
         valor: valorTotal,
         tipo: 'entrada',
         categoria: 'mensalidade',
         data: new Date().toISOString(),
-        descricao: `Pagamento de ${dados.meses} mes(es) de propina - ${dados.mesReferencia.join(', ')}`
+        descricao: `Pagamento de ${mesesReferencia.length} mes(es) de propina - ${mesesReferencia.join(', ')}`
       };
 
       const transacaoId = await this.createTransacao(transacaoData);
       const transacaoLocal = await db.transacoes.get(transacaoId);
 
       // Registrar propinas para cada mês (também deve ter sincronização)
-      for (let i = 0; i < dados.meses; i++) {
-        const mesRef = (dados.mesReferencia[i].substring(0, 3) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez');
+      for (const mes of mesesReferencia) {
+        const mesRef = financeRulesService.toMonthAbbr(mes) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez';
         
         await propinaService.registerPropina({
           aluno_id: alunoId,
-          data_vencimento: new Date(new Date().getFullYear(), new Date().getMonth() + i + 1, 0).toISOString(),
+          data_vencimento: resolveDueDateForReferenceMonth(
+            mes,
+            String(anoLectivo || aluno?.ano_lectivo || ''),
+            Number(paymentConfig.diaVencimento || 10)
+          ),
           data_pagamento: new Date().toISOString(),
-          valor_pago: parseFloat(dados.valor),
+          valor_pago: valorMensal,
           valor_falta: 0,
           mes_referencia: mesRef,
           transacao_id: transacaoId,
           estado: 'pago',
-          ano_lectivo:await configService.getConfigValue("academic", "academic_year")
+          ano_lectivo: String(anoLectivo || aluno?.ano_lectivo || '')
 
         });
       }
@@ -418,7 +506,7 @@ export const transacaoService = {
       // Pré-pago: se mês atual foi pago, marca aluno em dia localmente.
       await financeRulesService.markStudentPaidIfCurrentMonthPaid(
         alunoId,
-        dados.mesReferencia
+        mesesReferencia
       );
 
       // Sincronizar se online
@@ -428,7 +516,7 @@ export const transacaoService = {
 
       return {
         sucesso: true,
-        mensagem: `Pagamento de ${dados.meses} mes(es) registrado com sucesso!`,
+        mensagem: `Pagamento de ${mesesReferencia.length} mes(es) registrado com sucesso!`,
         dados: transacaoLocal
       };
 
@@ -465,7 +553,15 @@ export const transacaoService = {
   },
 
     async syncTransacoes() {
-      return syncManager.downloadTableBatch('transacoes', new Date(0));
+      if (!navigator.onLine) {
+        throw new Error('sem net');
+      }
+
+      await syncManager.uploadBatch();
+      return Promise.all([
+        syncManager.downloadTableBatch('transacoes', new Date(0)),
+        syncManager.downloadTableBatch('propina', new Date(0))
+      ]);
     },
   
   // ✅ Função auxiliar para marcar como pendente
@@ -702,6 +798,8 @@ export const transacaoService = {
       const transacao = await db.transacoes.get(id);
       const instituicaoId = getActiveInstituicaoId();
       if (!transacao || !instituicaoId || transacao.instituicao_id !== instituicaoId) return;
+
+      await propinaCascadeService.deleteByTransacao(id, instituicaoId);
 
       if (transacao.sync_status === 'synced' && !transacao.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota

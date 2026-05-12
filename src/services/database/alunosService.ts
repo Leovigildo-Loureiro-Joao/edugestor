@@ -15,6 +15,7 @@ import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { generateUniqueId } from "../../utils/idGenarator";
 import { paymentChecker } from "./paymentcheker";
 import { AlunoDesempenho } from "../../types/aluno";
+import { propinaCascadeService } from "./propinaCascade";
 
 const LOCAL_ID_MAP_KEY = 'sync_local_id_map';
 
@@ -153,15 +154,15 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
     const now = new Date().toISOString();
     const instituicao_id = instituicaoIdValue() || "";
     const n = await this.gerarProximoNumeroEstudante();
-    
+
     // Tratar turma_id: se for string vazia, converter para null
     const aluno = {
       ...studentData,
       id,
       instituicao_id,
       numero_estudante: n,
-      turma_id: studentData.turma_id && studentData.turma_id.trim() !== '' 
-        ? studentData.turma_id 
+      turma_id: studentData.turma_id && studentData.turma_id.trim() !== ''
+        ? studentData.turma_id
         : null, // Converter string vazia para null
       created_at: now,
       updated_at: now,
@@ -170,7 +171,7 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
     };
 
     await db.alunos.put(aluno as Student);
-    
+
     // Adicionar à fila de sincronização
     const syncRecord = await db.syncQueue.add({
       table: 'alunos',
@@ -180,13 +181,13 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
       status: 'pending',
       created_at: now
     });
-    
+
     const alunosFromQueue = await db.syncQueue.get(syncRecord);
     const insertBatch = [alunosFromQueue] as SyncQueueItem[];
     syncManager.processInsertBatch('alunos', insertBatch);
 
     return id;
-    
+
   } catch (error) {
     console.error('❌ Erro ao salvar aluno:', error);
     throw error;
@@ -195,18 +196,18 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
 
 async getAlunosPorTurma(turma_id: string | null) {
   const alunos = await db.alunos.toArray();
-  
+
   // Se turma_id for null, retornar alunos sem turma
   if (turma_id === null) {
-    return alunos.filter(aluno => 
-      !aluno.deleted && 
+    return alunos.filter(aluno =>
+      !aluno.deleted &&
       (!aluno.turma_id || aluno.turma_id.trim() === '')
     );
   }
-  
+
   // Caso contrário, filtrar pela turma específica
-  return alunos.filter(aluno => 
-    !aluno.deleted && 
+  return alunos.filter(aluno =>
+    !aluno.deleted &&
     aluno.turma_id === turma_id
   );
 } ,
@@ -224,23 +225,23 @@ async getAllStudents(): Promise<Student[]> {
       db.turmas.count(),
       getLastModifiedTimestamp() // Método para obter timestamp da última modificação
     ]);
-    
+
     // 2. Criar chave de cache composta por versões
     const cacheVersion = `v${alunoCount}_${turmaCount}_${activeInstituicaoId}_${lastModified}`;
     const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
-    
+
     // 3. Tentar cache primeiro
     const cached = cacheManager.get(cacheKeyWithVersion);
     if (cached) {
       return cached;
     }
-    
+
     // 4. Buscar dados em paralelo
     const [alunosAll, todasTurmas] = await Promise.all([
       db.alunos.toArray(),
       turmaService.getTurmas()
     ]);
-    
+
     // 5. Otimizar: Criar mapa de turmas mais eficiente
     // Filtrar apenas turmas ativas e válidas
     const turmasAtivas = todasTurmas.filter(t => !t.deleted);
@@ -252,7 +253,7 @@ async getAllStudents(): Promise<Student[]> {
         curso_nome: t.curso_nome || ''
       }])
     );
-    
+
     // 6. Processar alunos
     // Primeiro filtrar, depois ordenar, depois mapear
     const alunos = alunosAll
@@ -280,7 +281,7 @@ async getAllStudents(): Promise<Student[]> {
           professor: 'Sem professor',
           curso_nome: ''
         };
-        
+
         if (aluno.turma_id) {
           const turma = turmaMap.get(aluno.turma_id);
           if (turma) {
@@ -291,8 +292,8 @@ async getAllStudents(): Promise<Student[]> {
             };
           }
         }
-       
-        
+
+
         return {
           ...aluno,
           ...turmaInfo,
@@ -300,36 +301,36 @@ async getAllStudents(): Promise<Student[]> {
           idade: aluno.data_nascimento ? this.calcularIdade(aluno.data_nascimento) : null
         };
       });
-    
-      const pendentesCount = alunosAll.filter(aluno => 
+
+      const pendentesCount = alunosAll.filter(aluno =>
         aluno.sync_status === 'pending' || aluno.sync_status === 'pending_delete'
       ).length;
-      
+
       if (pendentesCount > 0) {
         emitPendingSync('alunos', pendentesCount);
       }
-    
+
     // 7. Guardar no cache com TTL
     cacheManager.set(cacheKeyWithVersion, alunos, {
       ttl: 10 * 60 * 1000, // 10 minutos
       version: cacheVersion
     });
-    
+
     // 8. Limpar versões antigas do cache (opcional, mas recomendado)
     this.cleanOldStudentCache(CACHE_KEY, cacheVersion);
-    
+
     return alunos;
-    
+
   } catch (error) {
     console.error('❌ Erro ao carregar alunos:', error);
-    
+
     // 9. Fallback para última versão em cache disponível
     const fallback = cacheManager.getLatest(CACHE_KEY);
     if (fallback) {
       console.warn('⚠️ Usando cache fallback devido a erro');
       return fallback;
     }
-    
+
     return [];
   }
 }
@@ -340,11 +341,11 @@ async getAllStudents(): Promise<Student[]> {
   const hoje = new Date();
   let idade = hoje.getFullYear() - nascimento.getFullYear();
   const mes = hoje.getMonth() - nascimento.getMonth();
-  
+
   if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
     idade--;
   }
-  
+
   return idade;
 }
 
@@ -353,7 +354,7 @@ async getAllStudents(): Promise<Student[]> {
   const cacheKeys = Object.keys(localStorage)
     .filter(key => key.startsWith(`${baseKey}_v`))
     .filter(key => !key.endsWith(`_${currentVersion}`));
-  
+
   // Manter apenas as últimas 3 versões
   if (cacheKeys.length > 3) {
     const keysToRemove = cacheKeys.slice(3);
@@ -381,13 +382,15 @@ async getAllStudents(): Promise<Student[]> {
 },
 
   async syncAlunos() {
-    if(navigator.onLine)
-     return Promise.all([syncManager.uploadTableBatch('alunos'),
-      syncManager.downloadTableBatch('alunos', new Date(0))
-    ])
-    throw new Error("sem net")
+    if (!navigator.onLine) throw new Error("sem net");
+
+    await syncManager.uploadBatch();
+    return Promise.all([
+      syncManager.downloadTableBatch('alunos', new Date(0)),
+      syncManager.downloadTableBatch('propina', new Date(0))
+    ]);
   },
-  
+
   // ✅ Função auxiliar para marcar como pendente
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
@@ -404,8 +407,13 @@ async getAllStudents(): Promise<Student[]> {
   async getStudentById(id: string): Promise<Student | undefined> {
     try {
       const aluno = await db.alunos.get(id);
-      
-      if (!aluno) {
+
+      if (!aluno || aluno.deleted) {
+        return undefined;
+      }
+
+      const instituicaoId = instituicaoIdValue();
+      if (instituicaoId && aluno.instituicao_id && aluno.instituicao_id !== instituicaoId) {
         return undefined;
       }
 
@@ -427,7 +435,7 @@ async getAllStudents(): Promise<Student[]> {
     cacheManager.delete(`alunos_all_${cacheScope}`);
     cacheManager.invalidate(`alunos_all_${cacheScope}_.*`);
     cacheManager.invalidate(`alunos_chart_data_${cacheScope}`);
-    
+
     // Buscar dados frescos
     return await this.getAllStudents();
   },
@@ -436,18 +444,18 @@ async getAllStudents(): Promise<Student[]> {
     const cacheScope = activeInstituicaoId || 'global';
     const CACHE_KEY = `alunos_chart_data_${cacheScope}`;
     const cached = cacheManager.get(CACHE_KEY);
-    
+
     if (cached) {
       return cached;
     }
-    
+
     const alunos = await this.getAllStudents();
-    
+
     cacheManager.set(CACHE_KEY, alunos,  {
       ttl: 10 * 60 * 1000, // 10 minutos
       version: CACHE_KEY
     }); // 2 minutos para dados de gráfico
-    
+
     return alunos;
   }
   ,
@@ -459,7 +467,7 @@ async getAllStudents(): Promise<Student[]> {
         .where('numero_estudante')
         .equals(numero)
         .toArray();
-      
+
       return alunos.find(aluno => !aluno.deleted);
     } catch (error) {
       console.error('Erro ao buscar por número:', error);
@@ -476,17 +484,17 @@ async getAllStudents(): Promise<Student[]> {
     if (!targetId) {
       throw new Error(`Aluno não encontrado para atualização: ${id}`);
     }
-    
+
     // Preparar dados para atualização, tratando turma_id vazio
     const dataToUpdate = { ...studentData };
-    
-    // Se turma_id estiver presente e for string vazia, converter para null
+
+    // Se turma_id estiver presente e for string vazia, converter para
     if (dataToUpdate.turma_id !== undefined) {
-      dataToUpdate.turma_id = dataToUpdate.turma_id && dataToUpdate.turma_id.trim() !== '' 
-        ? dataToUpdate.turma_id 
-        : null;
+      dataToUpdate.turma_id = dataToUpdate.turma_id && dataToUpdate.turma_id.trim() !== ''
+        ? dataToUpdate.turma_id
+        : undefined;
     }
-    
+
     const updatedRows = await db.alunos.update(targetId, {
       ...dataToUpdate,
       updated_at,
@@ -506,7 +514,7 @@ async getAllStudents(): Promise<Student[]> {
       status: 'pending',
       created_at: updated_at
     });
-    
+
   } catch (error) {
     console.error('Erro ao atualizar aluno:', error);
     throw error;
@@ -518,11 +526,14 @@ async getAllStudents(): Promise<Student[]> {
     try {
       const aluno = await db.alunos.get(id);
       if (!aluno) return;
+      const instituicaoId = aluno.instituicao_id || instituicaoIdValue() || '';
+
+      await propinaCascadeService.deleteByAluno(id, instituicaoId);
 
       if (aluno.sync_status === 'synced' && !aluno.id.startsWith('local_')) {
         // Se já sincronizado, marcar para deleção remota
-        await db.alunos.update(id, { 
-          deleted: true, 
+        await db.alunos.update(id, {
+          deleted: true,
           sync_status: 'pending_delete',
           updated_at: new Date().toISOString()
         });
@@ -530,28 +541,28 @@ async getAllStudents(): Promise<Student[]> {
         await avaliacaoService.deleteAvaliacoesByAluno(id);
         await frequenciaService.deleteFrequenciaByAluno(id);
 
-        
         await db.syncQueue.add({
           table: 'alunos',
           record_id: id,
-          instituicao_id:instituicaoIdValue(),
+          instituicao_id: instituicaoId,
           operation: 'delete',
           status: 'pending',
           created_at: new Date().toISOString()
         });
-        
+
         } else {
         // Se nunca sincronizado, deletar completamente
         await db.alunos.delete(id);
-        
+
         // Remover da fila se existir
         await db.syncQueue
           .where('record_id')
           .equals(id)
+          .and((item) => item.instituicao_id === instituicaoId)
           .delete();
-          
+
         }
-      
+
     } catch (error) {
       console.error('Erro ao deletar aluno:', error);
       throw error;
@@ -564,7 +575,7 @@ async getAllStudents(): Promise<Student[]> {
         const dese=alunos.map(async (aluno)=> ( await this.getDesempemhoAluno(aluno.id)))
          return dese? dese:[]
       } catch (error) {
-        
+
       }
      return[]
 
@@ -606,7 +617,7 @@ async getAllStudents(): Promise<Student[]> {
         .equals(instituicaoIdValue())
         .and((item) => item.status === 'pending')
         .count();
-      
+
       return {
         alunosTotal: alunoCount,
         alunosAtivos: (await this.getAllStudents()).length,
@@ -642,24 +653,24 @@ async getAllStudents(): Promise<Student[]> {
 };
 function resolveEnrollmentStatus(data_matricula: string, estado: string): string {
   if (!data_matricula) return estado;
-  
+
   const matriculaDate = new Date(data_matricula);
   const today = new Date();
-  
+
   // Remove time component for fair comparison
   matriculaDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
-  
+
   // If enrollment date is in the future, mark as pending
   if (matriculaDate > today) {
     return 'pendente';
   }
-  
+
   // If enrollment date has passed, mark as active
   if (matriculaDate <= today) {
     return 'ativo';
   }
-  
+
   return estado;
 }
 

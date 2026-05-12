@@ -130,7 +130,12 @@ const StudentPage: React.FC = () => {
           alunoData,
           mesesBase,
           turmasData || [],
-          cursosData || []
+          cursosData || [],
+          {
+            paidMonths: propinasData
+              .filter((p) => p.estado === 'pago' && !p.deleted)
+              .map((p) => financeRulesService.toMonthAbbr(p.mes_referencia))
+          }
         );
         const anoReferencia = cartaoData?.ano_lectivo || alunoData.ano_lectivo;
         const paidSet = new Set(

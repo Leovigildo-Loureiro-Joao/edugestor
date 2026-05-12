@@ -60,6 +60,14 @@ interface SyncManager {
   verifyQueueIntegrity():Promise<any>
   processedRecords(records:any[],tableName:string):any[]
   cleanupLegacyLocalDuplicates(tables?: string[]): Promise<void>
+  cleanupGhostData(options: GhostDataOptions):Promise<GhostDataCleanupResult>
+  checkRemoteExistence(tableName: string, recordId: string): Promise<boolean>
+  removeGhostRecords(tableName: string, recordIds: string[]): Promise<number>
+  safeGhostDataCleanup(options: Omit<GhostDataOptions, 'dryRun' | 'force'>):any
+  diagnoseGhostData(options: Omit<GhostDataOptions, 'dryRun'>):any
+  verifyDataHealth(options: { tables?: string[]; sample?: number } ) :any
+
+
 }
 
 // Hook personalizado para usar dentro do manager
@@ -111,7 +119,7 @@ const useSyncAuthInManager = () => {
   // Esta função simula o hook, mas pode ser chamada em qualquer lugar
   const getAuthData = () => {
     // Tentar obter do localStorage primeiro (para contexto não React)
-    
+
     const token = localStorage.getItem('jwt_token') || getFallbackTokenFromStorage();
     if (token && !localStorage.getItem('jwt_token')) {
       try {
@@ -125,10 +133,10 @@ const useSyncAuthInManager = () => {
     let userId=localStorage.getItem("user_id") || null;
     if (localProfile) {
       const profile =JSON.parse(localProfile);
-      userId= profile.id;  
-    }  
-    
-    
+      userId= profile.id;
+    }
+
+
     return {
       authToken: token,
       userRole,
@@ -140,7 +148,7 @@ const useSyncAuthInManager = () => {
   const getAuthHeaders = () => {
     const token = getAuthData().authToken;
     if (!token) return {};
-    
+
     return {
       'Authorization': `Bearer ${token}`,
       'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -151,17 +159,17 @@ const useSyncAuthInManager = () => {
 
   const hasPermission = (requiredRole: string): boolean => {
     const { userRole } = getAuthData();
-    
+
     const roleHierarchy: Record<string, number> = {
       'user': 0,
       'teacher': 1,
       'manager': 2,
       'admin': 3
     };
-    
+
     const userLevel = roleHierarchy[userRole] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-    
+
     return userLevel >= requiredLevel;
   };
 
@@ -384,7 +392,7 @@ const hasPendingParent = (tableName: string, record: any): boolean => {
     case 'plano_aulas':
       return hasLocalIdInList(record.turma_ids) || hasLocalIdInList(record.aulas_geradas);
     default:
-      
+
       return false;
   }
 };
@@ -444,18 +452,18 @@ export const syncManager: SyncManager = {
       await cleanupLocalIdMap();
       await this.cleanupLegacyLocalDuplicates(['alunos', 'turmas', 'aulas', 'cursos']);
       const { getAuthData } = useSyncAuthInManager();
-      
+
       const authData = getAuthData();
       if (!authData.isAuthenticated) {
         console.warn('⚠️ Sessão não encontrada no storage; tentando sincronizar mesmo assim.');
       }
-      
+
       const instituicaoId = getSyncQueueInstitutionId();
       if (!instituicaoId) {
         console.warn('⚠️ Sem instituicao_id ativa para processar syncQueue.');
         return;
       }
-      
+
       // 1. Agrupar itens por tabela
       const pendingItems = await db.syncQueue
         .filter((item) =>
@@ -463,11 +471,11 @@ export const syncManager: SyncManager = {
           (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
         )
         .toArray();
-      
+
       if (pendingItems.length === 0) {
         return;
       }
-      
+
       const deleteItems = pendingItems.filter((item) => item.operation === 'delete');
       const upsertItems = pendingItems.filter((item) => item.operation === 'upsert');
 
@@ -493,7 +501,7 @@ export const syncManager: SyncManager = {
       for (const [tableName, items] of upsertTableEntries) {
         await this.processTableBatch(tableName, items);
       }
-      
+
       } catch (error) {
       console.error('❌ Erro no upload batch:', error);
       throw error;
@@ -516,14 +524,14 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
 
   const { getAuthData } = useSyncAuthInManager();
   const authData = getAuthData();
-  
+
   if (!authData.isAuthenticated && !force) {
     throw new Error('⛔ Limpeza de dados fantasmas requer autenticação');
   }
 
   const instituicaoId = getSyncQueueInstitutionId();
   const startTime = Date.now();
-  
+
   const result: GhostDataCleanupResult = {
     totalScanned: 0,
     ghostsFound: 0,
@@ -543,11 +551,11 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
       if (!tableExists) continue;
 
       const table = db.table<any>(tableName);
-      
+
       // Buscar registros locais com sync_status = 'synced' E que NÃO são locais (já têm ID remoto)
       const localRecords = await table
-        .filter(record => 
-          record.sync_status === 'synced' && 
+        .filter(record =>
+          record.sync_status === 'synced' &&
           !String(record.id || '').startsWith('local_') &&
           !record.deleted &&
           (tableName === 'profiles' || tableName === 'instituicao' || !instituicaoId || record.instituicao_id === instituicaoId)
@@ -563,10 +571,10 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
 
       // Processar em lotes para não sobrecarregar
       const ghostsInTable: string[] = [];
-      
+
       for (let i = 0; i < localRecords.length; i += batchSize) {
         const batch = localRecords.slice(i, i + batchSize);
-        
+
         // Verificar existência remota em paralelo (mas limitado)
         const existenceChecks = await Promise.allSettled(
           batch.map(async (record) => {
@@ -574,10 +582,10 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
               const exists = await this.checkRemoteExistence(tableName, record.id);
               return { recordId: record.id, exists };
             } catch (error) {
-              return { 
-                recordId: record.id, 
-                exists: false, 
-                error: error instanceof Error ? error.message : String(error) 
+              return {
+                recordId: record.id,
+                exists: false,
+                error: error instanceof Error ? error.message : String(error)
               };
             }
           })
@@ -610,7 +618,7 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
         found: ghostsInTable.length,
         removed: 0
       };
-      
+
       result.ghostsFound += ghostsInTable.length;
 
       // Remover fantasmas (se não for dry run)
@@ -642,13 +650,13 @@ async cleanupGhostData(options: GhostDataOptions = {}): Promise<GhostDataCleanup
 
   // Emitir evento para UI
   if (!dryRun && result.ghostsRemoved > 0) {
-    const event = new CustomEvent('ghost-data-cleanup', { 
-      detail: { 
+    const event = new CustomEvent('ghost-data-cleanup', {
+      detail: {
         count: result.ghostsRemoved,
         tables: Object.entries(result.byTable)
           .filter(([_, stats]) => stats.removed > 0)
           .map(([table, stats]) => `${table}: ${stats.removed}`)
-      } 
+      }
     });
     window.dispatchEvent(event);
   }
@@ -698,23 +706,23 @@ async removeGhostRecords(tableName: string, recordIds: string[]): Promise<number
   try {
     const table = db.table<any>(tableName);
     const instituicaoId = getSyncQueueInstitutionId();
-    
+
     // Verificação adicional de segurança: garantir que os registros realmente são fantasmas
     // antes de deletar (double-check)
     const recordsToDelete: string[] = [];
-    
+
     for (const recordId of recordIds) {
       const record = await table.get(recordId);
-      
+
       // Só deletar se ainda estiver synced e não for local
-      if (record && 
-          record.sync_status === 'synced' && 
+      if (record &&
+          record.sync_status === 'synced' &&
           !String(record.id).startsWith('local_') &&
           (!instituicaoId || record.instituicao_id === instituicaoId)) {
-        
+
         // Verificação final: tentar buscar do Supabase mais uma vez (cache pode estar desatualizado)
         const stillMissing = !(await this.checkRemoteExistence(tableName, recordId));
-        
+
         if (stillMissing) {
           recordsToDelete.push(recordId);
         }
@@ -727,7 +735,7 @@ async removeGhostRecords(tableName: string, recordIds: string[]): Promise<number
     await db.transaction('rw', table, db.syncQueue, async () => {
       // Deletar registros
       await table.bulkDelete(recordsToDelete);
-      
+
       // Remover também da syncQueue se houver entradas órfãs
       await db.syncQueue
         .where('table')
@@ -742,7 +750,7 @@ async removeGhostRecords(tableName: string, recordIds: string[]): Promise<number
 
   } catch (error) {
     console.error(`❌ Erro ao remover registros fantasmas de ${tableName}:`, error);
-    
+
     // Tentar deletar um por um se o bulk falhar
     let removedCount = 0;
     for (const recordId of recordIds) {
@@ -753,7 +761,7 @@ async removeGhostRecords(tableName: string, recordIds: string[]): Promise<number
         console.error(`❌ Falha ao deletar ${tableName}/${recordId}:`, singleError);
       }
     }
-    
+
     return removedCount;
   }
 },
@@ -772,9 +780,9 @@ async safeGhostDataCleanup(options: Omit<GhostDataOptions, 'dryRun' | 'force'> =
   const lastCleanupKey = `ghost_cleanup_last_run`;
   const lastRun = localStorage.getItem(lastCleanupKey);
   const now = Date.now();
-  
+
   // Executar no máximo uma vez por dia (24 horas)
-  if (lastRun && (now - parseInt(lastRun)) < 24 * 60 * 60 * 1000 && !options.force) {
+  if (lastRun && (now - parseInt(lastRun)) < 24 * 60 * 60 * 1000 ) {
     return { skipped: true, reason: 'throttled' };
   }
 
@@ -793,9 +801,9 @@ async safeGhostDataCleanup(options: Omit<GhostDataOptions, 'dryRun' | 'force'> =
 
   } catch (error) {
     console.error('❌ Erro na limpeza segura de dados fantasmas:', error);
-    return { 
+    return {
       error: error instanceof Error ? error.message : String(error),
-      skipped: true 
+      skipped: true
     };
   }
 },
@@ -904,7 +912,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     if (upserts.length > 0) {
       await this.processTableBatch(tableName, upserts);
     }
-      
+
   },
 
 // Adicione esta função ao objeto syncManager
@@ -913,17 +921,17 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
   try {
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
-    
+
     if (!authData.isAuthenticated) {
       console.warn('⚠️ Sessão não encontrada no storage; tentando upload mesmo assim.');
     }
-    
+
     const instituicaoId = getSyncQueueInstitutionId();
     if (!instituicaoId) {
       console.warn('⚠️ Sem instituicao_id ativa para processar itens com falha.');
       return { success: false, message: 'Sem instituição ativa' };
     }
-    
+
     // Buscar TODOS os itens com status 'failed' (qualquer número de tentativas)
     const failedItems = await db.syncQueue
       .filter((item) =>
@@ -931,29 +939,29 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         (item.instituicao_id === instituicaoId || isLegacyInstituicaoId(item.instituicao_id))
       )
       .toArray();
-    
+
     if (failedItems.length === 0) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Nenhum item com falha encontrado',
-        total: 0 
+        total: 0
       };
     }
-    
+
     // Estatísticas por tabela
     const byTable = failedItems.reduce((acc: Record<string, number>, item) => {
       const table = item.table || 'unknown';
       acc[table] = (acc[table] || 0) + 1;
       return acc;
     }, {});
-    
+
     // Agrupar por tabela para processamento em batch
     const itemsByTable = this.groupByTable(failedItems);
-    
+
     let totalProcessados = 0;
     let totalErros = 0;
     const resultados: Record<string, { success: number; failed: number }> = {};
-    
+
     // Processar cada tabela
     for (const [tableName, items] of Object.entries(itemsByTable)) {
       // Resetar status para 'pending' antes de processar
@@ -966,29 +974,29 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           error: "",
           data: new Date().toISOString()
         });
-      
+
       // Tentar processar novamente
       try {
         await this.processTableBatch(tableName, items);
-        
+
         // Verificar quantos foram bem-sucedidos
         const aindaFalhos = await db.syncQueue
           .where('instituicao_id')
           .equals(instituicaoId)
           .and((item) => item.status === 'failed' && item.table === tableName)
           .toArray();
-        
+
         const sucessos = items.length - aindaFalhos.length;
         const falhas = aindaFalhos.length;
-        
+
         totalProcessados += sucessos;
         totalErros += falhas;
-        
+
         resultados[tableName] = { success: sucessos, failed: falhas };
-        
+
         } catch (error) {
         console.error(`❌ Erro ao processar tabela ${tableName}:`, error);
-        
+
         // Reverter para failed se houver erro catastrófico
         await db.syncQueue
           .where('id')
@@ -998,15 +1006,15 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             error: `Erro catastrófico: ${error instanceof Error ? error.message : String(error)}`,
             data: new Date().toISOString()
           });
-        
+
         totalErros += items.length;
         resultados[tableName] = { success: 0, failed: items.length };
       }
-      
+
       // Pequena pausa entre tabelas para não sobrecarregar
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     // Registrar no log de auditoria
     await auditLogService.log('SYNC_FAILED_ITEMS_UPLOAD', {
       total_processados: totalProcessados,
@@ -1014,7 +1022,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       resultados,
       timestamp: new Date().toISOString()
     });
-    
+
     return {
       success: true,
       total: failedItems.length,
@@ -1022,15 +1030,15 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       erros: totalErros,
       resultados
     };
-    
+
   } catch (error) {
     console.error('❌ Erro ao processar upload de itens com falha:', error);
-    
+
     await auditLogService.log('SYNC_FAILED_ITEMS_ERROR', {
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString()
     });
-    
+
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error)
@@ -1046,23 +1054,23 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         .and(item => item.status === 'failed' && item.table === tableName )
         .toArray();
       await this.processTableBatch(tableName, pendingItems);
-      
+
   },
 
   // ✅ Agrupar itens por tabela
   groupByTable(items: SyncQueueItem[]) {
     const groups: Record<string, SyncQueueItem[]> = {};
-    
+
     items.forEach(item => {
       if (!groups[item.table]) {
         groups[item.table] = [];
       }
       groups[item.table].push(item);
     });
-    
+
     return groups;
   },
-  
+
   // ✅ Processar tabela em batch
   async processTableBatch(tableName: string, items: SyncQueueItem[]) {
     try {
@@ -1093,7 +1101,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       if (validItems.length === 0) {
         return;
       }
-      
+
       // Separar INSERTs e UPDATEs
       const inserts = validItems.filter(item => item.operation === 'upsert' && item.record_id.startsWith('local_'));
       const updates = validItems.filter(item => item.operation === 'upsert' && !item.record_id.startsWith('local_'));
@@ -1103,7 +1111,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       if (deletes.length > 0) {
         await this.processDeleteBatch(tableName, deletes);
       }
-      
+
       // Processar UPDATEs em batch (um por um por segurança)
       for (const item of updates) {
         await this.processSingleUpdate(tableName, item);
@@ -1113,9 +1121,9 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       if (inserts.length > 0) {
         await this.processInsertBatch(tableName, inserts);
       }
-      
-      
-      
+
+
+
     } catch (error) {
       console.error(`❌ Erro processando batch de ${tableName}:`, error);
       throw error;
@@ -1126,16 +1134,16 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
  processarRegistrosUnicos(records: any[], tabela: string): any[] {
   this.debugSyncQueueIssue(tabela)
   const registrosUnicos = new Map();
-  
+
   records.forEach(record => {
     let chaveUnica;
-    
+
     switch(tabela) {
       case 'alunos':
         // Para alunos, usa numero_estudante como chave única
         chaveUnica = record.numero_estudante;
         break;
-        
+
       case 'cursos': {
         const nomeKey = normalizeCourseName(record.nome);
         const instKey = record.instituicao_id || '';
@@ -1149,12 +1157,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         // Para turmas, usa nome_turma + ano_letivo
         chaveUnica = `${record.nome_turma}_${record.ano_letivo}`;
         break;
-        
+
       case 'professores':
         // Para professores, usa email ou BI
         chaveUnica = record.email || record.numero_bi;
         break;
-      
+
       case 'aulas':
         // Para aulas, usa uma identidade estável para evitar inserts duplicados no mesmo sync.
         chaveUnica = [
@@ -1166,24 +1174,24 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           record.tema_aula || ''
         ].join('|');
         break;
-        
+
       default:
         // Para outras tabelas, usa ID se existir
         chaveUnica = record.id || Math.random().toString();
     }
-    
+
     // Se não tem chave única, gera uma aleatória
     if (!chaveUnica) {
       chaveUnica = `temp_${Math.random().toString(36).substr(2, 9)}`;
     }
-    
+
     // Verifica se já existe registro com mesma chave
     const existente = registrosUnicos.get(chaveUnica);
     if (existente) {
       // Mantém o registro mais recente (compara updated_at)
       const dataAtual = record.updated_at || record.created_at;
       const dataExistente = existente.updated_at || existente.created_at;
-      
+
       if (dataAtual && dataExistente) {
         const isMaisRecente = new Date(dataAtual) > new Date(dataExistente);
         if (isMaisRecente) {
@@ -1197,23 +1205,23 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       registrosUnicos.set(chaveUnica, record);
     }
   });
-  
+
   return Array.from(registrosUnicos.values());
 },
-  
+
 // ✅ Processar INSERTs em batch - CORRIGIDO
  async processInsertBatch(tableName: string, items: SyncQueueItem[]) {
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
-    
+
     if (!authData.isAuthenticated) {
       console.warn(`⚠️ Sessão não encontrada no storage; tentando INSERTs em ${tableName} mesmo assim.`);
     }
-    
+
     try {
       // PASSO 1: Preparar registros válidos
       const { records, itemsToProcess } = await this.prepareInsertRecords(tableName, items);
-      
+
       if (records.length === 0) {
         return;
       }
@@ -1270,7 +1278,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
   , async prepareInsertRecords(tableName: string, items: SyncQueueItem[]) {
     const records = [];
     const itemsToProcess = [];
-    
+
     // Mantém apenas o item mais recente por record_id para evitar múltiplos inserts do mesmo registro.
     const orderedItems = [...items].sort((a, b) => {
       const aTime = new Date(a.created_at || 0).getTime();
@@ -1299,12 +1307,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     }
 
     const uniqueItems = Array.from(latestItemByRecordId.values());
-    
+
     for (const item of uniqueItems) {
       try {
         // 1. Buscar registro do IndexedDB
         let record = await this.getRecordFromTable(tableName, item.record_id);
-        
+
         if (!record) {
           console.warn(`🗑️  Registro não encontrado, removendo: ${item.record_id}`);
           await db.syncQueue.delete(item.id!);
@@ -1374,25 +1382,25 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         ){
           continue;
         }
-        
+
         // 2. Verificar se já foi sincronizado (tem ID do Supabase)
         if (record.id && !record.id.toString().startsWith('local_')) {
           await db.syncQueue.delete(item.id!);
           continue;
         }
-        
+
         // 3. Preparar registro para envio
         const cleanRecord = this.cleanRecordForSupabase(record);
-        
+
         records.push(cleanRecord);
         itemsToProcess.push(item);
-        
+
       } catch (error:any) {
         console.error(`❌ Erro ao preparar item ${item.id}:`, error);
         await this.markItemAsError(item, error);
       }
     }
-    
+
     return { records, itemsToProcess };
   }
 
@@ -1400,17 +1408,17 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     // Remove campos internos do Dexie
     const { sync_status, deleted, ...cleanRecord } = record;
     const sanitizedInstituicaoId = resolveValidInstituicaoId(cleanRecord.instituicao_id, true);
-    
+
     // Garante timestamps no formato ISO
     return {
       ...cleanRecord,
       ...(cleanRecord.instituicao_id !== undefined ? { instituicao_id: sanitizedInstituicaoId } : {}),
       created_at: record.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      
+
       // Remove ID local se existir
-      ...(record.id && record.id.toString().startsWith('local_') 
-        ? { id: undefined } 
+      ...(record.id && record.id.toString().startsWith('local_')
+        ? { id: undefined }
         : {})
     };
   }
@@ -1419,32 +1427,32 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     // Define estratégia de upsert por tabela
     let onConflict = 'id';
      const processedRecords = this.processedRecords(records,tableName);
-    
+
     // Remove duplicatas dentro do batch
     const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
-    
+
     const { data, error } = await supabase
       .from(tableName)
       .upsert(uniqueRecords, { onConflict })
       .select();
-    
+
     if (error) {
       console.error(`❌ Erro no upsert ${tableName}:`, error);
-      
+
       // Tenta upsert sem onConflict se falhar
       if (error.code === '42501' || error.code === '23505') {
         const { data: retryData, error: retryError } = await supabase
           .from(tableName)
           .upsert(uniqueRecords)
           .select();
-        
+
         if (retryError) throw retryError;
         return { data: retryData, error: null };
       }
-      
+
       throw error;
     }
-    
+
     return { data, error: null };
   },
 
@@ -1456,7 +1464,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           const { id,aulas, horarios, ...rest } = record;
           return rest;
         });
-        
+
       case 'alunos':
         // Remove avaliação (se existir)
         return records.map(record => {
@@ -1464,7 +1472,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           return rest;
         });
         // IMPORTANTE: Se tiver constraint unique no número do estudante
-        
+
       case 'aulas':
         // Remove avaliação (se existir)
         return records.map(record => {
@@ -1487,7 +1495,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             ...rest,
             instituicao_id: resolveValidInstituicaoId(rest.instituicao_id) || ''
           };
-        }); 
+        });
       case 'cursos':
         // Remove avaliação (se existir)
         return records.map(record => {
@@ -1512,44 +1520,44 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             instituicao_id: resolveValidInstituicaoId(rest.instituicao_id) || ''
           };
         });
-        
+
       default:
         return records.map(record => {
           const {id, ...rest } = record;
           return rest;
         });
     }
-  } 
+  }
 
   , async executeUpdateToSupabase(tableName: string, records: any[],record_id:string) {
-    
+
     const processedRecords = this.processedRecords(records,tableName);
     // Remove duplicatas dentro do batch
     const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
-    
+
     const { data, error } = await supabase
       .from(tableName)
       .update(uniqueRecords)
       .eq('id', record_id)
       .select();
-    
+
     if (error) {
       console.error(`❌ Erro no update ${tableName}:`, error);
-      
+
       // Tenta upsert sem onConflict se falhar
       if (error.code === '42501' || error.code === '23505') {
         const { data: retryData, error: retryError } = await supabase
           .from(tableName)
           .upsert(uniqueRecords)
           .select();
-        
+
         if (retryError) throw retryError;
         return { data: retryData, error: null };
       }
-      
+
       throw error;
     }
-    
+
     return { data, error: null };
   }
 
@@ -1571,48 +1579,48 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
   , removeBatchDuplicates(tableName: string, records: any[]) {
     const uniqueMap = new Map();
     const duplicates = [];
-    
+
     records.forEach(record => {
       let key = record.id;
-      
+
       if (tableName === 'alunos' && record.numero_estudante) {
         key = `aluno_${record.numero_estudante}`;
       } else if (tableName === 'turmas' && record.nome_turma && record.ano_letivo) {
         key = `turma_${record.nome_turma}_${record.ano_letivo}`;
       }
-      
+
       if (key && uniqueMap.has(key)) {
         duplicates.push({ key, record });
       } else if (key) {
         uniqueMap.set(key, record);
       }
     });
-    
+
     if (duplicates.length > 0) {
       console.warn(`⚠️ Removidas ${duplicates.length} duplicatas do batch ${tableName}`);
     }
-    
+
     return Array.from(uniqueMap.values());
   }
 
   , async processSuccessResult(tableName: string, items: SyncQueueItem[], supabaseData: any[]) {
     const promises = [];
-    
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const supabaseRecord = supabaseData[i];
-      
+
       if (!supabaseRecord || !supabaseRecord.id) {
         console.warn(`⚠️ Sem dados retornados para item ${item.record_id}`);
         continue;
       }
-      
+
       // 1. Atualizar ID local no IndexedDB
       promises.push(
         this.updateLocalId(tableName, item.record_id, supabaseRecord.id)
           .catch(err => console.error(`Erro ao atualizar ID:`, err))
       );
-      
+
       // 2. Processar dependências (turmas, cursos, etc.)
       if (tableName === 'turmas' || tableName === 'cursos') {
         promises.push(
@@ -1620,7 +1628,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             .catch((err:any) => console.error(`Erro dependências:`, err))
         );
       }
-      
+
       // 3. CRÍTICO: REMOVER DO SYNC QUEUE
       promises.push(
         db.syncQueue.delete(item.id!)
@@ -1628,19 +1636,19 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             })
           .catch(async (err) => {
             console.error(`❌ Erro ao remover ${item.id}:`, err);
-            
+
             // Se não conseguir deletar, pelo menos marca como sincronizado
-            await db.syncQueue.update(item.id!, { 
+            await db.syncQueue.update(item.id!, {
               status: 'synced',
               error: ""
             }).catch(() => {});
           })
       );
     }
-    
+
     // Aguarda TODAS as promessas
     await Promise.allSettled(promises);
-    
+
     }
 
   , async updateLocalId(tableName: string, localId: string, supabaseId: string) {
@@ -1986,7 +1994,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
 
   , async handleInsertError(tableName: string, items: SyncQueueItem[], error: any) {
     console.error(`❌ Erro fatal em ${tableName}:`, error);
-    
+
     // Para cada item, marca como erro (para retentativa posterior)
     for (const item of items) {
       try {
@@ -2027,10 +2035,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           .eq('data_envio', record.data_envio)
           .eq('destinatario_tipo', record.destinatario_tipo)
           .maybeSingle();
-        
+
         if (!error && data) return data;
       }
-      
+
       // Se tiver um ID de referência, verificar por ele
       if (record.referencia_id) {
         const { data, error } = await supabase
@@ -2038,10 +2046,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           .select('*')
           .eq('referencia_id', record.referencia_id)
           .maybeSingle();
-        
+
         if (!error && data) return data;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Erro ao verificar notificacao:', error);
@@ -2054,10 +2062,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const item = items[i];
-      
+
       try {
         let result;
-        
+
         // ✅ CORREÇÃO: Configurações específicas por tabela
         if (tableName === 'system_config') {
           const { data, error } = await supabase
@@ -2067,10 +2075,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             })
             .select()
             .single();
-          
+
           if (error) throw error;
           result = data;
-          
+
         } else if (tableName === 'notificacao') {
           // ✅ CORREÇÃO: Para notificacao, upsert normal
           const { data, error } = await supabase
@@ -2078,10 +2086,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             .upsert(record)
             .select()
             .single();
-          
+
           if (error) throw error;
           result = data;
-          
+
         } else {
           // Para outras tabelas, upsert padrão
           const { data, error } = await supabase
@@ -2091,16 +2099,16 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             })
             .select()
             .single();
-          
+
           if (error) throw error;
           result = data;
         }
-        
+
         if (result) {
           await this.updateLocalId(tableName, item.record_id, result.id);
           await db.syncQueue.delete(item.id!);
         }
-        
+
       } catch (error) {
         console.error(`❌ Erro processando registro individual em ${tableName}:`, error);
         await this.handleSyncError(item, error);
@@ -2122,12 +2130,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           .eq('key_name', record.key_name)
           .eq('instituicao_id', record.instituicao_id)
           .maybeSingle();
-        
+
         if (!error && data) {
           return data;
         }
       }
-      
+
       if (tableName === 'cursos' && record.nome && record.instituicao_id) {
         const { data, error } = await supabase
           .from(tableName)
@@ -2140,7 +2148,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           return data;
         }
       }
-      
+
       // Adicionar verificações para outras tabelas conforme necessário
       return null;
     } catch (error) {
@@ -2153,23 +2161,23 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     try {
       // Atualizar o ID local para o ID existente
       await this.updateLocalId(tableName, item.record_id, existingId);
-      
+
       // Mudar o tipo de operação na fila de INSERT para UPDATE
       await db.syncQueue.update(item.id!, {
         operation: 'upsert',
         record_id: existingId // Usar o ID existente
       });
-      
+
       } catch (error) {
       console.error('Erro ao converter INSERT para UPDATE:', error);
     }
   },
-  
+
   // ✅ Processar UPDATE individual (mais seguro)
   async processSingleUpdate(tableName: string, item: SyncQueueItem) {
     const { getAuthData } = useSyncAuthInManager();
     const authData = getAuthData();
-    
+
     try {
       let record = await this.getRecordFromTable(tableName, item.record_id);
       if (!record) {
@@ -2195,10 +2203,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       if (hasPendingParent(tableName, record)) {
         return;
       }
-      
+
       // Remover campos internos do Dexie
       const { id, sync_status, deleted, createdAt, updated_at, ...cleanRecord } = record;
-      
+
       // ✅ ADICIONAR CAMPOS PARA RLS
 
       const recordWithRLS = {
@@ -2207,19 +2215,19 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         created_at: createdAt || record.created_at || new Date().toISOString(),
         };
       const supabaseResult = await this.executeUpdateToSupabase(tableName, [recordWithRLS], item.record_id);
-      
+
       if (supabaseResult.error) throw supabaseResult.error;
-      
+
       // Marcar como sincronizado
       await this.markAsSynced(tableName, item.record_id);
       await db.syncQueue.delete(item.id!);
-      
+
       } catch (error) {
       console.error(`❌ Erro atualizando ${tableName} ${item.record_id}:`, error);
       await this.handleSyncError(item, error);
     }
   },
-  
+
   // ✅ Processar DELETEs em batch
   async processDeleteBatch(tableName: string, items: SyncQueueItem[]) {
     // Verificar permissões para deletar
@@ -2271,32 +2279,32 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         await this.handleSyncError(item, error);
       }
     }
-    
+
     },
-  
+
   // ✅ Funções auxiliares
   async getRecordFromTable(tableName: string, recordId: string) {
     const table = db.table(tableName);
     return await table.get(recordId);
   },
-  
+
   async markAsSynced(tableName: string, recordId: string) {
     const table = db.table<any>(tableName);
-    await table.update(recordId, { 
+    await table.update(recordId, {
       sync_status: 'synced',
       updated_at: new Date().toISOString()
     });
   },
-  
+
   async deleteLocalRecord(tableName: string, recordId: string) {
     const table = db.table<any>(tableName);
     await table.delete(recordId);
   },
-  
+
   async handleSyncError(item: SyncQueueItem, error: any) {
     const novasTentativas = (item.retry_count || 0) + 1;
     const errorCode = error?.code || error?.status || 'unknown';
-    
+
     if (novasTentativas >= 3) {
       // Marcar como falha permanente
       await db.syncQueue.update(item.id!, {
@@ -2330,29 +2338,29 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       }
     }
   },
-  
+
   async downloadBatch() {
     try {
       const { getAuthData } = useSyncAuthInManager();
       const authData = getAuthData();
-      
+
       if (!authData.isAuthenticated) {
         console.warn('⚠️ Sessão não encontrada no storage; tentando download mesmo assim.');
       }
-      
+
       // 1. Buscar timestamp da última sincronização
       const lastSync = localStorage.getItem(`last_sync_global`);
       const lastSyncDate = lastSync ? new Date(lastSync) : new Date(0);
-      
+
       // 2. Baixar cada tabela em batch (com base nas permissões)
       const { hasPermission } = useSyncAuthInManager();
-      
+
       const tables = [
-        'cursos', 'turmas', 'alunos', 'alocacao', 'transacoes', 'aulas', 
+        'cursos', 'turmas', 'alunos', 'alocacao', 'transacoes', 'aulas',
         'propina', 'frequencias', 'tarefas', 'metas', 'rotinas',
         'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios',"planeamentos","plano_aulas"
       ];
-      
+
       for (const tableName of tables) {
         // Verificar permissões para tabelas sensíveis
         if (tableName === 'profiles' || tableName === 'instituicao') {
@@ -2360,27 +2368,27 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             continue;
           }
         }
-        
+
         const tableLastSync = localStorage.getItem(`last_sync_${tableName}`);
         const tableLastSyncDate = tableLastSync ? new Date(tableLastSync) : lastSyncDate;
         await this.downloadTableBatch(tableName, tableLastSyncDate);
         await new Promise(resolve => setTimeout(resolve, 300)); // Pausa entre tabelas
       }
-      
+
       // 3. Atualizar timestamp global
       localStorage.setItem('last_sync_global', new Date().toISOString());
-      
+
       } catch (error) {
       console.error('❌ Erro no download batch:', error);
     }
   },
-  
+
   // ✅ Baixar tabela específica em batch
   async downloadTableBatch(tableName: string, since: Date) {
     try {
       const localCount = await db.table(tableName).count();
       const shouldForceFullSync = localCount === 0;
-      
+
       // Buscar dados do Supabase (após a última sincronização)
       let query = supabase
         .from(tableName)
@@ -2392,7 +2400,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         query = query.gt('updated_at', since.toISOString());
       } else if (shouldForceFullSync) {
         }
-      
+
       // Filtrar por instituição ativa quando existir.
       // Sem instituição ativa, mantém download global (todas).
       if (tableName !== 'profiles' && tableName !== 'instituicao') {
@@ -2401,14 +2409,14 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           query = query.eq('instituicao_id', instituicaoId);
         }
       }
-      
+
       const { data: remoteData, error } = await query;
-      
+
       if (error) {
         console.error(`❌ Erro buscando ${tableName}:`, error);
         return;
       }
-      
+
       if (!remoteData || remoteData.length === 0) {
         if (HARD_DELETE_RECONCILE_TABLES.has(tableName)) {
           await this.reconcileHardDeletes(tableName);
@@ -2417,7 +2425,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         localStorage.setItem(`last_sync_${tableName}`, new Date().toISOString());
         return;
       }
-      
+
       // Processar em lotes menores para não sobrecarregar o IndexedDB
       const batchSize = 50;
       for (let i = 0; i < remoteData.length; i += batchSize) {
@@ -2441,12 +2449,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       );
 
       emitDbChanged(tableName, 'download');
-      
+
     } catch (error) {
       console.error(`❌ Erro baixando ${tableName}:`, error);
     }
   },
-  
+
   // ✅ Processar lote de download
   async processDownloadBatch(tableName: string, batch: any[]) {
     const table = db.table<any>(tableName);
@@ -2458,14 +2466,14 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         .toArray())
         .map((item) => item.record_id)
     );
-    
+
     // Usar transaction para melhor performance
     await db.transaction('rw', table, async () => {
       for (const remoteRecord of batch) {
         try {
           // Verificar se já existe localmente
           const localRecord = await table.get(remoteRecord.id);
-          
+
           if (!localRecord) {
             // Novo registro - inserir
             await table.put({
@@ -2491,7 +2499,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
               });
             }
           }
-          
+
         } catch (recordError) {
           console.error(`❌ Erro processando registro ${remoteRecord.id}:`, recordError);
         }
@@ -2579,7 +2587,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           await Promise.all([
             // Alunos
             alunosService.getAlunosPorTurma(oldId).then(alunos => {
-              const promises = alunos.map(aluno => 
+              const promises = alunos.map(aluno =>
                 alunosService.updateStudent(aluno.id, {
                   ...aluno,
                   turma_id: newId
@@ -2587,10 +2595,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
               );
               return Promise.allSettled(promises);
             }),
-            
+
             // Aulas
             aulaService.getAulasPorTurma(oldId).then(aulas => {
-              const promises = aulas.map(aula => 
+              const promises = aulas.map(aula =>
                 aulaService.atualizarAula(aula.id, {
                   ...aula,
                   turma_id: newId
@@ -2598,10 +2606,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
               );
               return Promise.allSettled(promises);
             }),
-            
+
             // Horários
             turmaService.getHorarios(oldId).then(horarios => {
-              const promises = horarios.map(horario => 
+              const promises = horarios.map(horario =>
                 turmaService.updateHorario(horario.id, {
                   ...horario,
                   turma_id: newId
@@ -2609,10 +2617,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
               );
               return Promise.allSettled(promises);
             }),
-            
+
             // Avaliações
             avaliacaoService.getAvaliacoesByTurma(oldId).then(avaliacoes => {
-              const promises = avaliacoes.map(avaliacao => 
+              const promises = avaliacoes.map(avaliacao =>
                 avaliacaoService.atualizarAvaliacao(avaliacao.id, {
                   ...avaliacao,
                   turma_id: newId
@@ -2620,10 +2628,10 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
               );
               return Promise.allSettled(promises);
             }),
-            
+
           ]);
           break;
-          
+
         default:
           }
     } catch (error) {
@@ -2642,33 +2650,33 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         .where('instituicao_id')
         .equals(instituicaoId)
         .toArray();
-      
+
       const byStatus = allItems.reduce((acc: Record<string, number>, item) => {
         const status = item.status || 'unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {});
-      
+
       // 2. Verificar itens "synced" que não foram removidos (BUG)
       const syncedItems = allItems.filter(item => item.status === 'synced');
-      
+
       if (syncedItems.length > 0) {
         console.warn(`⚠️ Encontrados ${syncedItems.length} itens "synced" não removidos!`);
-        
+
         // Remove todos os itens marcados como synced
         const idsToDelete = syncedItems.map(item => item.id!).filter(Boolean);
-        
+
         if (idsToDelete.length > 0) {
           await db.syncQueue.bulkDelete(idsToDelete);
           }
       }
-      
+
       // 3. Verificar itens com muitas tentativas falhas
-      const failedItems = allItems.filter(item => 
-        (item.retry_count || 0) > 5 && 
+      const failedItems = allItems.filter(item =>
+        (item.retry_count || 0) > 5 &&
         item.status === 'failed'
       );
-      
+
       if (failedItems.length > 0) {
         console.warn(`⚠️ ${failedItems.length} itens com +5 tentativas falhas`);
         // Você pode decidir remover ou marcar como permanente
@@ -2683,7 +2691,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       });
       if (orphanCleanup.deletedCount > 0) {
         }
-      
+
       return {
         total: allItems.length,
         byStatus,
@@ -2691,7 +2699,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         cleanedFailedWithManyRetries: failedItems.length,
         cleanedOrphanFailed: orphanCleanup.deletedCount || 0
       };
-      
+
     } catch (error:any) {
       console.error('❌ Erro ao verificar syncQueue:', error);
       return { error: error.message };
@@ -2792,12 +2800,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
   // Debug para identificar problemas
   async debugSyncQueueIssue(tableName: string) {
     const instituicaoId = getSyncQueueInstitutionId();
-    
+
     const items = await db.syncQueue
       .where('table').equals(tableName)
       .and((item) => !instituicaoId || item.instituicao_id === instituicaoId)
       .toArray();
-    
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       // Verificar se o registro ainda existe
@@ -2835,12 +2843,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
         const ids = batch.map(item => item.id!).filter(Boolean);
-        
+
         if (ids.length > 0) {
           await db.syncQueue.bulkDelete(ids);
           }
       }
-      
+
       } catch (error) {
       console.error('❌ Erro na limpeza forçada:', error);
     }
@@ -2855,14 +2863,14 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         .where('instituicao_id').equals(instituicaoId)
         .filter(item => item.status === 'failed' && (item.retry_count || 0) < maxRetries)
         .toArray();
-      
+
       if (failedItems.length === 0) {
         return;
       }
-      
+
       // Agrupar por tabela e processar
       const itemsByTable = this.groupByTable(failedItems);
-      
+
       for (const [tableName, items] of Object.entries(itemsByTable)) {
         // Resetar status para pending
         const ids = items.map(item => item.id!).filter(Boolean);
@@ -2874,11 +2882,11 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
             data: "",
             error: ""
           });
-        
+
         // Processar a tabela novamente
         await this.processTableBatch(tableName, items);
       }
-      
+
     } catch (error) {
       console.error('❌ Erro na retentativa:', error);
     }
@@ -2890,7 +2898,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     const allItems = instituicaoId
       ? await db.syncQueue.where('instituicao_id').equals(instituicaoId).toArray()
       : [];
-    
+
     const stats = {
       total: allItems.length,
       byStatus: allItems.reduce((acc: Record<string, number>, item) => {
@@ -2903,22 +2911,22 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         acc[table] = (acc[table] || 0) + 1;
         return acc;
       }, {}),
-      pendingInserts: allItems.filter(item => 
-        item.status === 'pending' && 
-        item.operation === 'upsert' && 
+      pendingInserts: allItems.filter(item =>
+        item.status === 'pending' &&
+        item.operation === 'upsert' &&
         item.record_id.startsWith('local_')
       ).length,
-      pendingUpdates: allItems.filter(item => 
-        item.status === 'pending' && 
-        item.operation === 'upsert' && 
+      pendingUpdates: allItems.filter(item =>
+        item.status === 'pending' &&
+        item.operation === 'upsert' &&
         !item.record_id.startsWith('local_')
       ).length,
-      pendingDeletes: allItems.filter(item => 
-        item.status === 'pending' && 
+      pendingDeletes: allItems.filter(item =>
+        item.status === 'pending' &&
         item.operation === 'delete'
       ).length,
     };
-    
+
     return stats;
   },
 
@@ -2929,7 +2937,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       if (!instituicaoId) return;
       const cutoffDate = new Date();
       cutoffDate.setHours(cutoffDate.getHours() - maxAgeHours);
-      
+
       const oldItems = await db.syncQueue
         .where('instituicao_id')
         .equals(instituicaoId)
@@ -2938,7 +2946,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           return itemDate < cutoffDate && item.status === 'synced';
         })
         .toArray();
-      
+
       if (oldItems.length > 0) {
         const ids = oldItems.map(item => item.id!).filter(Boolean);
         await db.syncQueue.bulkDelete(ids);
@@ -2955,26 +2963,26 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     const allItems = instituicaoId
       ? await db.syncQueue.where('instituicao_id').equals(instituicaoId).toArray()
       : [];
-    
+
     for (const item of allItems) {
       // Verificar se tem ID
       if (!item.id) {
         issues.push({ item, problem: 'Sem ID' });
         continue;
       }
-      
+
       // Verificar se tem tabela
       if (!item.table) {
         issues.push({ item, problem: 'Sem tabela' });
         continue;
       }
-      
+
       // Verificar se tem record_id
       if (!item.record_id) {
         issues.push({ item, problem: 'Sem record_id' });
         continue;
       }
-      
+
       // Verificar se a tabela existe no banco local
       try {
         const tableExists = db.tables.some(t => t.name === item.table);
@@ -2985,12 +2993,12 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
         issues.push({ item, problem: 'Erro ao verificar tabela' });
       }
     }
-    
+
     if (issues.length > 0) {
       console.warn(`⚠️ Encontrados ${issues.length} problemas de integridade:`, issues);
       return { ok: false, issues };
     }
-    
+
     return { ok: true, issues: [] };
   },
 
@@ -2999,7 +3007,7 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
     if (!confirm('⚠️ Tem certeza que deseja resetar completamente a fila de sincronização? Esta ação não pode ser desfeita.')) {
       return;
     }
-    
+
     try {
       await db.syncQueue.clear();
       // Opcional: marcar todos os registros como não sincronizados
@@ -3007,15 +3015,15 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       for (const tableName of tables) {
         const table = db.table(tableName);
         const records = await table.toArray();
-        
+
         const updates = records.map(record => ({
           ...record,
           sync_status: 'pending'
         }));
-        
+
         await table.bulkPut(updates);
       }
-      
+
       } catch (error) {
       console.error('❌ Erro ao resetar syncQueue:', error);
     }
@@ -3189,13 +3197,13 @@ export const setupAutoSync = () => {
   }
 
   const GHOST_CLEANUP_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 dias
-  
+
   let ghostCleanupInterval: ReturnType<typeof setInterval> | null = null;
-  
+
   if (ghostCleanupInterval) {
     clearInterval(ghostCleanupInterval);
   }
-  
+
   ghostCleanupInterval = setInterval(async () => {
     if (navigator.onLine) {
       console.log('🧹 Executando limpeza programada de dados fantasmas...');
@@ -3239,7 +3247,7 @@ export const setupAutoSync = () => {
   autoSyncInterval = setInterval(async () => {
     await runScopedSyncForCurrentRoute();
   }, AUTO_SYNC_INTERVAL_MS);
-  
+
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
   }
@@ -3247,14 +3255,14 @@ export const setupAutoSync = () => {
     await syncManager.cleanupOldItems(24);
     await syncManager.verifyQueueIntegrity();
   }, 24 * 60 * 60 * 1000);
-  
+
   if (integrityInterval) {
     clearInterval(integrityInterval);
   }
   integrityInterval = setInterval(async () => {
     await syncManager.verifyQueueIntegrity();
   }, 60 * 60 * 1000);
-  
+
   return {
     stop: () => {
       if (autoSyncInterval) clearInterval(autoSyncInterval);
@@ -3282,23 +3290,23 @@ export const setupAutoSync = () => {
 // Função para monitorar o progresso da sincronização
 export const createSyncMonitor = () => {
   let lastStats: any = null;
-  
+
   return {
     async monitor() {
       const stats = await syncManager.getSyncStats();
       const changed = JSON.stringify(stats) !== JSON.stringify(lastStats);
-      
+
       if (changed) {
         lastStats = stats;
-        
+
         // Emitir evento customizado para UI
         const event = new CustomEvent('sync-stats-update', { detail: stats });
         window.dispatchEvent(event);
       }
-      
+
       return stats;
     },
-    
+
     startMonitoring(intervalMs: number = 5000) {
       const interval = setInterval(() => this.monitor(), intervalMs);
       return () => clearInterval(interval);
