@@ -161,9 +161,9 @@ export const CompletarMatricula = () => {
                 }
             }
 
-            // 4. Atualizar status da matrícula do aluno
+            // 4. Reavaliar status da matrícula do aluno
             await alunosService.updateStudent(aluno.id, {
-                estado: 'ativo'
+                estado: aluno.estado
             });
             
             setSucesso(true);
@@ -239,7 +239,7 @@ export const CompletarMatricula = () => {
                             Total Registrado: {formatarMoeda(calcularTotal())}
                         </div>
                         <p className="text-sm text-green-700 mt-2">
-                            {aluno.nome_completo} está agora ativo
+                            {aluno.nome_completo} teve a matrícula financeira concluída.
                         </p>
                     </div>
                     <div className="flex gap-3">

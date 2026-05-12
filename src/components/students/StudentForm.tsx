@@ -1,16 +1,16 @@
 import { FaMoneyBill, FaPeopleCarry } from "react-icons/fa";
 import { FaPeopleLine } from "react-icons/fa6";
-import { 
-  FiActivity, FiCalendar, FiHome, FiMail, 
-  FiPhone, FiUsers, FiFileText, FiSave, 
-  FiUser, FiBook, FiTarget, FiAward, 
-  FiClock, FiBookOpen, 
+import {
+  FiActivity, FiCalendar, FiHome, FiMail,
+  FiPhone, FiUsers, FiFileText, FiSave,
+  FiUser, FiBook, FiTarget, FiAward,
+  FiClock, FiBookOpen,
   FiArrowLeft
 } from "react-icons/fi";
 
 import { RxPerson } from "react-icons/rx";
 import { Student, StudentFormData, StudentFormProps } from "../../types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import { turmaService } from "../../services/database/turmas";
 import { cursosService } from "../../services/database/curso";
@@ -22,10 +22,32 @@ import { AnimatePresence, motion } from "framer-motion";
 import { logoBlack } from "../auth/Login.jsx";
 import { useConfirmModal } from "../ui/ComfirmModal";
 import { useAlert } from "../ui/AlertBadge";
+import { resolveStudentAcademicStatus } from "../../utils/studentAcademicStatus";
 
 // ✅ Chave para localStorage
-const getStorageKey = (studentId?: string) => 
+const getStorageKey = (studentId?: string) =>
   studentId ? `edugestor_draft_${studentId}` : 'edugestor_new_student_draft';
+
+const normalizeAcademicYear = (value?: string) => {
+  const raw = String(value || '').trim();
+  const rangeMatch = raw.match(/(\d{4})\D+(\d{4})/);
+  if (rangeMatch) {
+    return `${rangeMatch[1]}-${rangeMatch[2]}`;
+  }
+
+  const year = Number(raw);
+  if (Number.isFinite(year) && year > 0) {
+    return `${year}-${year + 1}`;
+  }
+
+  const currentYear = new Date().getFullYear();
+  return `${currentYear}-${currentYear + 1}`;
+};
+
+const getAcademicYearStart = (value?: string) => {
+  const normalized = normalizeAcademicYear(value);
+  return Number(normalized.split('-')[0] || new Date().getFullYear());
+};
 
 export const SelectTyped = Select as unknown as React.ComponentType<any>;
 
@@ -42,7 +64,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const storageKey = getStorageKey(student?.id);
   const [submit,setSubmit]=useState(true)
   const { confirm, ModalComponent } = useConfirmModal();
-  const { showAlert } = useAlert(); 
+  const { showAlert } = useAlert();
   const [comfirm, setComfirm] = useState(false);
   const [cancel, setCancel] = useState(false);
   const [update, setUpdate] = useState(false);
@@ -72,7 +94,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     grupo_aprendizado: student.grupo_aprendizado || 'gama',
     objetivos_academicos: student.objetivos_academicos || '',
     pagamento_em_dia: false,
-    ano_lectivo: ano,
+    ano_lectivo: student.ano_lectivo || ano,
     sync_status: "pending"
   } : {
     nome_completo: '',
@@ -103,14 +125,44 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     sync_status: "pending"
 
   };
-  const { 
-    data: formData, 
-    setData: setFormData, 
-    lastSave, 
-    saveDraft, 
+  const {
+    data: formData,
+    setData: setFormData,
+    lastSave,
+    saveDraft,
     clearDraft,
-    hasUnsavedChanges 
+    hasUnsavedChanges
   } = useAutoSave(storageKey, initialData, 2000);
+
+  const anoLectivoSelecionado = normalizeAcademicYear(formData.ano_lectivo || ano);
+
+  const anosLectivosDisponiveis = useMemo(() => {
+    const baseYear = getAcademicYearStart(anoLectivoSelecionado);
+    const anosBase = [baseYear - 1, baseYear, baseYear + 1, baseYear + 2]
+      .filter((year) => Number.isFinite(year) && year > 0)
+      .map((year) => `${year}-${year + 1}`);
+
+    const anosDasTurmas = turmas.map((turma) => normalizeAcademicYear(turma.ano_lectivo));
+    const anos = Array.from(
+      new Set([
+        ...anosBase,
+        normalizeAcademicYear(student?.ano_lectivo),
+        normalizeAcademicYear(ano),
+        normalizeAcademicYear(formData.ano_lectivo),
+        ...anosDasTurmas
+      ].filter(Boolean))
+    );
+
+    return anos.sort((left, right) => getAcademicYearStart(left) - getAcademicYearStart(right));
+  }, [ano, anoLectivoSelecionado, formData.ano_lectivo, student?.ano_lectivo, turmas]);
+
+  const turmasDoAnoSelecionado = useMemo(
+    () =>
+      turmas.filter(
+        (turma) => normalizeAcademicYear(turma.ano_lectivo) === anoLectivoSelecionado
+      ),
+    [anoLectivoSelecionado, turmas]
+  );
 
   // ✅ Carregar cursos e turmas
   useEffect(() => {
@@ -123,35 +175,64 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   // ✅ Definir turma padrão para matrícula regular
   useEffect(() => {
-    if (!isInitialLoad && turmas.length > 0 && tipoMatricula === 'regular') {
-      if (!formData.turma_id || !turmas.some(turma => turma.id === formData.turma_id)) {
-        const primeiraTurmaId = turmas[0].id;
-        setFormData((prev: StudentFormData) => ({ 
-          ...prev, 
-          turma_id: primeiraTurmaId 
+    if (!isInitialLoad && tipoMatricula === 'regular') {
+      if (turmasDoAnoSelecionado.length === 0) {
+        if (formData.turma_id) {
+          setFormData((prev: StudentFormData) => ({ ...prev, turma_id: '' }));
+        }
+        return;
+      }
+
+      if (
+        !formData.turma_id ||
+        !turmasDoAnoSelecionado.some((turma) => turma.id === formData.turma_id)
+      ) {
+        const primeiraTurmaId = turmasDoAnoSelecionado[0].id;
+        setFormData((prev: StudentFormData) => ({
+          ...prev,
+          turma_id: primeiraTurmaId
         }));
       }
     } else if (tipoMatricula !== 'regular' && formData.turma_id) {
       setFormData((prev: StudentFormData) => ({ ...prev, turma_id: '' }));
     }
-  }, [isInitialLoad, turmas, tipoMatricula, formData.turma_id]);
+  }, [isInitialLoad, turmasDoAnoSelecionado, tipoMatricula, formData.turma_id]);
 
   useEffect(() => {
     setTipoMatricula(formData.tipo_matricula || 'regular');
   }, [formData.tipo_matricula]);
 
   useEffect(() => {
-    if (isEditing) return;
+    if (tipoMatricula === 'reforco_personalizado') {
+      if (isEditing || formData.estado === 'inativo' || formData.estado === 'transferido' || formData.estado === 'desistente') {
+        return;
+      }
 
-    if (tipoMatricula === 'reforco_personalizado' && formData.estado !== 'inativo') {
       setFormData((prev: StudentFormData) => ({ ...prev, estado: 'inativo' }));
       return;
     }
 
-    if (tipoMatricula === 'regular' && formData.estado === 'inativo') {
-      setFormData((prev: StudentFormData) => ({ ...prev, estado: 'ativo' }));
+    const proximoEstado = resolveStudentAcademicStatus({
+      ano_lectivo: formData.ano_lectivo || anoLectivoSelecionado,
+      tipo_matricula: 'regular',
+      estado: formData.estado,
+      numero_estudante: student?.numero_estudante || 0,
+      instituicao_id: student?.instituicao_id
+    } as Student);
+
+    if (proximoEstado !== formData.estado) {
+      setFormData((prev: StudentFormData) => ({ ...prev, estado: proximoEstado }));
     }
-  }, [tipoMatricula, isEditing, formData.estado, setFormData]);
+  }, [
+    tipoMatricula,
+    isEditing,
+    formData.estado,
+    formData.ano_lectivo,
+    anoLectivoSelecionado,
+    setFormData,
+    student?.numero_estudante,
+    student?.instituicao_id
+  ]);
 
   useEffect(() => {
     if (tipoMatricula !== 'regular' || !formData.turma_id) return;
@@ -182,8 +263,12 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
       }, {} as Record<string, number>);
       setPrecoCursoById(precosMap);
 
-      setAno(anoLetivo as string);
-      setFormData((prev: StudentFormData) => ({ ...prev, ano_lectivo: prev.ano_lectivo || anoLetivo }));
+      const anoNormalizado = normalizeAcademicYear(anoLetivo as string);
+      setAno(anoNormalizado);
+      setFormData((prev: StudentFormData) => ({
+        ...prev,
+        ano_lectivo: normalizeAcademicYear(prev.ano_lectivo || anoNormalizado)
+      }));
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
     }
@@ -204,16 +289,16 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     const { name, value, type } = e.target;
     setFormData((prev: any) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked :
               type === 'number' ? Number(value) : value
     }));
   };
 
   const handleChangeSel = (field: string, value: any) => {
     setUpdate(true)
-    setFormData((prev: StudentFormData) => ({ 
-      ...prev, 
-      [field]: value 
+    setFormData((prev: StudentFormData) => ({
+      ...prev,
+      [field]: value
     }));
   };
 
@@ -232,7 +317,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     if ((update||hasUnsavedChanges) && !cancel) {
       setUpdate(true)
       setComfirm(true)
-      return 
+      return
     }else if(cancel){
       setComfirm(false)
       clearDraft();
@@ -244,9 +329,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
   // Disciplinas disponíveis
   const disciplinasDisponiveis = [
-    'Matemática', 'Português', 'Física', 'Química', 
-    'Biologia', 'História', 'Geografia', 'Inglês',
-    'Francês', 'Filosofia', 'Educação Visual', 'Educação Física'
+    'Matemática', 'Português', 'Física', 'Química',
+    'Biologia', 'História', 'Geografia', 'Inglês', 'Informatica', 'Oratoria','Exame de acesso'
   ];
 
   // Grupos de aprendizado
@@ -276,7 +360,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">{title}</h1>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {lastSave && (
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
@@ -284,7 +368,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <span>Salvo: {new Date(lastSave).toLocaleTimeString()}</span>
               </div>
             )}
-            
+
             <button
               type="button"
               onClick={handleManualSave}
@@ -302,14 +386,14 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             </button>
           </div>
         </div>
-        
+
         {/* SELEÇÃO DE TIPO DE MATRÍCULA */}
         <div className=" p-6 pt-0">
           <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
             <FiTarget className="mr-2" />
             Tipo de Matrícula
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <motion.button
               initial={{ opacity: 0, y: -20 }}
@@ -344,7 +428,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <li>• Grupo ABC + Gama/Beta/Alfa</li>
               </ul>
             </motion.button>
-            
+
             <motion.button
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -381,11 +465,10 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             </motion.button>
           </div>
         </div>
-        
-        <div className={tipoMatricula=="regular"&&turmas.length==0?"flex justify-center":"grid grid-cols-1 lg:grid-cols-2 gap-8"}>
-          
+        <div className={tipoMatricula=="regular"&&turmasDoAnoSelecionado.length==0?"flex justify-center":"grid grid-cols-1 lg:grid-cols-2 gap-8"}>
+
           {
-          tipoMatricula=="regular"&&turmas.length==0?
+          tipoMatricula=="regular"&&turmasDoAnoSelecionado.length==0?
           <>
              <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -394,11 +477,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
             className='flex justify-center flex-col items-center w-full h-96'>
                 <div className='flex flex-col items-center w-96 text-center'>
                     <img src={logoBlack} alt="" />
-                    
-                    <h3 className="mt-2 text-md font-medium text-gray-900 dark:text-white">Adicione uma turma para adicionar alunos</h3>
+
+                    <h3 className="mt-2 text-md font-medium text-gray-900 dark:text-white">Sem turma no ano letivo {anoLectivoSelecionado}</h3>
                     <p className="mt-1 text-wrap text-m text-gray-500 dark:text-gray-400">
-                      Para aluno regular é obrigatório selecionar uma turma. 
-                      Caso deseje adicionar um personalizado, troque o tipo de matrícula.
+                      Para aluno regular é obrigatório selecionar uma turma do mesmo ano letivo.
+                      Altere o ano letivo acima ou crie uma turma para continuar.
                     </p>
                       <button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 my-5 hover:to-indigo-800 text-white px-8 py-2 rounded-lg font-medium "
                       onClick={()=> {setSubmit(false);navigate("/turmas/nova")}}>Adicionar Turma</button>
@@ -411,7 +494,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               <RxPerson className="mr-2" />
               Dados Pessoais
             </h3>
-            
+
             {/* Nome Completo */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_completo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -419,11 +502,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <RxPerson className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                  type="text" 
-                  placeholder="Informe o nome completo" 
-                  name="nome_completo" 
+                <input
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="text"
+                  placeholder="Informe o nome completo"
+                  name="nome_completo"
                   id="nome_completo"
                   value={formData.nome_completo}
                   onChange={(e)=>handleChange(e)}
@@ -431,7 +514,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 />
               </div>
             </div>
-            
+
             {/* Data de Nascimento */}
             <div className="flex flex-col gap-2">
               <label htmlFor="data_nascimento" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -439,15 +522,15 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                  type="date" 
+                <input
+                  className="w-full p-3 pl-10 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 bg-white border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="date"
                   name="data_nascimento"
                   id="data_nascimento"
                   value={formData.data_nascimento}
                   max={new Date(new Date().getFullYear() - 4, new Date().getMonth(), new Date().getDate()).toISOString().split('T')[0]}
                   onChange={handleChange}
-                  
+
                 />
               </div>
             </div>
@@ -457,18 +540,18 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Sexo *
               </label>
-              <SelectTyped 
+              <SelectTyped
                 vect={[
                   { value: 'M', label: 'Masculino' },
                   { value: 'F', label: 'Feminino' }
-                ]} 
+                ]}
                 icon={FiUser}
                 onChange={(value: string) => handleChangeSel('sexo', value)}
                 value={formData.sexo}
                 placeholder="Selecione o sexo"
               />
             </div>
-            
+
             {/* Nome do Pai */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_pai" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -476,18 +559,18 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                  type="text" 
+                <input
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="text"
                   value={formData.nome_pai}
-                  placeholder="Nome completo do pai" 
-                  name="nome_pai" 
+                  placeholder="Nome completo do pai"
+                  name="nome_pai"
                   id="nome_pai"
                   onChange={handleChange}
                 />
               </div>
             </div>
-            
+
             {/* Nome da Mãe */}
             <div className="flex flex-col gap-2">
               <label htmlFor="nome_mae" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -495,11 +578,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <FaPeopleCarry className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                  type="text" 
-                  placeholder="Nome completo da mãe" 
-                  name="nome_mae" 
+                <input
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="text"
+                  placeholder="Nome completo da mãe"
+                  name="nome_mae"
                   value={formData.nome_mae}
                   onChange={handleChange}
                   id="nome_mae"
@@ -514,10 +597,10 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <input 
-                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                  type="date" 
-                  name="data_matricula" 
+                <input
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="date"
+                  name="data_matricula"
                   id="data_matricula"
                   value={formData.data_matricula}
                   onChange={handleChange}
@@ -534,10 +617,10 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
               </label>
               <div className="relative">
                 <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                <textarea 
-                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-gray-900 dark:text-white" 
-                  placeholder="Endereço completo" 
-                  name="endereco" 
+                <textarea
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-gray-900 dark:text-white"
+                  placeholder="Endereço completo"
+                  name="endereco"
                   id="endereco"
                   value={formData.endereco}
                   onChange={handleChange}
@@ -545,6 +628,18 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 />
               </div>
             </div>
+            <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Ano Letivo do Aluno *
+                </label>
+                <SelectTyped
+                  vect={anosLectivosDisponiveis}
+                  icon={FiCalendar}
+                  onChange={(value: string) => handleChangeSel('ano_lectivo', normalizeAcademicYear(value))}
+                  value={anoLectivoSelecionado}
+                  placeholder="Selecione o ano letivo"
+                />
+              </div>
             </div>
 
             {/* Coluna Direita - INFORMAÇÕES ACADÊMICAS E CONTATO */}
@@ -553,7 +648,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <FiBookOpen className="mr-2" />
                 Informações Acadêmicas e Contato
               </h3>
-              
+
               {/* Contacto Telefónico Principal */}
               <div className="flex flex-col gap-2">
                 <label htmlFor="contacto_principal" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -561,12 +656,12 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 </label>
                 <div className="relative">
                   <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                  <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                    type="text" 
-                    placeholder="XXX XXX XXX" 
+                  <input
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                    type="text"
+                    placeholder="XXX XXX XXX"
                     maxLength={9}
-                    name="contacto_principal" 
+                    name="contacto_principal"
                     value={formData.contacto_principal}
                     onChange={handleChange}
                     id="contacto_principal"
@@ -581,19 +676,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 </label>
                 <div className="relative">
                   <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                  <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                    type="text" 
-                    placeholder="XXX XXX XXX" 
+                  <input
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                    type="text"
+                    placeholder="XXX XXX XXX"
                     maxLength={9}
-                    name="contacto_secundario" 
+                    name="contacto_secundario"
                     value={formData.contacto_secundario}
                     onChange={handleChange}
                     id="contacto_secundario"
                   />
                 </div>
               </div>
-              
+
               {/* Email */}
               <div className="flex flex-col gap-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -601,12 +696,12 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 </label>
                 <div className="relative">
                   <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                  <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                    type="email" 
-                    placeholder="exemplo@email.com" 
+                  <input
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                    type="email"
+                    placeholder="exemplo@email.com"
                     value={formData.email}
-                    name="email" 
+                    name="email"
                     id="email"
                     onChange={handleChange}
                   />
@@ -620,11 +715,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 </label>
                 <div className="relative">
                   <FaMoneyBill className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
-                  <input 
-                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white" 
-                    type="number" 
-                    placeholder="Quanto pagará por propina" 
-                    name="propina" 
+                  <input
+                    className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                    type="number"
+                    placeholder="Quanto pagará por propina"
+                    name="propina"
                     id="propina"
                     value={formData.propina}
                     onChange={handleChange}
@@ -643,19 +738,19 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Turma *
                     </label>
-                    <SelectTyped 
-                      vect={turmas.map(turma => ({
+                    <SelectTyped
+                      vect={turmasDoAnoSelecionado.map(turma => ({
                         value: turma.id,
                         label: `${turma.nome_turma} - ${turma.curso_nome || 'Sem curso'}`
-                      }))} 
+                      }))}
                       icon={FiUsers}
                       onChange={(value: string) => handleChangeSel('turma_id', value)}
                       value={formData.turma_id}
                       placeholder="Selecione uma turma disponível"
-                      disabled={turmas.length === 0}
+                      disabled={turmasDoAnoSelecionado.length === 0}
                     />
-                    {turmas.length === 0 && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Nenhuma turma disponível</p>
+                    {turmasDoAnoSelecionado.length === 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Nenhuma turma disponível para {anoLectivoSelecionado}</p>
                     )}
                   </div>
 
@@ -664,8 +759,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Grupo de Aprendizado *
                     </label>
-                    <SelectTyped 
-                      vect={gruposAprendizado} 
+                    <SelectTyped
+                      vect={gruposAprendizado}
                       icon={FiAward}
                       onChange={(value: string) => handleChangeSel('grupo_aprendizado', value)}
                       value={formData.grupo_aprendizado}
@@ -678,8 +773,8 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Nível de Conhecimento Atual *
                     </label>
-                    <SelectTyped 
-                      vect={niveisConhecimento} 
+                    <SelectTyped
+                      vect={niveisConhecimento}
                       icon={FiActivity}
                       onChange={(value: string) => handleChangeSel('nivel_conhecimento', value)}
                       value={formData.nivel_conhecimento}
@@ -757,26 +852,27 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Classe Escolar *
                 </label>
-                <SelectTyped 
-                  vect={['Pré', '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª']} 
+                <SelectTyped
+                  vect={['Pré', '1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª', '8ª', '9ª', '10ª']}
                   icon={FiBook}
                   onChange={(value: string) => handleChangeSel('classe_escolar', value)}
                   value={formData.classe_escolar}
                   placeholder="Selecione a classe"
                 />
               </div>
-              
+
               {/* ✅ ESTADO */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Estado *
                 </label>
-                <SelectTyped 
+                <SelectTyped
                   vect={[
                     { value: 'ativo', label: 'Ativo' },
+                    { value: 'inativo', label: 'Inativo' },
                     { value: 'transferido', label: 'Transferido' },
-                    { value: 'desistente', label: 'Desistente' }
-                  ]} 
+                    { value: 'desistente', label: 'Desistente' },
+                  ]}
                   icon={FiActivity}
                   onChange={(value: string) => handleChangeSel('estado', value)}
                   value={formData.estado}
@@ -805,23 +901,23 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
 
         {/* Botões de Ação */}
         <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={handleCancel}
             disabled={loading}
             className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
           >
             Cancelar
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Salvando...' : (isEditing ? 'Atualizar Aluno' : 'Salvar Aluno')}
           </button>
         </div>
-        
+
       </motion.form>
      <ModalComponent/>
     </>

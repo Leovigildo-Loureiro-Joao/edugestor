@@ -12,6 +12,7 @@ import { generateUniqueId } from '../../utils/idGenarator';
 import { financeRulesService } from '../finance/financeRulesService';
 import { propinaCascadeService } from './propinaCascade';
 import { setStudentBillingStartMonth } from '../../utils/studentBillingStartMonth';
+import { resolveStudentAcademicStatus } from '../../utils/studentAcademicStatus';
 
 const getActiveInstituicaoId = () => instituicaoIdValue();
 
@@ -508,6 +509,27 @@ export const transacaoService = {
         alunoId,
         mesesReferencia
       );
+
+      if (aluno) {
+        const proximoEstado = resolveStudentAcademicStatus(aluno);
+        if (proximoEstado !== aluno.estado) {
+          const now = new Date().toISOString();
+          await db.alunos.update(alunoId, {
+            estado: proximoEstado,
+            updated_at: now,
+            sync_status: 'pending'
+          });
+
+          await db.syncQueue.add({
+            table: 'alunos',
+            instituicao_id: aluno.instituicao_id || instituicaoIdValue(),
+            record_id: alunoId,
+            operation: 'upsert',
+            status: 'pending',
+            created_at: now
+          });
+        }
+      }
 
       // Sincronizar se online
       if (navigator.onLine) {

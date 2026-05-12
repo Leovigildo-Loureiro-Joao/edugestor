@@ -64,7 +64,7 @@ const Students = () => {
         const throttledReload = createThrottledCallback(() => {
           reload();
         }, 2500);
-        
+
         const handleDbChanged = (event: Event) => {
           if (shouldHandleDbChangedEvent(event, ['alunos'])) {
             throttledReload();
@@ -74,7 +74,7 @@ const Students = () => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         window.addEventListener('db-changed', handleDbChanged);
-        
+
         // Carregar estatísticas de sincronização
         const loadSyncStats = async () => {
           try {
@@ -84,18 +84,18 @@ const Students = () => {
             console.error('Erro ao carregar sync stats:', error);
           }
         };
-  
+
         loadSyncStats();
-        
+
         // Ouvir eventos de sincronização
         const handleSyncUpdate = () => {
           loadSyncStats();
         };
         const interval = setInterval(handleSyncUpdate, 30000);
-        
+
         window.addEventListener('sync-pending', handleSyncUpdate);
         window.addEventListener('sync-complete', handleSyncUpdate);
-        
+
         return () => {
           window.removeEventListener('online', handleOnline);
           window.removeEventListener('offline', handleOffline);
@@ -133,7 +133,7 @@ const Students = () => {
 
     loadProfessores();
   }, []);
-     
+
 
   const handleForceSync = async () => {
     try {
@@ -146,7 +146,7 @@ const Students = () => {
         message: 'Os dados foram sincronizados com o servidor.',
         duration: 3000
       });
-      
+
     } catch (error) {
       showAlert({
         type: 'error',
@@ -162,7 +162,7 @@ const Students = () => {
   };
 
   const estadoSet = ["Todos estados", "ativo", "inativo", "transferido", "desistente"];
-  const anoLectivoSet = ["Todos ano lectivos", "2024-2025", "2025-2026", "2027-2028", "2028-2029", "2030-2031"];
+  const anoLectivoSet = ["Todos ano lectivos", "2024-2025", "2025-2026", "2026-2027","2027-2028", "2028-2029", "2030-2031"];
   const disciplinasReforcoSet = useMemo(() => {
     const disciplinas = new Set<string>();
     students
@@ -175,12 +175,12 @@ const Students = () => {
   const { professores, turmas } = useMemo(() => {
     const profsSet = new Set<string>();
     const turmsSet = new Set<string>();
-   
+
     students.forEach(student => {
       if (student.professor) profsSet.add(student.professor);
       if (student.turma_nome) turmsSet.add(student.turma_nome);
     });
-    
+
     return {
       professores: professorOptions.length > 0
         ? professorOptions
@@ -194,7 +194,7 @@ const Students = () => {
     try {
       setLoading(true);
       const studentsData = await alunosService.getAllStudents();
-      setStudents(studentsData);  
+      setStudents(studentsData);
     } catch (error) {
       showAlert({
         type: 'error',
@@ -231,7 +231,7 @@ const Students = () => {
             message: `${student.nome_completo} foi removido do sistema.`,
             duration: 3000
           });
-          
+
         } catch (error) {
           showAlert({
             type: 'error',
@@ -250,7 +250,7 @@ const Students = () => {
       const nomeMatch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
       const numeroMatch = student.numero_estudante?.toString().includes(searchTerm) || false;
       const matchesSearch = nomeMatch || numeroMatch;
-      
+
       const matchesProfessor = filtroProfessor === 'Todos Professores' || student.professor === filtroProfessor;
       const matchesTurma = filtroTurma === 'Todas Turmas' || student.turma_nome === filtroTurma;
       const matchesEstado = filtroEstado === 'Todos estados' || student.estado === filtroEstado;
@@ -260,7 +260,7 @@ const Students = () => {
         filtroDisciplinaReforco === 'Todas disciplinas de reforço' ||
         (student.tipo_matricula === 'reforco_personalizado' &&
           (student.disciplinas_reforco || []).includes(filtroDisciplinaReforco));
-      
+
       return (
         matchesSearch &&
         matchesProfessor &&
@@ -296,7 +296,7 @@ const Students = () => {
       const nomeMatch = student.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
       const numeroMatch = student.numero_estudante?.toString().includes(searchTerm) || false;
       const matchesSearch = nomeMatch || numeroMatch;
-      
+
       const matchesProfessor = filtroProfessor === 'Todos Professores' || student.professor === filtroProfessor;
       const matchesTurma = filtroTurma === 'Todas Turmas' || student.turma_nome === filtroTurma;
       const matchesEstado = filtroEstado === 'Todos estados' || student.estado === filtroEstado;
@@ -306,7 +306,7 @@ const Students = () => {
         filtroDisciplinaReforco === 'Todas disciplinas de reforço' ||
         (student.tipo_matricula === 'reforco_personalizado' &&
           (student.disciplinas_reforco || []).includes(filtroDisciplinaReforco));
-      
+
       return (
         matchesSearch &&
         matchesProfessor &&
@@ -537,7 +537,7 @@ const Students = () => {
               </div>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                 Gerencie os alunos da instituição
-              </p>    
+              </p>
             </motion.div>
           </div>
 
@@ -554,7 +554,7 @@ const Students = () => {
                   placeholder="Buscar por nome ou número..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg 
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg
                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                           placeholder-gray-500 dark:placeholder-gray-400
                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
@@ -602,26 +602,26 @@ const Students = () => {
 
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard 
-            title="Alunos Filtrados" 
+          <StatCard
+            title="Alunos Filtrados"
             value={estatisticas.total}
             subtitle={estatisticas.total === students.length ? 'Todos os alunos' : `${((estatisticas.total / students.length) * 100).toFixed(1)}% do total`}
             icon={FaPeopleGroup}
             color="blue"
             trend={estatisticas.total > 0 ? 'positive' : 'neutral'}
           />
-          
-          <StatCard 
-            title="Ativos" 
+
+          <StatCard
+            title="Ativos"
             value={estatisticas.ativos}
             subtitle={estatisticas.total > 0 ? `${((estatisticas.ativos / estatisticas.total) * 100).toFixed(1)}% dos filtrados` : 'Sem dados'}
             icon={FaGraduationCap}
             color="green"
             trend={estatisticas.ativos > 0 ? 'positive' : 'neutral'}
           />
-          
-          <StatCard 
-            title="Inativos" 
+
+          <StatCard
+            title="Inativos"
             value={estatisticas.inativos}
             subtitle={
               <>
@@ -634,9 +634,9 @@ const Students = () => {
             color="red"
             trend="neutral"
           />
-          
-          <StatCard 
-            title="Cartão Pago" 
+
+          <StatCard
+            title="Cartão Pago"
             value={estatisticas.cartaoPago}
             subtitle={estatisticas.total > 0 ? `${estatisticas.percentualCartao.toFixed(1)}% dos filtrados` : 'Sem dados'}
             icon={FaBookAtlas}
@@ -660,30 +660,30 @@ const Students = () => {
               Filtros:
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 flex-1">
-              <SelectTyped 
-                vect={professores} 
-                icon={RxPerson} 
+              <SelectTyped
+                vect={professores}
+                icon={RxPerson}
                 onChange={setFiltroProfessor}
                 value={filtroProfessor}
                 className="w-full"
               />
-              <SelectTyped 
-                vect={turmas} 
-                icon={FiLayers} 
+              <SelectTyped
+                vect={turmas}
+                icon={FiLayers}
                 onChange={setFiltroTurma}
                 value={filtroTurma}
                 className="w-full"
               />
-              <SelectTyped 
-                vect={estadoSet} 
-                icon={FaPeopleGroup} 
+              <SelectTyped
+                vect={estadoSet}
+                icon={FaPeopleGroup}
                 onChange={setFiltroEstado}
                 value={filtroEstado}
                 className="w-full"
               />
-              <SelectTyped 
-                vect={anoLectivoSet} 
-                icon={FaGraduationCap} 
+              <SelectTyped
+                vect={anoLectivoSet}
+                icon={FaGraduationCap}
                 onChange={setFiltroAnoLectivo}
                 value={filtroAnoLectivo}
                 className="w-full"
@@ -746,7 +746,7 @@ const Students = () => {
           onReload={reload}
         />
       </div>
-      
+
       <ModalComponent />
       <ReforcoSectionModal
         show={showSectionModal}

@@ -16,6 +16,7 @@ import { generateUniqueId } from "../../utils/idGenarator";
 import { paymentChecker } from "./paymentcheker";
 import { AlunoDesempenho } from "../../types/aluno";
 import { propinaCascadeService } from "./propinaCascade";
+import { resolveStudentAcademicStatus } from "../../utils/studentAcademicStatus";
 
 const LOCAL_ID_MAP_KEY = 'sync_local_id_map';
 
@@ -100,12 +101,11 @@ export const alunosService = {
       let queued = 0;
 
       for (const aluno of alunos) {
-        const nextEstado = resolveEnrollmentStatus(aluno.data_matricula, aluno.estado);
+        const nextEstado = resolveStudentAcademicStatus(aluno as Student);
         if (nextEstado === aluno.estado) continue;
 
         await db.alunos.update(aluno.id, {
-          estado: nextEstado as "ativo" | "pendente" | "transferido" | "desistente" | "inativo"
-,
+          estado: nextEstado,
           updated_at: now,
           sync_status: 'pending'
         });
@@ -154,6 +154,12 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
     const now = new Date().toISOString();
     const instituicao_id = instituicaoIdValue() || "";
     const n = await this.gerarProximoNumeroEstudante();
+    const estado = resolveStudentAcademicStatus({
+      ...studentData,
+      numero_estudante: n,
+      instituicao_id,
+      estado: studentData.estado || 'ativo'
+    } as Student);
 
     // Tratar turma_id: se for string vazia, converter para null
     const aluno = {
@@ -161,6 +167,7 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
       id,
       instituicao_id,
       numero_estudante: n,
+      estado,
       turma_id: studentData.turma_id && studentData.turma_id.trim() !== ''
         ? studentData.turma_id
         : null, // Converter string vazia para null
@@ -219,6 +226,7 @@ async getAllStudents(): Promise<Student[]> {
   const cacheScope = activeInstituicaoId || 'global';
   const CACHE_KEY = `alunos_all_${cacheScope}`;
   try {
+    await this.runEnrollmentStatusBackfill();
     // 1. Criar versão baseada em múltiplos contadores para detectar mudanças reais
     const [alunoCount, turmaCount, lastModified] = await Promise.all([
       db.alunos.count(),
@@ -406,6 +414,7 @@ async getAllStudents(): Promise<Student[]> {
   // ✅ Buscar aluno por ID
   async getStudentById(id: string): Promise<Student | undefined> {
     try {
+      await this.runEnrollmentStatusBackfill();
       const aluno = await db.alunos.get(id);
 
       if (!aluno || aluno.deleted) {
@@ -485,6 +494,11 @@ async getAllStudents(): Promise<Student[]> {
       throw new Error(`Aluno não encontrado para atualização: ${id}`);
     }
 
+    const currentStudent = await db.alunos.get(targetId);
+    if (!currentStudent) {
+      throw new Error(`Aluno não encontrado para atualização: ${targetId}`);
+    }
+
     // Preparar dados para atualização, tratando turma_id vazio
     const dataToUpdate = { ...studentData };
 
@@ -494,6 +508,17 @@ async getAllStudents(): Promise<Student[]> {
         ? dataToUpdate.turma_id
         : undefined;
     }
+
+    const mergedStudent = {
+      ...currentStudent,
+      ...dataToUpdate,
+      turma_id:
+        dataToUpdate.turma_id !== undefined
+          ? dataToUpdate.turma_id
+          : currentStudent.turma_id
+    } as Student;
+
+    dataToUpdate.estado = resolveStudentAcademicStatus(mergedStudent);
 
     const updatedRows = await db.alunos.update(targetId, {
       ...dataToUpdate,
