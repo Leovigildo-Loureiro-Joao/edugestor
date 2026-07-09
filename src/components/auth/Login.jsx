@@ -28,7 +28,8 @@ const Login = () => {
     email: '',
     password: '',
     displayName: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    institutionName: ''
   });
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -106,6 +107,11 @@ const Login = () => {
         return false;
       }
       
+      if (!formData.institutionName.trim()) {
+        setFormError('Por favor, informe o nome da instituição');
+        return false;
+      }
+      
       if (formData.password.length < 6) {
         setFormError('A senha deve ter pelo menos 6 caracteres');
         return false;
@@ -140,9 +146,9 @@ const Login = () => {
       if (isLogin) {
         await login(formData.email, formData.password);
       } else {
-        await register(formData.email, formData.password, formData.displayName);
-        // Após registro bem-sucedido, redirecionar para página de boas-vindas
-        navigate('/welcome');
+        await register(formData.email, formData.password, formData.displayName, formData.institutionName);
+        // Após registro bem-sucedido, redirecionar para dashboard
+        navigate('/dashboard');
       }
     } catch (error) {
        showAlert({
@@ -319,8 +325,8 @@ const Login = () => {
             {/* Mensagem sobre primeiro acesso */}
             {!isLogin && (
               <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                <p>Após o registro, você terá acesso como usuário básico.</p>
-                <p>Para acesso administrativo, contate um administrador existente.</p>
+                <p>Ao se registrar, você criará sua própria instituição.</p>
+                <p>Você será o administrador da instituição criada.</p>
               </div>
             )}
           </div>
@@ -352,6 +358,26 @@ const Login = () => {
                     required
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
                     placeholder="Seu nome completo"
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nome da Instituição *
+                </label>
+                <div className="relative">
+                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    name="institutionName"
+                    value={formData.institutionName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                    placeholder="Ex: Escola Secundária Central"
                   />
                 </div>
               </div>
@@ -445,7 +471,8 @@ const Login = () => {
                   email: '',
                   password: '',
                   displayName: '',
-                  confirmPassword: ''
+                  confirmPassword: '',
+                  institutionName: ''
                 });
               }}
               className="text-primary-600 hover:text-primary-700 font-medium text-sm lg:text-base"

@@ -15,7 +15,7 @@ interface AuthContextType {
   loading: boolean;
   error: string;
   login: (email: string, password: string) => Promise<any>;
-  register: (email: string, password: string, displayName: string) => Promise<any>;
+  register: (email: string, password: string, displayName: string, institutionName: string) => Promise<any>;
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<any>;
   clearError: () => void;
@@ -255,16 +255,15 @@ const handleSuccessfulLogin = async (user: User) => {
         throw new Error('Usuário não autenticado');
       }
       
-      // 1. Verificar se usuário tem acesso a esta instituição
-      const { data: instituicoes, error } = await supabase
-        .from('user_instituicoes')
+      // 1. Verificar se usuário tem acesso a esta instituição (via profiles)
+      const { data: profile, error } = await supabase
+        .from('profiles')
         .select('instituicao_id')
-        .eq('user_id', user.id)
-        .eq('instituicao_id', instituicaoId)
+        .eq('id', user.id)
         .single();
       
-      if (error || !instituicoes) {
-        throw new Error('Usuário não tem acesso a esta instituição');
+      if (error || !profile) {
+        throw new Error('Perfil do usuário não encontrado');
       }
       
       // 2. Atualizar perfil com instituição ativa
@@ -488,26 +487,120 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // Registro de novo usuário
-  const register = async (email: string, password: string, displayName: string) => {
+  // Registro de novo usuário com criação de instituição
+  const register = async (email: string, password: string, displayName: string, institutionName: string) => {
     try {
       setError('');
       setLoading(true);
       
-      const { data, error } = await supabase.auth.signUp({
+      // 1. Registrar o usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { 
             display_name: displayName,
-            user_role: 'user'
+            user_role: 'admin'
           }
         }
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
       
-      return data;
+      if (!authData.user) {
+        throw new Error('Erro ao criar usuário');
+      }
+
+      // 2. Criar a instituição no Supabase
+      const { data: instituicaoData, error: instituicaoError } = await supabase
+        .from('instituicao')
+        .insert([{
+          nome_escola: institutionName,
+          email: email,
+          ano_lectivo: new Date().getFullYear().toString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          sync_status: 'synced'
+        }])
+        .select()
+        .single();
+
+      if (instituicaoError) {
+        console.error('Erro ao criar instituição:', instituicaoError);
+        // Se falhar ao criar instituição,依然 criar o perfil sem instituição
+      }
+
+      const instituicaoId = instituicaoData?.id || null;
+
+      // 2.1 Salvar instituição localmente no Dexie
+      if (instituicaoId && instituicaoData) {
+        await db.instituicao.put({
+          id: instituicaoId,
+          nome_escola: institutionName,
+          email: email,
+          ano_lectivo: new Date().getFullYear().toString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          sync_status: 'synced'
+        });
+        localStorage.setItem('active_instituicao_id', instituicaoId);
+      }
+
+      // 3. Criar o perfil do usuário com role admin e vinculação à instituição
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          email: email,
+          role: 'admin',
+          full_name: displayName,
+          instituicao_id: instituicaoId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (profileError) {
+        console.error('Erro ao criar perfil:', profileError);
+      }
+
+      // 4. Atualizar metadados do usuário com a instituição
+      if (instituicaoId) {
+        await supabase.auth.updateUser({
+          data: {
+            instituicao_id: instituicaoId,
+            active_instituicao_id: instituicaoId,
+            user_role: 'admin'
+          }
+        });
+      }
+
+      // 6. Atualizar JWT claims via Edge Function
+      if (instituicaoId) {
+        await updateJWTClaims({
+          instituicao_id: instituicaoId,
+          user_role: 'admin'
+        });
+      }
+
+      // 7. Salvar perfil localmente
+      const localProfile = {
+        id: authData.user.id,
+        email: email,
+        role: 'admin' as const,
+        full_name: displayName,
+        instituicao_id: instituicaoId || undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sync_status: 'synced' as const
+      };
+      
+      await profileService.saveProfile(localProfile);
+      setProfile(localProfile);
+
+      // 8. Persistir dados de autenticação
+      persistAuthBootstrap(localProfile);
+
+      return authData;
     } catch (error: any) {
       console.error('❌ Erro no registro:', error);
       const errorMessage = getSupabaseErrorMessage(error);

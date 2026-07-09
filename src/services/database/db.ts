@@ -69,7 +69,7 @@ class EduGestorDatabase extends Dexie {
   profiles!: Table<UserProfile, string>;
   turma_horarios!:Table<HorarioAula,string>
   planeamentos!:Table<PlaneamentoBase,string>
-  plano_aulas!:Table<PlanoAula,string> // PlanoAula, mas tem campos dinâmicos, então deixamos como any por enquanto
+  plano_aulas!:Table<PlanoAula,string>
 
   constructor() {
     super('EduGestorDB_Final');
@@ -174,7 +174,7 @@ class EduGestorDatabase extends Dexie {
         turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
         transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
         propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at,data_pagamento',
-        frequencias: 'id, aluno_id, aula_id, data_aula, presente, atraso, sync_status, deleted, updated_at',
+        frequencias: 'id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
         aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
         tarefas: 'id, concluida, status, sync_status, deleted, created_at',
         metas: 'id, data_limite_real,tipo,status, sync_status, deleted, created_at',
