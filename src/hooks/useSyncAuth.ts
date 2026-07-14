@@ -21,7 +21,7 @@ export const useSyncAuth = () => {
         
         // Salvar no localStorage para uso offline
         localStorage.setItem('jwt_token', session.access_token);
-        localStorage.setItem('user_role', role || 'user');
+        localStorage.setItem('user_role', role || 'admin');
       } else {
         setAuthToken(null);
         setUserRole(null);

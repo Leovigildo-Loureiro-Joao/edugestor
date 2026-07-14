@@ -40,7 +40,7 @@ const ProfilePage: React.FC = () => {
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || '',
     email: profile?.email || user?.email || '',
-    role: profile?.role || 'user',
+    role: profile?.role || 'admin',
     created_at: profile?.created_at || user?.created_at || ''
   });
 
@@ -66,7 +66,7 @@ const ProfilePage: React.FC = () => {
       setFormData({
         full_name: profile?.full_name || '',
         email: profile?.email || user?.email || '',
-        role: profile?.role || 'user',
+        role: profile?.role || 'admin',
         created_at: profile?.created_at || user?.created_at || ''
       });
     }
@@ -82,7 +82,7 @@ const ProfilePage: React.FC = () => {
     setFormData({
       full_name: profile?.full_name || '',
       email: profile?.email || user?.email || '',
-      role: profile?.role || 'user',
+      role: profile?.role || 'admin',
       created_at: profile?.created_at || user?.created_at || ''
     });
   };

@@ -36,8 +36,10 @@ const Login = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [formError, setFormError] = useState('');
   const [showIllustration, setShowIllustration] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [openingAccount, setOpeningAccount] = useState(false);
   
-  const { user, login, register, loginWithGoogle, loading, error, clearError } = useAuth();
+  const { user, login, register, loginWithGoogle, loading, error, clearError, completePendingRegistration } = useAuth();
   const navigate = useNavigate();
   const { showAlert } = useAlert(); 
   const location = useLocation();
@@ -147,8 +149,8 @@ const Login = () => {
         await login(formData.email, formData.password);
       } else {
         await register(formData.email, formData.password, formData.displayName, formData.institutionName);
-        // Após registro bem-sucedido, redirecionar para dashboard
-        navigate('/dashboard');
+        localStorage.removeItem('pending_registration');
+        setRegistrationComplete(true);
       }
     } catch (error) {
        showAlert({
@@ -226,11 +228,25 @@ const Login = () => {
     }
   };
 
+  const handleOpenAccount = async () => {
+    setOpeningAccount(true);
+    setFormError('');
+    try {
+      await completePendingRegistration(user, formData.displayName, formData.institutionName);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      console.error('Erro ao abrir conta:', err);
+      setFormError('Erro ao criar sua conta. Tente novamente.');
+    } finally {
+      setOpeningAccount(false);
+    }
+  };
+
   useEffect(() => {
-    if (user) {
+    if (user && !registrationComplete) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, registrationComplete]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 from-primary-50 to-primary-100 flex items-center justify-center p-4">
@@ -311,193 +327,237 @@ const Login = () => {
             </motion.div>
           )}
 
-          {/* Botão de Login Social */}
-          <div className="space-y-3 mb-6">
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+          {registrationComplete ? (
+            /* Tela de abertura de conta */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-8"
             >
-              <FcGoogle className="text-xl" />
-              {loading ? 'Processando...' : 'Continuar com Google'}
-            </button>
-
-            {/* Mensagem sobre primeiro acesso */}
-            {!isLogin && (
-              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                <p>Ao se registrar, você criará sua própria instituição.</p>
-                <p>Você será o administrador da instituição criada.</p>
+              <div className="w-16 h-16 mx-auto mb-4 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                <FiUser className="text-3xl text-primary-600 dark:text-primary-400" />
               </div>
-            )}
-          </div>
-
-          {/* Divisor */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Ou continue com email</span>
-            </div>
-          </div>
-
-          {/* Formulário de Email/Senha */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome Completo *
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    name="displayName"
-                    value={formData.displayName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                    placeholder="Seu nome completo"
-                  />
-                </div>
-              </div>
-            )}
-
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome da Instituição *
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    name="institutionName"
-                    value={formData.institutionName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                    placeholder="Ex: Escola Secundária Central"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email *
-              </label>
-              <div className="relative">
-                <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                  placeholder="seu@email.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Senha *
-              </label>
-              <div className="relative">
-                <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                  placeholder="Mínimo 6 caracteres"
-                  minLength={6}
-                />
-              </div>
-            </div>
-
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Confirmar Senha *
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
-                    placeholder="Confirme sua senha"
-                  />
-                </div>
-              </div>
-            )}
-
-            {isLogin && (
-              <div className="text-right">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+                Conta criada com sucesso!
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm lg:text-base">
+                Clique no botão abaixo para abrir sua conta e acessar o sistema.
+              </p>
+              <button
+                onClick={handleOpenAccount}
+                disabled={openingAccount}
+                className="w-full max-w-xs mx-auto bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+              >
+                {openingAccount ? 'Processando...' : 'Abrir Conta'}
+              </button>
+              <button
+                onClick={() => {
+                  setRegistrationComplete(false);
+                  setIsLogin(true);
+                  setFormData({
+                    email: '',
+                    password: '',
+                    displayName: '',
+                    confirmPassword: '',
+                    institutionName: ''
+                  });
+                }}
+                className="mt-4 text-primary-600 hover:text-primary-700 font-medium text-sm"
+              >
+                Voltar ao login
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* Botão de Login Social */}
+              <div className="space-y-3 mb-6">
                 <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
                 >
-                  Esqueceu a senha?
+                  <FcGoogle className="text-xl" />
+                  {loading ? 'Processando...' : 'Continuar com Google'}
+                </button>
+
+                {/* Mensagem sobre primeiro acesso */}
+                {!isLogin && (
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <p>Ao se registrar, você criará sua própria instituição.</p>
+                    <p>Você será o administrador da instituição criada.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Divisor */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Ou continue com email</span>
+                </div>
+              </div>
+
+              {/* Formulário de Email/Senha */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Nome Completo *
+                    </label>
+                    <div className="relative">
+                      <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        name="displayName"
+                        value={formData.displayName}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                        placeholder="Seu nome completo"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Nome da Instituição *
+                    </label>
+                    <div className="relative">
+                      <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        name="institutionName"
+                        value={formData.institutionName}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                        placeholder="Ex: Escola Secundária Central"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email *
+                  </label>
+                  <div className="relative">
+                    <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Senha *
+                  </label>
+                  <div className="relative">
+                    <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                      placeholder="Mínimo 6 caracteres"
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirmar Senha *
+                    </label>
+                    <div className="relative">
+                      <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm lg:text-base"
+                        placeholder="Confirme sua senha"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {isLogin && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      Esqueceu a senha?
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+                >
+                  {loading ? 'Processando...' : (isLogin ? 'Entrar com Email' : 'Criar Conta')}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    clearError();
+                    setFormError('');
+                    setFormData({
+                      email: '',
+                      password: '',
+                      displayName: '',
+                      confirmPassword: '',
+                      institutionName: ''
+                    });
+                  }}
+                  className="text-primary-600 hover:text-primary-700 font-medium text-sm lg:text-base"
+                >
+                  {isLogin ? 'Não tem uma conta? Registre-se' : 'Já tem uma conta? Entre'}
                 </button>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
-            >
-              {loading ? 'Processando...' : (isLogin ? 'Entrar com Email' : 'Criar Conta')}
-            </button>
-          </form>
+              {/* Link para promoção a admin (apenas para login) */}
+              {isLogin && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => navigate('/setup/promote-admin')}
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:text-gray-100"
+                  >
+                    Precisa de acesso administrativo?
+                  </button>
+                </div>
+              )}
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                clearError();
-                setFormError('');
-                setFormData({
-                  email: '',
-                  password: '',
-                  displayName: '',
-                  confirmPassword: '',
-                  institutionName: ''
-                });
-              }}
-              className="text-primary-600 hover:text-primary-700 font-medium text-sm lg:text-base"
-            >
-              {isLogin ? 'Não tem uma conta? Registre-se' : 'Já tem uma conta? Entre'}
-            </button>
-          </div>
-
-          {/* Link para promoção a admin (apenas para login) */}
-          {isLogin && (
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => navigate('/setup/promote-admin')}
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:text-gray-100"
-              >
-                Precisa de acesso administrativo?
-              </button>
-            </div>
+              {/* Informações de segurança */}
+              <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                <p> Seus dados estão seguros com criptografia de ponta</p>
+                <p className="mt-1">Use apenas para testes educacionais</p>
+              </div>
+            </>
           )}
-
-          {/* Informações de segurança */}
-          <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
-            <p> Seus dados estão seguros com criptografia de ponta</p>
-            <p className="mt-1">Use apenas para testes educacionais</p>
-          </div>
         </motion.div>
       </div>
     </div>

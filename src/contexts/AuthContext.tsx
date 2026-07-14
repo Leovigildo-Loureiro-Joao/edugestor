@@ -28,6 +28,7 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   switchInstituicao: (instituicaoId: string) => Promise<{ success: boolean }>;
   debugJWTClaims: () => Promise<void>;
+  completePendingRegistration: (user: User, displayName: string, institutionName: string) => Promise<UserProfile>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +70,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearError = () => setError('');
+
+  const VALID_ROLES = ['admin', 'manager', 'teacher', 'user'];
+
+  const isValidRole = (role?: string): boolean => {
+    return !!role && VALID_ROLES.includes(role);
+  };
+
+  const forceLogout = async (reason: string) => {
+    console.warn(`⚠️ Logout forçado: ${reason}`);
+    await auditLogService.log('AUTH_FORCE_LOGOUT', { reason });
+    await supabase.auth.signOut();
+    clearLocalAuthState();
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+  };
 
   const clearLocalAuthState = () => {
     localStorage.removeItem('supabase.auth.session');
@@ -117,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newProfile: Partial<UserProfile> = {
         id: user.id,
         email: user.email || '',
-        role: 'user',
+        role: 'admin',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         full_name: user.user_metadata?.full_name || 
@@ -226,11 +243,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 const handleSuccessfulLogin = async (user: User) => {
   try {
     // 1. Buscar perfil atualizado
-    const userProfile = await fetchUserProfile(user.id);
+    let userProfile = await fetchUserProfile(user.id);
     
+    // Se não existe perfil, verificar se há registo pendente (utilizador que verificou email)
     if (!userProfile) {
-      console.warn('⚠️ Perfil não encontrado após login');
-      localStorage.setItem('user_id', user.id);
+      const pendingData = localStorage.getItem('pending_registration');
+      if (pendingData) {
+        try {
+          const { displayName, institutionName } = JSON.parse(pendingData);
+          userProfile = await completePendingRegistration(user, displayName, institutionName);
+        } catch (err) {
+          console.error('❌ Erro ao completar registo pendente:', err);
+          await forceLogout('Perfil não pôde ser criado');
+          return;
+        }
+      } else {
+        console.warn('⚠️ Perfil não encontrado após login');
+        await forceLogout('Perfil não encontrado');
+        return;
+      }
+    }
+
+    // Verificar se o role é válido
+    if (!isValidRole(userProfile?.role)) {
+      await forceLogout(`Role inválido: ${userProfile?.role || 'nenhum'}`);
       return;
     }
 
@@ -343,6 +379,12 @@ const handleSuccessfulLogin = async (user: User) => {
           if (session?.user) {
             localStorage.setItem('user_id', session.user.id);
             const localProfile = await profileService.getLocalProfile();
+            
+            if (!isValidRole(localProfile?.role)) {
+              await forceLogout(`Role inválido offline: ${localProfile?.role || 'nenhum'}`);
+              return;
+            }
+            
             setProfile(localProfile);
           }
           setLoading(false);
@@ -371,12 +413,19 @@ const handleSuccessfulLogin = async (user: User) => {
           // Atualiza perfil remoto em background sem bloquear render inicial.
           void (async () => {
             const userProfile = await fetchUserProfile(session.user!.id);
+            
+            if (!userProfile) {
+              await forceLogout('Perfil não encontrado na inicialização');
+              return;
+            }
+            
+            if (!isValidRole(userProfile.role)) {
+              await forceLogout(`Role inválido na inicialização: ${userProfile.role}`);
+              return;
+            }
+            
             setProfile(userProfile);
             persistAuthBootstrap(userProfile);
-
-            if (!userProfile) {
-              await createUserProfile(session.user!);
-            }
           })();
           return;
         }
@@ -412,6 +461,17 @@ const handleSuccessfulLogin = async (user: User) => {
       // Perfil atualizado em background para não segurar a navegação.
       void (async () => {
         const userProfile = await fetchUserProfile(newSession.user.id);
+        
+        if (!userProfile) {
+          await forceLogout('Perfil não encontrado no onAuthStateChange');
+          return;
+        }
+        
+        if (!isValidRole(userProfile.role)) {
+          await forceLogout(`Role inválido no onAuthStateChange: ${userProfile.role}`);
+          return;
+        }
+        
         setProfile(userProfile);
         persistAuthBootstrap(userProfile);
       })();
@@ -487,7 +547,8 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // Registro de novo usuário com criação de instituição
+  // Registro de novo usuário – cria apenas o utilizador no Supabase Auth.
+  // A instituição e o perfil são criados após o utilizador verificar o email e fazer login.
   const register = async (email: string, password: string, displayName: string, institutionName: string) => {
     try {
       setError('');
@@ -500,6 +561,7 @@ const handleSuccessfulLogin = async (user: User) => {
         options: {
           data: { 
             display_name: displayName,
+            institution_name: institutionName,
             user_role: 'admin'
           }
         }
@@ -511,94 +573,12 @@ const handleSuccessfulLogin = async (user: User) => {
         throw new Error('Erro ao criar usuário');
       }
 
-      // 2. Criar a instituição no Supabase
-      const { data: instituicaoData, error: instituicaoError } = await supabase
-        .from('instituicao')
-        .insert([{
-          nome_escola: institutionName,
-          email: email,
-          ano_lectivo: new Date().getFullYear().toString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          sync_status: 'synced'
-        }])
-        .select()
-        .single();
-
-      if (instituicaoError) {
-        console.error('Erro ao criar instituição:', instituicaoError);
-        // Se falhar ao criar instituição,依然 criar o perfil sem instituição
-      }
-
-      const instituicaoId = instituicaoData?.id || null;
-
-      // 2.1 Salvar instituição localmente no Dexie
-      if (instituicaoId && instituicaoData) {
-        await db.instituicao.put({
-          id: instituicaoId,
-          nome_escola: institutionName,
-          email: email,
-          ano_lectivo: new Date().getFullYear().toString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          sync_status: 'synced'
-        });
-        localStorage.setItem('active_instituicao_id', instituicaoId);
-      }
-
-      // 3. Criar o perfil do usuário com role admin e vinculação à instituição
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email: email,
-          role: 'admin',
-          full_name: displayName,
-          instituicao_id: instituicaoId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (profileError) {
-        console.error('Erro ao criar perfil:', profileError);
-      }
-
-      // 4. Atualizar metadados do usuário com a instituição
-      if (instituicaoId) {
-        await supabase.auth.updateUser({
-          data: {
-            instituicao_id: instituicaoId,
-            active_instituicao_id: instituicaoId,
-            user_role: 'admin'
-          }
-        });
-      }
-
-      // 6. Atualizar JWT claims via Edge Function
-      if (instituicaoId) {
-        await updateJWTClaims({
-          instituicao_id: instituicaoId,
-          user_role: 'admin'
-        });
-      }
-
-      // 7. Salvar perfil localmente
-      const localProfile = {
-        id: authData.user.id,
-        email: email,
-        role: 'admin' as const,
-        full_name: displayName,
-        instituicao_id: instituicaoId || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        sync_status: 'synced' as const
-      };
-      
-      await profileService.saveProfile(localProfile);
-      setProfile(localProfile);
-
-      // 8. Persistir dados de autenticação
-      persistAuthBootstrap(localProfile);
+      // Guardar dados de registo pendente para completar após verificação de email
+      localStorage.setItem('pending_registration', JSON.stringify({
+        email,
+        displayName,
+        institutionName
+      }));
 
       return authData;
     } catch (error: any) {
@@ -609,6 +589,99 @@ const handleSuccessfulLogin = async (user: User) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Completar registo pendente: criar instituição e perfil após verificação de email
+  const completePendingRegistration = async (user: User, displayName: string, institutionName: string) => {
+    // 1. Criar a instituição no Supabase
+    const { data: instituicaoData, error: instituicaoError } = await supabase
+      .from('instituicao')
+      .insert([{
+        nome_escola: institutionName,
+        email: user.email,
+        ano_lectivo: new Date().getFullYear().toString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sync_status: 'synced'
+      }])
+      .select()
+      .single();
+
+    if (instituicaoError) {
+      console.error('Erro ao criar instituição:', instituicaoError);
+    }
+
+    const instituicaoId = instituicaoData?.id || null;
+
+    // 2. Salvar instituição localmente no Dexie
+    if (instituicaoId && instituicaoData) {
+      await db.instituicao.put({
+        id: instituicaoId,
+        nome_escola: institutionName,
+        email: user.email,
+        ano_lectivo: new Date().getFullYear().toString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sync_status: 'synced'
+      });
+      localStorage.setItem('active_instituicao_id', instituicaoId);
+    }
+
+    // 3. Criar o perfil do usuário
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email: user.email,
+        role: 'admin',
+        full_name: displayName,
+        instituicao_id: instituicaoId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+
+    if (profileError) {
+      console.error('Erro ao criar perfil:', profileError);
+    }
+
+    // 4. Atualizar metadados do usuário
+    if (instituicaoId) {
+      await supabase.auth.updateUser({
+        data: {
+          instituicao_id: instituicaoId,
+          active_instituicao_id: instituicaoId,
+          user_role: 'admin'
+        }
+      });
+    }
+
+    // 5. Atualizar JWT claims via Edge Function
+    if (instituicaoId) {
+      await updateJWTClaims({
+        instituicao_id: instituicaoId,
+        user_role: 'admin'
+      });
+    }
+
+    // 6. Salvar perfil localmente
+    const localProfile = {
+      id: user.id,
+      email: user.email || '',
+      role: 'admin' as const,
+      full_name: displayName,
+      instituicao_id: instituicaoId || undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      sync_status: 'synced' as const
+    };
+
+    await profileService.saveProfile(localProfile);
+    setProfile(localProfile);
+
+    // 7. Limpar dados de registo pendente
+    localStorage.removeItem('pending_registration');
+
+    return localProfile;
   };
 
   // Logout
@@ -741,7 +814,7 @@ const handleSuccessfulLogin = async (user: User) => {
       }
 
       const mergedProfile = {
-        ...(profile || { id: user.id, email: user.email || '', role: 'user' }),
+        ...(profile || { id: user.id, email: user.email || '', role: 'admin' }),
         ...updates,
         instituicao_id: instituicaoId || profile?.instituicao_id,
         updated_at: now
@@ -827,7 +900,8 @@ const handleSuccessfulLogin = async (user: User) => {
     updateProfile,
     changePassword,
     switchInstituicao, 
-    debugJWTClaims    
+    debugJWTClaims,
+    completePendingRegistration
   };
 
   return (

@@ -128,7 +128,7 @@ const useSyncAuthInManager = () => {
         // ignora erro de quota/storage indisponível
       }
     }
-    const userRole = localStorage.getItem('user_role') || 'user';
+    const userRole = localStorage.getItem('user_role') || 'admin';
     const localProfile = localStorage.getItem('user_profile');
     let userId=localStorage.getItem("user_id") || null;
     if (localProfile) {

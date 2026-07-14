@@ -26,7 +26,7 @@ export const profileService = {
       await db.table('profiles')?.put({
         id: profile.id,
         email: profile.email,
-        role: profile.role || 'user',
+        role: profile.role || 'admin',
         full_name: profile.full_name || profile.nome || '',
         instituicao_id: profile.instituicao_id || '',
         nome: profile.nome || '',

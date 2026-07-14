@@ -59,15 +59,20 @@ const TurmaForm = () => {
   } = useAutoSave(storageKey, initialData, 2000);
 
   const loadCursos = async () => {
-    formData.ano_lectivo=await instituicaoService.getAnoLectivo()
     try {
-      const res = await cursosService.getCourses();
+      const [res, anoLectivo] = await Promise.all([
+        cursosService.getCourses(),
+        instituicaoService.getAnoLectivo()
+      ]);
       setCursos(res ?? []);
-      setCursoSel(res[0])
-      setFormData((prev: TurmaFormData) => ({ 
-        ...prev, 
-        "curso_id": res[0].id
-      }));
+      setCursoSel((res ?? []).find((curso) => curso.id === formData.curso_id) ?? res?.[0])
+      if (!isEditing) {
+        setFormData((prev: TurmaFormData) => ({
+          ...prev,
+          ano_lectivo: prev.ano_lectivo || anoLectivo || '',
+          curso_id: prev.curso_id || res?.[0]?.id || ''
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
     }
@@ -148,7 +153,7 @@ const TurmaForm = () => {
   const handleSelectChange = (field: keyof TurmaFormData) => (value: string) => {
     if(field==="curso_id")
     {
-      setCursoSel(cursos.find((curso)=> curso.id==formData.curso_id))
+      setCursoSel(cursos.find((curso)=> curso.id === value))
     }
     setFormData((prev: TurmaFormData) => ({ 
       ...prev, 
@@ -224,6 +229,7 @@ const TurmaForm = () => {
   // Encontrar o valor atual para o Select de cursos
   const selectedCursoValue = formData.curso_id || '';
   const selectedTurnoValue = formData.turno || 'manhã';
+  const selectedEstadoValue = formData.estado || 'ativa';
   const selectedProfessorValue = formData.professor || '';
 
 
@@ -350,7 +356,7 @@ const TurmaForm = () => {
                       vect={["ativa","inativa","concluida"]}
                       icon={FiClock}
                       onChange={handleSelectChange('estado')}
-                      value={selectedTurnoValue}
+                      value={selectedEstadoValue}
                     />
                   </div>
 
