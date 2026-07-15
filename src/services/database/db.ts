@@ -197,6 +197,31 @@ class EduGestorDatabase extends Dexie {
         });
       });
 
+    this.version(8)
+      .stores({
+        alunos: 'id, nome_completo, numero_estudante, instituicao_id, turma_id, curso, sync_status, deleted, updated_at, [instituicao_id+deleted], [instituicao_id+sync_status]',
+        avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
+        turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
+        transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
+        propina: 'id, aluno_id, mes_referencia, estado, data_vencimento, sync_status, deleted, updated_at,data_pagamento',
+        frequencias: 'id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
+        aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
+        tarefas: 'id, concluida, status, sync_status, deleted, created_at',
+        metas: 'id, data_limite_real,tipo,status, sync_status, deleted, created_at',
+        planeamentos:"id,tipo,data_inicio,sync_status, deleted, created_at, updated_at",
+        plano_aulas:"id,tipo,sync_status, deleted, created_at, updated_at",
+        alocacao:"id,meta_id, sync_status, deleted, created_at,updated_at",
+        rotinas: 'id, status, sync_status, deleted, created_at,updated_at',
+        syncQueue: '++id, instituicao_id, table, record_id, operation, status, created_at, [instituicao_id+status], [instituicao_id+table], [instituicao_id+table+status]',
+        profiles: 'id, role, sync_status, deleted, created_at, updated_at',
+        notificacao: `id,lida,corpo,tipo,instituicao_id,aluno_id,user_id,data_envio,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted,updated_at`,
+        instituicao:'id, nome_escola, endereco, email, numero_telefone, whatsapp, ano_lectivo, valor_cartao, valor_confirmacao, valor_matricula, created_at, updated_at,sync_status,deleted',
+        evento: 'id, data_evento, tipo, sync_status, deleted, created_at',
+        system_config:'id, key_name, category, instituicao_id, [instituicao_id+category], [instituicao_id+key_name], [instituicao_id+category+key_name], [category+deleted], [category+key_name], [category+key_name+deleted], sync_status, deleted'
+      });
+
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
       const fallbackInstituicaoId = instituicaoIdValue();
       obj.instituicao_id = isValidInstituicaoId(obj.instituicao_id)

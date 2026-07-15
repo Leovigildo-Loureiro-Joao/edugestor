@@ -132,7 +132,7 @@ export const resolveStudentAcademicStatus = (
   }
 
   if (isFutureAcademicActivation(aluno, refDate)) {
-    return "inativo";
+    return aluno.estado === "ativo" ? "ativo" : "inativo";
   }
 
   return aluno.estado === "pendente" || aluno.estado === "inativo"

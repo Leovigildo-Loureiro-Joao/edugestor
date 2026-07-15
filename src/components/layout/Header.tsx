@@ -387,7 +387,7 @@ return (
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               onFocus={() => setShowSearchResults(true)}
               onKeyDown={handleSearch}
-              className="w-full pl-10 pr-4 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2 sm:py-2.5 border border-gray-300  rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white  text-gray-900  placeholder-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 text-sm sm:text-base transition-all duration-200"
             />
 
             {/* Placeholder responsivo para mobile */}

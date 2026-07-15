@@ -344,6 +344,29 @@ const Dashboard: React.FC = () => {
 
   // Cards de alerta (para mostrar apenas os mais críticos)
   const alertCards = statCards.filter(card => card.alert).slice(0, 2);
+  const variacaoAlunosAno = stats.alunosAnoAtual - stats.totalAlunosAnterior;
+  const resumoAnoLetivo = [
+    {
+      label: 'Alunos no ano atual',
+      value: stats.alunosAnoAtual,
+      detail: `${variacaoAlunosAno >= 0 ? '+' : ''}${variacaoAlunosAno} vs. ${stats.anoLectivoAnterior || 'ano anterior'}`
+    },
+    {
+      label: 'Aguardando ativacao',
+      value: stats.alunosAguardandoAtivacao,
+      detail: 'alunos regulares para confirmar'
+    },
+    {
+      label: 'Turmas ativas',
+      value: stats.turmasAnoAtual,
+      detail: `em ${stats.anoLectivoAtual || 'ano atual'}`
+    },
+    {
+      label: 'Cursos ativos',
+      value: stats.cursosAtivos,
+      detail: 'disponiveis para matricula'
+    }
+  ];
 
   return (
     <div className="space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen p-4 sm:p-6">
@@ -379,6 +402,41 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Alertas Críticos */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 sm:p-5 shadow-sm"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+              <FiCalendar size={22} />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Ano letivo atual
+              </p>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.anoLectivoAtual || 'Nao definido'}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Resumo da abertura e renovacao academica
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:min-w-[620px]">
+            {resumoAnoLetivo.map((item) => (
+              <div key={item.label} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/40">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{item.value}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
       <AnimatePresence>
         {alertCards.length > 0 && (
           <motion.div

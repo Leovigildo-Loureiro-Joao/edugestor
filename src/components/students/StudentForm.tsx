@@ -109,7 +109,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     turma_id: '',
     propina: 0,
     data_matricula: '',
-    estado: 'ativo',
+    estado: 'inativo',
     sexo: 'M',
     classe_escolar: '',
     cartao_pago: false,
@@ -164,7 +164,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     [anoLectivoSelecionado, turmas]
   );
 
-  // ✅ Carregar cursos e turmas
+
   useEffect(() => {
     const loadData = async () => {
       await loadTurmas();
@@ -173,7 +173,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     loadData();
   }, []);
 
-  // ✅ Definir turma padrão para matrícula regular
   useEffect(() => {
     if (!isInitialLoad && tipoMatricula === 'regular') {
       if (turmasDoAnoSelecionado.length === 0) {
@@ -274,7 +273,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     }
   };
 
-  // ✅ Limpar rascunho após submit bem-sucedido
   const handleSubmit = (e: React.FormEvent) => {
     if(submit){
       e.preventDefault();
@@ -317,7 +315,6 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     if ((update||hasUnsavedChanges) && !cancel) {
       setUpdate(true)
       setComfirm(true)
-      return
     }else if(cancel){
       setComfirm(false)
       clearDraft();
@@ -730,7 +727,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 </div>
               </div>
 
-              {/* ✅ CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
+              {/*  CAMPOS ESPECÍFICOS POR TIPO DE MATRÍCULA */}
               {tipoMatricula === 'regular' ? (
                 <>
                   {/* TURMA */}
@@ -861,7 +858,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                 />
               </div>
 
-              {/* ✅ ESTADO */}
+              {/* ESTADO */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Estado *

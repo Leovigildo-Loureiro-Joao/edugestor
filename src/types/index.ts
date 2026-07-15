@@ -121,6 +121,12 @@ export interface ProximoEvento {
 
 export interface DashboardStats {
   // Existente
+  anoLectivoAtual: string;
+  anoLectivoAnterior: string;
+  alunosAnoAtual: number;
+  alunosAguardandoAtivacao: number;
+  turmasAnoAtual: number;
+  cursosAtivos: number;
   totalAlunos: number;
   totalAlunosAnterior: number;
   alunosAtivos: number;

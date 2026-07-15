@@ -349,7 +349,7 @@ export const CompletarMatricula = () => {
                             <div className="p-6 space-y-6">
                                 
                                 {/* Taxa de Matrícula */}
-                                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                <div className="bg-blue-50 dark:bg-gray-800 dark:border-gray-600 rounded-lg p-4 border border-blue-200">
                                     <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                                         <FiDollarSign className="text-blue-600" />
                                         Taxa de Matrícula
@@ -366,7 +366,7 @@ export const CompletarMatricula = () => {
                                                     ...prev, 
                                                     valorMatricula: e.target.value 
                                                 }))}
-                                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 min="0"
                                                 step="0.01"
                                             />
@@ -381,7 +381,7 @@ export const CompletarMatricula = () => {
                                 </div>
 
                                 {/* Cartão de Estudante */}
-                                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                                <div className="bg-purple-50 dark:bg-gray-800 dark:border-gray-600 rounded-lg p-4 border border-purple-200">
                                     <div className="flex items-center justify-between mb-3">
                                         <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                             <FiCreditCard className="text-purple-600" />
@@ -414,7 +414,7 @@ export const CompletarMatricula = () => {
                                                         ...prev, 
                                                         valorCartao: e.target.value 
                                                     }))}
-                                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                    className=" dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                                     min="0"
                                                     step="0.01"
                                                 />
@@ -430,7 +430,7 @@ export const CompletarMatricula = () => {
                                 </div>
 
                                 {/* Propina */}
-                                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                                <div className="bg-green-50 dark:bg-gray-800 dark:border-gray-600  rounded-lg p-4 border border-green-200">
                                     <div className="flex items-center justify-between mb-3">
                                         <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                             <FiCalendar className="text-green-600" />
@@ -464,7 +464,7 @@ export const CompletarMatricula = () => {
                                                         ...prev, 
                                                         valorPropina: e.target.value 
                                                     }))}
-                                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                                    className="w-full  dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                                     min="0"
                                                     step="0.01"
                                                 />
@@ -522,7 +522,7 @@ export const CompletarMatricula = () => {
                                             ...prev, 
                                             observacao: e.target.value 
                                         }))}
-                                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                        className="w-full dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                                         rows={3}
                                         placeholder="Observações sobre estes pagamentos..."
                                     />
@@ -534,13 +534,13 @@ export const CompletarMatricula = () => {
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
                                             <span className="text-gray-600 dark:text-gray-400">Taxa de Matrícula:</span>
-                                            <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorMatricula))}</span>
+                                            <span className="font-medium dark:text-white">{formatarMoeda(parseFloat(dadosMatricula.valorMatricula))}</span>
                                         </div>
                                         
                                         {dadosMatricula.incluirCartao && (
                                             <div className="flex justify-between">
                                                 <span className="text-gray-600 dark:text-gray-400">Cartão de Estudante:</span>
-                                                <span className="font-medium">{formatarMoeda(parseFloat(dadosMatricula.valorCartao))}</span>
+                                                <span className="font-medium dark:text-white">{formatarMoeda(parseFloat(dadosMatricula.valorCartao))}</span>
                                             </div>
                                         )}
                                         
@@ -549,7 +549,7 @@ export const CompletarMatricula = () => {
                                                 <span className="text-gray-600 dark:text-gray-400">
                                                     Propina ({dadosMatricula.mesesPropina} {dadosMatricula.mesesPropina.length > 1 ? 'meses' : 'mês'}):
                                                 </span>
-                                                <span className="font-medium">{formatarMoeda(calcularTotalPropina())}</span>
+                                                <span className="font-medium dark:text-white">{formatarMoeda(calcularTotalPropina())}</span>
                                             </div>
                                         )}
                                         

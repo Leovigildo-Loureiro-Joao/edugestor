@@ -60,6 +60,12 @@ function parseHoraParaMinutos(hora?: string): number {
 
 function criarStatsVazio(): DashboardStats {
   return {
+    anoLectivoAtual: '',
+    anoLectivoAnterior: '',
+    alunosAnoAtual: 0,
+    alunosAguardandoAtivacao: 0,
+    turmasAnoAtual: 0,
+    cursosAtivos: 0,
     totalAlunos: 0,
     totalAlunosAnterior: 0,
     alunosAtivos: 0,
@@ -249,6 +255,16 @@ export const dashboardService = {
       const totalAlunosAnterior = alunosInstituicao.filter(
         (aluno) => aluno.ano_lectivo === anoLectivoAnterior
       ).length;
+      const alunosAguardandoAtivacao = alunosInstituicao.filter(
+        (aluno) =>
+          aluno.tipo_matricula === 'regular' &&
+          aluno.estado === 'inativo' &&
+          aluno.ano_lectivo !== anoLectivoAtual
+      ).length;
+      const turmasAnoAtual = turmasInstituicao.filter(
+        (turma) => turma.estado === 'ativa' && turma.ano_lectivo === anoLectivoAtual
+      ).length;
+      const cursosAtivos = cursosInstituicao.filter((curso) => curso.ativo).length;
 
       const mesesBase = (paymentConfig.mesesPagamento || []).map((mes: string) =>
         financeRulesService.toMonthAbbr(mes)
@@ -606,6 +622,12 @@ export const dashboardService = {
       ];
 
       const result: DashboardStats = {
+        anoLectivoAtual,
+        anoLectivoAnterior,
+        alunosAnoAtual: totalAlunos,
+        alunosAguardandoAtivacao,
+        turmasAnoAtual,
+        cursosAtivos,
         totalAlunos,
         totalAlunosAnterior,
         alunosAtivos,
