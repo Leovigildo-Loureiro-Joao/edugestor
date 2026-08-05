@@ -1,8 +1,8 @@
-// services/cache/CacheManager
+
 export class CacheManager {
   private static instance: CacheManager;
   private cache = new Map<string, { data: any; timestamp: number }>();
-  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutos
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; 
 
   private constructor() {}
 
@@ -14,12 +14,12 @@ export class CacheManager {
     return CacheManager.instance;
   }
 
-  // 🔹 SET: Guardar dados no cache
+  
    getLatest(baseKey: string): any {
     const keys = this.getCacheKeys()
       .filter(key => key.startsWith(`${baseKey}_`))
       .sort((a, b) => {
-        // Ordenar por timestamp ou versão mais recente
+        
         return b.localeCompare(a);
       });
     
@@ -29,7 +29,7 @@ export class CacheManager {
     return null;
   }
   
-  // Adicionar TTL (Time To Live)
+  
   set(key: string, value: any, options?: { ttl?: number, version?: string }) {
     const item = {
       value,
@@ -41,7 +41,7 @@ export class CacheManager {
     try {
       localStorage.setItem(key, JSON.stringify(item));
     } catch (error) {
-      // Em caso de quota, remove caches antigos e tenta novamente.
+      
       this.pruneOldestCacheEntries(20);
       try {
         localStorage.setItem(key, JSON.stringify(item));
@@ -58,7 +58,7 @@ export class CacheManager {
     try {
       const item = JSON.parse(itemStr);
       
-      // Verificar se o cache expirou
+      
       if (item.ttl && (Date.now() - item.timestamp > item.ttl)) {
         this.delete(key);
         return null;
@@ -70,35 +70,35 @@ export class CacheManager {
     }
   }
 
-  // 🔹 DELETE: Remover do cache
+  
   delete(key: string) {
     this.cache.delete(key);
     localStorage.removeItem(key);
     }
 
-  // 🔹 CLEAR: Limpar todo o cache
+  
   clear() {
     this.cache.clear();
     
-    // Limpar todos os itens de cache do localStorage
+    
     this.getCacheKeys().forEach((key) => {
       localStorage.removeItem(key);
     });
     
     }
 
-  // 🔹 INVALIDATE: Invalidar cache baseado em padrão
+  
   invalidate(pattern: string) {
     const regex = new RegExp(pattern);
     
-    // Limpar da memória
+    
     for (const key of this.cache.keys()) {
       if (regex.test(key)) {
         this.cache.delete(key);
       }
     }
     
-    // Limpar do localStorage
+    
     this.getCacheKeys().forEach((key) => {
       if (regex.test(key)) {
         localStorage.removeItem(key);
@@ -107,7 +107,7 @@ export class CacheManager {
     
     }
 
-  // 🔹 Verificar validade
+  
   private isValid(timestamp: number, maxAge?: number): boolean {
     const age = Date.now() - timestamp;
     return age < (maxAge || this.DEFAULT_TTL);
@@ -124,7 +124,7 @@ export class CacheManager {
   getCurrentVersion(keyPattern: string): string | null {
     const keys = this.getCacheKeys()
       .filter(key => key.startsWith(keyPattern))
-      .sort((a, b) => b.localeCompare(a)); // Mais recente primeiro
+      .sort((a, b) => b.localeCompare(a)); 
     
     if (keys.length > 0) {
       const item = this.getWithMetadata(keys[0]);
@@ -144,7 +144,7 @@ export class CacheManager {
     }
   }
   
-  // Método para emitir eventos (se necessário)
+  
   emitCacheInvalidated(type: string): void {
     const event = new CustomEvent('cache-invalidated', {
       detail: { type, timestamp: Date.now() }
@@ -152,7 +152,7 @@ export class CacheManager {
     window.dispatchEvent(event);
   }
 
-  // 🔹 Status do cache
+  
   getStats() {
     const memorySize = Array.from(this.cache.values())
       .reduce((acc, item) => acc + JSON.stringify(item.data).length, 0);
@@ -188,7 +188,7 @@ export class CacheManager {
           cacheKeys.push(key);
         }
       } catch {
-        // Ignorar chaves que não são JSON de cache.
+        
       }
     }
 
@@ -233,7 +233,7 @@ export class CacheManager {
       }
     });
 
-    // Mantém no máximo 120 entradas de cache para reduzir risco de quota.
+    
     const remainingKeys = this.getCacheKeys();
     if (remainingKeys.length > 120) {
       this.pruneOldestCacheEntries(remainingKeys.length - 120);
@@ -241,5 +241,5 @@ export class CacheManager {
   }
 }
 
-// Exportar instância global
+
 export const cacheManager = CacheManager.getInstance();

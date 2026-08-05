@@ -1,4 +1,3 @@
-// FrequenciasRegistradasView
 import { useMemo, useState } from "react";
 import { FiCalendar, FiCheckCircle, FiUsers, FiChevronRight, FiChevronDown, FiClock, FiFileText } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";

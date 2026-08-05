@@ -275,9 +275,7 @@ export const PlanoDetalhes=({planoDetalhes,setPlanoDetalhes}:PlanoDetalhesProps)
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      // Ação de editar
                       setPlanoDetalhes(null);
-                      // Aqui você pode abrir o modal de edição
                     }}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                   >

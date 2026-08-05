@@ -1,4 +1,4 @@
-// src/services/database/db
+
 import Dexie, { Table } from 'dexie';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -21,11 +21,11 @@ import { PlaneamentoBase } from '../../types/planeamento';
 import { PlanoAula } from "../../types/aula";
 import { instituicaoIdValue, isValidInstituicaoId } from '../../utils/getInsitituicaoID';
 
-// Configurar Supabase
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Tipar o Supabase
+
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey,
   {
   auth: {
@@ -35,21 +35,21 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey,
   }
 });
 
-// Para sincronização offline, o Supabase já persiste sessão automaticamente
+
 if (typeof window !== 'undefined') {
   supabase.auth.onAuthStateChange(() => {
-    // Limpa chave legada para evitar estourar quota de storage.
+    
     try {
       localStorage.removeItem('supabase.auth.token');
     } catch {
-      // Ignorar erros de storage indisponível/quota.
+      
     }
   });
 }
 
-// ============ CLASSE TIPADA DO DEXIE ============
+
 class EduGestorDatabase extends Dexie {
-  // Declaração EXPLÍCITA das tabelas com tipos
+  
   alunos!: Table<Student, string>;
   turmas!: Table<Turma, string>;
   cursos!: Table<Course, string>;
@@ -75,14 +75,14 @@ class EduGestorDatabase extends Dexie {
     super('EduGestorDB_Final');
     
     this.version(4).stores({
-      // 🔥 Agora sua IDE vai entender ESTA estrutura
+      
       alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
       avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
       turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
       cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
       turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
       transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
-      propina: 'id, aluno_id, mes_referencia, estado, data_vencimento,data_pagamento, sync_status, deleted, updated_at'   ,   // db - Adicione esta linha na definição das tabelas,
+      propina: 'id, aluno_id, mes_referencia, estado, data_vencimento,data_pagamento, sync_status, deleted, updated_at'   ,   
       frequencias: 'id, aluno_id, aula_id, data_aula, presente, sync_status, deleted, updated_at',
       aulas: 'id, turma_id, data_aula, sync_status, deleted, updated_at',
       tarefas: 'id, concluida, status, sync_status, deleted, created_at',
@@ -257,7 +257,7 @@ class EduGestorDatabase extends Dexie {
       }
     });
 
-      // ✅ ADICIONE ESTES LISTENERS PARA DEBUG
+      
     this.on('populate', () => {
       });
     
@@ -273,7 +273,7 @@ class EduGestorDatabase extends Dexie {
   }
 }
 
-// ============ INSTÂNCIA ÚNICA TIPADA ============
+
 let dbInstance: DatabaseInstance | null = null;
 
 export function getDatabase(): DatabaseInstance {
@@ -281,7 +281,7 @@ export function getDatabase(): DatabaseInstance {
     dbInstance = new EduGestorDatabase() as DatabaseInstance;
     const currentDb = dbInstance;
     
-    // Abrir conexão
+    
     currentDb.open().catch(async err => {
       console.error('Erro ao abrir banco Dexie:', err);
 
@@ -296,7 +296,7 @@ export function getDatabase(): DatabaseInstance {
   return dbInstance;
 }
 
-// Exportar a instância tipada
+
 const db: DatabaseInstance = getDatabase();
 export default db;
 
@@ -308,10 +308,10 @@ export const syncDatabase = {
     }
     
     try {
-      // 1. Primeiro upload (enviar alterações locais)
+      
       await syncManager.uploadBatch();
       
-      // 2. Depois download (buscar atualizações remotas)
+      
       await syncManager.downloadBatch();
       
       return { success: true, message: 'Sincronizado com sucesso' };
@@ -322,17 +322,17 @@ export const syncDatabase = {
     }
   },
   
-  // Sincronização apenas upload
+  
   async syncUpload() {
     return syncManager.uploadBatch();
   },
   
-  // Sincronização apenas download
+  
   async syncDownload() {
     return syncManager.downloadBatch();
   },
   
-  // Verificar status
+  
   async getSyncStatus() {
     const instituicaoId = instituicaoIdValue();
     const pendingCount = instituicaoId
@@ -353,7 +353,7 @@ export const syncDatabase = {
     };
   },
   
-  // Estimar tamanho do banco
+  
   async getDatabaseSize() {
     try {
       const tables = ['alunos', 'turmas','alocacao', 'cursos', 'transacoes', 'aulas', 'propina', 'frequencias','tarefas','metas','rotinas','evento','profiles','system_config','instituicao','notificacao','avaliacoes','turma_horarios','planeamentos','plano_aulas'];

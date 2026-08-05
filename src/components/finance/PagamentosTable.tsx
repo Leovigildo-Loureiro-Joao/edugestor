@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   FiUser, FiDollarSign, FiCheckCircle, FiClock, 
-  FiXCircle, FiChevronRight, FiCalendar, FiBookOpen 
+  FiXCircle, FiChevronRight, FiCalendar, FiBookOpen, FiDownload 
 } from 'react-icons/fi';
 import { Student } from '../../types/aluno';
+import { exportToCSV } from '../../utils/exportCSV';
 
 interface PagamentosTableProps {
   alunos: Student[];
@@ -33,6 +34,17 @@ export const PagamentosTable: React.FC<PagamentosTableProps> = ({
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
+  const handleExportCSV = () => {
+    exportToCSV(alunos, [
+      { header: 'Nome', accessor: a => a.nome_completo },
+      { header: 'Nº Estudante', accessor: a => a.numero_estudante },
+      { header: 'Turma', accessor: a => a.turma_nome || '' },
+      { header: 'Propina', accessor: a => a.propina },
+      { header: 'Estado Pagamento', accessor: a => Pendente(a) ? 'Em Dia' : 'Pendente' },
+      { header: 'Meses em Aberto', accessor: a => (a.meses_em_aberto || []).join(', ') },
+    ], 'pagamentos');
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -47,6 +59,16 @@ export const PagamentosTable: React.FC<PagamentosTableProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-between items-center px-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">{alunos.length} estudante(s)</span>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar
+          </button>
+        </div>
         <AnimatePresence mode="popLayout">
           {alunos.map((aluno, index) => {
             const pagamentoEmDia = Pendente(aluno);
@@ -237,7 +259,17 @@ export const PagamentosTable: React.FC<PagamentosTableProps> = ({
         <div className="col-span-2">Turma</div>
         <div className="col-span-3">Meses Pagos / Pendentes</div>
         <div className="col-span-2">Status Geral</div>
-        <div className="col-span-2 text-center">Ação</div>
+        <div className="col-span-2 text-center flex items-center justify-center gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            title="Exportar CSV"
+          >
+            <FiDownload size={14} />
+            CSV
+          </button>
+          Ação
+        </div>
       </div>
 
       {/* Lista de Estudantes */}

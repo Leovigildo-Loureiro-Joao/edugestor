@@ -20,7 +20,6 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
     const alunosTurma = await alunosService.getAlunosPorTurma(aula.turma_id);
     setAlunos(alunosTurma);
     
-    // Inicializar todos como presentes e participantes
     const registrosIniciais: Record<string, {presente: boolean, participou: boolean, atraso: boolean}> = {};
     alunosTurma.forEach(aluno => {
       registrosIniciais[aluno.id] = { presente: true, participou: true, atraso: false };
@@ -34,7 +33,7 @@ export const ModalFrequencia = ({ aula, onRegistrarFrequencia, setAulaSelect }:{
       [alunoId]: {
         ...prev[alunoId],
         presente: !prev[alunoId].presente,
-        participou: prev[alunoId].presente ? false : true, // Se estava ausente e vai para presente, marca como participou
+        participou: prev[alunoId].presente ? false : true,
         atraso: prev[alunoId].presente ? false : prev[alunoId].atraso
       }
     }));

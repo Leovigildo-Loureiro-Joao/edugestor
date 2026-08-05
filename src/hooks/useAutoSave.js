@@ -1,4 +1,3 @@
-// hooks/useAutoSave.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export const useAutoSave = (storageKey, initialData, delay = 2000) => {
@@ -38,13 +37,11 @@ export const useAutoSave = (storageKey, initialData, delay = 2000) => {
     }
   }, [storageKey]);
 
-  // Auto-save
   useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    // Só salva se houver mudanças
     if (hasUnsavedChanges) {
       timeoutRef.current = setTimeout(() => {
         if (Object.values(data).some(value => value !== '' && value !== null)) {

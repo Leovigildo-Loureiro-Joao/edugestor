@@ -57,7 +57,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   const [descricaoAlocacao, setDescricaoAlocacao] = useState('');
   const [metasFiltradas, setMetasFiltradas] = useState<Meta[]>([]);
 
-  // Mapear ícones para cada tipo de meta
+  
   const getIconByTipo = (tipo: Meta['tipo']) => {
     switch (tipo) {
       case 'academica': return FiBook;
@@ -70,7 +70,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }
   };
 
-  // Mapear cores para cada prioridade
+  
   const getColorByPrioridade = (prioridade: Meta['prioridade']) => {
     switch (prioridade) {
       case 'critica': return 'bg-red-500 text-white';
@@ -81,7 +81,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }
   };
 
-  // Mapear cores para cada status
+  
   const getColorByStatus = (status: Meta['status']) => {
     switch (status) {
       case 'concluida': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
@@ -93,20 +93,20 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }
   };
 
-  // Filtrar metas (apenas metas ativas que não estão concluídas)
+  
   useEffect(() => {
     const ativas = metas.filter(meta => 
-      meta.status !== 'concluida' && // Excluir metas concluídas
-      meta.status !== 'suspensa' && // Excluir metas suspensas
-      (!meta.orcamento_previsto || meta.orcamento_previsto > 0) // Que tenham orçamento previsto
+      meta.status !== 'concluida' && 
+      meta.status !== 'suspensa' && 
+      (!meta.orcamento_previsto || meta.orcamento_previsto > 0) 
     );
     setMetasFiltradas(ativas);
   }, [metas]);
 
-  // Inicializar com algumas metas selecionadas (baseado na prioridade)
+  
   useEffect(() => {
     if (metasFiltradas.length > 0 && metasSelecionadas.length === 0) {
-      // Selecionar metas com prioridade mais alta primeiro
+      
       const ordenadasPorPrioridade = [...metasFiltradas].sort((a, b) => {
         const ordemPrioridade = { critica: 4, alta: 3, media: 2, baixa: 1 };
         return (ordemPrioridade[b.prioridade] || 0) - (ordemPrioridade[a.prioridade] || 0);
@@ -115,7 +115,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
       const selecionadas = ordenadasPorPrioridade.slice(0, 3).map(meta => {
         const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
         const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
-        const valorSugerido = Math.min(orcamentoRestante, fundosDisponiveis * 0.3); // Máximo 30% dos fundos por meta inicialmente
+        const valorSugerido = Math.min(orcamentoRestante, fundosDisponiveis * 0.3); 
         
         return {
           meta,
@@ -142,22 +142,22 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }
   }, [isOpen]);
 
-  // Calcular totais
+  
   const totalAlocado = metasSelecionadas.reduce((sum, item) => sum + item.valor, 0);
   const saldoRestante = fundosDisponiveis - totalAlocado;
   const percentualTotal = metasSelecionadas.reduce((sum, item) => sum + (metas.find(meta=> meta.id==item.meta_id)?.progresso ?? 0), 0);
 
-  // Métodos para gerenciar metas selecionadas
+  
   const adicionarMeta = (meta: Meta) => {
     if (metasSelecionadas.find(item => item.meta_id === meta.id)) {
       showAlert({ type: 'error', title: 'Esta meta já foi adicionada' });
       return;
     }
 
-    // Calcular orçamento atual e restante
+    
     const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
     const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
-    const valorSugerido = Math.min(orcamentoRestante, fundosDisponiveis * 0.2); // 20% dos fundos como sugestão
+    const valorSugerido = Math.min(orcamentoRestante, fundosDisponiveis * 0.2); 
 
     setMetasSelecionadas([
       ...metasSelecionadas,
@@ -190,12 +190,12 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
         const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
         const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
         
-        // Validar valor máximo
+        
         const valorMaximo = Math.min(orcamentoRestante, fundosDisponiveis);
         const novoValor = Math.max(0, Math.min(valor, valorMaximo));
         const percentual = fundosDisponiveis > 0 ? (novoValor / fundosDisponiveis) * 100 : 0;
         
-        // Determinar tipo de alocação
+        
         let tipo_alocacao: 'complementar' | 'completo' | 'parcial' = 'parcial';
         if (novoValor >= orcamentoRestante * 0.95) {
           tipo_alocacao = 'completo';
@@ -224,12 +224,12 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
         const orcamentoAtual = meta.progresso * (meta.orcamento_previsto || 0) / 100;
         const orcamentoRestante = (meta.orcamento_previsto || 0) - orcamentoAtual;
         
-        // Validar valor máximo
+        
         const valorMaximo = Math.min(orcamentoRestante, fundosDisponiveis);
         const valorFinal = Math.min(valor, valorMaximo);
         const percentualFinal = (valorFinal / fundosDisponiveis) * 100;
         
-        // Determinar tipo de alocação
+        
         let tipo_alocacao: 'complementar' | 'completo' | 'parcial' = 'parcial';
         if (valorFinal >= orcamentoRestante * 0.95) {
           tipo_alocacao = 'completo';
@@ -263,13 +263,13 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
         
         let novoValor = item.valor;
         
-        // Ajustar valor baseado no tipo
+        
         if (tipo === 'completo') {
           novoValor = Math.min(orcamentoRestante, fundosDisponiveis);
         } else if (tipo === 'complementar') {
-          novoValor = orcamentoRestante * 0.3; // 30% do restante
+          novoValor = orcamentoRestante * 0.3; 
         } else if (tipo === 'parcial' && item.valor > orcamentoRestante * 0.5) {
-          novoValor = orcamentoRestante * 0.5; // Máximo 50% para parcial
+          novoValor = orcamentoRestante * 0.5; 
         }
         
         return {
@@ -283,7 +283,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }));
   };
 
-  // Distribuir valor igualmente
+  
   const distribuirIgualmente = () => {
     if (metasSelecionadas.length === 0) {
       showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
@@ -306,7 +306,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
   };
 
   
-  // Distribuir baseado na prioridade
+  
   const distribuirPorPrioridade = () => {
     if (metasSelecionadas.length === 0) {
       showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
@@ -335,7 +335,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }));
   };
 
-  // Distribuir baseado na necessidade de orçamento
+  
   const distribuirPorNecessidade = () => {
     if (metasSelecionadas.length === 0) {
       showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });
@@ -369,7 +369,7 @@ export const AlocacaoRecursosModal: React.FC<AlocacaoRecursosModalProps> = ({
     }));
   };
 
-  // Salvar alocação
+  
   const salvarAlocacao = () => {
     if (metasSelecionadas.length === 0) {
       showAlert({ type: 'error', title: 'Adicione pelo menos uma meta' });

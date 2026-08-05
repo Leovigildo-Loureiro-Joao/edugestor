@@ -1,4 +1,4 @@
-// src/pages/Courses/CourseDetails
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,10 +43,10 @@ interface AnaliseCurso {
   turmasAtivas: number;
   desempenhoTurmas: TurmaDesempenho[];
   distribuicaoPresenca: {
-    excelente: number; // > 90%
-    bom: number;       // 70-90%
-    regular: number;   // 50-70%
-    critico: number;   // < 50%
+    excelente: number; 
+    bom: number;       
+    regular: number;   
+    critico: number;   
   };
   topDisciplinas: Array<{
     nome: string;
@@ -76,7 +76,7 @@ export const CourseDetails = () => {
       if (courseData) {
         setCourse(courseData);
         
-        // Carregar análise detalhada
+        
         await carregarAnaliseCurso(courseData);
       }
       
@@ -94,7 +94,7 @@ export const CourseDetails = () => {
         return;
       }
 
-      // Buscar todas as aulas e frequências das turmas
+      
       const turmasComDesempenho: TurmaDesempenho[] = [];
       let totalAlunos = 0;
       let totalAulas = 0;
@@ -104,7 +104,7 @@ export const CourseDetails = () => {
       let totalNotas = 0;
       let totalAvaliacoes = 0;
 
-      // Distribuição de presença
+      
       const distribuicao = {
         excelente: 0,
         bom: 0,
@@ -112,24 +112,24 @@ export const CourseDetails = () => {
         critico: 0
       };
 
-      // Mapa para top disciplinas
+      
       const disciplinasMap = new Map<string, { soma: number; count: number; aulas: number }>();
 
       for (const turma of curso.turmas) {
-        // Buscar aulas da turma
+        
         const aulas = await aulaService.getAulasPorTurma(turma.id);
         const aulasMinistradas = aulas.filter(a => a.status === 'ministrada');
         
-        // Buscar frequências
+        
         const frequencias = await Promise.all(
           aulasMinistradas.map(a => frequenciaService.getFrequenciaPorAula(a.id))
         );
         const todasFrequencias = frequencias.flat();
         
-        // Buscar avaliações da turma
+        
         const avaliacoes = await avaliacaoService.getAvaliacoesByTurma(turma.id);
         
-        // Calcular estatísticas da turma
+        
         const alunosTurma = turma.qtd || 0;
         totalAlunos += alunosTurma;
         
@@ -138,7 +138,7 @@ export const CourseDetails = () => {
         totalAulas += qtdAulas;
         totalAulasMinistradas += qtdAulasMinistradas;
         
-        // Calcular presença
+        
         let presencasTurma = 0;
         let totalRegistros = 0;
         
@@ -152,19 +152,19 @@ export const CourseDetails = () => {
         
         const taxaPresenca = totalRegistros > 0 ? (presencasTurma / totalRegistros) * 100 : 0;
         
-        // Classificar turma por presença
+        
         if (taxaPresenca >= 90) distribuicao.excelente++;
         else if (taxaPresenca >= 70) distribuicao.bom++;
         else if (taxaPresenca >= 50) distribuicao.regular++;
         else distribuicao.critico++;
         
-        // Calcular média de notas
+        
         let somaNotas = 0;
         avaliacoes.forEach(av => {
           somaNotas += av.nota;
           totalAvaliacoes++;
           
-          // Acumular por disciplina
+          
           const disc = disciplinasMap.get(av.disciplina) || { soma: 0, count: 0, aulas: 0 };
           disc.soma += av.nota;
           disc.count++;
@@ -175,7 +175,7 @@ export const CourseDetails = () => {
         
         const mediaNotas = avaliacoes.length > 0 ? somaNotas / avaliacoes.length : 0;
         
-        // Contar alunos com média >= 10
+        
         const alunosComMedia = await avaliacaoService.getAlunosComMediaAcima(turma.id, 10);
         
         turmasComDesempenho.push({
@@ -190,7 +190,7 @@ export const CourseDetails = () => {
           }
         });
         
-        // Acumular aulas por disciplina
+        
         aulasMinistradas.forEach(aula => {
           const disc = disciplinasMap.get(aula.disciplina) || { soma: 0, count: 0, aulas: 0 };
           disc.aulas++;
@@ -198,11 +198,11 @@ export const CourseDetails = () => {
         });
       }
 
-      // Calcular médias gerais
+      
       const mediaNotasGeral = totalAvaliacoes > 0 ? totalNotas / totalAvaliacoes : 0;
       const taxaPresencaGeral = totalFrequencias > 0 ? (totalPresencas / totalFrequencias) * 100 : 0;
 
-      // Top disciplinas
+      
       const topDisciplinas = Array.from(disciplinasMap.entries())
         .map(([nome, data]) => ({
           nome,
@@ -569,7 +569,7 @@ export const CourseDetails = () => {
               </div>
             </motion.div>
           ) : (
-            // ABA DE ANÁLISE
+            
             <motion.div
               key="analise"
               initial={{ opacity: 0, x: 20 }}

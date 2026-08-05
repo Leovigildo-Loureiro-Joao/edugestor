@@ -28,7 +28,7 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
-  // Navegação
+  
   const mesAnterior = () => {
     setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1));
   };
@@ -41,7 +41,7 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
     setDataAtual(new Date());
   };
 
-  // Gerar dias do mês
+  
   const diasDoMes = useMemo(() => {
     const ano = dataAtual.getFullYear();
     const mes = dataAtual.getMonth();
@@ -57,7 +57,7 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
       aulas: typeof aulas;
     }> = [];
     
-    // Dias do mês anterior
+    
     const primeiroDiaSemana = primeiroDia.getDay();
     for (let i = 0; i < primeiroDiaSemana; i++) {
       const data = new Date(ano, mes, -i);
@@ -70,7 +70,7 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
       });
     }
     
-    // Dias do mês atual
+    
     for (let i = 1; i <= ultimoDia.getDate(); i++) {
       const data = new Date(ano, mes, i);
       const dataStr = data.toISOString().split('T')[0];
@@ -85,8 +85,8 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
       });
     }
     
-    // Dias do próximo mês (para completar grid)
-    const diasRestantes = 42 - dias.length; // 6 linhas * 7 dias = 42
+    
+    const diasRestantes = 42 - dias.length; 
     for (let i = 1; i <= diasRestantes; i++) {
       const data = new Date(ano, mes + 1, i);
       dias.push({
@@ -101,13 +101,13 @@ export const CalendarioMini = ({ aulas, onDiaClick, onAulaClick }: CalendarioMin
     return dias;
   }, [dataAtual, aulas]);
 
-  // Aulas do dia selecionado
+  
   const aulasDoDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
     return aulas.filter(aula => aula.data_aula === diaSelecionado);
   }, [diaSelecionado, aulas]);
 
-  // Estatísticas do mês
+  
   const estatisticasMes = useMemo(() => {
     const ano = dataAtual.getFullYear();
     const mes = dataAtual.getMonth();

@@ -362,7 +362,6 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
             )}
         </div>
 
-        {/* Detalhes Expandíveis */}
         <motion.div
             initial={false}
             animate={{ height: isExpanded ? 'auto' : 0 }}

@@ -1,4 +1,4 @@
-// HeatmapHorarios.tsx
+
 import React from 'react';
 import { FiInfo } from 'react-icons/fi';
 
@@ -6,7 +6,7 @@ interface HeatmapCell {
   dia: string;
   horario: string;
   count: number;
-  intensity: number; // 0-1
+  intensity: number; 
 }
 
 interface HeatmapHorariosProps {
@@ -19,24 +19,24 @@ interface HeatmapHorariosProps {
 }
 
 export const HeatmapHorarios: React.FC<HeatmapHorariosProps> = ({ data }) => {
-  // Dias da semana
+  
   const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   
-  // Horários comuns (7h às 18h)
+  
   const horarios = [
     '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
     '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
   ];
 
-  // Preparar dados para o heatmap
+  
   const prepararHeatmapData = () => {
     const heatmapData: HeatmapCell[][] = [];
     
-    // Inicializar matriz
+    
     horarios.forEach((horario, horarioIndex) => {
       heatmapData[horarioIndex] = [];
       dias.forEach((dia, diaIndex) => {
-        // Encontrar aulas neste horário e dia
+        
         const aulasNoSlot = data.filter(item => 
           item.dia === dia && 
           item.horario === horario
@@ -44,7 +44,7 @@ export const HeatmapHorarios: React.FC<HeatmapHorariosProps> = ({ data }) => {
         
         const totalAulas = aulasNoSlot.reduce((sum, item) => sum + item.aulas, 0);
         
-        // Calcular intensidade (0-1)
+        
         const maxAulas = Math.max(...horarios.map(h => 
           data.filter(d => d.horario === h).reduce((sum, item) => sum + item.aulas, 0)
         ), 1);
@@ -65,24 +65,24 @@ export const HeatmapHorarios: React.FC<HeatmapHorariosProps> = ({ data }) => {
 
   const heatmapData = prepararHeatmapData();
 
-  // Função para obter cor baseada na intensidade
+  
   const getCellColor = (intensity: number) => {
     if (intensity === 0) return 'bg-gray-100 dark:bg-gray-800';
     
-    // Gradiente de azul (claro para escuro)
+    
     if (intensity < 0.25) return 'bg-blue-100 dark:bg-blue-900/30';
     if (intensity < 0.5) return 'bg-blue-200 dark:bg-blue-800/50';
     if (intensity < 0.75) return 'bg-blue-300 dark:bg-blue-700/60';
     return 'bg-blue-500 dark:bg-blue-600';
   };
 
-  // Função para obter texto da cor baseado no fundo
+  
   const getTextColor = (intensity: number) => {
     if (intensity < 0.5) return 'text-gray-800 dark:text-gray-200';
     return 'text-white';
   };
 
-  // Tooltip customizado
+  
   const Tooltip = ({ cell, x, y }: { cell: HeatmapCell; x: number; y: number }) => {
     if (cell.count === 0) return null;
     

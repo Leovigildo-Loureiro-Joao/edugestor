@@ -16,7 +16,6 @@ body {
   color: #334155;
 }
 
-/* Scrollbar personalizada */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -34,7 +33,6 @@ body {
   background: #94a3b8;
 }
 
-/* Animações personalizadas */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -50,12 +48,10 @@ body {
   animation: slideIn 0.3s ease-out;
 }
 
-/* Loading states */
 .loading-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Status indicators */
 .status-saving {
   @apply bg-warning-500 animate-pulse-soft;
 }

@@ -1,4 +1,4 @@
-// services/database/transacaoService
+
 import { supabase } from '../database/db';
 import { propinaService } from './propinas';
 import db from './db';
@@ -278,7 +278,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Criar transação localmente
+  
   async createTransacao(transacaoData: TransacaoFormData): Promise<string> {
     try {
       const id = generateUniqueId();
@@ -301,7 +301,7 @@ export const transacaoService = {
 
       await db.transacoes.put(transacao);
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'transacoes',
         instituicao_id: instituicaoId,
@@ -339,7 +339,7 @@ export const transacaoService = {
 
       await db.alocacao.put(alocacao);
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'alocacao',
         instituicao_id: instituicaoId,
@@ -391,17 +391,17 @@ export const transacaoService = {
   },
   
 
-  // ✅ Processar pagamento com cartão (inclui sincronização)
+  
   async processarPagamento(dados: TransacaoFormData): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
     try {
-      // Primeiro, salvar localmente
+      
       const transacaoId = await this.createTransacao(dados);
       
-      // Se online, tentar sincronizar imediatamente
+      
       if (navigator.onLine) {
         await this.syncTransacoes();
         
-        // Buscar transação sincronizada
+        
         const transacaoSincronizada = await db.transacoes.get(transacaoId);
         
         return {
@@ -411,7 +411,7 @@ export const transacaoService = {
         };
       }
       
-      // Se offline, retornar dados locais
+      
       const transacaoLocal = await db.transacoes.get(transacaoId);
       
       return {
@@ -431,7 +431,7 @@ export const transacaoService = {
 
 
 
-  // ✅ Processar mensalidade com sincronização
+  
   async processarMensalidade(alunoId: string, dados: DadosPagamentoCash): Promise<{sucesso: boolean; mensagem: string; dados?: any}> {
     try {
       const mesesReferencia = Array.from(
@@ -445,7 +445,7 @@ export const transacaoService = {
         };
       }
 
-      // Criar transação localmente
+      
       const valorMensal = parseFloat(dados.valor);
       const valorTotal = valorMensal * mesesReferencia.length;
       const [paymentConfig, anoLectivo, aluno] = await Promise.all([
@@ -482,7 +482,7 @@ export const transacaoService = {
       const transacaoId = await this.createTransacao(transacaoData);
       const transacaoLocal = await db.transacoes.get(transacaoId);
 
-      // Registrar propinas para cada mês (também deve ter sincronização)
+      
       for (const mes of mesesReferencia) {
         const mesRef = financeRulesService.toMonthAbbr(mes) as 'Jan' | 'Fev' | 'Mar' | 'Abr' | 'Mai' | 'Jun' | 'Jul' | 'Ago' | 'Set' | 'Out' | 'Nov' | 'Dez';
         
@@ -504,7 +504,7 @@ export const transacaoService = {
         });
       }
 
-      // Pré-pago: se mês atual foi pago, marca aluno em dia localmente.
+      
       await financeRulesService.markStudentPaidIfCurrentMonthPaid(
         alunoId,
         mesesReferencia
@@ -531,7 +531,7 @@ export const transacaoService = {
         }
       }
 
-      // Sincronizar se online
+      
       if (navigator.onLine) {
         await this.syncTransacoes();
       }
@@ -551,7 +551,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Buscar todas as transações
+  
   async getAllTransactions(): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -559,10 +559,10 @@ export const transacaoService = {
       
       const todasTransacoes = await db.transacoes.toArray();
       
-      // Filtrar as não deletadas
+      
       const transacoesAtivas = todasTransacoes.filter(t => !t.deleted && t.instituicao_id === instituicaoId);
       
-      // Ordenar por data (mais recente primeiro)
+      
       transacoesAtivas.sort((a, b) => 
         new Date(b.data).getTime() - new Date(a.data).getTime()
       );
@@ -586,7 +586,7 @@ export const transacaoService = {
       ]);
     },
   
-  // ✅ Função auxiliar para marcar como pendente
+  
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'transacoes',
@@ -598,7 +598,7 @@ export const transacaoService = {
     });
   },
 
-  // ✅ Buscar transações por tipo
+  
   async getTransacoesPorTipo(tipo: 'entrada' | 'saida'): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -618,7 +618,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Buscar transações por categoria
+  
   async getTransacoesPorCategoria(categoria: Transacao['categoria']): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -638,7 +638,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Buscar pagamentos por ano (agora busca local + remoto)
+  
   async getPagamentosPorAno(ano: number): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -646,20 +646,20 @@ export const transacaoService = {
       const inicioAno = `${ano}-01-01`;
       const fimAno = `${ano}-12-31`;
       
-      // Primeiro buscar localmente
+      
       const transacoesLocais = await db.transacoes
         .where('tipo')
         .equals('entrada')
         .and(t => !t.deleted && t.instituicao_id === instituicaoId)
         .toArray();
       
-      // Filtrar por ano localmente
+      
       const filtradas = transacoesLocais.filter(t => {
         const data = new Date(t.data);
         return data.getFullYear() === ano;
       });
       
-      // Se online, também buscar do Supabase para garantir dados completos
+      
       if (navigator.onLine) {
         const { data: transacoesRemotas, error } = await supabase
           .from('transacoes')
@@ -671,7 +671,7 @@ export const transacaoService = {
           .order('data', { ascending: true });
 
         if (!error && transacoesRemotas) {
-          // Combinar resultados (remover duplicatas baseadas no ID)
+          
           const todasTransacoes = [...filtradas];
           for (const remota of transacoesRemotas) {
             if (!todasTransacoes.find(t => t.id === remota.id)) {
@@ -689,7 +689,7 @@ export const transacaoService = {
         }
       }
       
-      // Retornar apenas locais se offline ou erro
+      
       return filtradas.sort((a, b) => 
         new Date(a.data).getTime() - new Date(b.data).getTime()
       );
@@ -700,7 +700,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Buscar despesas por ano
+  
   async getDespesasPorAno(ano: number): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -708,20 +708,20 @@ export const transacaoService = {
       const inicioAno = `${ano}-01-01`;
       const fimAno = `${ano}-12-31`;
       
-      // Primeiro buscar localmente
+      
       const transacoesLocais = await db.transacoes
         .where('tipo')
         .equals('saida')
         .and(t => !t.deleted && t.instituicao_id === instituicaoId)
         .toArray();
       
-      // Filtrar por ano localmente
+      
       const filtradas = transacoesLocais.filter(t => {
         const data = new Date(t.data);
         return data.getFullYear() === ano;
       });
       
-      // Se online, também buscar do Supabase
+      
       if (navigator.onLine) {
         const { data: transacoesRemotas, error } = await supabase
           .from('transacoes')
@@ -760,7 +760,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Buscar histórico de pagamentos (últimas 10 entradas)
+  
   async getHistoricoPagamentos(): Promise<Transacao[]> {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -771,7 +771,7 @@ export const transacaoService = {
         .and(t => !t.deleted && t.instituicao_id === instituicaoId)
         .toArray();
       
-      // Ordenar por data (mais recente primeiro) e pegar primeiras 10
+      
       return transacoes
         .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
         .slice(0, 10);
@@ -782,7 +782,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Atualizar transação
+  
   async updateTransacao(id: string, transacaoData: Partial<TransacaoFormData>) {
     try {
       const updated_at = new Date().toISOString();
@@ -798,7 +798,7 @@ export const transacaoService = {
         sync_status: 'pending' as const
       });
 
-      // Adicionar/atualizar na fila
+      
       await db.syncQueue.add({
         table: 'transacoes',
         record_id: id,
@@ -814,7 +814,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Deletar transação (soft delete)
+  
   async deleteTransacao(id: string) {
     try {
       const transacao = await db.transacoes.get(id);
@@ -824,7 +824,7 @@ export const transacaoService = {
       await propinaCascadeService.deleteByTransacao(id, instituicaoId);
 
       if (transacao.sync_status === 'synced' && !transacao.id.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
+        
         await db.transacoes.update(id, { 
           deleted: true, 
           sync_status: 'pending_delete' as const,
@@ -841,10 +841,10 @@ export const transacaoService = {
         });
         
         } else {
-        // Se nunca sincronizado, deletar completamente
+        
         await db.transacoes.delete(id);
         
-        // Remover da fila se existir
+        
         await db.syncQueue
           .where('record_id')
           .equals(id)
@@ -859,7 +859,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Verificar saúde do banco de transações
+  
   async checkDatabaseHealth() {
     try {
       const instituicaoId = getActiveInstituicaoId();
@@ -897,7 +897,7 @@ export const transacaoService = {
     }
   },
 
-  // ✅ Calcular total por período
+  
   async calcularTotalPorPeriodo(tipo: 'entrada' | 'saida', inicio: Date, fim: Date): Promise<number> {
     try {
       const instituicaoId = getActiveInstituicaoId();

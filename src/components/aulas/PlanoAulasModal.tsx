@@ -1,4 +1,3 @@
-// components/aulas/ModalPlanoAula
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -52,24 +51,20 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
     descricao: '',
     disciplina: '',
     
-    // Metadados pedagógicos
     objetivos_aprendizagem: [''],
     competencias_desenvolvidas: [''],
     recursos_necessarios: [''],
     metodologia_principal: 'expositiva' as 'expositiva' | 'dialogada' | 'pratica' | 'ativa' | 'hibrida',
     avaliacao: '',
     
-    // Estrutura
     duracao_total: 45,
     aulas_planeadas: 1,
     data_inicio: new Date().toISOString().split('T')[0],
     data_fim: new Date().toISOString().split('T')[0],
     frequencia: 'semanal' as 'diaria' | 'semanal' | 'quinzenal',
     
-    // Conteúdo estruturado
     conteudos: [] as Conteudo[],
     
-    // Turmas selecionadas
     turma_ids: [] as string[],
     
     status: 'rascunho' as 'rascunho' | 'ativo'
@@ -83,10 +78,8 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
   const [carregando, setCarregando] = useState(false);
   const [progresso, setProgresso] = useState(25);
 
-  // Estado do formulário
   const [plano, setPlano] = useState(planoInicial);
 
-  // Carregar turmas
   React.useEffect(() => {
     carregarTurmas();
   }, []);
@@ -109,7 +102,6 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
   }, [isOpen, templateParaCopiar, planoExistente]);
 
   React.useEffect(() => {
-    // Atualizar progresso baseado na etapa
     const progressos = {
       basico: 25,
       conteudo: 50,
@@ -305,7 +297,6 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 overflow-y-auto"
       >
-        {/* Overlay */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -314,7 +305,6 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
           onClick={onClose}
         />
         
-        {/* Modal Container */}
         <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -324,7 +314,6 @@ export const ModalPlanoAula: React.FC<ModalPlanoAulaProps> = ({
             className="relative w-full max-w-none sm:max-w-6xl h-[90vh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header com gradiente azul */}
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 z-10">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-3">

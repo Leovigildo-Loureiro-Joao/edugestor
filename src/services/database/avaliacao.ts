@@ -12,10 +12,10 @@ import { Avaliacao, AvaliacaoFormData, AvaliacaoStats, AvaliacaoWithAluno, Disci
 
 
 export const avaliacaoService = {
-  // ✅ Criar avaliação com validação avançada
+  
   async criarAvaliacao(avaliacaoData: AvaliacaoFormData): Promise<string> {
     try {
-      // Validações
+      
       if (!avaliacaoData.aluno_id) {
         throw new Error('ID do aluno é obrigatório');
       }
@@ -39,7 +39,7 @@ export const avaliacaoService = {
       await db.avaliacoes.put(avaliacao);
       emitDbChanged('avaliacoes', 'create');
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'avaliacoes',
         record_id: id,
@@ -51,7 +51,7 @@ export const avaliacaoService = {
         retry_count: 0
       });
 
-      // Tentar sincronizar imediatamente se online
+      
       if (navigator.onLine) {
         setTimeout(() => this.tryImmediateSync(id), 1000);
       }
@@ -64,7 +64,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Sincronização imediata
+  
   async tryImmediateSync(id: string) {
     try {
       const avaliacao = await db.avaliacoes.get(id);
@@ -79,7 +79,7 @@ export const avaliacaoService = {
       }
   },
 
-  // ✅ Buscar todas as avaliações com joins otimizados
+  
   async getAllAvaliacoes(options?: {
     includeDeleted?: boolean;
     limit?: number;
@@ -96,14 +96,14 @@ export const avaliacaoService = {
         orderDirection = 'desc'
       } = options || {};
 
-      // Construir query base
+      
       let query = db.avaliacoes;
       
   
-      // Executar query
+      
       const avaliacoes = (await query.toArray()).filter(p=> !p.deleted);
 
-      // Ordenar manualmente (IndexedDB não suporta sorting complexo diretamente)
+      
       avaliacoes.sort((a, b) => {
         const aVal = a[orderBy];
         const bVal = b[orderBy];
@@ -114,10 +114,10 @@ export const avaliacaoService = {
         return new Date(aVal as string).getTime() - new Date(bVal as string).getTime();
       });
 
-      // Aplicar limite e offset
+      
       const paginated = avaliacoes.slice(offset, offset + limit);
 
-      // Buscar informações dos alunos em batch
+      
       const alunoIds = [...new Set(
         paginated
           .map(a => a.aluno_id)
@@ -134,7 +134,7 @@ export const avaliacaoService = {
 
       const alunoMap = new Map(alunos.map(aluno => [aluno.id, aluno]));
 
-      // Combinar dados
+      
       const resultado: AvaliacaoWithAluno[] = paginated.map(avaliacao => ({
         ...avaliacao,
         aluno: alunoMap.get(avaliacao.aluno_id) ? {
@@ -183,7 +183,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Sincronizar avaliações
+  
   async syncAvaliacoes(lastSync?: Date) {
     try {
       const syncDate = lastSync || new Date(0);
@@ -204,7 +204,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Limpar dados antigos
+  
   async cleanupOldData(daysToKeep = 90) {
     try {
       const cutoffDate = new Date();
@@ -225,7 +225,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Buscar avaliações por aluno com estatísticas
+  
   async getAvaliacoesByAluno(
     alunoId: string,
     options?: {
@@ -255,7 +255,7 @@ export const avaliacaoService = {
       let freque=await db.frequencias.filter(f=> !f.deleted).toArray()
        var aulas= await db.aulas.filter(f=> !f.deleted&&f.status=="ministrada").toArray()
       var aluno=await db.alunos.get(alunoId)
-      // Aplicar filtros
+      
       if (options?.disciplina) {
         query = query.filter(av => av.disciplina === options.disciplina);
         aulas = aulas.filter(av => av.disciplina === options.disciplina);
@@ -275,12 +275,12 @@ export const avaliacaoService = {
 
       const avaliacoes = await query.toArray();
       
-      // Ordenar por data
+      
       avaliacoes.sort((a, b) => 
         new Date(b.data_avaliacao).getTime() - new Date(a.data_avaliacao).getTime()
       );
 
-      // Calcular estatísticas
+      
       if (avaliacoes.length === 0) {
         return {
           avaliacoes: [],
@@ -296,7 +296,7 @@ export const avaliacaoService = {
         };
       }
 
-      // Calcular médias por disciplina
+      
       const mediaPorDisciplinaFreque: Record<string, { soma: number; count: number;all: number; presente: number }> = {};
       const evolucaoMap = new Map<string, { soma: number; count: number ;all: number; presente: number}>();
       let totalSoma = 0;
@@ -307,7 +307,7 @@ export const avaliacaoService = {
       const curso= await cursosService.getCoursesById(turma?.curso_id||"")
 
       avaliacoes.forEach((av:Avaliacao) => {
-        // Média por disciplina
+        
         if (!mediaPorDisciplinaFreque[av.disciplina]) {
           mediaPorDisciplinaFreque[av.disciplina] = { soma: 0, count: 0 ,all:0,presente:0};
         }
@@ -315,12 +315,12 @@ export const avaliacaoService = {
         mediaPorDisciplinaFreque[av.disciplina].soma += av.nota;
         mediaPorDisciplinaFreque[av.disciplina].count += 1;
        
-        // Estatísticas gerais
+        
         totalSoma += av.nota;
         if (av.nota >= 10) aprovados++;
         else reprovados++;
 
-        // Evolução por mês
+        
         const data = new Date(av.data_avaliacao);
         const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         if (!evolucaoMap.has(mesKey)) {
@@ -352,7 +352,7 @@ export const avaliacaoService = {
      
       
     
-      // Preparar resultado
+      
       const mediaGeral = totalSoma / avaliacoes.length;
       const evolucao = Array.from(evolucaoMap.entries())
         .map(([mes, dados]) => ({
@@ -418,7 +418,7 @@ export const avaliacaoService = {
       .toArray();
   },
 
-  // ✅ Estatísticas avançadas
+  
   async getEstatisticasAvancadas(options?: {
     turmaId?: string;
     periodo?: string;
@@ -433,9 +433,9 @@ export const avaliacaoService = {
     try {
       let avaliacoes = await this.getAllAvaliacoes({ includeDeleted: false });
 
-      // Aplicar filtros
+      
       if (options?.turmaId) {
-        // Filtrar por turma (precisaria de join com alunos)
+        
         const alunosTurma = await db.alunos
           .where('turma_id')
           .equals(options.turmaId)
@@ -453,20 +453,20 @@ export const avaliacaoService = {
         );
       }
 
-      // Calcular estatísticas gerais
+      
       const totalNotas = avaliacoes.length;
       const somaNotas = avaliacoes.reduce((sum, av) => sum + av.nota, 0);
       const mediaGeral = totalNotas > 0 ? somaNotas / totalNotas : 0;
       const aprovados = avaliacoes.filter(av => av.nota >= 10).length;
       const reprovados = totalNotas - aprovados;
 
-      // Distribuição de notas (0-20)
+      
       const distribuicaoNotas: Record<number, number> = {};
       for (let i = 0; i <= 20; i++) {
         distribuicaoNotas[i] = avaliacoes.filter(av => Math.round(av.nota) === i).length;
       }
 
-      // Estatísticas por disciplina
+      
       const disciplinasMap = new Map<string, DisciplinaStats>();
       avaliacoes.forEach(av => {
         if (!disciplinasMap.has(av.disciplina)) {
@@ -495,20 +495,20 @@ export const avaliacaoService = {
         });
       });
 
-      // Calcular médias finais
+      
       const porDisciplina = Array.from(disciplinasMap.values()).map(stats => ({
         ...stats,
         media: stats.media / stats.totalAvaliacoes,
         historico: stats.historico.sort((a, b) => a.data.localeCompare(b.data))
       }));
 
-      // Top alunos (média geral)
+      
       const alunoStats = new Map<string, { soma: number; count: number; nome: string }>();
       avaliacoes.forEach(av => {
         const aluno = alunoStats.get(av.aluno_id) || { soma: 0, count: 0, nome: '' };
         aluno.soma += av.nota;
         aluno.count += 1;
-        // Buscar nome do aluno se necessário
+        
         alunoStats.set(av.aluno_id, aluno);
       });
 
@@ -521,7 +521,7 @@ export const avaliacaoService = {
         .sort((a, b) => b.media - a.media)
         .slice(0, 10);
 
-      // Evolução temporal
+      
       const evolucaoMap = new Map<string, { soma: number; count: number }>();
       avaliacoes.forEach(av => {
         const periodo = av.periodo;
@@ -565,7 +565,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Exportar dados
+  
   async exportData(format: 'csv' | 'json' | 'pdf', options?: {
     alunoIds?: string[];
     turmaId?: string;
@@ -575,14 +575,14 @@ export const avaliacaoService = {
     try {
       let avaliacoes = await this.getAllAvaliacoes({ includeDeleted: false });
 
-      // Aplicar filtros
+      
       if (options?.alunoIds) {
         const alunoIdsSet = new Set(options.alunoIds);
         avaliacoes = avaliacoes.filter(av => alunoIdsSet.has(av.aluno_id));
       }
 
       if (options?.turmaId) {
-        // Implementar filtro por turma
+        
       }
 
       if (options?.dataInicio && options?.dataFim) {
@@ -598,7 +598,7 @@ export const avaliacaoService = {
         case 'json':
           return JSON.stringify(avaliacoes, null, 2);
         case 'pdf':
-          // Implementar geração de PDF
+          
           throw new Error('Exportação PDF ainda não implementada');
         default:
           throw new Error('Formato de exportação não suportado');
@@ -610,7 +610,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Exportar para CSV
+  
    async exportToCSV(avaliacoes: AvaliacaoWithAluno[]): Promise<string> {
     const headers = [
       'Aluno',
@@ -644,7 +644,7 @@ export const avaliacaoService = {
     return csvContent;
   },
 
-  // ✅ Métodos CRUD básicos (mantidos para compatibilidade)
+  
   async atualizarAvaliacao(id: string, updates: Partial<AvaliacaoFormData>) {
     try {
       const updated_at = new Date().toISOString();
@@ -710,7 +710,7 @@ export const avaliacaoService = {
     }
   },
 
-  // ✅ Monitoramento de performance
+  
   async getPerformanceMetrics() {
     try {
       const avaliacoes = await db.avaliacoes.toArray();

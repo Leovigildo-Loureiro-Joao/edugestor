@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { logoBlack } from "../auth/Login"
 
 export const ShowTimeot=()=>{
-      const navigate = useNavigate(); // 🔥 ADICIONAR ESTE HOOK
+      const navigate = useNavigate();
 
     return <>
               <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">

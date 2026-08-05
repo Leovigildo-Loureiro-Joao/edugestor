@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiRefreshCw, FiAlertCircle, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import { syncManager } from '../../services/database/syncManager';
 import { getPendingCount } from '../../utils/emitPendingSync';
-import { getErrorCount } from '../../utils/errorManager'; // Você vai criar essa função
+import { getErrorCount } from '../../utils/errorManager';
 import { supabase } from '../../services/database/db';
 
 interface SyncStatusBadgeProps {
@@ -21,21 +21,17 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    // Função para carregar ambos os contadores
     const loadCounts = async () => {
       try {
-        // Carregar pendentes e erros separadamente
         const [pending, errors] = await Promise.all([
           getPendingCount(tableName),
           getErrorCount(tableName)
         ]);
         
-        // Proteção contra valores negativos
         setPendingCount(Math.max(0, pending || 0));
         setErrorCount(Math.max(0, errors || 0));
       } catch (error) {
         console.error('Erro ao carregar contadores:', error);
-        // Em caso de erro, garantir valores não negativos
         setPendingCount(0);
         setErrorCount(0);
       }
@@ -43,7 +39,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
 
     loadCounts();
 
-    // 2. Ouvir eventos de sincronização
     const handleSyncEvent = (e: CustomEvent) => {
       if (e.detail?.table === tableName || e.detail?.table === 'all') {
         loadCounts();
@@ -56,13 +51,11 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       }
     };
 
-    // 3. Configurar listeners
     window.addEventListener('sync-pending', handleSyncEvent as EventListener);
     window.addEventListener('sync-complete', handleSyncEvent as EventListener);
     window.addEventListener('sync-failed', handleSyncEvent as EventListener);
     window.addEventListener('storage', handleStorageChange);
     
-    // Polling para atualização (a cada 30 segundos)
     const interval = setInterval(loadCounts, 30000);
 
     return () => {
@@ -81,7 +74,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       setIsSyncing(true);
       await syncManager.uploadBatch();
       
-      // Aguardar um pouco e recarregar
       setTimeout(async () => {
         try {
           const [pending, errors] = await Promise.all([
@@ -111,10 +103,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     
     try {
       setIsSyncing(true);
-      // Chamar função específica para retentar erros
       await syncManager.rentryErrorsTable(tableName);
       
-      // Aguardar e recarregar
       setTimeout(async () => {
         try {
           const [pending, errors] = await Promise.all([
@@ -155,7 +145,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     return names[tableName] || tableName;
   };
 
-  // SE HÁ ERROS: mostrar botão vermelho para retentar
   if (errorCount > 0) {
     return (
       <button
@@ -182,7 +171,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     );
   }
 
-  // SE ESTÁ SINCRONIZADO: mostrar verde
   if (pendingCount === 0) {
     return (
       <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 ${className}`}>
@@ -192,7 +180,6 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     );
   }
 
-  // SE HÁ PENDENTES (sem erros): mostrar laranja/laranja
   return (
     <button
       onClick={handleSyncNow}

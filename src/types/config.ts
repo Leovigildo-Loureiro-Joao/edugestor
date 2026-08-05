@@ -1,6 +1,5 @@
 import { BaseEntity, SyncStatus } from "./base";
 
-// services/configService
 export interface SystemConfig extends BaseEntity{
   id: string;
   category: string;
@@ -27,9 +26,8 @@ export interface PaymentConfig {
   pagamentoPrepago:boolean;
 }
 
-// types/config
 export interface HorarioConfig {
-  hora_inicial: string;  // snake_case para compatibilidade com backend
+  hora_inicial: string;
   hora_final: string;
 }
 
@@ -41,7 +39,7 @@ export interface SistemaAvaliacao {
 export interface TipoAvaliacao {
   id: number;
   nome: string;
-  notaMax?: number;  // Opcional se quiser limitar nota máxima
+  notaMax?: number;
   cor: string;
 }
 

@@ -155,7 +155,6 @@ function ServicesInitializer() {
         console.error('❌ Erro ao iniciar listeners de auditoria:', error);
       }
 
-      // Adia tarefas pesadas para não impactar a navegação logo após login.
       const scheduleHeavyTasks = () => {
         void syncDatabase.syncAll().catch((error) => {
           console.error('❌ Erro ao sincronizar dados:', error);
@@ -216,7 +215,6 @@ function SetupGuard({ children }) {
             }
           }
         } catch {
-          // No-op: fallback para verificação remota
         }
 
         const { data: admins, error } = await supabase

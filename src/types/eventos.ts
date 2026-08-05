@@ -4,57 +4,57 @@ export interface VisaoEstrategica extends BaseEntity {
   id: string;
   titulo: string;
   descricao: string;
-  periodo: string; // "2025-2027"
+  periodo: string; 
   data_criacao: string;
   responsavel: string;
   status: 'ativa' | 'concluida' | 'arquivada';
 }
 
-// Nível 4: TAREFAS (Execução - Diária)
+
 export interface Tarefa extends BaseEntity {
   id: string;
-  plano_id?: string; // Opcional - relaciona com Plano
-  meta_id?: string; // Opcional - relaciona diretamente com Meta
+  plano_id?: string; 
+  meta_id?: string; 
   
   titulo: string;
   descricao?: string;
   
-  // Classificação
+  
   tipo: 'operacional' | 'administrativa' | 'pedagogica' | 'manutencao' | 'evento';
   categoria: 'importante' | 'urgente' | 'evento' | 'rotina' | 'melhoria';
   
-  // Priorização
+  
   prioridade: 'baixa' | 'media' | 'alta' | 'critica';
   impacto: 'baixo' | 'medio' | 'alto' | 'critico';
   esforco: 'rapido' | 'moderado' | 'longo';
   
-  // Temporalidade
+  
   data_criacao: string;
   data_limite?: string;
   data_conclusao?: string;
   estimativa_horas?: number;
   tempo_real_horas?: number;
   
-  // Status
+  
   status: 'pendente' | 'em_andamento' | 'concluida' | 'atrasada' | 'cancelada';
   concluida: boolean;
   percentual_conclusao: number;
   
-  // Responsabilidade
+  
   responsavel_id: string;
   responsavel_nome: string;
   atribuida_por?: string;
   
-  // Dependências
-  dependencias?: string[]; // IDs de outras tarefas
-  bloqueadores?: string[]; // IDs de tarefas que bloqueiam esta
   
-  // Acompanhamento
+  dependencias?: string[]; 
+  bloqueadores?: string[]; 
+  
+  
   checklist?: Array<{
     item: string;
     concluido: boolean;
   }>;
-  anexos?: string[]; // URLs ou paths
+  anexos?: string[]; 
   comentarios?: Array<{
     autor: string;
     texto: string;
@@ -62,7 +62,7 @@ export interface Tarefa extends BaseEntity {
     tipo: 'comentario' | 'atualizacao' | 'problema';
   }>;
   
-  // Métricas
+  
   qualidade_execucao?: 1 | 2 | 3 | 4 | 5;
   satisfacao_responsavel?: 1 | 2 | 3 | 4 | 5;
   
@@ -73,7 +73,7 @@ export interface Tarefa extends BaseEntity {
 export interface EventFormData  {
   id: string;
   title: string;
-  date: string; // YYYY-MM-DD
+  date: string; 
   time: string;
   location: string;
   type: 'academic' | 'meeting' | 'holiday' | 'event' | 'other';
@@ -102,19 +102,19 @@ export interface Meta extends BaseEntity {
   tipo: 'academica' | 'financeira' | 'operacional' | 'marketing' | 'infraestrutura' | 'qualidade';
   categoria: 'estrategica' | 'tatica' | 'operacional';
   
-  // Controle
+  
   data_inicio: string;
   data_fim: string;
   data_limite_real?: string;
-  progresso: number; // 0-100
+  progresso: number; 
   status: 'nao_iniciada' | 'em_andamento' | 'concluida' | 'atrasada' | 'suspensa';
   prioridade: 'baixa' | 'media' | 'alta' | 'critica';
   
-  // Responsabilidade
+  
   responsavel_principal: string;
   responsaveis_secundarios?: string[];
   
-  // Indicadores (KPIs - MEDIDORES)
+  
   kpis?: Array<IndicadorDesempenho>;
 
 
@@ -127,15 +127,15 @@ export interface Meta extends BaseEntity {
     observacoes?: string
   }>;
   
-  // Recursos
-  orcamento_previsto?: number;
-  orcamento_alocado?: number; // Dinheiro já alocado
-
-  // Dependências
-  dependencias?: string[]; // IDs de outras metas
-  tarefas_relacionadas?: string[]; // IDs de tarefas
   
-  // Histórico de alocações
+  orcamento_previsto?: number;
+  orcamento_alocado?: number; 
+
+  
+  dependencias?: string[]; 
+  tarefas_relacionadas?: string[]; 
+  
+  
   alocacoes?: Array<Alocacao>;
   
   created_at: string;
@@ -150,20 +150,20 @@ export interface Fonte{
         | 'notas'
         | 'financeiro'
         | 'infraestrutura'
-      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      metrica: string; 
       filtros?: {
         turma_id?: string;
         disciplina_id?: string;
         periodo_id?: string;
         nivel_id?: string;
-        // ... outros filtros contextuais
+        
       };
-      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
+      query_parametros?: Record<string, any>; 
 }
 
 
 
-// ==================== INTERFACES DE SUPORTE ====================
+
 
 export interface IndicadorDesempenho {
     id: string;
@@ -175,7 +175,7 @@ export interface IndicadorDesempenho {
     frequencia: 'diaria' | 'semanal' | 'mensal' | 'trimestral' | 'anual';
     peso?: number;
     
-    // FONTE DE DADOS AUTOMATIZADA (CRÍTICO)
+    
     fonte_dados?: {
       tipo: 'automatico' | 'manual' | 'integracao';
       modulo?: 
@@ -184,15 +184,15 @@ export interface IndicadorDesempenho {
         | 'notas'
         | 'financeiro'
         | 'infraestrutura',
-      metrica: string; // Ex: "taxa_aprovacao", "evasao_mensal", "media_notas"
+      metrica: string; 
       filtros?: {
         turma_id?: string;
         disciplina_id?: string;
         periodo_id?: string;
         nivel_id?: string;
-        // ... outros filtros contextuais
+        
       };
-      query_parametros?: Record<string, any>; // Parâmetros dinâmicos
+      query_parametros?: Record<string, any>; 
     };
     
     ultima_atualizacao?: string;
@@ -213,7 +213,7 @@ export interface Alocacao{
     responsavel: string;
   }
 
-  // Adicionar novos tipos
+  
 export interface PlanejamentoAnual {
   id: string;
   ano: number;

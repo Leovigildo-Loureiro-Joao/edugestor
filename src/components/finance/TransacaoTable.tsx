@@ -4,9 +4,10 @@ import {
   FiTrendingUp, FiTrendingDown, FiEdit2, FiTrash2, 
   FiDollarSign, FiBarChart, FiBriefcase, FiCreditCard, 
   FiShoppingBag, FiCoffee, FiTruck, FiHome, FiCalendar,
-  FiClock, FiChevronRight
+  FiClock, FiChevronRight, FiDownload
 } from 'react-icons/fi';
 import { Transacao } from '../../types/transacao';
+import { exportToCSV } from '../../utils/exportCSV';
 
 interface TransacoesTableProps {
   transacoes: Transacao[];
@@ -43,6 +44,16 @@ export const TransacoesTable: React.FC<TransacoesTableProps> = ({
   ano
 }) => {
   const [isMobile, setIsMobile] = useState(false);
+
+  const handleExportCSV = () => {
+    exportToCSV(transacoes, [
+      { header: 'Data', accessor: t => new Date(t.data).toLocaleDateString('pt-AO') },
+      { header: 'Tipo', accessor: t => t.tipo === 'entrada' ? 'Entrada' : 'Saída' },
+      { header: 'Categoria', accessor: t => t.categoria },
+      { header: 'Descrição', accessor: t => t.descricao || '' },
+      { header: 'Valor', accessor: t => t.valor },
+    ], 'transacoes');
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -92,6 +103,16 @@ export const TransacoesTable: React.FC<TransacoesTableProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-3">
+        <div className="flex justify-between items-center px-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">{transacoes.length} transação(ões)</span>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar
+          </button>
+        </div>
         <AnimatePresence mode="popLayout">
           {transacoes.map((transacao, index) => {
             const data = new Date(transacao.data);
@@ -224,6 +245,13 @@ export const TransacoesTable: React.FC<TransacoesTableProps> = ({
               {meses[mes - 1]} de {ano}
             </p>
           </div>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar CSV
+          </button>
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-// src/contexts/AuthContext - VERSÃO CORRIGIDA
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import db, { supabase } from '../services/database/db';
 import type { User, Session } from '@supabase/supabase-js';
@@ -7,7 +6,6 @@ import { profileService } from '../services/database/profileService';
 import { updateJWTClaims } from '../utils/update_claims_jwt';
 import { auditLogService } from '../services/audit/auditLogService';
 
-// 🔥 INTERFACE E CONTEXTO DEVEM VIR ANTES DO PROVIDER
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -40,7 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState('');
   const [session, setSession] = useState<Session | null>(null);
 
-  // 🔥 FUNÇÃO PARA OBTER PERFIL DO USUÁRIO
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       if (!navigator.onLine) {
@@ -105,17 +102,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 🔥 VERIFICAR SE É ADMIN
   const isAdmin = (): boolean => {
     return profile?.role === 'admin';
   };
 
-  // 🔥 VERIFICAR SE É MANAGER OU ADMIN
   const isManagerOrAdmin = (): boolean => {
     return profile?.role === 'admin' || profile?.role === 'manager';
   };
 
-  // 🔥 VERIFICAR PERMISSÃO ESPECÍFICA
   const hasPermission = (requiredRole: string): boolean => {
     const roleHierarchy: Record<string, number> = {
       'user': 0,
@@ -128,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return roleHierarchy[profile.role] >= (roleHierarchy[requiredRole] || 0);
   };
 
-  // 🔥 CRIAR PERFIL DO USUÁRIO
   const createUserProfile = async (user: User) => {
     try {
       const newProfile: Partial<UserProfile> = {
@@ -149,7 +142,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      // Salvar localmente
       await profileService.saveProfile(newProfile as UserProfile);
       setProfile(newProfile as UserProfile);
       
@@ -158,12 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ⭐ FUNÇÃO ATUALIZADA: Atualizar metadados do usuário
   const updateUserMetadata = async (user: User | null) => {
     if (!user) return;
     
     try {
-      // Buscar perfil atualizado
       const userProfile = await fetchUserProfile(user.id);
       
       if (!userProfile) {
@@ -171,7 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Verificar se já tem os claims corretos
       const currentClaims = user.user_metadata || {};
       const expectedClaims = {
         user_role: userProfile.role,
@@ -179,26 +168,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         active_instituicao_id: userProfile.instituicao_id
       };
       
-      // Verificar se precisa atualizar
       const needsUpdate = 
         currentClaims.user_role !== expectedClaims.user_role ||
         currentClaims.instituicao_id !== expectedClaims.instituicao_id;
       
       if (needsUpdate) {
-        // Chamar Edge Function para atualizar JWT
         const success = await updateJWTClaims({
           instituicao_id: userProfile.instituicao_id,
           user_role: userProfile.role
         });
         
         if (success) {
-          // Atualizar localStorage
           if (userProfile.instituicao_id) {
             localStorage.setItem('active_instituicao_id', userProfile.instituicao_id);
           }
           localStorage.setItem('user_role', userProfile.role);
           
-          // Atualizar metadados locais no Supabase Auth
           await supabase.auth.updateUser({
             data: expectedClaims
           });
@@ -215,7 +200,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setupUserAfterLogin = async (user: User) => {
     try {
-      // 1. Verificar se usuário tem instituição associada
       const { data: userProfile, error } = await supabase
         .from('profiles')
         .select('instituicao_id, role')
@@ -227,7 +211,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userProfile?.instituicao_id) {
         localStorage.setItem('active_instituicao_id', userProfile.instituicao_id);
         
-        // Atualizar metadados com instituição ativa
         await supabase.auth.updateUser({
           data: { 
             active_instituicao_id: userProfile.instituicao_id
@@ -239,13 +222,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Chamar após login bem-sucedido
 const handleSuccessfulLogin = async (user: User) => {
   try {
-    // 1. Buscar perfil atualizado
     let userProfile = await fetchUserProfile(user.id);
     
-    // Se não existe perfil, verificar se há registo pendente (utilizador que verificou email)
     if (!userProfile) {
       const pendingData = localStorage.getItem('pending_registration');
       if (pendingData) {
@@ -264,7 +244,6 @@ const handleSuccessfulLogin = async (user: User) => {
       }
     }
 
-    // Verificar se o role é válido
     if (!isValidRole(userProfile?.role)) {
       await forceLogout(`Role inválido: ${userProfile?.role || 'nenhum'}`);
       return;
@@ -272,10 +251,8 @@ const handleSuccessfulLogin = async (user: User) => {
 
     persistAuthBootstrap(userProfile);
     
-    // 2. Verificar/atualizar JWT com claims corretos
     await updateUserMetadata(user);
     
-    // 3. Setup adicional
     await setupUserAfterLogin(user);
     
     } catch (error) {
@@ -284,14 +261,12 @@ const handleSuccessfulLogin = async (user: User) => {
   }
 };
 
-  // 🔥 NOVA FUNÇÃO: Mudar instituição ativa (para usuários com múltiplas instituições)
   const switchInstituicao = async (instituicaoId: string) => {
     try {
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
       
-      // 1. Verificar se usuário tem acesso a esta instituição (via profiles)
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('instituicao_id')
@@ -302,7 +277,6 @@ const handleSuccessfulLogin = async (user: User) => {
         throw new Error('Perfil do usuário não encontrado');
       }
       
-      // 2. Atualizar perfil com instituição ativa
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
@@ -313,7 +287,6 @@ const handleSuccessfulLogin = async (user: User) => {
       
       if (updateError) throw updateError;
       
-      // 3. Atualizar JWT claims via Edge Function
       const success = await updateJWTClaims({
         instituicao_id: instituicaoId,
         active_instituicao_id: instituicaoId
@@ -323,14 +296,11 @@ const handleSuccessfulLogin = async (user: User) => {
         console.warn('⚠️ JWT não atualizado via Edge Function, usando fallback');
       }
       
-      // 4. Atualizar localStorage
       localStorage.setItem('active_instituicao_id', instituicaoId);
       
-      // 5. Atualizar estado local
       const updatedProfile = await fetchUserProfile(user.id);
       setProfile(updatedProfile);
       
-      // 6. Refresh session para garantir sincronização
       await supabase.auth.refreshSession();
       
       return { success: true };
@@ -342,7 +312,6 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-    // 🔥 FUNÇÃO DE DEBUG: Verificar claims do JWT atual
   const debugJWTClaims = async (): Promise<void> => {
     try {
       const session = await supabase.auth.getSession();
@@ -354,8 +323,6 @@ const handleSuccessfulLogin = async (user: User) => {
       const token = session.data.session.access_token;
       const payload = JSON.parse(atob(token.split('.')[1]));
       
-      // Removido log de debug para evitar impacto/perf
-      
       return payload;
       
     } catch (error) {
@@ -363,13 +330,11 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // Atualizar useEffect para buscar perfil
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setLoading(true);
         
-        // Primeiro tentar do localStorage
         const storedSession = localStorage.getItem('supabase.auth.session');
         if (storedSession && !navigator.onLine) {
           const session = JSON.parse(storedSession);
@@ -391,7 +356,6 @@ const handleSuccessfulLogin = async (user: User) => {
           return;
         }
 
-        // Se online, buscar do Supabase
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -399,10 +363,8 @@ const handleSuccessfulLogin = async (user: User) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // 🔥 BUSCAR PERFIL DO USUÁRIO
         if (session?.user) {
           localStorage.setItem('user_id', session.user.id);
-          // Prioriza perfil local para liberar a UI rapidamente.
           const localProfile = await profileService.getLocalProfile().catch(() => null);
           if (localProfile) {
             setProfile(localProfile);
@@ -410,7 +372,6 @@ const handleSuccessfulLogin = async (user: User) => {
           }
           setLoading(false);
 
-          // Atualiza perfil remoto em background sem bloquear render inicial.
           void (async () => {
             const userProfile = await fetchUserProfile(session.user!.id);
             
@@ -451,14 +412,12 @@ const handleSuccessfulLogin = async (user: User) => {
 
       localStorage.setItem('user_id', newSession.user.id);
 
-      // Salvar sessão no localStorage (fallback offline) sem quebrar em quota.
       try {
         localStorage.setItem('supabase.auth.session', JSON.stringify(newSession));
       } catch {
         console.warn('⚠️ Não foi possível salvar sessão local (quota/storage indisponível)');
       }
 
-      // Perfil atualizado em background para não segurar a navegação.
       void (async () => {
         const userProfile = await fetchUserProfile(newSession.user.id);
         
@@ -480,7 +439,6 @@ const handleSuccessfulLogin = async (user: User) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Login com email e senha
   const login = async (email: string, password: string) => {
     try {
       setError('');
@@ -493,7 +451,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      // Tarefas pós-login em background para não travar entrada no sistema.
       void handleSuccessfulLogin(data.user!);
       void auditLogService.log('AUTH_LOGIN', {
         action_label: 'Fez Login',
@@ -547,14 +504,11 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // Registro de novo usuário – cria apenas o utilizador no Supabase Auth.
-  // A instituição e o perfil são criados após o utilizador verificar o email e fazer login.
   const register = async (email: string, password: string, displayName: string, institutionName: string) => {
     try {
       setError('');
       setLoading(true);
       
-      // 1. Registrar o usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -573,7 +527,6 @@ const handleSuccessfulLogin = async (user: User) => {
         throw new Error('Erro ao criar usuário');
       }
 
-      // Guardar dados de registo pendente para completar após verificação de email
       localStorage.setItem('pending_registration', JSON.stringify({
         email,
         displayName,
@@ -591,9 +544,7 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // Completar registo pendente: criar instituição e perfil após verificação de email
   const completePendingRegistration = async (user: User, displayName: string, institutionName: string) => {
-    // 1. Criar a instituição no Supabase
     const { data: instituicaoData, error: instituicaoError } = await supabase
       .from('instituicao')
       .insert([{
@@ -613,7 +564,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
     const instituicaoId = instituicaoData?.id || null;
 
-    // 2. Salvar instituição localmente no Dexie
     if (instituicaoId && instituicaoData) {
       await db.instituicao.put({
         id: instituicaoId,
@@ -627,7 +577,6 @@ const handleSuccessfulLogin = async (user: User) => {
       localStorage.setItem('active_instituicao_id', instituicaoId);
     }
 
-    // 3. Criar o perfil do usuário
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -644,7 +593,6 @@ const handleSuccessfulLogin = async (user: User) => {
       console.error('Erro ao criar perfil:', profileError);
     }
 
-    // 4. Atualizar metadados do usuário
     if (instituicaoId) {
       await supabase.auth.updateUser({
         data: {
@@ -655,7 +603,6 @@ const handleSuccessfulLogin = async (user: User) => {
       });
     }
 
-    // 5. Atualizar JWT claims via Edge Function
     if (instituicaoId) {
       await updateJWTClaims({
         instituicao_id: instituicaoId,
@@ -663,7 +610,6 @@ const handleSuccessfulLogin = async (user: User) => {
       });
     }
 
-    // 6. Salvar perfil localmente
     const localProfile = {
       id: user.id,
       email: user.email || '',
@@ -678,26 +624,22 @@ const handleSuccessfulLogin = async (user: User) => {
     await profileService.saveProfile(localProfile);
     setProfile(localProfile);
 
-    // 7. Limpar dados de registo pendente
     localStorage.removeItem('pending_registration');
 
     return localProfile;
   };
 
-  // Logout
   const logout = async () => {
     try {
       setError('');
       const previousUser = user;
       const previousProfilePromise = profileService.getLocalProfile().catch(() => null);
 
-      // Limpeza local sempre
       clearLocalAuthState();
       setUser(null);
       setProfile(null);
       setSession(null);
 
-      // Executa tarefas remotas em background para não atrasar a UI.
       void (async () => {
         try {
           const previousProfile = await previousProfilePromise;
@@ -716,7 +658,6 @@ const handleSuccessfulLogin = async (user: User) => {
         }
       })();
 
-      // Tenta encerrar sessão remota, mas sem bloquear o logout local.
       void (async () => {
         const { error } = await supabase.auth.signOut({ scope: 'local' });
         if (error) {
@@ -726,7 +667,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       } catch (error: any) {
       console.error('❌ Erro no logout:', error);
-      // Mesmo com erro inesperado, garantimos limpeza local para não prender sessão.
       clearLocalAuthState();
       setUser(null);
       setProfile(null);
@@ -734,7 +674,6 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // 🔥 ATUALIZAR ROLE DO USUÁRIO (SÓ ADMIN)
   const updateUserRole = async (userId: string, newRole: string) => {
     if (!isAdmin()) {
       await auditLogService.log('PERMISSION_DENIED_OPERATION', {
@@ -757,7 +696,6 @@ const handleSuccessfulLogin = async (user: User) => {
 
       if (error) throw error;
       
-      // Se for o próprio usuário, atualizar estado local
       if (user?.id === userId) {
         const updatedProfile = await fetchUserProfile(userId);
         setProfile(updatedProfile);
@@ -794,7 +732,6 @@ const handleSuccessfulLogin = async (user: User) => {
         if (error) throw error;
 
         if (updates.full_name) {
-          // Atualização de metadata não deve bloquear o fluxo principal do perfil.
           supabase.auth
             .updateUser({
               data: { full_name: updates.full_name }
@@ -857,7 +794,6 @@ const handleSuccessfulLogin = async (user: User) => {
     }
 
     try {
-      // Reautenticar para validar senha atual
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword
@@ -880,7 +816,6 @@ const handleSuccessfulLogin = async (user: User) => {
     }
   };
 
-  // 🔥 ADICIONE AO VALUE DO CONTEXT
   const value: AuthContextType = {
     user,
     profile,

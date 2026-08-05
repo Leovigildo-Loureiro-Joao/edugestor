@@ -1,4 +1,4 @@
-// /auth/callback.tsx
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import db, { supabase } from '../../services/database/db';
@@ -13,13 +13,13 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // O Supabase processa o token automaticamente
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
         
         if (session) {
-          // Setup adicional para usuário OAuth
+          
           await handleAuthCallback(session.user);
         } else {
           navigate('/login');
@@ -35,24 +35,24 @@ const AuthCallback = () => {
 
   const handleAuthCallback = async (user: User) => {
   try {
-    // 1. Verificar se usuário já existe no sistema
+    
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .maybeSingle(); // Use maybeSingle para evitar erro 406
+      .maybeSingle(); 
 
-    // 2. Se usuário NÃO existe, verificar se foi convidado
+    
     if (!existingProfile) {
-      // Buscar em usuários pendentes locais (Dexie)
+      
       const pendingUser = await db.profiles
         .where('email')
         .equals(user.email || '')
         .first();
 
       if (pendingUser) {
-        // Usuário foi convidado pelo admin
-        // Criar perfil no Supabase (admin já criou via admin panel)
+        
+        
         const { error: createError } = await supabase
           .from('profiles')
           .upsert({
@@ -71,27 +71,27 @@ const AuthCallback = () => {
 
         if (createError) throw createError;
 
-        // Atualizar status local
+        
         await db.profiles.update(pendingUser.id, {
           sync_status: 'synced',
           supabase_id: user.id
         });
 
       } else {
-        // ❌ Usuário NÃO foi convidado - ACESSO NEGADO
-        // Sign out e mostrar mensagem
+        
+        
         await supabase.auth.signOut();
         
-        // Mostrar mensagem amigável
+        
         showAlert({ type: 'error', title: 'Você precisa ser convidado por um administrador para acessar o sistema.' });
         
-        // Redirecionar para login com mensagem (rota existente)
+        
         navigate('/login?error=' + encodeURIComponent('Você precisa ser convidado por um administrador para acessar o sistema.'));
         return;
       }
     }
 
-    // 3. Usuário existe ou foi criado - carregar perfil
+    
     const finalProfile = existingProfile || (await supabase
       .from('profiles')
       .select('*')
@@ -102,10 +102,10 @@ const AuthCallback = () => {
       throw new Error('Perfil não encontrado');
     }
 
-    // 4. Salvar localmente (Dexie + localStorage)
+    
     await profileService.saveProfile(finalProfile);
     
-    // 5. Redirecionar baseado no role
+    
     const redirectTo = finalProfile.role === 'admin' 
       ? '/admin' 
       : '/dashboard';
@@ -131,7 +131,7 @@ const AuthCallback = () => {
   );
 };
 
-// ⭐ Setup especial para usuários OAuth
+
 
 
 export default AuthCallback;

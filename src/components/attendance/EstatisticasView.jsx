@@ -1,4 +1,3 @@
-// EstatisticasView.tsx
 import { FiBarChart2, FiCheckSquare, FiUsers, FiTrendingUp, FiActivity, FiClock } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

@@ -1,11 +1,11 @@
-// components/dashboard/GraficoDesempenho
+
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { format, subDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { estrategiaService } from '../../services/database/estrategiaService';
 
-// Tipos para os dados do gráfico
+
 interface DadosGrafico {
   tarefasPendentes: number;
   tarefasConcluidas: number;
@@ -35,21 +35,21 @@ export const GraficoDesempenho: React.FC<Props> = ({
   });
   const temaAtual = tema ?? temaDetectado;
   
-  // Cores profissionais para o tema claro
+  
   const coresTemaClaro = {
     fundo: 'rgba(255, 255, 255, 0.1)',
     grid: 'rgba(0, 0, 0, 0.1)',
     texto: '#333',
-    primaria: '#3B82F6', // Azul
-    secundaria: '#10B981', // Verde
-    terciaria: '#F59E0B', // Laranja
-    quartaria: '#8B5CF6', // Roxo
+    primaria: '#3B82F6', 
+    secundaria: '#10B981', 
+    terciaria: '#F59E0B', 
+    quartaria: '#8B5CF6', 
     sucesso: '#10B981',
     alerta: '#F59E0B',
     perigo: '#EF4444'
   };
 
-  // Cores profissionais para o tema escuro
+  
   const coresTemaEscuro = {
     fundo: 'rgba(30, 41, 59, 0.5)',
     grid: 'rgba(148, 163, 184, 0.2)',
@@ -100,14 +100,14 @@ export const GraficoDesempenho: React.FC<Props> = ({
   };
 
   const carregarDados = async (): Promise<DadosGrafico> => {
-    // Carregar dados do service
+    
     const [, tarefas, metas] = await Promise.all([
       estrategiaService.getResumoEstrategico(),
       estrategiaService.getTarefas(),
       estrategiaService.getMetas()
     ]);
 
-    // Calcular totais
+    
     const totalTarefas = tarefas.length;
     
     
@@ -115,7 +115,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
     const metasConcluidas = metas.filter(m => m.status === 'concluida').length;
     
 
-    // Tendência real dos últimos 7 dias (acumulado de concluídas até cada dia)
+    
     const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
       const date = subDays(new Date(), 6 - i);
       date.setHours(23, 59, 59, 999);
@@ -175,7 +175,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
   const gerarGrafico = (dados: DadosGrafico) => {
     if (!chartRef.current) return;
 
-    // Destruir gráfico anterior se existir
+    
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
@@ -183,24 +183,24 @@ export const GraficoDesempenho: React.FC<Props> = ({
     const ctx = chartRef.current.getContext('2d');
     if (!ctx) return;
 
-    // Configuração do gráfico combinado (barras + linhas)
+    
     chartInstance.current = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: dados.tendencia.datas,
         datasets: [
-          // Dataset 1: Tarefas (Barras)
+          
           {
             label: 'Tarefas',
             data: dados.tendencia.tarefas,
-            backgroundColor: `${cores.primaria}80`, // 50% de opacidade
+            backgroundColor: `${cores.primaria}80`, 
             borderColor: cores.primaria,
             borderWidth: 2,
             borderRadius: 6,
             order: 1,
             yAxisID: 'y'
           },
-          // Dataset 2: Metas (Barras)
+          
           {
             label: 'Metas',
             data: dados.tendencia.metas,
@@ -211,7 +211,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
             order: 2,
             yAxisID: 'y'
           },
-          // Dataset 3: Linha de tendência (Tarefas)
+          
           {
             label: 'Tendência Tarefas',
             data: dados.tendencia.tarefas,
@@ -228,7 +228,7 @@ export const GraficoDesempenho: React.FC<Props> = ({
             order: 3,
             yAxisID: 'y'
           },
-          // Dataset 4: Linha de tendência (Metas)
+          
           {
             label: 'Tendência Metas',
             data: dados.tendencia.metas,

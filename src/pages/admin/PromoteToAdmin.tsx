@@ -1,4 +1,4 @@
-// src/pages/Admin/PromoteToAdmin
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/database/db';
@@ -13,7 +13,7 @@ const PromoteToAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Chave secreta para promover a admin (armazene em .env em produção)
+  
   const ADMIN_SECRET_KEY = 'ESCOLA_SETUP_2024';
 
   const handlePromote = async () => {
@@ -26,7 +26,7 @@ const PromoteToAdmin = () => {
     setError('');
 
     try {
-      // Verificar se o usuário já tem perfil
+      
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
@@ -34,7 +34,7 @@ const PromoteToAdmin = () => {
         .single();
 
       if (existingProfile) {
-        // Atualizar perfil existente
+        
         const { error } = await supabase
           .from('profiles')
           .update({
@@ -45,7 +45,7 @@ const PromoteToAdmin = () => {
 
         if (error) throw error;
       } else {
-        // Criar novo perfil como admin
+        
         const { error } = await supabase
           .from('profiles')
           .insert([
@@ -61,7 +61,7 @@ const PromoteToAdmin = () => {
         if (error) throw error;
       }
 
-      // Recarregar a página para atualizar o contexto
+      
       window.location.href = '/dashboard';
     } catch (error: any) {
       setError(`Erro: ${error.message}`);
@@ -70,7 +70,7 @@ const PromoteToAdmin = () => {
     }
   };
 
-  // Se já é admin, redirecionar
+  
   if (profile?.role === 'admin') {
     navigate('/dashboard');
     return null;

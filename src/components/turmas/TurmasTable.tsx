@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEdit, FiTrash2, FiBook, FiUsers, FiClock, FiChevronRight, FiUser } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiBook, FiUsers, FiClock, FiChevronRight, FiUser, FiDownload } from 'react-icons/fi';
 import { Turma } from '../../types/turma';
+import { exportToCSV } from '../../utils/exportCSV';
 
 interface TurmaTableProps {
   turmas: Turma[];
@@ -26,6 +27,18 @@ export const TurmaTable: React.FC<TurmaTableProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
 
+  const handleExportCSV = () => {
+    exportToCSV(turmas, [
+      { header: 'Turma', accessor: t => t.nome_turma },
+      { header: 'Curso', accessor: t => t.curso_nome },
+      { header: 'Professor', accessor: t => t.professor || '' },
+      { header: 'Turno', accessor: t => t.turno },
+      { header: 'Capacidade', accessor: t => t.capacidade_maxima },
+      { header: 'Alunos', accessor: t => t.qtd || 0 },
+      { header: 'Ano Lectivo', accessor: t => t.ano_lectivo },
+    ], 'turmas');
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768); // md breakpoint
@@ -44,6 +57,15 @@ export const TurmaTable: React.FC<TurmaTableProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar CSV
+          </button>
+        </div>
         <AnimatePresence mode="popLayout">
           
           {turmas.map((turma, index) => {
@@ -223,6 +245,16 @@ export const TurmaTable: React.FC<TurmaTableProps> = ({
   // Versão Desktop (tabela original com scroll)
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+        <span className="text-sm text-gray-500 dark:text-gray-400">{turmas.length} turma(s)</span>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+        >
+          <FiDownload size={16} />
+          Exportar CSV
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1000px]">
           <thead className="bg-primary-600 dark:bg-primary-700">

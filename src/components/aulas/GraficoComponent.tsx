@@ -29,7 +29,7 @@ export const GraficoComponent=({aulas,estatisticas}:{aulas:Aula[],estatisticas:a
       }, [aulas]);
 
         const dadosEvolucaoSemanal = useMemo(() => {
-          // Implementar lógica para gerar dados semanais
+          
           return Array.from({ length: 4 }, (_, i) => ({
             semana: `Sem ${i + 1}`,
             aulas: Math.floor(Math.random() * 20) + 10,
@@ -52,7 +52,7 @@ export const GraficoComponent=({aulas,estatisticas}:{aulas:Aula[],estatisticas:a
         }));
       }, [aulas]);
 
-      // Adicione esta função para preparar os dados:
+      
       const prepararDadosHeatmap = useMemo(() => {
         return aulas.map(aula => ({
           dia: getDiaSemanaFromDate(aula.data_aula),

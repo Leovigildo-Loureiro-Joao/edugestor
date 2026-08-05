@@ -1,4 +1,4 @@
-// services/database/aulaService
+
 import { supabase } from '../database/db';
 import db from './db';
 import { Aula, AulaFormData } from '../../types/aula';
@@ -78,7 +78,7 @@ export const aulaService = {
     }
   },
 
-  // ✅ Criar aula localmente
+  
   async criarAula(aulaData: AulaFormData): Promise<string> {
     const instituicao_id = instituicaoIdValue() || '';
     const identityKey = getAulaIdentityKey(aulaData, instituicao_id);
@@ -122,7 +122,7 @@ export const aulaService = {
 
         await db.aulas.put(aula);
 
-        // Adicionar à fila de sincronização
+        
         await db.syncQueue.add({
           table: 'aulas',
           record_id: id,
@@ -145,14 +145,14 @@ export const aulaService = {
     return createPromise;
   },
 
-  // ✅ Buscar todas as aulas
+  
   async getAllAulas(): Promise<Aula[]> {
     try {
       const activeInstituicaoId = instituicaoIdValue() || '';
       const cacheScope = activeInstituicaoId || 'global';
       const CACHE_KEY = `aulas_all_${cacheScope}`;
             
-      // 1. Criar versão de cache baseada em múltiplos fatores
+      
       const [cursoCount, turmaCount, aulasCount, lastModified] = await Promise.all([
         db.cursos.count(),
         db.turmas.count(),
@@ -160,11 +160,11 @@ export const aulaService = {
         getLastModifiedTimestamp()
       ]);
       
-      // 2. Criar chave de cache com versão
+      
       const cacheVersion = `v${cursoCount}_${turmaCount}_${aulasCount}_${activeInstituicaoId}_${lastModified}`;
       const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
-      // 3. Tentar cache primeiro
+      
       const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
         return cached;
@@ -176,7 +176,7 @@ export const aulaService = {
         frequenciaService.getAllFrequencias()
       ]);
 
-      // Filtrar as não deletadas
+      
       const turmaMap = new Map(todasTurmas.filter(turma => !turma.deleted).map(t => [t.id, t]));
 
       const aulasAtivas =todasAulas.filter(aula =>
@@ -226,7 +226,7 @@ export const aulaService = {
       throw new Error("sem net")
     },
   
-  // ✅ Função auxiliar para marcar como pendente
+  
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'aulas',
@@ -238,12 +238,12 @@ export const aulaService = {
     });
   },
 
-  // ✅ Buscar aulas recentes (com suporte offline)
+  
   async getAulasRecentes(limite = 50): Promise<Aula[]> {
     try {
       const todasAulas = await this.getAllAulas();
       
-      // Ordenar por data (mais recente primeiro) e limitar
+      
       return todasAulas
         .sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime())
         .slice(0, limite);
@@ -254,7 +254,7 @@ export const aulaService = {
     }
   },
 
-  // ✅ Atualizar aula localmente e marcar para sincronização
+  
   async atualizarAula(id: string, updates: Partial<AulaFormData>):Promise<Aula> {
     try {
       const updated_at = new Date().toISOString();
@@ -265,7 +265,7 @@ export const aulaService = {
         instituicao_id:instituicaoIdValue(),
       });
 
-      // Adicionar/atualizar na fila
+      
       await db.syncQueue.add({
         table: 'aulas',
         record_id: id,
@@ -275,16 +275,16 @@ export const aulaService = {
         created_at: updated_at
       });
       
-      // Retornar a aula atualizada
+      
       const aula = await db.aulas.get(id);
       if (!aula) {
-        // caso não exista, joga erro para o chamador
+        
         throw new Error(`Aula ${id} não encontrada`);
       }
 
       const turmas = await turmaService.getTurmaById(aula.turma_id);
       const registro = await frequenciaService.getFrequenciaPorAula(id);
-      // após a checagem, `aula` não é mais undefined
+      
       return { ...aula, turmas, registro } as Aula;
       
     } catch (error) {
@@ -363,7 +363,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
   }
 },
 
-  // ✅ Buscar aula por ID
+  
   async getAulaById(id: string): Promise<Aula | undefined> {
     try {
       const aula = await db.aulas.get(id);
@@ -374,7 +374,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Buscar aulas por período
+  
   async getAulasPorPeriodo(inicio: Date, fim: Date): Promise<Aula[]> {
     try {
       const todasAulas = await this.getAllAulas();
@@ -392,7 +392,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Buscar aulas do dia
+  
   async getAulasDoDia(data: Date = new Date()): Promise<Aula[]> {
     try {
       const inicioDia = new Date(data.setHours(0, 0, 0, 0));
@@ -406,7 +406,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Buscar aulas da semana
+  
   async getAulasDaSemana(data: Date = new Date()): Promise<Aula[]> {
     try {
       const dia = data.getDay();
@@ -426,7 +426,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Verificar se já existe aula no mesmo horário
+  
   async verificarConflitoHorario(
     turmaId: string, 
     dataAula: Date, 
@@ -438,10 +438,10 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
       const aulasTurma = await this.getAulasPorTurma(turmaId);
       
       return aulasTurma.some(aula => {
-        // Pular a própria aula se estiver atualizando
+        
         if (excluirId && aula.id === excluirId) return false;
         
-        // Verificar se é no mesmo dia
+        
         const dataAulaExistente = new Date(aula.data_aula);
         const dataNovaAula = new Date(dataAula);
         
@@ -449,11 +449,11 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
           return false;
         }
         
-        // Verificar conflito de horário
+        
         const inicioExistente = aula.hora_inicio;
         const fimExistente = aula.hora_fim;
         
-        // Converte horários para minutos do dia
+        
         const toMinutes = (time: string) => {
           const [hours, minutes] = time.split(':').map(Number);
           return hours * 60 + minutes;
@@ -464,7 +464,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
         const inicioExistenteMin = toMinutes(inicioExistente);
         const fimExistenteMin = toMinutes(fimExistente);
         
-        // Verifica sobreposição
+        
         return (
           (inicioNovo >= inicioExistenteMin && inicioNovo < fimExistenteMin) ||
           (fimNovo > inicioExistenteMin && fimNovo <= fimExistenteMin) ||
@@ -478,7 +478,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Verificar saúde do banco de aulas
+  
   async checkDatabaseHealth() {
     try {
       const aulaCount = await db.aulas.count();
@@ -496,7 +496,7 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
         pendentes: queueCount,
         online: navigator.onLine,
         bancoAberto: db.isOpen(),
-        conflitos: aulaCount - aulasAtivas // Aulas deletadas (soft delete)
+        conflitos: aulaCount - aulasAtivas 
       };
     } catch (error: any) {
       return {
@@ -506,12 +506,12 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
     }
   },
 
-  // ✅ Estatísticas de aulas
+  
   async getEstatisticas() {
     try {
       const todasAulas = await this.getAllAulas();
       
-      // Agrupar por turma
+      
       const porTurma: Record<string, number> = {};
       const porMes: Record<string, number> = {};
       const statusV=['planeada', 'ministrada' , 'cancelada' , 'adiada']
@@ -522,14 +522,14 @@ async getAulasPorTurma(turmaId: string): Promise<Aula[]> {
       const topTurmas: Turma[] = [];
       let turmas= await turmaService.getTurmas()
       todasAulas.forEach(aula => {
-        // Por turma
+        
         const turmaKey = aula.turma_id || 'sem_turma';
         porTurma[turmaKey] = (porTurma[turmaKey] || 0) + 1;
 
         const statusKey = aula.status || 'sem_status'
         porStatus[statusKey] = (porStatus[statusKey] || 0) + 1;
         
-        // Por mês
+        
         const data = new Date(aula.data_aula);
         const mesKey = `${data.getFullYear()}-${(data.getMonth() + 1).toString().padStart(2, '0')}`;
         porMes[mesKey] = (porMes[mesKey] || 0) + 1;

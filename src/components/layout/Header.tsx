@@ -1,4 +1,4 @@
-// src/components/layout/Header
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   FiMenu,
@@ -19,28 +19,28 @@ import { initializeSyncSystem, syncManager } from '../../services/database/syncM
 import { NotificacoesBellInteligente } from './Notificao';
 import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
 
-// Interface para o status de sincronização
+
 interface SyncStatus {
   pending: number;
   errors: number;
 }
 
-// Interface para o usuário
+
 interface User {
   id: string;
   name: string;
   email?: string;
-  // Adicione outras propriedades conforme necessário
+  
 }
 
-// Interface para o contexto de autenticação
+
 interface AuthContextType {
   logout: () => Promise<void>;
   user: User | null;
-  // Adicione outras propriedades conforme necessário
+  
 }
 
-// Interface para as props do componente
+
 interface HeaderProps {
   setIsDarkMode: (isDark: boolean) => void;
   isDarkMode: boolean;
@@ -84,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
   ];
 
   useEffect(() => {
-    // ✅ Inicializar sistema de sincronização
+    
     const initSync = async () => {
       try {
         await initializeSyncSystem();
@@ -96,8 +96,8 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
 
     initSync();
 
-    // Monitorar status de sincronização periodicamente
-    const syncInterval = setInterval(verificarStatusSincronizacao, 30000); // A cada 30 segundos
+    
+    const syncInterval = setInterval(verificarStatusSincronizacao, 30000); 
     
     return () => {
       clearInterval(syncInterval);
@@ -127,7 +127,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
         errors: syncErrors
       });
 
-      // Se estiver online e houver pendências, sinalizar estado
+      
       if (isOnline && syncQueue > 0) {
         setSaveStatus('saving');
       } else if (isOnline && syncQueue === 0) {
@@ -153,17 +153,17 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
     }
   };
 
-  // Monitorar conexão
+  
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Quando voltar a ficar online, tentar sincronizar
+      
       setTimeout(verificarStatusSincronizacao, 2000);
     };
     
     const handleOffline = () => {
       setIsOnline(false);
-      setSaveStatus('saved'); // Reset status quando offline
+      setSaveStatus('saved'); 
     };
 
     window.addEventListener('online', handleOnline);
@@ -198,7 +198,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
     }
   }, [isOnline, saveStatus, syncStatus]);
 
-  // Monitorar mudança de tema do sistema
+  
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -345,16 +345,16 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
     if (!isOnline) return;
     setSaveStatus('saving');
     try {
-      // 1) Enviar pendências locais primeiro
+      
       await syncManager.uploadBatch();
       await syncManager.uploadFailedItems()
 
-      // 2) Limpar marcadores de sincronização incremental para forçar download completo
+      
       Object.keys(localStorage)
         .filter((key) => key.startsWith('last_sync_'))
         .forEach((key) => localStorage.removeItem(key));
 
-      // 3) Baixar tudo novamente
+      
       await syncManager.downloadBatch();
 
       setSaveStatus('saved');

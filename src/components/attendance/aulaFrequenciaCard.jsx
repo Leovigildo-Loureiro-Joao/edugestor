@@ -5,11 +5,10 @@ export const AulaFrequenciaItem = ({ aula, alunos, onRegistrarFrequencia, isExpa
   const [registros, setRegistros] = useState({});
   const [enviando, setEnviando] = useState(false);
 
-  // Inicializar registros como presente por padrão
   useEffect(() => {
     const registrosIniciais = {};
     alunos.forEach(aluno => {
-      registrosIniciais[aluno.id] = true; // Presente por padrão
+      registrosIniciais[aluno.id] = true; 
     });
     setRegistros(registrosIniciais);
   }, [alunos]);
@@ -22,11 +21,11 @@ export const AulaFrequenciaItem = ({ aula, alunos, onRegistrarFrequencia, isExpa
   };
 
 const handleRegistrar = async () => {
-  // Converter objeto para array para a API
+  
   const registrosArray = Object.entries(registros).map(([aluno_id, presente]) => ({
     aluno_id,
     presente,
-    justificativa: '' // ou outra lógica
+    justificativa: '' 
   }));
 
   await onRegistrarFrequencia({

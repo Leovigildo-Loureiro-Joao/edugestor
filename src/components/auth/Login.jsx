@@ -1,4 +1,4 @@
-// src/components/auth/Login.jsx
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,25 +52,25 @@ const Login = () => {
     return () => mediaQuery.removeEventListener('change', onMediaChange);
   }, []);
 
-  // Máquina de escrever
+  
   useEffect(() => {
     const currentPhrase = PHRASES[currentIndex];
     
     const timeout = setTimeout(() => {
       if (!isDeleting) {
-        // Escrevendo
+        
         if (currentText.length < currentPhrase.length) {
           setCurrentText(currentPhrase.slice(0, currentText.length + 1));
         } else {
-          // Terminou de escrever, espera e começa a apagar
+          
           setTimeout(() => setIsDeleting(true), 2000);
         }
       } else {
-        // Apagando
+        
         if (currentText.length > 0) {
           setCurrentText(currentText.slice(0, currentText.length - 1));
         } else {
-          // Terminou de apagar, vai para próxima frase
+          
           setIsDeleting(false);
           setCurrentIndex((prev) => (prev + 1) % PHRASES.length);
         }
@@ -80,13 +80,13 @@ const Login = () => {
     return () => clearTimeout(timeout);
   }, [currentText, currentIndex, isDeleting]);
 
-  // Verificar se há erro na query string (do callback)
+  
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const errorParam = searchParams.get('error');
     
     if (errorParam) {
-      // Decodificar a mensagem de erro
+      
       const errorMessage = decodeURIComponent(errorParam);
       if (errorMessage === 'auth_failed') {
         setFormError('Falha na autenticação. Tente novamente.');
@@ -94,7 +94,7 @@ const Login = () => {
         setFormError(errorMessage);
       }
       
-      // Limpar a query string
+      
       navigate(location.pathname, { replace: true });
     }
   }, [location, navigate]);
@@ -103,7 +103,7 @@ const Login = () => {
     setFormError('');
     
     if (!isLogin) {
-      // Validação para registro
+      
       if (!formData.displayName.trim()) {
         setFormError('Por favor, informe seu nome completo');
         return false;
@@ -125,7 +125,7 @@ const Login = () => {
       }
     }
     
-    // Validação de email
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setFormError('Por favor, informe um email válido');
@@ -160,7 +160,7 @@ const Login = () => {
             message:"Contacte ao administrador para verificar suas permissões"
           })
       console.error('Erro de autenticação:', error);
-      // O erro já é tratado no AuthContext
+      
     }
   };
 
@@ -170,7 +170,7 @@ const Login = () => {
     
     try {
       await loginWithGoogle();
-      // O redirecionamento é feito pelo próprio Supabase
+      
     } catch (error) {
       showAlert({
             title:"Erro no login com Google",
@@ -222,7 +222,7 @@ const Login = () => {
       [name]: value
     }));
     
-    // Limpar erros quando o usuário começa a digitar
+    
     if (formError) {
       setFormError('');
     }

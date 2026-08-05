@@ -1,4 +1,4 @@
-// services/database/profileService
+
 import db, { supabase } from './db';
 import { syncManager } from './syncManager';
 import { SyncStatus } from '../../types/base';
@@ -17,12 +17,12 @@ export const profileService = {
     }
   },
 
-  // ✅ Salvar perfil localmente
+  
   async saveProfile(profile: any, options?: { syncStatus?: SyncStatus }) {
     try {
       const now = new Date().toISOString();
       const syncStatus: SyncStatus = options?.syncStatus || profile.sync_status || 'synced';
-      // Se você tem tabela profiles no Dexie
+      
       await db.table('profiles')?.put({
         id: profile.id,
         email: profile.email,
@@ -36,7 +36,7 @@ export const profileService = {
         sync_status: syncStatus
       });
       
-      // Também salvar no localStorage para acesso rápido
+      
       localStorage.setItem('user_profile', JSON.stringify({
         ...profile,
         sync_status: syncStatus,
@@ -52,12 +52,12 @@ export const profileService = {
     }
   },
   
-  // ✅ Buscar perfil local
+  
   async getLocalProfile():Promise<UserProfile|null> {
     try {
       const currentUserId = localStorage.getItem('user_id') || this.getSessionUserId();
 
-      // 1. Tentar localStorage primeiro
+      
       const localProfile = localStorage.getItem('user_profile');
       if (localProfile) {
         const profile = JSON.parse(localProfile);
@@ -70,7 +70,7 @@ export const profileService = {
         }
       }
       
-      // 2. Tentar Dexie pelo usuário atual
+      
       if (currentUserId) {
         const ownProfile = await db.table('profiles')?.get(currentUserId);
         if (ownProfile) {
@@ -81,22 +81,22 @@ export const profileService = {
         }
       }
 
-      // Sem user_id resolvido, evita assumir perfil de outro usuário em dispositivo compartilhado.
+      
       return null;
     } catch (error) {
       return null;
     }
   },
   
-  // ✅ Verificar se há admin local
+  
   async hasLocalAdmin() {
     try {
-      // Check localStorage flag
+      
       if (localStorage.getItem('has_admin_setup') === 'true') {
         return true;
       }
       
-      // Check Dexie
+      
       const adminCount = await db.table('profiles')
         ?.where('role')
         .equals('admin')
@@ -109,7 +109,7 @@ export const profileService = {
     }
   },
 
-   // ✅ ADMIN: Adicionar usuário (apenas admin pode)
+   
   
 async addUserByAdmin(userData: {
   email: string;
@@ -118,7 +118,7 @@ async addUserByAdmin(userData: {
   instituicao_id: string;
 }, adminId: string) {
   try {
-    // 1. Verificar se é admin
+    
     const adminProfile = await this.getLocalProfile();
     if (adminProfile?.role !== 'admin') {
       await auditLogService.log('PERMISSION_DENIED_OPERATION', {
@@ -129,7 +129,7 @@ async addUserByAdmin(userData: {
       throw new Error('Apenas administradores podem adicionar usuários');
     }
 
-    // 2. Criar usuário OFFLINE primeiro
+    
     const tempUserId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const offlineUser = {
@@ -138,22 +138,22 @@ async addUserByAdmin(userData: {
       full_name: userData.nome,
       role: userData.role,
       instituicao_id: userData.instituicao_id,
-      status: 'pending', // Pendente de ativação
+      status: 'pending', 
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      sync_status: 'pending' as SyncStatus, // ✅ Começa como pending
+      sync_status: 'pending' as SyncStatus, 
     };
 
-    // 3. Salvar localmente
+    
     await db.profiles.add(offlineUser);
     
-    // 4. Salvar no localStorage para acesso rápido
+    
     const pendingUsers = JSON.parse(localStorage.getItem('pending_users') || '[]');
     pendingUsers.push(offlineUser);
     localStorage.setItem('pending_users', JSON.stringify(pendingUsers));
     
-    // 5. NÃO marcar como synced ainda! Remover esta linha:
-    // await syncManager.markAsSynced('profiles', offlineUser.id);
+    
+    
 
     return {
       success: true,
@@ -176,7 +176,7 @@ async addUserByAdmin(userData: {
     }
 
     
-    // Testar direto com a API do Supabase
+    
     const supabaseUrl =
       import.meta.env.VITE_SUPABASE_URL ||
       (import.meta as any).env?.NEXT_PUBLIC_SUPABASE_URL;
@@ -209,7 +209,7 @@ async addUserByAdmin(userData: {
 
 async syncPendingUsers() {
   try {
-    // Buscar apenas usuários com sync_status = 'pending'
+    
     const pendingUsers = await db.profiles
       .where('sync_status')
       .equals('pending')
@@ -224,7 +224,7 @@ async syncPendingUsers() {
       return { success: false, message: 'Sem conexão com a internet' };
     }
 
-    // Obter sessão atual
+    
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
@@ -236,7 +236,7 @@ async syncPendingUsers() {
       };
     }
 
-    // Preparar dados - filtrar apenas campos necessários
+    
     const usersToSync = pendingUsers.map(user => ({
       id: user.id,
       email: user.email,
@@ -247,7 +247,6 @@ async syncPendingUsers() {
 
     const EDGE_FUNCTION_URL = 'https://fbgpygnqzcifbfzxqlzh.supabase.co/functions/v1/sync';
     
-    // Configurar fetch com timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -270,35 +269,35 @@ async syncPendingUsers() {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error || errorMessage;
       } catch {
-        // Não é JSON
+        
       }
       
       throw new Error(errorMessage);
     }
 
     const result = await response.json();
-    // Processar resultados
+    
     if (result.details && Array.isArray(result.details)) {
       let successCount = 0;
       let errorCount = 0;
       
       for (const detail of result.details) {
         if (detail.status === 'success' || detail.status === 'updated' || detail.status === 'created_profile') {
-          // ✅ SÓ AGORA marcar como synced
+          
           await db.profiles.update(detail.id, {
             sync_status: 'synced',
             supabase_id: detail.supabaseId,
             updated_at: new Date().toISOString()
           });
 
-          // Remover do localStorage
+          
           const pendingInStorage = JSON.parse(localStorage.getItem('pending_users') || '[]');
           const updatedPending = pendingInStorage.filter((u: any) => u.id !== detail.id);
           localStorage.setItem('pending_users', JSON.stringify(updatedPending));
           
           successCount++;
           } else {
-          // Marcar como erro
+          
           await db.profiles.update(detail.id, {
             sync_status: 'failed',
             sync_error: detail.error,
@@ -337,10 +336,10 @@ async syncPendingUsers() {
   }
 },
 
-// Dentro da Edge Function, substitua o loop for...of
 
 
-  // ✅ Buscar usuários locais (incluindo pendentes)
+
+  
   async getLocalUsers() {
     try {
       const users = await db.profiles.toArray();
@@ -351,7 +350,7 @@ async syncPendingUsers() {
     }
   },
 
-  // ✅ Buscar usuários do Supabase (apenas quando online)
+  
   async getSupabaseUsers(instituicaoId?: string) {
     try {
       if (!navigator.onLine) {
@@ -382,7 +381,7 @@ async syncPendingUsers() {
     }
   },
 
-  // ✅ Atualizar usuário (admin only)
+  
   async updateUser(userId: string, updates: Partial<any>) {
     try {
       const adminProfile = await this.getLocalProfile();
@@ -395,14 +394,14 @@ async syncPendingUsers() {
         throw new Error('Apenas administradores podem atualizar usuários');
       }
 
-      // Atualizar localmente
+      
       await db.profiles.update(userId, {
         ...updates,
         updated_at: new Date().toISOString(),
-        sync_status: 'pending' // Marcar para sincronização
+        sync_status: 'pending' 
       });
 
-      // Adicionar à fila de sync
+      
       await syncManager.markAsSynced('profiles', userId);
 
       return { success: true, message: 'Usuário atualizado localmente' };
@@ -412,7 +411,7 @@ async syncPendingUsers() {
     }
   },
 
-  // ✅ Deletar usuário (admin only)
+  
   async deleteUser(userId: string) {
     try {
       const adminProfile = await this.getLocalProfile();
@@ -425,18 +424,18 @@ async syncPendingUsers() {
         throw new Error('Apenas administradores podem deletar usuários');
       }
 
-      // Não permitir deletar a si mesmo
+      
       if (userId === adminProfile.id) {
         throw new Error('Você não pode deletar sua própria conta');
       }
 
-      // Marcar como deletado localmente
+      
       await db.profiles.update(userId, {
         deleted_at: new Date().toISOString(),
         sync_status: 'pending'
       });
 
-      // Adicionar à fila de sync
+      
       await syncManager.markAsSynced('profiles', userId);
 
       return { success: true, message: 'Usuário marcado para exclusão' };
@@ -446,27 +445,27 @@ async syncPendingUsers() {
     }
   },
 
-  // ✅ Verificar se usuário é admin
+  
   isAdmin(profile: any): boolean {
     return profile?.role === 'admin';
   },
 
-  // ✅ Obter todos os usuários (locais + remotos quando online)
+  
   async getAllUsers() {
     try {
       const localUsers = await this.getLocalUsers();
       
-      // Se online, buscar do Supabase também
+      
       if (navigator.onLine) {
         const remoteUsers = await this.getSupabaseUsers();
         if (remoteUsers.success) {
-          // Combinar, dando prioridade aos locais (mais recentes)
+          
           const remoteMap = new Map();
           remoteUsers.data.forEach((user: any) => remoteMap.set(user.email, user));
           
           localUsers.forEach(localUser => {
             if (remoteMap.has(localUser.email)) {
-              // Atualizar local com dados do remoto
+              
               Object.assign(localUser, remoteMap.get(localUser.email));
             }
           });

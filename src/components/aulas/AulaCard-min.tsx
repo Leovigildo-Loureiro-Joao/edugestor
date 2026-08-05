@@ -37,7 +37,6 @@ export const AulaCardTurma: React.FC<AulaCardTurmaProps> = ({
   onExpandir,
   showExpandButton = true 
 }) => {
-  // Remova o estado expanded
   
   const formatarData = (dataString: string): string => {
     const data = new Date(dataString);

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEdit, FiTrash2, FiBook, FiUsers, FiChevronRight, FiClock, FiBookOpen } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiBook, FiUsers, FiChevronRight, FiClock, FiBookOpen, FiDownload } from 'react-icons/fi';
 import { FaMoneyBillWave, FaChalkboardTeacher } from 'react-icons/fa';
 import { Course } from '../../types/curso';
+import { exportToCSV } from '../../utils/exportCSV';
 
 interface CourseTableProps {
   cursos: Course[];
@@ -20,6 +21,18 @@ export const CourseTable: React.FC<CourseTableProps> = ({
 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
+
+  const handleExportCSV = () => {
+    exportToCSV(cursos, [
+      { header: 'Curso', accessor: c => c.nome },
+      { header: 'Preço', accessor: c => c.preco },
+      { header: 'Disciplinas', accessor: c => c.disciplinas.join(', ') },
+      { header: 'Vagas', accessor: c => c.vagas },
+      { header: 'Alunos', accessor: c => c.alunos ?? 0 },
+      { header: 'Turmas', accessor: c => c.turmas?.length || 0 },
+      { header: 'Status', accessor: c => c.ativo ? 'Ativo' : 'Inativo' },
+    ], 'cursos');
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -39,6 +52,15 @@ export const CourseTable: React.FC<CourseTableProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar CSV
+          </button>
+        </div>
         <AnimatePresence mode="popLayout">
           {cursos.map((curso, index) => (
             <motion.div
@@ -239,6 +261,16 @@ export const CourseTable: React.FC<CourseTableProps> = ({
   // Versão Desktop (tabela original com scroll)
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+        <span className="text-sm text-gray-500 dark:text-gray-400">{cursos.length} curso(s)</span>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+        >
+          <FiDownload size={16} />
+          Exportar CSV
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1000px]">
           <thead className="bg-primary-600">

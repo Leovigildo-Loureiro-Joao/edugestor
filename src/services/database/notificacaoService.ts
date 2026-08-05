@@ -1,4 +1,4 @@
-// services/notificacaoService
+
 import db from "./db";
 import { generateUniqueId } from "../../utils/idGenarator";
 import { alunosService } from "./alunosService";
@@ -9,7 +9,7 @@ import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInsitit
 import { profileService } from "./profileService";
 import { getPendingCount } from "../../utils/emitPendingSync";
 
-// Tipos
+
 export interface NotificacaoMeta {
   [key: string]: any;
 }
@@ -35,24 +35,24 @@ const getSafeInstituicaoId = (value?: string | null): string | null =>
   isValidInstituicaoId(value) ? value : null;
 
 export enum TipoNotificacao {
-  // Sistema
+  
   SISTEMA = 'sistema',
   INFO = 'info',
   ALERTA = 'alerta',
   ERRO = 'erro',
   
-  // Alunos
+  
   ALUNO_FREQUENCIA = 'aluno_frequencia',
   ALUNO_AVALIACAO = 'aluno_avaliacao',
   ALUNO_FINANCEIRO = 'aluno_financeiro',
   ALUNO_EVENTO = 'aluno_evento',
   
-  // Professores
+  
   PROF_AULA = 'prof_aula',
   PROF_AVALIACAO = 'prof_avaliacao',
   PROF_FREQUENCIA = 'prof_frequencia',
   
-  // Administração
+  
   ADMIN_FINANCEIRO = 'admin_financeiro',
   ADMIN_RELATORIO = 'admin_relatorio',
   ADMIN_META = 'admin_meta'
@@ -91,7 +91,7 @@ export type NotificacaoFormData = Omit<Notificacao,
   'id' | 'created_at' | 'updated_at' | 'sync_status' | 'deleted'
 >;
 
-// Configurações por tipo de usuário
+
 const NOTIFICACOES_POR_PERFIL = {
   aluno: [
     TipoNotificacao.ALUNO_AVALIACAO,
@@ -123,7 +123,7 @@ const NOTIFICACOES_POR_PERFIL = {
 };
 
 export const notificacaoService = {
-  // ============ CRUD BÁSICO (MANTIDO) ============
+  
   
   async contarNotificacoesNaoLidas(){
     const profile= await profileService.getLocalProfile()
@@ -160,7 +160,7 @@ export const notificacaoService = {
         deleted: false
       };
 
-      // Verificar duplicidade (mesmo tipo para mesmo destinatário hoje)
+      
       const hoje = now.split('T')[0];
       const similarExists = await db.notificacao
         .where('tipo')
@@ -178,7 +178,7 @@ export const notificacaoService = {
       
       await db.notificacao.put(notificacao);
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'notificacao',
         instituicao_id: getSafeInstituicaoId(notificacao.instituicao_id || instituicaoIdValue()) || '',
@@ -188,7 +188,7 @@ export const notificacaoService = {
         created_at: now
       });
 
-      // Disparar evento para UI apenas se prioridade ALTA ou URGENTE
+      
       if (notificacao.prioridade === PrioridadeNotificacao.ALTA || 
           notificacao.prioridade === PrioridadeNotificacao.URGENTE) {
         this.dispararEventoUI(notificacao);
@@ -202,10 +202,10 @@ export const notificacaoService = {
     }
   },
 
-  // ============ NOTIFICAÇÕES INTELIGENTES ============
+  
   
   async verificarNotificacoesAutomaticas() {
-    // Verificar apenas uma vez por hora
+    
     const ultimaVerificacao = localStorage.getItem('ultima_verificacao_notif');
     const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000);
     
@@ -214,28 +214,28 @@ export const notificacaoService = {
     }
     
     try {
-      // 1. Frequências pendentes para professores
+      
       await this.verificarFrequenciasPendentes();
       
-      // 2. Avaliações próximas
+      
       await this.verificarAvaliacoesProximas();
       
-      // 3. Pagamentos próximos
+      
       await this.verificarPagamentosProximos();
       
-      // 4. Eventos hoje
+      
       await this.verificarEventosHoje();
       
-      // 5. Metas com prazo
+      
       await this.verificarMetasProximas();
 
-      // 6. Qualidade de estrutura das turmas
+      
       await this.verificarTurmasEstado();
 
-      // 7. Planos de aula pendentes por turma/curso
+      
       await this.verificarPlanosAulaPendentes();
 
-      // 8. Dados pendentes de sincronização
+      
       await this.verificarPending();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
@@ -274,7 +274,7 @@ export const notificacaoService = {
       }
     });
 
-    // Turmas sem nenhum plano de aula associado
+    
     for (const turma of turmas) {
       if (turmasComPlano.has(turma.id)) continue;
 
@@ -288,7 +288,7 @@ export const notificacaoService = {
       });
     }
 
-    // Cursos sem plano (nenhuma turma do curso com plano)
+    
     for (const curso of cursos) {
       const turmasDoCurso = turmas.filter((turma) => turma.curso_id === curso.id);
       if (turmasDoCurso.length === 0) continue;
@@ -346,7 +346,7 @@ export const notificacaoService = {
         .count();
       
       if (frequenciaRegistrada === 0) {
-        // Verificar se já passou 1 hora da aula
+        
         const horaAula = new Date(`${hoje}T${aula.hora_inicio}`);
         const umaHoraDepois = new Date(horaAula.getTime() + 60 * 60 * 1000);
         const profile=await profileService.getLocalProfile()
@@ -379,7 +379,7 @@ export const notificacaoService = {
       .and(av => !av.deleted)
       .toArray();
     
-    // Agrupar por turma
+    
     const turmasMap = new Map();
     avaliacoesAmanha.forEach((av:Avaliacao) => {
       if (!turmasMap.has(av.turma_id)) {
@@ -388,7 +388,7 @@ export const notificacaoService = {
       turmasMap.get(av.turma_id).push(av);
     });
     
-    // Notificar alunos
+    
     for (const [turmaId, avaliacoes] of turmasMap.entries()) {
       const alunosTurma = await db.alunos
         .where('turma_id')
@@ -413,7 +413,7 @@ export const notificacaoService = {
         });
       }
       
-      // Notificar professor
+      
       if (avaliacoes[0].professor_id) {
         await this.criarNotificacao({
           titulo: 'Avaliação para aplicar amanhã',
@@ -444,7 +444,7 @@ export const notificacaoService = {
       .and(propina => !propina.deleted)
       .toArray();
     
-    // Agrupar por aluno para evitar spam
+    
     const alunosMap = new Map();
     propinasVencendo.forEach((propina:Propina) => {
       if (!alunosMap.has(propina.aluno_id)) {
@@ -477,7 +477,7 @@ export const notificacaoService = {
       });
     }
     
-    // Resumo para admin se muitos pagamentos
+    
     if (propinasVencendo.length > 10) {
       await this.criarNotificacao({
         titulo: 'Resumo financeiro',
@@ -502,7 +502,7 @@ export const notificacaoService = {
     
     for (const evento of eventosHoje) {
       if (evento.turma_id) {
-        // Evento de turma específica
+        
         const alunosTurma = await db.alunos
           .where('turma_id')
           .equals(evento.turma_id)
@@ -523,7 +523,7 @@ export const notificacaoService = {
           });
         }
       } else {
-        // Evento geral
+        
         await this.criarNotificacao({
           titulo: 'Evento institucional hoje',
           corpo: evento.titulo || 'Evento da escola',
@@ -574,7 +574,7 @@ export const notificacaoService = {
   },
   
   async verificarFrequenciaBaixaAlerta() {
-    // Verificar apenas uma vez por semana
+    
     const local=await profileService.getLocalProfile()
     if(local?.role==="teacher")
       return null
@@ -588,7 +588,7 @@ export const notificacaoService = {
     const todasFrequencias = await db.frequencias.toArray();
     const alunosMap = new Map();
     
-    // Calcular frequência por aluno
+    
     todasFrequencias.forEach(freq => {
       if (!alunosMap.has(freq.aluno_id)) {
         alunosMap.set(freq.aluno_id, { total: 0, presentes: 0 });
@@ -598,9 +598,9 @@ export const notificacaoService = {
       if (freq.presente) dados.presentes++;
     });
     
-    // Identificar alunos com frequência baixa
+    
     for (const [alunoId, dados] of alunosMap.entries()) {
-      if (dados.total >= 10) { // Mínimo de registros
+      if (dados.total >= 10) { 
         const percentual = (dados.presentes / dados.total) * 100;
         
         if (percentual < 75) {
@@ -622,7 +622,7 @@ export const notificacaoService = {
             }
           });
           
-          // Notificar também o coordenador
+          
           await this.criarNotificacao({
             titulo: 'Alerta de frequência - Aluno',
             corpo: `${aluno.nome_completo} (${aluno.turma_id}): ${percentual.toFixed(1)}%`,
@@ -640,7 +640,7 @@ export const notificacaoService = {
     localStorage.setItem('ultima_verificacao_frequencia', new Date().toISOString());
   },
   
-  // ============ MÉTODOS ESPECÍFICOS POR PERFIL ============
+  
   
   async criarNotificacaoAluno(params: {
     aluno_id: string;
@@ -699,7 +699,7 @@ export const notificacaoService = {
     
   },
   
-  // ============ BUSCAS FILTRADAS POR PERFIL ============
+  
   
   async listarNotificacoesUsuario(userRole: string, userId?: string, alunoId?: string) {
     try {
@@ -709,7 +709,7 @@ export const notificacaoService = {
         [roleNormalizada, userRole].filter((valor): valor is string => !!valor)
       );
       
-      // Filtrar por tipos relevantes para o perfil
+      
       const tiposRelevantes = NOTIFICACOES_POR_PERFIL[roleNormalizada as keyof typeof NOTIFICACOES_POR_PERFIL] || [];
       
       if (tiposRelevantes.length > 0) {
@@ -720,7 +720,7 @@ export const notificacaoService = {
         );
       }
       
-      // Filtrar por destinatário específico
+      
       if (userId) {
         query = query.filter((notif:Notificacao) => 
           notif.user_id === userId || 
@@ -750,7 +750,7 @@ export const notificacaoService = {
     return notificacoes.filter(n => !n.lida).length;
   },
   
-  // ============ UTILITÁRIOS ============
+  
   
   dispararEventoUI(notificacao: Notificacao) {
     if (typeof window !== 'undefined') {
@@ -767,29 +767,29 @@ export const notificacaoService = {
   },
   
   async iniciarServicoNotificacoes() {
-    // Verificação inicial
+    
     await this.verificarNotificacoesAutomaticas();
     
-    // Configurar verificações periódicas
+    
     setInterval(async () => {
       await this.verificarNotificacoesAutomaticas();
-    }, 60 * 60 * 1000); // A cada hora
+    }, 60 * 60 * 1000); 
     
-    // Verificação de frequência semanal
+    
     setInterval(async () => {
       await this.verificarFrequenciaBaixaAlerta();
-    }, 24 * 60 * 60 * 1000); // A cada dia
+    }, 24 * 60 * 60 * 1000); 
     
-    // Limpeza mensal de notificações antigas
+    
     setInterval(async () => {
       await this.limparNotificacoesAntigas(30);
-    }, 7 * 24 * 60 * 60 * 1000); // A cada semana
+    }, 7 * 24 * 60 * 60 * 1000); 
   },
 
-  // ============ MANTENDO SEUS MÉTODOS ORIGINAIS ============
+  
   
   async listarNotificacoes(filtros?: any): Promise<Notificacao[]> {
-    // Mantém sua lógica original
+    
     try {
       let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted);
 
@@ -928,7 +928,7 @@ export const notificacaoService = {
     }
   },
 
-  // ============ FUNÇÃO AUXILIAR DELEÇÃO ============
+  
   
   async markForDelete(table:  "notificacao" , id: string): Promise<void> {
     try {

@@ -95,6 +95,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     objetivos_academicos: student.objetivos_academicos || '',
     pagamento_em_dia: false,
     ano_lectivo: student.ano_lectivo || ano,
+    observacoes_especificas: student.observacoes_especificas || '',
     sync_status: "pending"
   } : {
     nome_completo: '',
@@ -122,6 +123,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     objetivos_academicos: '',
     ano_lectivo: "",
     pagamento_em_dia: false,
+    observacoes_especificas: '',
     sync_status: "pending"
 
   };

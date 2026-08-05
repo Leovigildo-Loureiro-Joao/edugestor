@@ -1,4 +1,4 @@
-// src/pages/Admin/AdminDashboard
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -67,7 +67,7 @@ const AdminDashboard = () => {
   type SecaoAdmin = (typeof secoesAdmin)[number];
   const { profile, loading: authLoading } = useAuth();
   
-  // Estados
+  
   const [isAdminVerified, setIsAdminVerified] = useState(false);
   const [activeTab, setActiveTab] = useState<SecaoAdmin>('users');
   const [users, setUsers] = useState<User[]>([]);
@@ -109,7 +109,7 @@ const AdminDashboard = () => {
   } | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // ✅ 1. VERIFICAR ADMIN
+  
   useEffect(() => {
     let isMounted = true;
     
@@ -139,7 +139,7 @@ const AdminDashboard = () => {
     };
   }, [profile, authLoading]);
 
-  // ✅ 2. CARREGAR DADOS
+  
   useEffect(() => {
     if (!isAdminVerified) return;
     
@@ -161,7 +161,7 @@ const AdminDashboard = () => {
     loadData();
   }, [isAdminVerified]);
 
-  // ✅ 3. SINCRONIZAR TAB COM URL
+  
   useEffect(() => {
     if (!isAdminVerified) return;
     
@@ -173,7 +173,7 @@ const AdminDashboard = () => {
     }
   }, [seccao, isAdminVerified]);
 
-  // ✅ 4. FILTRAR USUÁRIOS
+  
   useEffect(() => {
     if (!users.length) return;
     
@@ -593,17 +593,17 @@ const AdminDashboard = () => {
       .map(([key, value]) => ({ key, value }));
   };
 
-  // ✅ LOADING INICIAL
+  
   if (loading.initial || authLoading) {
     return <PageLoader title="Verificando permissões" subtitle="Carregando acesso do painel administrativo..." />;
   }
 
-  // ✅ SE NÃO FOR ADMIN
+  
   if (!isAdminVerified) {
     return null;
   }
 
-  // ✅ LOADING DOS DADOS
+  
   if (!dataLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">

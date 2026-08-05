@@ -1,6 +1,5 @@
 import { supabase } from "../services/database/db";
 
-// Função para chamar a Edge Function e atualizar JWT
 export const updateJWTClaims = async (claims: Record<string, any>): Promise<boolean> => {
   try {
     const session = await supabase.auth.getSession();
@@ -29,7 +28,6 @@ export const updateJWTClaims = async (claims: Record<string, any>): Promise<bool
     }
     
     const result = await response.json();
-    // Forçar refresh do token para pegar os novos claims
     await supabase.auth.refreshSession();
     
     return true;

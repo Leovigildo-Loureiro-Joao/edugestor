@@ -38,14 +38,14 @@ export const instituicaoService = {
     return active || DEFAULT_INSTITUICAO_ID;
   },
 
-  // ============ OBTER CONFIGURAÇÃO ============
+  
   async getConfig(): Promise<Instituicao> {
     try {
       const activeId = await this.resolveActiveInstituicaoId();
       const instituicao = await db.instituicao.get(activeId);
       
       if (!instituicao || instituicao.deleted) {
-        // Se não existir, criar configuração padrão minimalista
+        
         return await this.createDefaultConfig(activeId);
       }
       
@@ -58,12 +58,12 @@ export const instituicaoService = {
     }
   },
 
-  // ============ ATUALIZAR CONFIGURAÇÃO ============
+  
   async updateConfig(config: Partial<Instituicao>): Promise<Instituicao> {
     try {
       const now = new Date().toISOString();
       
-      // Buscar configuração atual
+      
       const id = config.id || (await this.resolveActiveInstituicaoId());
       const existingConfig = id ? await db.instituicao.get(id) : undefined;
 
@@ -71,7 +71,7 @@ export const instituicaoService = {
       const defaultAnoLectivo = `${currentYear - 1}-${currentYear}`;
       
       const instituicaoAtualizada: Instituicao = {
-        // Manter dados existentes ou usar padrão
+        
         nome_escola: existingConfig?.nome_escola || 'CETE',
         endereco: existingConfig?.endereco || '',
         email: existingConfig?.email || '',
@@ -83,12 +83,12 @@ export const instituicaoService = {
         valor_matricula: existingConfig?.valor_matricula || 0,
         
         
-        // Aplicar atualizações
+        
         ...config,
         id: existingConfig?.id || id,
         sync_status:existingConfig?.sync_status||"pending",
 
-        // Campos fixos
+        
         created_at: existingConfig?.created_at || now,
         updated_at: now
       };
@@ -96,7 +96,7 @@ export const instituicaoService = {
       await db.instituicao.put(instituicaoAtualizada);
       localStorage.setItem("active_instituicao_id", instituicaoAtualizada.id);
 
-      // Adicionar à fila de sincronização se necessário
+      
       await db.syncQueue.add({
         table: 'instituicao',
         instituicao_id: instituicaoAtualizada.id,
@@ -113,7 +113,7 @@ export const instituicaoService = {
     }
   },
 
-  // ============ CRIAR CONFIGURAÇÃO PADRÃO ============
+  
   async createDefaultConfig(preferredId?: string): Promise<Instituicao> {
     try {
       const now = new Date().toISOString();
@@ -144,7 +144,7 @@ export const instituicaoService = {
       await db.instituicao.put(defaultConfig);
       localStorage.setItem("active_instituicao_id", id);
 
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'instituicao',
         record_id: id,
@@ -157,7 +157,7 @@ export const instituicaoService = {
       return defaultConfig;
     } catch (error) {
       console.error('❌ Erro ao criar configuração padrão:', error);
-      // Retornar objeto mínimo em caso de erro
+      
       const fallbackId = preferredId || instituicaoIdValue() || DEFAULT_INSTITUICAO_ID;
       localStorage.setItem("active_instituicao_id", fallbackId);
       return {
@@ -171,7 +171,7 @@ export const instituicaoService = {
     }
   },
 
-  // ============ SINCRONIZAÇÃO SIMPLIFICADA ============
+  
   async syncInstituicao(): Promise<void> {
     try {
       const id = instituicaoIdValue() || "";
@@ -182,17 +182,17 @@ export const instituicaoService = {
       }
 
       try {
-        // Aqui você implementaria a sincronização com Supabase
-        // Exemplo:
-        // const { error } = await supabase
-        //   .from('instituicao')
-        //   .upsert({
-        //     ...instituicao,
-        //     id: 1 // ID fixo no servidor
-        //   });
-        // if (error) throw error;
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
-        // Remover da fila de sincronização após sucesso
+        
         await db.syncQueue
           .where('record_id')
           .equals(id)
@@ -208,9 +208,9 @@ export const instituicaoService = {
     }
   },
 
-  // ============ MÉTODOS AUXILIARES OTIMIZADOS ============
+  
 
-  // Verificar se a instituição está configurada
+  
   async isConfigured(): Promise<boolean> {
     try {
       const id = instituicaoIdValue() || '';
@@ -222,7 +222,7 @@ export const instituicaoService = {
     }
   },
 
-  // Obter apenas informações básicas
+  
   async getBasicInfo(): Promise<{
     nome_escola: string;
     endereco: string;
@@ -238,7 +238,7 @@ export const instituicaoService = {
     };
   },
 
-  // Obter apenas valores financeiros
+  
   async getValores(): Promise<{
     valor_cartao: number;
     valor_confirmacao: number;
@@ -252,7 +252,7 @@ export const instituicaoService = {
     };
   },
 
-  // Atualizar apenas valores financeiros
+  
   async updateValores(valores: {
     valor_cartao?: number;
     valor_confirmacao?: number;
@@ -261,7 +261,7 @@ export const instituicaoService = {
     return this.updateConfig(valores);
   },
 
-  // Atualizar apenas informações de contato
+  
   async updateContato(contato: {
     endereco?: string;
     email?: string;
@@ -271,7 +271,7 @@ export const instituicaoService = {
     return this.updateConfig(contato);
   },
 
-  // Obter ano letivo atual
+  
   async getAnoLectivo(): Promise<string> {
     const instituicao = await this.getConfig();
     const ano = instituicao.ano_lectivo || '';
@@ -283,18 +283,18 @@ export const instituicaoService = {
     return `${currentYear - 1}-${currentYear}`;
   },
 
-  // Atualizar ano letivo
+  
   async updateAnoLectivo(ano: string): Promise<Instituicao> {
     return this.updateConfig({ ano_lectivo: ano });
   },
 
-  // Verificar se tem todas informações mínimas
+  
   async hasMinimalInfo(): Promise<boolean> {
     const instituicao = await this.getConfig();
     return !!(instituicao.nome_escola && instituicao.ano_lectivo);
   },
 
-  // Limpar configuração (apenas para desenvolvimento)
+  
   async clearConfig(): Promise<void> {
     if (confirm('TEM CERTEZA? Isso apaga a configuração da instituição!')) {
       const id = instituicaoIdValue() || '';
@@ -307,7 +307,7 @@ export const instituicaoService = {
       }
   },
 
-  // Método rápido para obter nome da escola
+  
   async getNomeEscola(): Promise<string> {
     try {
       const id = instituicaoIdValue() || '';
@@ -318,7 +318,7 @@ export const instituicaoService = {
     }
   },
 
-  // Método rápido para obter todos os dados em formato simples
+  
   async getAllData(): Promise<Record<string, any>> {
     const instituicao = await this.getConfig();
     return {

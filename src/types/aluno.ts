@@ -40,6 +40,7 @@ export interface Student extends BaseEntity {
   propina: number;
 
   data_matricula: string;
+  observacoes_especificas?: string;
   turma_nome?:string;
   professor?:string;
 }

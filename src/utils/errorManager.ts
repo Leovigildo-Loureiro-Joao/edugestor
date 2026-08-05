@@ -1,10 +1,7 @@
-// utils/errorManager
-
 import db from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
 import { instituicaoIdValue } from "./getInsitituicaoID";
 
-// Interface para armazenar informações de erro
 export interface SyncError {
   id: string;
   table: string;
@@ -14,15 +11,12 @@ export interface SyncError {
   retry_count: number;
 }
 
-// Chave para localStorage
 const getErrorKey = (tableName: string) => `sync_errors_${tableName}`;
 
-// Função para obter contagem de erros
   export const getErrorCount = async (table: string): Promise<number> => {
     try {
       const instituicaoId = instituicaoIdValue();
       if (!instituicaoId) return 0;
-      // Tentar do localStorage primeiro
       
       const failedItems = await db.syncQueue
         .where('instituicao_id')
@@ -36,7 +30,6 @@ const getErrorKey = (tableName: string) => `sync_errors_${tableName}`;
     }
   };
 
-// Função para adicionar um erro
 export const addSyncError = (
   tableName: string, 
   data: any, 
@@ -60,7 +53,6 @@ export const addSyncError = (
     errors.push(syncError);
     localStorage.setItem(errorKey, JSON.stringify(errors));
     
-    // Disparar evento para atualizar UI
     window.dispatchEvent(new CustomEvent('sync-failed', {
       detail: { table: tableName, error: syncError }
     }));
@@ -69,7 +61,6 @@ export const addSyncError = (
   }
 };
 
-// Função para remover um erro (quando resolvido)
 export const removeSyncError = (tableName: string, errorId: string): void => {
   try {
     const errorKey = getErrorKey(tableName);
@@ -82,7 +73,6 @@ export const removeSyncError = (tableName: string, errorId: string): void => {
     
     localStorage.setItem(errorKey, JSON.stringify(errors));
     
-    // Disparar evento para atualizar UI
     window.dispatchEvent(new CustomEvent('sync-error-removed', {
       detail: { table: tableName, errorId }
     }));
@@ -91,7 +81,6 @@ export const removeSyncError = (tableName: string, errorId: string): void => {
   }
 };
 
-// Função para obter todos os erros de uma tabela
 export const getSyncErrors = (tableName: string): SyncError[] => {
   try {
     const errorKey = getErrorKey(tableName);
@@ -107,13 +96,11 @@ export const getSyncErrors = (tableName: string): SyncError[] => {
   }
 };
 
-// Função para limpar todos os erros de uma tabela
 export const clearSyncErrors = (tableName: string): void => {
   try {
     const errorKey = getErrorKey(tableName);
     localStorage.removeItem(errorKey);
     
-    // Disparar evento para atualizar UI
     window.dispatchEvent(new CustomEvent('sync-errors-cleared', {
       detail: { table: tableName }
     }));
@@ -122,7 +109,6 @@ export const clearSyncErrors = (tableName: string): void => {
   }
 };
 
-// Função para incrementar contador de retentativas
 export const incrementRetryCount = (tableName: string, errorId: string): void => {
   try {
     const errorKey = getErrorKey(tableName);

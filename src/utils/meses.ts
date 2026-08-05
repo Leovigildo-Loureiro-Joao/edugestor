@@ -1,5 +1,4 @@
 export const mesesUtils = {
-  // Converter nome completo para abreviado
   paraAbreviado(mesCompleto: string): string {
     const conversao: { [key: string]: string } = {
       'Janeiro': 'Jan', 'Fevereiro': 'Fev', 'Março': 'Mar',
@@ -10,7 +9,6 @@ export const mesesUtils = {
     return conversao[mesCompleto] || mesCompleto.substring(0, 3);
   },
 
-  // Converter abreviado para nome completo
   paraCompleto(mesAbreviado: string): string {
     const conversao: { [key: string]: string } = {
       'Jan': 'Janeiro', 'Fev': 'Fevereiro', 'Mar': 'Março',

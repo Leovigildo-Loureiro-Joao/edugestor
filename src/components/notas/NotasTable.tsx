@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiEye, FiEdit3, FiUser, FiBookOpen, FiTrendingUp, FiChevronRight, FiCheckCircle, FiAlertOctagon, FiX, FiXCircle, FiClock } from 'react-icons/fi';
+import { FiEye, FiEdit3, FiUser, FiBookOpen, FiTrendingUp, FiChevronRight, FiCheckCircle, FiAlertOctagon, FiX, FiXCircle, FiClock, FiDownload } from 'react-icons/fi';
 
 import { Student } from '../../types';
 import { AlunoDesempenho } from '../../types/aluno';
 import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../ui/PaginationControls';
+import { exportToCSV } from '../../utils/exportCSV';
 
 
 type SituacaoNota = 'aprovado' | 'recuperacao' | 'reprovado' | 'pendente';
@@ -105,6 +106,19 @@ export const NotasTable: React.FC<NotasTableProps> = ({
   onLancarNota
 }) => {
   const [isMobile, setIsMobile] = useState(false);
+  
+  const handleExportCSV = () => {
+    exportToCSV(alunos, [
+      { header: 'Nome', accessor: a => a.nome_completo },
+      { header: 'Nº Estudante', accessor: a => a.numero_estudante },
+      { header: 'Turma', accessor: a => a.turma_nome || '' },
+      { header: 'Qtd Notas', accessor: a => a.avaliacao.length },
+      { header: 'Média', accessor: a => a.media.toFixed(1) },
+      { header: 'Frequência', accessor: a => `${a.presenca.toFixed(1)}%` },
+      { header: 'Situação', accessor: a => getSituacaoText(a.situacao_notas) },
+    ], 'notas');
+  };
+
   const {
     page,
     setPage,
@@ -135,6 +149,16 @@ export const NotasTable: React.FC<NotasTableProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-between items-center px-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">{alunos.length} aluno(s)</span>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <FiDownload size={16} />
+            Exportar
+          </button>
+        </div>
         <AnimatePresence mode="popLayout">
           {paginatedItems.map((aluno, index) => {
             const mediaPercent = (aluno.media / 20) * 100;
@@ -297,6 +321,16 @@ export const NotasTable: React.FC<NotasTableProps> = ({
   // Versão Desktop (tabela original com scroll)
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+        <span className="text-sm text-gray-500 dark:text-gray-400">{alunos.length} aluno(s)</span>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+        >
+          <FiDownload size={16} />
+          Exportar CSV
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px]">
           <thead className="bg-gray-50 dark:bg-gray-700/50">

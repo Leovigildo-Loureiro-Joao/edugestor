@@ -1,4 +1,3 @@
-// services/database/turmaService
 import { Student } from '../../types';
 import { Aula } from '../../types/aula';
 import { SyncStatus } from '../../types/base';
@@ -103,7 +102,7 @@ const ensureDisciplinaInCursoDaTurma = async (turmaId: string, disciplina?: stri
 };
 
 export const turmaService = {
-  // ✅ Criar turma localmente
+  
   async createTurma(turmaData: TurmaFormData): Promise<string> {
     try {
       const id = generateUniqueId();
@@ -122,7 +121,7 @@ export const turmaService = {
 
       await db.turmas.put(turma);
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'turmas',
         instituicao_id:instituicaoIdValue(),
@@ -140,13 +139,13 @@ export const turmaService = {
     }
   },
 
-  // ✅ Buscar todas as turmas
+  
   async getTurmas(): Promise<Turma[]> {
     const activeInstituicaoId = instituicaoIdValue() || '';
     const cacheScope = activeInstituicaoId || 'global';
     const CACHE_KEY = `turmas_all_${cacheScope}`;
     try {
-      // 1. Obter versão/checksum dos dados para cache mais inteligente
+      
       const [turmaCount, cursoCount, aulaCount, alunoCount,lastModified] = await Promise.all([
         db.turmas.count(),
         db.cursos.count(),
@@ -155,17 +154,17 @@ export const turmaService = {
         getLastModifiedTimestamp()
       ]);
       
-      // Criar uma chave de versão baseada em contagens e timestamps
+      
       const cacheVersion = `${turmaCount}_${cursoCount}_${aulaCount}_${alunoCount}_${activeInstituicaoId}_${lastModified}`;
       const cacheKeyWithVersion = `${CACHE_KEY}_${cacheVersion}`;
       
-      // 2. Tentar obter do cache com a nova chave
+      
       const cached = cacheManager.get(cacheKeyWithVersion);
       if (cached) {
         return cached;
       }
       
-      // 3. Buscar dados em paralelo de forma mais eficiente
+      
       const [todosCursos, aulasDb, alunos, todasTurmasDb] = await Promise.all([
         db.cursos
           .where("instituicao_id")
@@ -177,11 +176,11 @@ export const turmaService = {
         db.turmas.filter(turma => !turma.deleted && (!activeInstituicaoId || turma.instituicao_id === activeInstituicaoId)).toArray() ,
       ]);
       
-      // 4. Otimizar: buscar horários em batch em vez de um por um
+      
       const todasTurmasIds = todasTurmasDb.map(t => t.id);
       const horarios = await this.getHorariosBatch(todasTurmasIds);
       
-      // 5. Criar maps para lookup O(1)
+      
       const cursosMap = new Map(todosCursos.map(c => [c.id, c]));
       const horariosMap = new Map();
       horarios.forEach(h => {
@@ -204,7 +203,7 @@ export const turmaService = {
         return acc;
       }, {} as Record<string, Aula[]>);
       
-      // 6. Processar turmas
+      
       const turmasAtivas = todasTurmasDb
         .filter(turma => !turma.deleted)
         .sort((a, b) => (a.nome_turma || '').localeCompare(b.nome_turma || ''));
@@ -221,9 +220,9 @@ export const turmaService = {
         };
       });
       
-      // 7. Salvar no cache com expiration time
+      
       cacheManager.set(cacheKeyWithVersion, turmas, {
-        ttl: 5 * 60 * 1000, // 5 minutos
+        ttl: 5 * 60 * 1000, 
         version: cacheVersion
       });
       const pendentesCount = turmas.filter(turma => 
@@ -234,14 +233,14 @@ export const turmaService = {
         emitPendingSync('turmas', pendentesCount);
       }
 
-      // 8. Limpar versões antigas do cache
+      
       this.cleanOldCacheVersions(CACHE_KEY, cacheVersion);
       
       return turmas;
       
     } catch (error) {
       console.error('❌ Erro ao buscar turmas:', error);
-      // Fallback para cache mais antigo se disponível
+      
       const fallback = cacheManager.getLatest(CACHE_KEY);
       if (fallback) {
         console.warn('⚠️  Usando cache fallback devido a erro');
@@ -251,7 +250,7 @@ export const turmaService = {
     }
   }
 
-  // Métodos auxiliares recomendados:
+  
   , async getHorariosBatch(turmaIds: string[]): Promise<HorarioAula[]> {
     if (turmaIds.length === 0) return [];
 
@@ -348,7 +347,7 @@ export const turmaService = {
           .single();
           
         if (!error && data) {
-          // Salvar localmente para cache
+          
           await db.turmas.put({
             ...data,
             sync_status: 'synced' as const,
@@ -365,13 +364,13 @@ export const turmaService = {
     }
   },
 
-  // ✅ Deletar turma (soft delete)
+  
   async deleteTurma(id: string) {
     try {
       const turma = await db.turmas.get(id);
       if (!turma) return;
 
-      // Deletar dependências primeiro para evitar conflito de FK no Supabase
+      
       const aulasDaTurma = await db.aulas
         .where('turma_id')
         .equals(id)
@@ -420,7 +419,7 @@ export const turmaService = {
       }
 
       if (turma.sync_status === 'synced' && !turma.id.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
+        
         await (db.turmas as any).update(
           id,
           {
@@ -440,10 +439,10 @@ export const turmaService = {
         });
         
         } else {
-        // Se nunca sincronizado, deletar completamente
+        
         await db.turmas.delete(id);
         
-        // Remover da fila se existir
+        
         await db.syncQueue
           .where('record_id')
           .equals(id)
@@ -457,7 +456,7 @@ export const turmaService = {
     }
   },
 
-  // ✅ Editar turma
+  
   async editTurma(id: string, turmaData: Partial<TurmaFormData>) {
     try {
       const updated_at = new Date().toISOString();
@@ -468,7 +467,7 @@ export const turmaService = {
         sync_status: 'pending'
       });
 
-      // Adicionar/atualizar na fila
+      
       await db.syncQueue.add({
         table: 'turmas',
         instituicao_id:instituicaoIdValue(),
@@ -484,7 +483,7 @@ export const turmaService = {
     }
   },
 
-  // ✅ Obter horários da turma
+  
   async getHorarios(turmaId: string): Promise<HorarioAula[]> {
     try {
       const horarios = await db.turma_horarios
@@ -521,7 +520,7 @@ export const turmaService = {
     return horariosDaTurma.find((item) => getHorarioIdentityKey(item) === newKey);
   },
 
-  // ✅ Criar horário
+  
   async createHorario(horario: HorarioAulaForm, turmaId: string) {
     try {
       const duplicado = await this.findDuplicateHorario(turmaId, horario);
@@ -545,7 +544,7 @@ export const turmaService = {
       await db.turma_horarios.put(horarios);
       const disciplinaAdicionadaAoCurso = await ensureDisciplinaInCursoDaTurma(turmaId, horario.disciplina);
 
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'turma_horarios',
         record_id: id,
@@ -562,7 +561,7 @@ export const turmaService = {
     }
   },
 
-  // ✅ Atualizar horário
+  
   async updateHorario(id: string, horario: Partial<HorarioAulaForm>) {
     try {
       const horarioAtual = await db.turma_horarios.get(id);
@@ -606,7 +605,7 @@ export const turmaService = {
     }
   },
 
-  // ✅ Excluir horário
+  
   async excluirHorario(id: string) {
     try{
     await db.turma_horarios.delete(id)
@@ -633,7 +632,7 @@ export const turmaService = {
       throw new Error("sem net")
     },
 
-  // ✅ Função auxiliar para marcar como pendente
+  
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'turmas',
@@ -645,7 +644,7 @@ export const turmaService = {
     });
   },
 
-  // ✅ Verificar saúde do banco de turmas
+  
   async checkDatabaseHealth(instituicao_id:string) {
     try {
       const turmaCount = await db.turmas.count();
@@ -672,7 +671,7 @@ export const turmaService = {
     }
   },
 
-  // ✅ Buscar turmas por curso
+  
   async getTurmasPorCurso(cursoId: string): Promise<Turma[]> {
     try {
       const turmas = await db.turmas
@@ -690,21 +689,21 @@ export const turmaService = {
     }
   },
 
-  // ✅ Obter estatísticas
+  
   async getEstatisticas(instituicao_id:string) {
     try {
       const turmas = await this.getTurmas();
       
-      // Agrupar por curso
+      
       const porCurso: Record<string, number> = {};
       const porAno: Record<string, number> = {};
       
       turmas.forEach(turma => {
-        // Por curso
+        
         const cursoKey = turma.curso_id || 'sem_curso';
         porCurso[cursoKey] = (porCurso[cursoKey] || 0) + 1;
         
-        // Por ano letivo
+        
         const anoKey = turma.ano_lectivo || 'sem_ano';
         porAno[anoKey] = (porAno[anoKey] || 0) + 1;
       });

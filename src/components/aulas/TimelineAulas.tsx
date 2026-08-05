@@ -47,7 +47,7 @@ export const TimelineWindows = ({
   const timelineRef = useRef<HTMLDivElement>(null);
   const { showAlert } = useAlert();
 
-  // Memoizar o agrupamento de aulas por semana
+  
   const semanas = useMemo(() => {
     const grouped: Record<string, {
       weekStart: Date;
@@ -57,7 +57,7 @@ export const TimelineWindows = ({
       monthYear: string;
     }> = {};
 
-    // Pegar todas as semanas dos próximos 3 meses
+    
     const hoje = new Date();
     const startDate = subWeeks(hoje, 4);
     const endDate = addWeeks(hoje, 8);
@@ -67,7 +67,7 @@ export const TimelineWindows = ({
       { weekStartsOn: 1 }
     );
 
-    // Inicializar todas as semanas
+    
     allWeeks.forEach(weekStart => {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       const weekKey = format(weekStart, 'yyyy-MM-dd');
@@ -82,7 +82,7 @@ export const TimelineWindows = ({
       };
     });
 
-    // Adicionar aulas às suas semanas
+    
     aulas.forEach(aula => {
       try {
         const aulaDate = parseISO(aula.data_aula);
@@ -103,34 +103,34 @@ export const TimelineWindows = ({
       }
     });
 
-    // Ordenar por data (mais recente primeiro)
+    
     return Object.entries(grouped)
       .sort(([keyA], [keyB]) => new Date(keyB).getTime() - new Date(keyA).getTime());
   }, [aulas, showAlert]);
 
-  // Extrair meses únicos - memoizado
+  
   const visibleMonths = useMemo(() => {
     return [...new Set(semanas.map(([_, data]) => data.monthYear))];
   }, [semanas]);
 
-  // Efeito para setar o mês atual - CORRIGIDO
+  
   useEffect(() => {
     if (visibleMonths.length > 0) {
-      // Encontrar o mês atual baseado na data de hoje
+      
       const hoje = new Date();
       const mesAtual = format(hoje, 'MMMM yyyy', { locale: pt });
       
-      // Verificar se o mês atual existe na lista de meses visíveis
+      
       if (visibleMonths.includes(mesAtual)) {
         setCurrentYearMonth(mesAtual);
       } else {
-        // Se não existir, pegar o mês mais próximo
+        
         setCurrentYearMonth(visibleMonths[0]);
       }
     }
   }, [visibleMonths]);
 
-  // Funções memoizadas para evitar recriação
+  
   const toggleWeek = useCallback((weekKey: string) => {
     setExpandedWeeks(prev => {
       const newExpanded = new Set(prev);
@@ -211,7 +211,7 @@ export const TimelineWindows = ({
     return isSameWeek(hoje, weekStart, { weekStartsOn: 1 });
   }, []);
 
-  // Função para lidar com clique em aula
+  
   const handleAulaClick = useCallback((aula: Aula, e: React.MouseEvent) => {
     e.stopPropagation();
     if (onAulaClick) {
@@ -219,7 +219,7 @@ export const TimelineWindows = ({
     }
   }, [onAulaClick]);
 
-  // Função para lidar com edição
+  
   const handleEditClick = useCallback((aula: Aula, e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEditClick) {
@@ -227,7 +227,7 @@ export const TimelineWindows = ({
     }
   }, [onEditClick]);
 
-  // Função para lidar com exclusão
+  
   const handleDeleteClick = useCallback((aula: Aula, e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDeleteClick) {
@@ -235,7 +235,7 @@ export const TimelineWindows = ({
     }
   }, [onDeleteClick]);
 
-  // Navegação entre meses
+  
   const navigateMonth = useCallback((direction: 'prev' | 'next') => {
     if (!currentYearMonth) return;
     
@@ -247,14 +247,14 @@ export const TimelineWindows = ({
     }
   }, [currentYearMonth, visibleMonths]);
 
-  // Filtrar semanas por mês atual
+  
   const filteredSemanas = useMemo(() => {
     return semanas.filter(([_, data]) => 
       !currentYearMonth || data.monthYear === currentYearMonth
     );
   }, [semanas, currentYearMonth]);
 
-  // Mobile: Verificar se é dispositivo móvel
+  
   const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
@@ -789,7 +789,7 @@ export const TimelineWindows = ({
   );
 };
 
-// Estilos
+
 const styles = `
   .scrollbar-thin::-webkit-scrollbar {
     width: 4px;
@@ -821,7 +821,7 @@ const styles = `
   }
 `;
 
-// Adicionar estilos apenas uma vez
+
 if (typeof document !== 'undefined' && !document.getElementById('timeline-styles')) {
   const styleSheet = document.createElement("style");
   styleSheet.id = 'timeline-styles';

@@ -12,14 +12,11 @@ export const useSyncAuth = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Token JWT para sincronização
         setAuthToken(session.access_token);
         
-        // Role do usuário para RLS
         const role = session.user.user_metadata?.user_role;
         setUserRole(role);
         
-        // Salvar no localStorage para uso offline
         localStorage.setItem('jwt_token', session.access_token);
         localStorage.setItem('user_role', role || 'admin');
       } else {
@@ -30,10 +27,8 @@ export const useSyncAuth = () => {
       }
     };
 
-    // Atualizar inicialmente
     updateAuthData();
 
-    // Ouvir mudanças
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         await updateAuthData();
@@ -43,7 +38,6 @@ export const useSyncAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Função para obter headers autenticados
   const getAuthHeaders = () => {
     if (!authToken) return {};
     
@@ -55,7 +49,6 @@ export const useSyncAuth = () => {
     };
   };
 
-  // Função para verificar permissões
   const hasPermission = (requiredRole: string): boolean => {
     if (!userRole) return false;
     

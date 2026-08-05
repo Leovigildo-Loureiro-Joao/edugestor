@@ -3,10 +3,8 @@ import { syncManager } from "../services/database/syncManager";
 import { instituicaoIdValue } from "./getInsitituicaoID";
 
 export function emitPendingSync(tableName: string, count: number) {
-  // Salvar no localStorage para acesso global
   localStorage.setItem(`pending_sync_${tableName}`, count.toString());
   
-  // Emitir evento customizado
   const event = new CustomEvent('sync-pending', {
     detail: { table: tableName, count }
   });
@@ -24,7 +22,6 @@ export const getPendingCount = async (table: string): Promise<number> => {
     try {
       const instituicaoId = instituicaoIdValue();
       if (!instituicaoId) return 0;
-      // Tentar do localStorage primeiro
       
       const pendingItems = await db.syncQueue
         .where('instituicao_id')

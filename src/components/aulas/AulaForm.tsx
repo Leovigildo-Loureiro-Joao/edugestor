@@ -4,7 +4,7 @@ import {
   FiBook, FiCalendar, FiClock, FiUsers, FiX, 
   FiTarget, FiCheckCircle, FiAlertCircle, FiEdit3,
   FiMessageSquare, FiTrendingUp, FiFileText,
-  FiAlertTriangle // Adicione este ícone
+  FiAlertTriangle 
 } from 'react-icons/fi';
 import { FaChalkboardTeacher, FaGraduationCap } from 'react-icons/fa';
 import { SelectTyped } from '../students/StudentForm';
@@ -36,7 +36,7 @@ export const AulaForm = ({
   turmaHorarios = [],
   aulaExistentes=[]
 }: AulaFormProps) => {
-  // No estado inicial do formData no AulaForm
+  
 const [formData, setFormData] = useState({
   turma_id: '',
   disciplina: '',
@@ -50,7 +50,7 @@ const [formData, setFormData] = useState({
   recursos_utilizados: [] as string[],
   nivel_dificuldade: 'medio' as 'baixo' | 'medio' | 'alto',
   observacoes_professor: '',
-  dia_semana: '' // Adicione este campo
+  dia_semana: '' 
 });
 const [disciplinas, setDisciplinas] = useState<string[]>(['Selecione uma disciplina']);
 const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,7 +72,7 @@ const [isSubmitting, setIsSubmitting] = useState(false);
   const { showAlert } = useAlert();
 
 
-// Atualize o useEffect que inicializa formData
+
 useEffect(() => {
   if (aula) {
     const diaSemana = aula.data_aula ? getDiaSemanaFromDate(aula.data_aula) : '';
@@ -90,7 +90,7 @@ useEffect(() => {
       recursos_utilizados: aula.recursos_utilizados || [],
       nivel_dificuldade: aula.nivel_dificuldade || 'medio',
       observacoes_professor: aula.observacoes_professor || '',
-      dia_semana: diaSemana // Adicionar dia da semana
+      dia_semana: diaSemana 
     });
     
     if (aula.turma_id) {
@@ -98,7 +98,7 @@ useEffect(() => {
       carregarHorariosDaTurma(aula.turma_id);
     }
   } else {
-    // Reset para novo formulário
+    
     const hoje = new Date().toISOString().split('T')[0];
     const diaSemanaHoje = getDiaSemanaFromDate(hoje);
     
@@ -115,12 +115,12 @@ useEffect(() => {
       recursos_utilizados: [],
       nivel_dificuldade: 'medio',
       observacoes_professor: '',
-      dia_semana: diaSemanaHoje // Adicionar dia da semana
+      dia_semana: diaSemanaHoje 
     });
   }
 }, [aula]);
 
-// Atualize o handler de mudança de data
+
 const handleDataChange = (dateString: string) => {
   const diaSemana = getDiaSemanaFromDate(dateString);
   
@@ -132,13 +132,13 @@ const handleDataChange = (dateString: string) => {
   
 };
 
-// Atualize a validação para incluir dia da semana
+
 const validarHorarioAulaComDiaSemana = () => {
   if (!formData.turma_id || !formData.disciplina || !formData.hora_inicio || !formData.hora_fim || !formData.dia_semana) {
     return;
   }
 
-  // Verificar se há horários definidos para a turma
+  
   if (horariosDaTurma.length === 0) {
     setValidacaoHorario({
       isValid: false,
@@ -148,7 +148,7 @@ const validarHorarioAulaComDiaSemana = () => {
     return;
   }
 
-  // Converter horas para minutos
+  
   const toMinutes = (time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -158,21 +158,21 @@ const validarHorarioAulaComDiaSemana = () => {
   const fimAula = toMinutes(formData.hora_fim);
   const diaSemanaAula = formData.dia_semana;
 
-  // Verificar se há horário correspondente para esta disciplina, dia e horário
+  
   const horariosCorrespondentes = horariosDaTurma.filter(horario => {
     if (horario.disciplina !== formData.disciplina) {
       return false;
     }
 
     if (horario.dia_semana !== diaSemanaAula) {
-      return false; // Verificar mesmo dia da semana
+      return false; 
     }
 
     const inicioHorario = toMinutes(horario.hora_inicio);
     const fimHorario = toMinutes(horario.hora_fim);
 
-    // Verificar se a aula está dentro do horário definido (com margem de 15 minutos)
-    const margem = 15; // minutos
+    
+    const margem = 15; 
     return (
       inicioAula >= (inicioHorario - margem) &&
       fimAula <= (fimHorario + margem)
@@ -187,13 +187,13 @@ const validarHorarioAulaComDiaSemana = () => {
       horarioCorrespondente: horariosCorrespondentes[0]
     });
   } else {
-    // Verificar se há horários para esta disciplina no mesmo dia
+    
     const horariosMesmaDisciplinaDia = horariosDaTurma.filter(h => 
       h.disciplina === formData.disciplina && h.dia_semana === diaSemanaAula
     );
     
     if (horariosMesmaDisciplinaDia.length > 0) {
-      // A disciplina tem horário neste dia, mas não corresponde
+      
       const sugerirHorarios = horariosMesmaDisciplinaDia.slice(0, 3);
       const sugestoes = sugerirHorarios.map(h => `${h.hora_inicio} - ${h.hora_fim}`).join(', ');
       
@@ -203,7 +203,7 @@ const validarHorarioAulaComDiaSemana = () => {
         tipo: 'aviso'
       });
     } else {
-      // Verificar se há horários para esta disciplina em outros dias
+      
       const horariosDisciplinaOutrosDias = horariosDaTurma.filter(h => h.disciplina === formData.disciplina);
       
       if (horariosDisciplinaOutrosDias.length > 0) {
@@ -215,12 +215,12 @@ const validarHorarioAulaComDiaSemana = () => {
           tipo: 'aviso'
         });
       } else {
-        // Disciplina não tem horário definido em nenhum dia
         
-        // Verificar se o horário conflita com outras disciplinas no mesmo dia
+        
+        
         const horariosConflitantes = horariosDaTurma.filter(horario => {
           if (horario.dia_semana !== diaSemanaAula) {
-            return false; // Só verificar conflitos no mesmo dia
+            return false; 
           }
 
           const inicioHorario = toMinutes(horario.hora_inicio);
@@ -252,14 +252,14 @@ const validarHorarioAulaComDiaSemana = () => {
   }
 };
 
-// Atualize o useEffect para usar a nova função de validação
+
 useEffect(() => {
   if (formData.turma_id && formData.disciplina && formData.hora_inicio && formData.hora_fim && formData.dia_semana) {
     validarHorarioAulaComDiaSemana();
   }
 }, [formData.turma_id, formData.disciplina, formData.hora_inicio, formData.hora_fim, formData.dia_semana]);
 
-  // Carregar horários quando turmaHorarios prop mudar
+  
   useEffect(() => {
     if (turmaHorarios.length > 0 && formData.turma_id) {
       setHorariosDaTurma(turmaHorarios);
@@ -303,7 +303,7 @@ useEffect(() => {
     setFormData(prev => ({
       ...prev,
       turma_id: turmaId,
-      disciplina: '' // Reset disciplina quando trocar turma
+      disciplina: '' 
     }));
 
     if (turmaId) {
@@ -321,7 +321,7 @@ useEffect(() => {
     }
   };
   
-  // Atualizar validação quando dados relevantes mudarem
+  
   useEffect(() => {
     if (formData.turma_id && formData.disciplina && formData.hora_inicio && formData.hora_fim) {
       validarHorarioAulaComDiaSemana();
@@ -333,24 +333,24 @@ useEffect(() => {
     return false;
   }
 
-  // Se estiver editando uma aula existente, não verificar contra ela mesma
+  
   const aulaAtualId = aula?.id;
 
-  // Você precisa ter acesso às aulas existentes da turma
-  // Se não tiver, você pode precisar passar como prop ou buscar
-  const aulasExistente = aulaExistentes; // Array de aulas existentes - você precisa obter isso!
+  
+  
+  const aulasExistente = aulaExistentes; 
   
   for (const aulaExistente of aulasExistente) {
-    // Pular a aula atual se estiver editando
+    
     if (aulaAtualId && aulaExistente.id === aulaAtualId) {
       continue;
     }
 
-    // Verificar se é mesma turma, mesma data e horário conflitante
+    
     if (aulaExistente.turma_id === formData.turma_id && 
         aulaExistente.data_aula === formData.data_aula) {
       
-      // Converter horas para minutos para verificar conflito
+      
       const toMinutes = (time: string) => {
         const [hours, minutes] = time.split(':').map(Number);
         return hours * 60 + minutes;
@@ -361,7 +361,7 @@ useEffect(() => {
       const inicioExistente = toMinutes(aulaExistente.hora_inicio);
       const fimExistente = toMinutes(aulaExistente.hora_fim);
 
-      // Verificar sobreposição
+      
       const conflito = (
         (inicioNova >= inicioExistente && inicioNova < fimExistente) ||
         (fimNova > inicioExistente && fimNova <= fimExistente) ||
@@ -389,7 +389,7 @@ useEffect(() => {
     setIsSubmitting(true);
     
     try {
-    // Validações básicas
+    
     if (!formData.turma_id) {
       showAlert({
         type: 'warning',
@@ -430,9 +430,9 @@ useEffect(() => {
       return;
     }
 
-    // Adicione uma função de validação mais robusta:
+    
 
-    // Verificar se hora_fim é depois de hora_inicio
+    
     const inicio = new Date(`2000-01-01T${formData.hora_inicio}`);
     const fim = new Date(`2000-01-01T${formData.hora_fim}`);
     if (fim <= inicio) {
@@ -452,7 +452,7 @@ useEffect(() => {
         confirmText: 'Continuar',
         cancelText: 'Corrigir',
         onConfirm: async () => {
-          // Usuario confirmou que quer continuar com o conflito
+          
           await onSubmit(formData);
         },
       });
@@ -481,10 +481,10 @@ useEffect(() => {
       message: verificarConflito.mensagem,
       duration:5000
     });
-    return; // Bloqueia a criação
+    return; 
   }
 
-    // Se tudo estiver ok, submeter normalmente
+    
     await onSubmit(formData);
     } finally {
       setIsSubmitting(false);
@@ -492,7 +492,7 @@ useEffect(() => {
   };
 
   const validarHorarioCompleto = () => {
-      // Verificar se todos os campos necessários estão preenchidos
+      
       if (!formData.turma_id || 
           !formData.disciplina || 
           formData.disciplina === 'Selecione uma disciplina' ||
@@ -504,7 +504,7 @@ useEffect(() => {
       return true;
     };
 
-  // Função para sincronizar com horário definido
+  
   const sincronizarComHorario = () => {
     if (validacaoHorario.horarioCorrespondente) {
       setFormData(prev => ({
@@ -515,7 +515,7 @@ useEffect(() => {
     }
   };
 
-  // Adicione estas funções (mantenha as já existentes)
+  
   const addObjetivo = () => {
     if (novoObjetivo.trim()) {
       setFormData(prev => ({

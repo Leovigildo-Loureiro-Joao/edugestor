@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FiAlertCircle, FiEdit, FiTrash2, FiUser, FiChevronRight } from 'react-icons/fi';
+import { FiAlertCircle, FiEdit, FiTrash2, FiUser, FiChevronRight, FiDownload } from 'react-icons/fi';
 import { Student } from '../../types';
+import { exportToCSV } from '../../utils/exportCSV';
 
 interface StudentsTableProps {
   filteredStudents: Student[];
@@ -98,6 +99,20 @@ export const StudentsTable: React.FC<StudentsTableProps> = ({
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
+  const handleExportCSV = () => {
+    exportToCSV(filteredStudents, [
+      { header: 'Nome', accessor: s => s.nome_completo },
+      { header: 'Nº Estudante', accessor: s => s.numero_estudante },
+      { header: 'Contacto', accessor: s => s.contacto_principal },
+      { header: 'Turma', accessor: s => s.turma_nome || '' },
+      { header: 'Professor', accessor: s => s.professor || '' },
+      { header: 'Estado', accessor: s => s.estado },
+      { header: 'Tipo Matrícula', accessor: s => s.tipo_matricula },
+      { header: 'Cartão Pago', accessor: s => s.cartao_pago ? 'Sim' : 'Não' },
+      { header: 'Propina', accessor: s => s.propina },
+    ], 'alunos');
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768); // md breakpoint
@@ -138,6 +153,13 @@ export const StudentsTable: React.FC<StudentsTableProps> = ({
                 {selectedStudentIds.length} {selectedStudentIds.length === 1 ? 'aluno' : 'alunos'}
               </motion.span>
             )}
+            <button
+              onClick={handleExportCSV}
+              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+              title="Exportar CSV"
+            >
+              <FiDownload size={18} />
+            </button>
           </div>
         </div>
 
@@ -316,6 +338,16 @@ export const StudentsTable: React.FC<StudentsTableProps> = ({
   // Versão Desktop (tabela original com scroll horizontal)
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+        <span className="text-sm text-gray-500 dark:text-gray-400">{filteredStudents.length} aluno(s)</span>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+        >
+          <FiDownload size={16} />
+          Exportar CSV
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1000px]">
           <thead className="bg-blue-600 dark:bg-blue-700">

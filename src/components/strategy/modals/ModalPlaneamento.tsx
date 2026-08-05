@@ -1,4 +1,4 @@
-// components/strategy/modals/ModalPlaneamento
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -32,7 +32,7 @@ interface ModalPlaneamentoProps {
   userNome: string;
 }
 
-// Interfaces específicas
+
 
 export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
   isOpen,
@@ -44,45 +44,45 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
 }) => {
   const [etapa, setEtapa] = useState<'basico' | 'conteudo'>('basico');
   
-  // ========== ESTADOS COMUNS ==========
+  
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [responsavel, setResponsavel] = useState('');
   
-  // ========== ESTADOS DIÁRIO ==========
+  
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [focos, setFocos] = useState<string[]>(['', '', '']);
   const [lembretes, setLembretes] = useState<string[]>([]);
   
-  // ========== ESTADOS SEMANAL ==========
+  
   const [dias, setDias] = useState<DiaAtividades[]>([]);
   const [objetivosSemanais, setObjetivosSemanais] = useState<string[]>(['', '', '']);
   const [metasPrioritarias, setMetasPrioritarias] = useState<string[]>([]);
   
-  // ========== ESTADOS MENSAL ==========
+  
   const [semanas, setSemanas] = useState<Semanas[]>([]);
   const [metasMensais, setMetasMensais] = useState<string[]>(['', '', '', '']);
   
-  // ========== ESTADOS COMUNS A TODOS ==========
+  
   const [tarefas_ids] = useState<string[]>([]);
   const [metas_ids] = useState<string[]>([]);
 
-  // ========== INICIALIZAR ESTADOS BASEADO NO TIPO ==========
+  
   useEffect(() => {
     if (isOpen) {
       setEtapa('basico');
       
       if (planeamentoExistente) {
-        // Carregar dados existentes
+        
         setTitulo(planeamentoExistente.titulo);
         setDescricao(planeamentoExistente.descricao || '');
         setDataInicio(planeamentoExistente.data_inicio);
         setDataFim(planeamentoExistente.data_fim);
         setResponsavel(planeamentoExistente.responsavel);
         
-        // Carregar dados específicos por tipo
+        
         switch(tipo) {
           case 'diario':
             const diario = planeamentoExistente as PlaneamentoDiario;
@@ -103,7 +103,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
             break;
         }
       } else {
-        // Reset para novo planejamento
+        
         resetEstados();
       }
     }
@@ -111,7 +111,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
 
   const resetEstados = () => {
     
-      const tipoValido: TipoPlaneamento = tipo || 'diario'; // ✅ FALLBACK!
+      const tipoValido: TipoPlaneamento = tipo || 'diario'; 
     
     setTitulo(getTituloPadrao(tipoValido) || 'Novo Planejamento');
     setDescricao('');
@@ -119,7 +119,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
     setDataFim(getDataFimPadrao(tipoValido) || new Date().toISOString().split('T')[0]);
     setResponsavel(userNome || 'Usuário');
     
-    // Reset por tipo - com VALIDAÇÃO!
+    
     switch(tipoValido) {
       case 'diario':
         setHorarios(getHorariosPadrao());
@@ -141,7 +141,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
 
   };
 
-  // ========== HANDLERS ==========
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -150,7 +150,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
       return;
     }
     
-    // Montar objeto específico baseado no tipo
+    
     let dados: DadosPlaneamento;
     const profile = await profileService.getLocalProfile();
     switch(tipo) {
@@ -162,7 +162,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
           titulo,
           descricao: descricao || undefined,
           data_inicio: dataInicio,
-          data_fim: dataInicio, // Diário = mesma data
+          data_fim: dataInicio, 
           status: 'rascunho',
           progresso: 0,
           horarios: horarios.filter(h => h.atividade.trim() !== ''),
@@ -224,7 +224,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
     onClose();
   };
 
-  // ========== RENDER ==========
+  
   return (
     <AnimatePresence>
       {isOpen && (
@@ -379,7 +379,7 @@ export const ModalPlaneamento: React.FC<ModalPlaneamentoProps> = ({
   );
 };
 
-// ========== COMPONENTE BÁSICO (REFATORADO) ==========
+
 interface ConteudoBasicoProps {
   titulo: string;
   setTitulo: (v: string) => void;
@@ -476,7 +476,7 @@ const ConteudoBasico: React.FC<ConteudoBasicoProps> = ({
   </div>
 );
 
-// ========== COMPONENTE DIÁRIO (REFATORADO) ==========
+
 interface ConteudoDiarioProps {
   horarios: Horario[];
   setHorarios: (h: Horario[]) => void;
@@ -600,7 +600,7 @@ const ConteudoDiario: React.FC<ConteudoDiarioProps> = ({
   );
 };
 
-// ========== COMPONENTE SEMANAL (REFATORADO) ==========
+
 interface ConteudoSemanalProps {
   dias: DiaAtividades[];
   setDias: (d: DiaAtividades[]) => void;
@@ -734,7 +734,7 @@ const ConteudoSemanal: React.FC<ConteudoSemanalProps> = ({
   );
 };
 
-// ========== COMPONENTE MENSAL (REFATORADO) ==========
+
 interface ConteudoMensalProps {
   semanas: Semanas[];
   setSemanas: (s: Semanas[]) => void;
@@ -855,7 +855,7 @@ const ConteudoMensal: React.FC<ConteudoMensalProps> = ({
   );
 };
 
-// ========== FUNÇÕES AUXILIARES ==========
+
 function getTituloModal(tipo: TipoPlaneamento): string {
   const map = { diario: 'Diário', semanal: 'Semanal', mensal: 'Mensal' };
   return `Planejamento ${map[tipo]}`;
@@ -870,7 +870,7 @@ function getTituloConteudo(tipo: TipoPlaneamento): string {
   return map[tipo];
 }
 
-// ========== FUNÇÕES AUXILIARES CORRIGIDAS ==========
+
 function getTituloPadrao(tipo: TipoPlaneamento): string {
   const hoje = new Date();
   switch(tipo) {
@@ -881,7 +881,7 @@ function getTituloPadrao(tipo: TipoPlaneamento): string {
     case 'mensal':
       return `Planejamento Mensal - ${hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
     default:
-      return `Novo Planejamento`; // ✅ SEMPRE retorna string!
+      return `Novo Planejamento`; 
   }
 }
 
@@ -901,11 +901,11 @@ function getDataInicioPadrao(tipo: TipoPlaneamento): string {
         const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         return primeiroDia.toISOString().split('T')[0];
       default:
-        return hoje.toISOString().split('T')[0]; // ✅ FALLBACK SEGURO!
+        return hoje.toISOString().split('T')[0]; 
     }
   } catch (error) {
     console.error('Erro ao gerar data:', error);
-    return new Date().toISOString().split('T')[0]; // ✅ SEMPRE retorna data válida!
+    return new Date().toISOString().split('T')[0]; 
   }
 }
 
@@ -924,11 +924,11 @@ function getDataFimPadrao(tipo: TipoPlaneamento): string {
         const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
         return ultimoDia.toISOString().split('T')[0];
       default:
-        return hoje.toISOString().split('T')[0]; // ✅ FALLBACK SEGURO!
+        return hoje.toISOString().split('T')[0]; 
     }
   } catch (error) {
     console.error('Erro ao gerar data fim:', error);
-    return new Date().toISOString().split('T')[0]; // ✅ SEMPRE retorna data válida!
+    return new Date().toISOString().split('T')[0]; 
   }
 }
 

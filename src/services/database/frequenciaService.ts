@@ -1,4 +1,4 @@
-// services/database/frequenciaService
+
 import { supabase } from '../database/db';
 import db from './db';
 import { Frequencia, FrequenciaData, RegistroFrequenciaLote } from '../../types/frequencia';
@@ -74,7 +74,7 @@ export const frequenciaService = {
     return { atualizadas: frequenciasSemInstituicao.length };
   },
 
-  // ✅ Registrar frequência em lote (com suporte offline)
+  
   async registrarFrequenciaLote(registro: RegistroFrequenciaLote): Promise<string[]> {
     try {
       const ids: string[] = [];
@@ -146,7 +146,7 @@ export const frequenciaService = {
           sync_status: 'pending'
         });
         
-        // Adicionar à fila de sincronização
+        
         await this.markForSync(freq.id, 'delete');
       }
       
@@ -156,16 +156,16 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Buscar todas as frequências
+  
   async getAllFrequencias(): Promise<Frequencia[]> {
     try {
       const todasFrequencias = await db.frequencias.toArray();
       const activeInstituicaoId = instituicaoIdValue() || '';
       
-      // Filtrar as não deletadas
+      
       const frequenciasAtivas = todasFrequencias.filter(freq => !freq.deleted&&freq.instituicao_id==activeInstituicaoId);
       
-      // Ordenar por data (mais recente primeiro)
+      
       frequenciasAtivas.sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
       );
@@ -188,7 +188,7 @@ export const frequenciaService = {
       
     },
   
-  // ✅ Função auxiliar para marcar como pendente
+  
    async markForSync(recordId: string, operation: 'upsert' | 'delete') {
     await db.syncQueue.add({
       table: 'frequencias',
@@ -200,7 +200,7 @@ export const frequenciaService = {
     });
   },
 
-  // ✅ Buscar frequência por aula (com suporte offline)
+  
   async getFrequenciaPorAula(aulaId: string): Promise<Frequencia[]> {
     try {
       const frequencias = await db.frequencias
@@ -219,7 +219,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Buscar frequências por aluno
+  
   async getByAluno(alunoId: string, dias?: number): Promise<Frequencia[]> {
     try {
       let frequencias = await db.frequencias
@@ -235,7 +235,7 @@ export const frequenciaService = {
           aulasDisciplina.push(aula);
         }
       }
-      // Filtrar por período se especificado
+      
       if (dias) {
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() - dias);
@@ -245,7 +245,7 @@ export const frequenciaService = {
         );
       }
       
-      // Ordenar por data (mais recente primeiro)
+      
       
       return frequencias.map((p)=>{
         let aula:Aula|undefined= aulasDisciplina.find((aula)=>p.aula_id==aula.id)
@@ -268,7 +268,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Buscar frequência específica por aluno e aula
+  
   async getFrequenciaAlunoAula(alunoId: string, aulaId: string): Promise<Frequencia | null> {
     try {
       const frequencias = await db.frequencias
@@ -285,7 +285,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Atualizar frequência individual
+  
   async updateFrequencia(id: string, updates: Partial<Frequencia>) {
     try {
       const updated_at = new Date().toISOString();
@@ -296,7 +296,7 @@ export const frequenciaService = {
         sync_status: 'pending' as const
       });
 
-      // Adicionar/atualizar na fila
+      
       await db.syncQueue.add({
         table: 'frequencias',
         record_id: id,
@@ -319,14 +319,14 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Deletar frequência (soft delete)
+  
   async deleteFrequencia(id: string) {
     try {
       const frequencia = await db.frequencias.get(id);
       if (!frequencia) return;
 
       if (frequencia.sync_status === 'synced' && !frequencia.id.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
+        
         await db.frequencias.update(id, { 
           deleted: true, 
           sync_status: 'pending_delete' as const,
@@ -343,10 +343,10 @@ export const frequenciaService = {
         });
         
         } else {
-        // Se nunca sincronizado, deletar completamente
+        
         await db.frequencias.delete(id);
         
-        // Remover da fila se existir
+        
         await db.syncQueue
           .where('record_id')
           .equals(id)
@@ -364,7 +364,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Ajustar estado do aluno a partir da frequência
+  
   async updateEnrollmentStatusFromAttendance(alunoIds: string[]) {
     const uniqueIds = Array.from(new Set(alunoIds.filter(Boolean)));
     if (uniqueIds.length === 0) return { updated: 0 };
@@ -435,7 +435,7 @@ export const frequenciaService = {
     return { updated };
   },
 
-  // ✅ Deletar todas frequências de uma aula
+  
   async deleteFrequenciasPorAula(aulaId: string) {
     try {
       const frequencias = await this.getFrequenciaPorAula(aulaId);
@@ -451,13 +451,13 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Estatísticas de frequência (com suporte offline)
+  
   async getEstatisticasFrequencia(turmaId: string, mes?: string) {
     try {
       
       const todasFrequencias = await this.getAllFrequencias();
       
-      // Filtrar por período se especificado
+      
       let frequenciasFiltradas = todasFrequencias;
       
       if (mes) {
@@ -506,22 +506,22 @@ export const frequenciaService = {
         taxa_presenca: 0,
         diasConsecutivosAusentes: 0,
         ultimaPresenca: '',
-        historico: frequencias.slice(0, 10) // Últimos 10 registros
+        historico: frequencias.slice(0, 10) 
       };
 
       stats.taxa_presenca = stats.total > 0 
         ? (stats.presentes / stats.total) * 100 
         : 0;
 
-      // Encontrar última presença (mais recente)
+      
       const presencas = frequencias.filter(f => f.presente);
       if (presencas.length > 0) {
-        // Ordenar por data mais recente primeiro
+        
         presencas.sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
         stats.ultimaPresenca = presencas[0].data_aula;
       }
 
-      // Calcular dias consecutivos ausentes (SÓ PARA ALUNO)
+      
       let diasAusentesConsecutivos = 0;
       const frequenciasOrdenadas = [...frequencias].sort((a, b) => 
         new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime()
@@ -550,22 +550,22 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Calcular frequência por turma (VERSÃO CORRIGIDA)
+  
   async getFrequenciaPorTurma(turma_id: string, periodoDias?: number) {
     try {
-      // 1. Buscar alunos da turma
+      
       const alunos = await alunosService.getAlunosPorTurma(turma_id);
       
-      // 2. Buscar todas as frequências de uma vez
+      
       const todasFrequencias = await this.getAllFrequencias();
       
-      // 3. Filtrar frequências dos alunos da turma
+      
       const frequenciasTurma: Frequencia[] = [];
       const alunosIds = alunos.map(a => a.id);
       
       for (const freq of todasFrequencias) {
         if (alunosIds.includes(freq.aluno_id)) {
-          // Se períodoDias foi especificado, filtrar por data
+          
           if (periodoDias) {
             const dataFrequencia = new Date(freq.data_aula);
             const hoje = new Date();
@@ -581,38 +581,38 @@ export const frequenciaService = {
         }
       }
 
-      // 4. Calcular estatísticas gerais da turma
+      
       const stats = {
         total: frequenciasTurma.length,
         presentes: frequenciasTurma.filter(f => f.presente).length,
         ausentes: frequenciasTurma.filter(f => !f.presente).length,
         taxa_presenca: 0,
-        // Estatísticas adicionais para turma:
+        
         totalAlunos: alunos.length,
         alunosComFrequencia: new Set(frequenciasTurma.map(f => f.aluno_id)).size,
         ultimaAtualizacao: '',
         mediaPresencaPorAluno: 0,
         alunosCriticos: 0,
-        historicoTurma: frequenciasTurma.slice(0, 20) // Últimos 20 registros
+        historicoTurma: frequenciasTurma.slice(0, 20) 
       };
 
       stats.taxa_presenca = stats.total > 0 
         ? (stats.presentes / stats.total) * 100 
         : 0;
 
-      // Encontrar data da última frequência registrada na turma
+      
       if (frequenciasTurma.length > 0) {
         frequenciasTurma.sort((a, b) => new Date(b.data_aula).getTime() - new Date(a.data_aula).getTime());
         stats.ultimaAtualizacao = frequenciasTurma[0].data_aula;
       }
 
-      // Calcular média de presença por aluno
+      
       if (stats.alunosComFrequencia > 0) {
         stats.mediaPresencaPorAluno = stats.presentes / stats.alunosComFrequencia;
       }
 
-      // Identificar alunos críticos (baixa frequência)
-      // Para isso, precisamos calcular por aluno
+      
+      
       const estatisticasPorAluno = await Promise.all(
         alunos.map(async aluno => {
           const statsAluno = await this.getFrequenciaAluno(aluno.id, periodoDias);
@@ -642,7 +642,7 @@ export const frequenciaService = {
   },
 
 
-  // ✅ Verificar se frequência já foi registrada para a aula
+  
   async verificarFrequenciaRegistrada(aulaId: string): Promise<boolean> {
     try {
       const frequencias = await db.frequencias
@@ -659,7 +659,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Obter alunos sem frequência registrada para a aula
+  
   async getAlunosSemFrequencia(aulaId: string, alunosTurma: string[]): Promise<string[]> {
     try {
       const frequencias = await this.getFrequenciaPorAula(aulaId);
@@ -673,7 +673,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Verificar saúde do banco de frequências
+  
   async checkDatabaseHealth() {
     try {
       const frequenciaCount = await db.frequencias.count();
@@ -685,7 +685,7 @@ export const frequenciaService = {
       
       const frequenciasAtivas = (await this.getAllFrequencias()).length;
       
-      // Calcular taxa de presença geral
+      
       const todasFrequencias = await this.getAllFrequencias();
       const presentes = todasFrequencias.filter(f => f.presente).length;
       const taxaPresenca = todasFrequencias.length > 0 
@@ -699,7 +699,7 @@ export const frequenciaService = {
         taxaPresencaGeral: Math.round(taxaPresenca * 100) / 100,
         online: navigator.onLine,
         bancoAberto: db.isOpen(),
-        duplicatas: frequenciaCount - frequenciasAtivas // Frequências deletadas
+        duplicatas: frequenciaCount - frequenciasAtivas 
       };
     } catch (error: any) {
       return {
@@ -709,7 +709,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Estatísticas de frequências
+  
   async getEstatisticas() {
     try {
       const todasFrequencias = await this.getAllFrequencias();
@@ -814,7 +814,7 @@ export const frequenciaService = {
     }
   },
 
-  // ✅ Exportar dados de frequência
+  
   async exportarDados(inicio: Date, fim: Date): Promise<any[]> {
     try {
       const todasFrequencias = await this.getAllFrequencias();

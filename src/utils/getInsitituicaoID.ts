@@ -19,7 +19,6 @@ export const instituicaoIdValue = () => {
                 profileInstituicaoId = profile.instituicao_id;
             }
         } catch {
-            // ignora erro de parse e segue fallback
         }
     }
 

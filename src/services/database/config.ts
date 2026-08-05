@@ -50,7 +50,7 @@ export const configService = {
         const userProfile = JSON.parse(userProfileRaw);
         if (this.isUuid(userProfile?.id)) return userProfile.id;
       } catch {
-        // ignora parse inválido
+        
       }
     }
 
@@ -97,7 +97,7 @@ export const configService = {
     return active || defaultId;
   },
 
-  // ============ BUSCAR TODAS AS CONFIGURAÇÕES ============
+  
   async getAllConfigOnly(): Promise<SystemConfig[]> {
     try {
       const instituicaoId = await this.resolveInstituicaoId();
@@ -131,7 +131,7 @@ export const configService = {
     }
   },
 
-  // ============ FUNÇÕES AUXILIARES ============
+  
   getConfigValueFromArray<T>(
     configArray: SystemConfig[], 
     key: string, 
@@ -147,7 +147,7 @@ export const configService = {
       return defaultValue;
     }
     
-    // Garantir que o tipo está correto baseado no data_type
+    
     try {
       switch (config.data_type) {
         case 'number':
@@ -166,7 +166,7 @@ export const configService = {
     }
   },
 
-  // ============ BUSCAR POR CATEGORIA ============
+  
   async getConfigByCategory(category: string): Promise<SystemConfig[]> {
     try {
       const instituicaoId = await this.resolveInstituicaoId();
@@ -183,7 +183,7 @@ export const configService = {
     }
   },
 
-  // ============ BUSCAR VALOR ESPECÍFICO ============
+  
   async getConfigValue<T>(
     category: string, 
     key: string, 
@@ -201,7 +201,7 @@ export const configService = {
         return defaultValue as T;
       }
 
-      // Converter baseado no tipo
+      
       switch (config.data_type) {
         case 'number':
           return Number(config.value) as T;
@@ -220,7 +220,7 @@ export const configService = {
     }
   },
 
-  // ============ SALVAR/ATUALIZAR CONFIGURAÇÃO ============
+  
   async setConfig(dataConfig: SystemConfigFormData): Promise<void> {
     try {
       const now = new Date().toISOString();
@@ -232,7 +232,7 @@ export const configService = {
         dataConfig.key_name
       );
       
-      // Buscar TODAS as configs com a mesma identidade para evitar duplicados legados.
+      
       const sameIdentityConfigs = await db.system_config
         .where('category')
         .equals(dataConfig.category)
@@ -259,18 +259,18 @@ export const configService = {
       } as SystemConfig;
 
       if (existingConfig) {
-        // Atualizar existente
+        
         configToSave.id = existingConfig.id;
         configToSave.created_at = existingConfig.created_at;
       } else {
-        // Criar novo de forma determinística para evitar duplicação por corrida.
+        
         configToSave.id = deterministicId;
         configToSave.created_at = now;
       }
 
       await db.system_config.put(configToSave as SystemConfig);
 
-      // Limpar duplicados antigos (se existirem) mantendo apenas o ID escolhido.
+      
       const duplicateIds = activeConfigs
         .map((item) => item.id)
         .filter((id) => id !== configToSave.id);
@@ -285,7 +285,7 @@ export const configService = {
         }
       }
 
-      // Adicionar à fila de sincronização
+      
       const hasPendingUpsert = await db.syncQueue
         .where('table')
         .equals('system_config')
@@ -315,7 +315,7 @@ export const configService = {
     }
   },
 
-  // ============ CONFIGURAÇÕES ACADÊMICAS ============
+  
   async getAcademyConfig(): Promise<AcademyConfig> {
     try {
       const [instituicao, academicConfig] = await Promise.all([
@@ -459,7 +459,7 @@ export const configService = {
     }
   },
 
-  // ============ CONFIGURAÇÕES FINANCEIRAS ============
+  
   async getPaymentConfig(): Promise<PaymentConfig> {
     try {
       const [instituicao, financeConfigs] = await Promise.all([
@@ -602,12 +602,12 @@ export const configService = {
     }
   },
 
-  // ============ INICIALIZAR CONFIGURAÇÕES PADRÃO ============
+  
   async initializeDefaultConfigs(): Promise<void> {
     try {
       const instituicaoId = await this.resolveInstituicaoId();
 
-      // Verificar se já existem configurações
+      
       const existingCount = await db.system_config
         .where('instituicao_id')
         .equals(instituicaoId)
@@ -618,7 +618,7 @@ export const configService = {
         return;
       }
       const defaultConfigs = [
-        // Configurações Acadêmicas
+        
         
         {
           category: 'academic',
@@ -723,7 +723,7 @@ export const configService = {
           updated_by: 'system',
           instituicao_id:instituicaoIdValue()||""
         },
-        // Configurações Financeiras
+        
         {
           category: 'finance',
           key_name: 'propina_value',
@@ -799,7 +799,7 @@ export const configService = {
           updated_by: 'system',
           instituicao_id:instituicaoIdValue()||""
         },
-        // Configurações Gerais
+        
         {
           category: 'general',
           key_name: 'school_name',
@@ -847,7 +847,7 @@ export const configService = {
         }
       ];
 
-      // Salvar todas as configurações
+      
       const savePromises = defaultConfigs.map(config => 
         this.setConfig(config)
       );
@@ -859,7 +859,7 @@ export const configService = {
     }
   },
 
-  // ============ MÉTODOS AUXILIARES ============
+  
   getDefaultAcademyConfig(): AcademyConfig {
     return {
       tiposAvaliacao: [
@@ -893,7 +893,7 @@ export const configService = {
     };
   },
 
-  // ============ SINCRONIZAÇÃO ============
+  
   async syncConfigs(): Promise<void> {
     try {
       const configsToSync = await db.system_config
@@ -903,18 +903,18 @@ export const configService = {
 
       for (const config of configsToSync) {
         try {
-          // Implementar lógica de sincronização com Supabase aqui
+          
           if (config.sync_status === 'pending_delete') {
             } else {
             }
 
-          // Atualizar status após sincronização
+          
           await db.system_config.update(config.id, {
             sync_status: 'synced',
             updated_at: new Date().toISOString()
           });
 
-          // Remover da fila de sincronização
+          
           await db.syncQueue
             .where('record_id')
             .equals(config.id)
@@ -935,11 +935,11 @@ export const configService = {
     }
   },
 
-  // ============ LIMPEZA ============
+  
   async clearConfigs(): Promise<number> {
     try {
       await db.system_config.clear();
-      // Reinicializar configurações padrão
+      
       await this.initializeDefaultConfigs();
       
       return 1;
@@ -949,7 +949,7 @@ export const configService = {
     }
   },
 
-  // ============ VALIDAÇÃO ============
+  
   async validateConfigs(): Promise<{ valid: boolean; errors: string[] }> {
     const errors: string[] = [];
     
@@ -960,7 +960,7 @@ export const configService = {
         errors.push('Nenhuma configuração encontrada');
       }
 
-      // Verificar configurações obrigatórias
+      
       const requiredConfigs = [
         { category: 'academic', key: 'assessment_types' },
         { category: 'academic', key: 'grading_system' },

@@ -6,7 +6,7 @@ import { SyncStatus } from "../../types/base";
 
 
 export const eventoService = {
-  // ============ LISTAR EVENTOS ============
+  
   async listarEventos() {
     try {
     let query = db.evento.toArray().then(eventos => 
@@ -20,7 +20,7 @@ export const eventoService = {
     }
   },
 
-  // ============ LISTAR EVENTO POR ID ============
+  
   async listarEventoPorId(eventoId: string): Promise<EventFormData | null> {
     try {
       const evento = await db.evento.get(eventoId);
@@ -36,7 +36,7 @@ export const eventoService = {
     }
   },
 
-  // ============ CRIAR EVENTO ============
+  
   async criarEvento(eventoData: EventFormData): Promise<EventFormData> {
     try {
       const id = eventoData.id || generateUniqueId();
@@ -53,7 +53,7 @@ export const eventoService = {
       
       await db.evento.put(evento);
       
-      // Adicionar à fila de sincronização
+      
       await db.syncQueue.add({
         table: 'evento',
         instituicao_id:instituicaoIdValue(),
@@ -71,7 +71,7 @@ export const eventoService = {
     }
   },
 
-  // ============ ATUALIZAR EVENTO ============
+  
   async atualizarEvento(eventoId: string, eventoData: Partial<EventFormData>): Promise<EventFormData> {
     try {
       const eventoExistente = await db.evento.get(eventoId);
@@ -85,14 +85,14 @@ export const eventoService = {
       const eventoAtualizado = {
         ...eventoExistente,
         ...eventoData,
-        id: eventoId, // Garantir que o ID não seja alterado
+        id: eventoId, 
         updated_at,
         sync_status: 'pending' as SyncStatus
       };
 
       await db.evento.put(eventoAtualizado);
 
-      // Adicionar/atualizar na fila de sincronização
+      
       await db.syncQueue.add({
         table: 'evento',
         instituicao_id:instituicaoIdValue(),
@@ -109,14 +109,14 @@ export const eventoService = {
     }
   },
 
-  // ============ DELETAR EVENTO ============
+  
   async deletarEvento(eventoId: string): Promise<boolean> {
     try {
       const evento = await db.evento.get(eventoId);
       if (!evento) return false;
 
       if (evento.sync_status === 'synced' && !evento.id!.startsWith('local_')) {
-        // Se já sincronizado, marcar para deleção remota
+        
         await db.evento.update((eventoId||""), { 
           deleted: true, 
           sync_status: 'pending_delete',
@@ -133,10 +133,10 @@ export const eventoService = {
         });
         
         } else {
-        // Se nunca sincronizado, deletar completamente
+        
         await db.evento.delete(eventoId);
         
-        // Remover da fila se existir
+        
         await db.syncQueue
           .where('record_id')
           .equals(eventoId)
@@ -151,20 +151,20 @@ export const eventoService = {
     }
   },
 
-  // ============ MÉTODOS ADICIONAIS ÚTEIS ============
+  
 
-  // Buscar evento por data
+  
   async listarEventosPorData(dataInicio: string, dataFim?: string) {
     try {
       let query =  (await db.evento.toArray()).filter(evento => !evento.deleted)
       
       if (dataFim) {
-        // Buscar entre datas
+        
         query = query.filter(evento => 
           evento.date >= dataInicio && evento.date <= dataFim
         );
       } else {
-        // Buscar em uma data específica
+        
         query = query.filter(evento => 
           evento.date.startsWith(dataInicio)
         );
@@ -177,7 +177,7 @@ export const eventoService = {
     }
   },
 
-  // Buscar evento próximos (futuros)
+  
   async listarProximosEventos(limite: number = 10) {
     try {
       const hoje = new Date().toISOString().split('T')[0];
@@ -193,7 +193,7 @@ export const eventoService = {
     }
   },
 
-  // Buscar evento passados
+  
   async listarEventosPassados(limite: number = 10) {
     try {
       const hoje = new Date().toISOString().split('T')[0];
@@ -209,7 +209,7 @@ export const eventoService = {
     }
   },
 
-  // Buscar evento por tipo/categoria
+  
   async listarEventosPorTipo(tipo: string) {
     try {
       const evento = await db.evento
@@ -223,39 +223,39 @@ export const eventoService = {
     }
   },
 
-  // ============ SINCRONIZAÇÃO ============
+  
   async sincronizarEventos() {
     try {
-      // Buscar evento pendentes de sincronização
+      
       const eventoParaSincronizar = await db.evento
         .where('sync_status')
         .anyOf(['pending', 'pending_delete'])
         .toArray();
 
-      // Aqui você implementaria a lógica para sincronizar com Supabase
+      
       for (const evento of eventoParaSincronizar) {
         try {
           if (evento.sync_status === 'pending_delete') {
-            // Lógica para deletar no Supabase
-            // await supabase.from('evento').delete().eq('id', evento.id);
+            
+            
           } else {
-            // Lógica para upsert no Supabase
-            // const { error } = await supabase
-            //   .from('evento')
-            //   .upsert({
-            //     ...evento,
-            //     id: evento.id.startsWith('local_') ? undefined : evento.id
-            //   });
-            // if (error) throw error;
+            
+            
+            
+            
+            
+            
+            
+            
           }
           
-          // Atualizar status local após sincronização bem-sucedida
+          
           await db.evento.update(evento.id, { 
             sync_status: 'synced',
             updated_at: new Date().toISOString()
           });
           
-          // Remover da fila de sincronização
+          
           await db.syncQueue
             .where('record_id')
             .equals(evento.id)
@@ -264,7 +264,7 @@ export const eventoService = {
         } catch (syncError) {
           console.error(`Erro ao sincronizar evento ${evento.id}:`, syncError);
           
-          // Marcar como falha
+          
           await db.evento.update(evento.id, { 
             sync_status: 'failed',
             updated_at: new Date().toISOString()
@@ -283,7 +283,7 @@ export const eventoService = {
     }
   },
 
-  // ============ ESTATÍSTICAS ============
+  
   async obterEstatisticasEventos() {
     try {
       const evento = await db.evento
@@ -295,7 +295,7 @@ export const eventoService = {
       const passados = evento.filter(e => e.date < hoje).length;
       const futuros = evento.filter(e => e.date >= hoje).length;
       
-      // Agrupar por tipo se houver campo tipo
+      
       const porTipo: Record<string, number> = {};
       evento.forEach(evento => {
         if (evento.type) {
@@ -303,7 +303,7 @@ export const eventoService = {
         }
       });
 
-      // Próximo evento
+      
       const proximoEvento = evento
         .filter(e => e.date >= hoje)
         .sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -327,7 +327,7 @@ export const eventoService = {
     }
   },
 
-  // ============ LIMPAR EVENTOS DELETADOS ============
+  
   async limparEventosDeletados() {
     try {
       const eventoDeletados = await db.evento
