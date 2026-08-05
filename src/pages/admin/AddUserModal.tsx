@@ -9,8 +9,8 @@ import {
   FiShield,
   FiSave
 } from 'react-icons/fi';
-import { profileService } from '../../services/database/profileService';
 import { useAlert } from '../../components/ui/AlertBadge';
+import { adminEdgeFunctions } from '../../utils/adminEdgeFunctions';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -54,16 +54,16 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     setLoading(true);
 
     try {
-      // Usar o service que você já tem
-      const result = await profileService.addUserByAdmin({
-        ...formData,
+      const result = await adminEdgeFunctions.createUser({
+        email: formData.email,
+        full_name: formData.nome,
+        role: formData.role,
         instituicao_id: formData.instituicao_id
-      }, adminId);
+      });
 
       if (result.success) {
-        showAlert({ type: 'success', title: result.message });
+        showAlert({ type: 'success', title: result.message || 'Usuário adicionado com sucesso' });
         
-        // Resetar formulário
         setFormData({
           email: '',
           nome: '',
@@ -71,10 +71,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           instituicao_id: instituicaoId
         });
         
-        // Chamar callback de sucesso
         onSuccess();
-        
-        // Fechar modal
         onClose();
       } else {
         showAlert({ type: 'error', title: 'Erro ao adicionar usuário' });

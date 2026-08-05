@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logos.png'],
+      includeAssets: ['logos.jpg'],
       manifest: {
         name: 'EduGestor - Gestão Escolar',
         short_name: 'EduGestor',
@@ -20,17 +20,17 @@ export default defineConfig({
         scope: '/',
         icons: [
           {
-            src: 'logos.png',
+            src: 'logos.jpg',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'logos.png',
+            src: 'logos.jpg',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'logos.png',
+            src: 'logos.jpg',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

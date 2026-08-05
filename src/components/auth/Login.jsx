@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import logo from '../../assets/logo.png';
+import logo from '../../assets/logo.jpg';
 import logoBlack from '../../assets/logoblack1.png';
 import adminBg from '../../assets/admin.jpg';
 import { FiMail, FiLock, FiUser } from 'react-icons/fi';

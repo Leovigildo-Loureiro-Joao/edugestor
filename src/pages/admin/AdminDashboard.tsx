@@ -25,6 +25,7 @@ import { profileService } from '../../services/database/profileService';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auditLogService } from '../../services/audit/auditLogService';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { adminEdgeFunctions } from '../../utils/adminEdgeFunctions';
 
 interface User {
   id: string;
@@ -358,62 +359,11 @@ const AdminDashboard = () => {
     if (!selectedUser) return;
 
     try {
-      const now = new Date().toISOString();
-      const statusValue = editForm.is_active ? 'active' : 'inactive';
-      let profileError: any = null;
-
-      const fullUpdate = await supabase
-        .from('profiles')
-        .update({
-          role: editForm.role,
-          status: statusValue,
-          is_active: editForm.is_active,
-          updated_at: now
-        })
-        .eq('id', selectedUser.id);
-
-      profileError = fullUpdate.error;
-
-      if (profileError) {
-        const statusOnly = await supabase
-          .from('profiles')
-          .update({
-            role: editForm.role,
-            status: statusValue,
-            updated_at: now
-          })
-          .eq('id', selectedUser.id);
-        profileError = statusOnly.error;
-      }
-
-      if (profileError) {
-        const isActiveOnly = await supabase
-          .from('profiles')
-          .update({
-            role: editForm.role,
-            is_active: editForm.is_active,
-            updated_at: now
-          })
-          .eq('id', selectedUser.id);
-        profileError = isActiveOnly.error;
-      }
-
-      if (profileError) {
-        const roleOnly = await supabase
-          .from('profiles')
-          .update({
-            role: editForm.role,
-            updated_at: now
-          })
-          .eq('id', selectedUser.id);
-        profileError = roleOnly.error;
-      }
-
-      if (profileError) throw profileError;
-
-      if (!editForm.is_active && selectedUser.is_active) {
-        await supabase.auth.admin.signOut(selectedUser.id);
-      }
+      await adminEdgeFunctions.updateUser({
+        userId: selectedUser.id,
+        role: editForm.role,
+        is_active: editForm.is_active,
+      });
 
       await logAuditAction('UPDATE_USER', {
         action_label: 'Atualizou usuário',
@@ -448,8 +398,7 @@ const AdminDashboard = () => {
         return;
       }
 
-      const { error } = await supabase.auth.admin.deleteUser(userToDelete);
-      if (error) throw error;
+      await adminEdgeFunctions.deleteUser(userToDelete);
 
       await logAuditAction('DELETE_USER', {
         action_label: 'Deletou usuário',

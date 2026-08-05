@@ -254,6 +254,14 @@ const handleSuccessfulLogin = async (user: User) => {
     await updateUserMetadata(user);
     
     await setupUserAfterLogin(user);
+
+    if (userProfile?.role === 'admin' && navigator.onLine) {
+      void profileService.syncPendingUsers().then(result => {
+        if (result.success && result.localStats && result.localStats.successCount > 0) {
+          console.log(`✅ Auto-sync: ${result.localStats.successCount} usuário(s) sincronizado(s)`);
+        }
+      }).catch(() => {});
+    }
     
     } catch (error) {
     console.error('❌ Erro no pós-login:', error);
@@ -293,7 +301,13 @@ const handleSuccessfulLogin = async (user: User) => {
       });
       
       if (!success) {
-        console.warn('⚠️ JWT não atualizado via Edge Function, usando fallback');
+        console.warn('⚠️ JWT não atualizado via Edge Function, aplicando fallback local');
+        await supabase.auth.updateUser({
+          data: {
+            instituicao_id: instituicaoId,
+            active_instituicao_id: instituicaoId
+          }
+        });
       }
       
       localStorage.setItem('active_instituicao_id', instituicaoId);
@@ -604,10 +618,21 @@ const handleSuccessfulLogin = async (user: User) => {
     }
 
     if (instituicaoId) {
-      await updateJWTClaims({
+      const jwtSuccess = await updateJWTClaims({
         instituicao_id: instituicaoId,
         user_role: 'admin'
       });
+      
+      if (!jwtSuccess) {
+        console.warn('⚠️ JWT claims não atualizados no registo pendente, usando fallback local');
+        await supabase.auth.updateUser({
+          data: {
+            instituicao_id: instituicaoId,
+            active_instituicao_id: instituicaoId,
+            user_role: 'admin'
+          }
+        });
+      }
     }
 
     const localProfile = {

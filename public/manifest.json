@@ -10,17 +10,17 @@
   "background_color": "#ffffff",
   "icons": [
     {
-      "src": "/logos.png",
+      "src": "/logos.jpg",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/logos.png",
+      "src": "/logos.jpg",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/logos.png",
+      "src": "/logos.jpg",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
