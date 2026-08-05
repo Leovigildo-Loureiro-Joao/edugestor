@@ -35,6 +35,7 @@ export interface Student extends BaseEntity {
   cartao_pago: boolean;
   meses_em_aberto?: string[];
   ultima_verificacao_pagamento?: string;
+  
 
   propina: number;
 

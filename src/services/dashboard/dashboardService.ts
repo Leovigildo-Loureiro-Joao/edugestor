@@ -12,6 +12,7 @@ import {
   ProximoEvento,
   TopAluno
 } from '../../types';
+import { normalizeAcademicYear } from '../../utils/studentAcademicStatus';
 import { ComparativoPropinasMensal } from '../../types/propina';
 
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -167,7 +168,7 @@ export const dashboardService = {
         db.propina.toArray()
       ]);
 
-      const anoLectivoAtual = instituicaoAtual?.ano_lectivo || '';
+      const anoLectivoAtual = normalizeAcademicYear(instituicaoAtual?.ano_lectivo);
       const anoLectivoAnterior = obterAnoLetivoAnterior(anoLectivoAtual);
 
       const aulasInstituicao = aulasAll.filter(
@@ -250,19 +251,19 @@ export const dashboardService = {
       const [paymentConfig] = await Promise.all([configService.getPaymentConfig()]);
 
       const totalAlunos = alunosInstituicao.filter(
-        (aluno) => aluno.ano_lectivo === anoLectivoAtual
+        (aluno) => normalizeAcademicYear(aluno.ano_lectivo) === anoLectivoAtual
       ).length;
       const totalAlunosAnterior = alunosInstituicao.filter(
-        (aluno) => aluno.ano_lectivo === anoLectivoAnterior
+        (aluno) => normalizeAcademicYear(aluno.ano_lectivo) === anoLectivoAnterior
       ).length;
       const alunosAguardandoAtivacao = alunosInstituicao.filter(
         (aluno) =>
           aluno.tipo_matricula === 'regular' &&
           aluno.estado === 'inativo' &&
-          aluno.ano_lectivo !== anoLectivoAtual
+          normalizeAcademicYear(aluno.ano_lectivo) !== anoLectivoAtual
       ).length;
       const turmasAnoAtual = turmasInstituicao.filter(
-        (turma) => turma.estado === 'ativa' && turma.ano_lectivo === anoLectivoAtual
+        (turma) => turma.estado === 'ativa' && normalizeAcademicYear(turma.ano_lectivo) === anoLectivoAtual
       ).length;
       const cursosAtivos = cursosInstituicao.filter((curso) => curso.ativo).length;
 
@@ -357,7 +358,7 @@ export const dashboardService = {
         (aluno) =>
           !aluno.deleted &&
           aluno.instituicao_id === activeInstituicaoId &&
-          aluno.ano_lectivo === anoLectivoAnterior &&
+          normalizeAcademicYear(aluno.ano_lectivo) === anoLectivoAnterior &&
           aluno.estado === 'ativo'
       ).length;
 
@@ -411,7 +412,7 @@ export const dashboardService = {
       }, {});
 
       const alunosPorTurmaAnterior = alunosAtivosInstituicao
-        .filter((aluno) => aluno.ano_lectivo === anoLectivoAnterior)
+        .filter((aluno) => normalizeAcademicYear(aluno.ano_lectivo) === anoLectivoAnterior)
         .reduce<Record<string, number>>((acc, aluno) => {
           acc[aluno.turma_id] = (acc[aluno.turma_id] || 0) + 1;
           return acc;
@@ -735,10 +736,11 @@ export const dashboardService = {
       db.instituicao.get(activeInstituicaoId)
     ]);
 
+    const anoActual = normalizeAcademicYear(instituicao?.ano_lectivo);
     return alunos.filter(
       (aluno) =>
         !aluno.deleted &&
-        aluno.ano_lectivo === instituicao?.ano_lectivo &&
+        normalizeAcademicYear(aluno.ano_lectivo) === anoActual &&
         aluno.instituicao_id === activeInstituicaoId
     ).length;
   },
@@ -752,12 +754,12 @@ export const dashboardService = {
       db.instituicao.get(activeInstituicaoId)
     ]);
 
-    const anoAnterior = obterAnoLetivoAnterior(instituicao?.ano_lectivo || '');
+    const anoAnterior = obterAnoLetivoAnterior(normalizeAcademicYear(instituicao?.ano_lectivo));
 
     return alunos.filter(
       (aluno) =>
         !aluno.deleted &&
-        aluno.ano_lectivo === anoAnterior &&
+        normalizeAcademicYear(aluno.ano_lectivo) === anoAnterior &&
         aluno.instituicao_id === activeInstituicaoId
     ).length;
   },

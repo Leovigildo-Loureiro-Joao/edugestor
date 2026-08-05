@@ -699,7 +699,7 @@ export const configService = {
         {
           category: 'academic',
           key_name: 'academic_year',
-          value: new Date().getFullYear().toString(),
+          value: `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`,
           data_type: 'string',
           description: 'Ano letivo atual',
           updated_by: 'system',

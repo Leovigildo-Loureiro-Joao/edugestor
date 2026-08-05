@@ -14,6 +14,7 @@ import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
 import { useAlert } from "../ui/AlertBadge";
 import { motion } from "framer-motion";
 import { SelectTyped } from "../students/StudentForm";
+import { normalizeAcademicYear } from "../../utils/studentAcademicStatus";
 
 export const ConfiguracoesGerais = () => {
     const [salvando, setSalvando] = useState(false);
@@ -47,10 +48,23 @@ export const ConfiguracoesGerais = () => {
     async function handelConfigAcademy() {
         setSalvando(true);
         try {
-            await instituicaoService.updateConfig(instituicao || {});
+            const anoLectivo = normalizeAcademicYear(instituicao?.ano_lectivo);
+            await instituicaoService.updateConfig({
+                ...instituicao,
+                ano_lectivo: anoLectivo
+            });
+            await configService.setConfig({
+                category: 'academic',
+                key_name: 'academic_year',
+                value: anoLectivo,
+                data_type: 'string',
+                description: 'Ano letivo atual',
+                updated_by: 'user',
+                instituicao_id: instituicao?.id || instituicaoIdValue() || ""
+            });
+            await carregarDados();
             setSalvoComSucesso(true);
             
-            // Esconder o aviso após 3 segundos
             setTimeout(() => {
                 setSalvoComSucesso(false);
             }, 3000);
@@ -434,10 +448,18 @@ export const ConfiguracoesGerais = () => {
                             Ano Letivo
                         </label>
                         <SelectTyped
-                            vect={Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i).map(ano => 
-                                `${ano-1}-${ano}`
-                            )}  
-                            value={instituicao?.ano_lectivo || ''}         
+                            vect={(() => {
+                                const anoAtual = new Date().getFullYear();
+                                const anosBase = Array.from({length: 5}, (_, i) => anoAtual - 2 + i).map(ano => 
+                                    `${ano-1}-${ano}`
+                                );
+                                const valorAtual = normalizeAcademicYear(instituicao?.ano_lectivo);
+                                if (valorAtual && !anosBase.includes(valorAtual)) {
+                                    return [valorAtual, ...anosBase].sort();
+                                }
+                                return anosBase;
+                            })()}  
+                            value={normalizeAcademicYear(instituicao?.ano_lectivo) || ''}         
                             onChange={(value: string) => handleInputChange('ano_lectivo', value)}
                         />
                     </div>

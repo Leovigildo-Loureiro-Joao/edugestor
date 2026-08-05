@@ -246,7 +246,7 @@ export const SyncDataDetail: React.FC<SyncDataDetailProps> = ({syncStats, online
             {data.nome_turma}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-            {data.curso_nome} • {data.ano_letivo}
+            {data.curso_nome} • {data.ano_lectivo}
             </div>
         </div>
         </div>

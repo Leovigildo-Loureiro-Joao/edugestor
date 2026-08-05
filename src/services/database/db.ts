@@ -78,7 +78,7 @@ class EduGestorDatabase extends Dexie {
       // 🔥 Agora sua IDE vai entender ESTA estrutura
       alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
       avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
-      turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+      turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
       cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
       turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
       transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
@@ -103,7 +103,7 @@ class EduGestorDatabase extends Dexie {
       .stores({
         alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
         avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
-        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
         cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
         turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
         transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
@@ -136,7 +136,7 @@ class EduGestorDatabase extends Dexie {
       .stores({
         alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
         avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
-        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
         cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
         turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
         transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
@@ -169,7 +169,7 @@ class EduGestorDatabase extends Dexie {
       .stores({
         alunos: 'id, nome_completo, numero_estudante,turma_id,curso, sync_status, deleted,updated_at',
         avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
-        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
         cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
         turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
         transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',
@@ -201,7 +201,7 @@ class EduGestorDatabase extends Dexie {
       .stores({
         alunos: 'id, nome_completo, numero_estudante, instituicao_id, turma_id, curso, sync_status, deleted, updated_at, [instituicao_id+deleted], [instituicao_id+sync_status]',
         avaliacoes:'id,aluno_id,turma_id,disciplina, tipo_avaliacao,data_avaliacao, periodo, deleted, sync_status,updated_at',
-        turmas: 'id, nome_turma, curso_id, ano_letivo, sync_status, deleted, [curso_id+ano_letivo], [sync_status+deleted],updated_at',
+        turmas: 'id, nome_turma, curso_id, ano_lectivo, sync_status, deleted, [curso_id+ano_lectivo], [sync_status+deleted],updated_at',
         cursos: 'id, nome,instituicao_id,[nome+instituicao_id],ativo,vagas, sync_status, deleted,updated_at, [sync_status+deleted]',
         turma_horarios: 'id, turma_id, dia_semana, hora_inicio, [turma_id+dia_semana],updated_at',
         transacoes: 'id, tipo, categoria, data, valor, descricao, sync_status, deleted, created_at, updated_at',

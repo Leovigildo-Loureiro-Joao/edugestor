@@ -599,7 +599,7 @@ const handleSuccessfulLogin = async (user: User) => {
       .insert([{
         nome_escola: institutionName,
         email: user.email,
-        ano_lectivo: new Date().getFullYear().toString(),
+        ano_lectivo: `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         sync_status: 'synced'
@@ -619,7 +619,7 @@ const handleSuccessfulLogin = async (user: User) => {
         id: instituicaoId,
         nome_escola: institutionName,
         email: user.email,
-        ano_lectivo: new Date().getFullYear().toString(),
+        ano_lectivo: `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         sync_status: 'synced'

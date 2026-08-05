@@ -1154,8 +1154,8 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
       }
 
       case 'turmas':
-        // Para turmas, usa nome_turma + ano_letivo
-        chaveUnica = `${record.nome_turma}_${record.ano_letivo}`;
+        // Para turmas, usa nome_turma + ano_lectivo
+        chaveUnica = `${record.nome_turma}_${record.ano_lectivo}`;
         break;
 
       case 'professores':
@@ -1585,8 +1585,8 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
 
       if (tableName === 'alunos' && record.numero_estudante) {
         key = `aluno_${record.numero_estudante}`;
-      } else if (tableName === 'turmas' && record.nome_turma && record.ano_letivo) {
-        key = `turma_${record.nome_turma}_${record.ano_letivo}`;
+      } else if (tableName === 'turmas' && record.nome_turma && record.ano_lectivo) {
+        key = `turma_${record.nome_turma}_${record.ano_lectivo}`;
       }
 
       if (key && uniqueMap.has(key)) {
@@ -3039,8 +3039,8 @@ async verifyDataHealth(options: { tables?: string[]; sample?: number } = {}) {
           if (!record.numero_estudante) return null;
           return `aluno:${record.numero_estudante}`;
         case 'turmas':
-          if (!record.nome_turma || !record.ano_letivo) return null;
-          return `turma:${record.nome_turma}|${record.ano_letivo}|${record.curso_id || ''}`;
+          if (!record.nome_turma || !record.ano_lectivo) return null;
+          return `turma:${record.nome_turma}|${record.ano_lectivo}|${record.curso_id || ''}`;
         case 'aulas':
           return [
             'aula',

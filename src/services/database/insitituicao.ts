@@ -66,6 +66,9 @@ export const instituicaoService = {
       // Buscar configuração atual
       const id = config.id || (await this.resolveActiveInstituicaoId());
       const existingConfig = id ? await db.instituicao.get(id) : undefined;
+
+      const currentYear = new Date().getFullYear();
+      const defaultAnoLectivo = `${currentYear - 1}-${currentYear}`;
       
       const instituicaoAtualizada: Instituicao = {
         // Manter dados existentes ou usar padrão
@@ -74,7 +77,7 @@ export const instituicaoService = {
         email: existingConfig?.email || '',
         numero_telefone: existingConfig?.numero_telefone || '',
         whatsapp: existingConfig?.whatsapp || '',
-        ano_lectivo: existingConfig?.ano_lectivo || new Date().getFullYear().toString(),
+        ano_lectivo: existingConfig?.ano_lectivo || defaultAnoLectivo,
         valor_cartao: existingConfig?.valor_cartao || 0,
         valor_confirmacao: existingConfig?.valor_confirmacao || 0,
         valor_matricula: existingConfig?.valor_matricula || 0,
@@ -128,7 +131,7 @@ export const instituicaoService = {
         email: '',
         numero_telefone: '',
         whatsapp: '',
-        ano_lectivo: currentYear.toString(),
+        ano_lectivo: `${currentYear - 1}-${currentYear}`,
         valor_cartao: 500,
         valor_confirmacao: 1000,
         valor_matricula: 2500,
@@ -161,7 +164,7 @@ export const instituicaoService = {
         id: fallbackId,
         sync_status:"pending",
         nome_escola: 'CETE',
-        ano_lectivo: new Date().getFullYear().toString(),
+        ano_lectivo: `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -271,7 +274,13 @@ export const instituicaoService = {
   // Obter ano letivo atual
   async getAnoLectivo(): Promise<string> {
     const instituicao = await this.getConfig();
-    return instituicao.ano_lectivo || new Date().getFullYear().toString();
+    const ano = instituicao.ano_lectivo || '';
+    const match = ano.match(/(\d{4})\D+(\d{4})/);
+    if (match) return `${match[1]}-${match[2]}`;
+    const year = Number(ano);
+    if (Number.isFinite(year) && year > 0) return `${year - 1}-${year}`;
+    const currentYear = new Date().getFullYear();
+    return `${currentYear - 1}-${currentYear}`;
   },
 
   // Atualizar ano letivo
