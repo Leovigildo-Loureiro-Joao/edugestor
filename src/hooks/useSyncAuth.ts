@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/database/db';
+import { hasPermission as checkPermission } from '../constants/roles';
 
 export const useSyncAuth = () => {
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -50,19 +51,7 @@ export const useSyncAuth = () => {
   };
 
   const hasPermission = (requiredRole: string): boolean => {
-    if (!userRole) return false;
-    
-    const roleHierarchy = {
-      'admin': 3,
-      'teacher': 2,
-      'secretary': 1,
-      'user': 0
-    };
-    
-    const userLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
-    const requiredLevel = roleHierarchy[requiredRole as keyof typeof roleHierarchy] || 0;
-    
-    return userLevel >= requiredLevel;
+    return checkPermission(userRole || undefined, requiredRole);
   };
 
   return {

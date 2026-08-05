@@ -9,7 +9,7 @@ export const useAutoSave = (storageKey, initialData, delay = 2000) => {
         return parsed.data;
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar rascunho:', error);
+      console.error('Erro ao carregar rascunho:', error);
     }
     return initialData;
   });

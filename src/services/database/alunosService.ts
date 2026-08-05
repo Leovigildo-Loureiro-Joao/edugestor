@@ -191,7 +191,7 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
 
     const alunosFromQueue = await db.syncQueue.get(syncRecord);
     const insertBatch = [alunosFromQueue] as SyncQueueItem[];
-    syncManager.processInsertBatch('alunos', insertBatch);
+    await syncManager.processInsertBatch('alunos', insertBatch);
 
     return id;
 
@@ -597,7 +597,7 @@ async getAllStudents(): Promise<Student[]> {
     async getDesempemhoTurma(turma_id:string) :Promise<any>{
       const alunos=await this.getAlunosPorTurma(turma_id)
       try {
-        const dese=alunos.map(async (aluno)=> ( await this.getDesempemhoAluno(aluno.id)))
+        const dese=alunos.map(async (aluno)=> ( await this.getDesempemhoAluno(aluno?.id)))
          return dese? dese:[]
       } catch (error) {
 
@@ -607,15 +607,18 @@ async getAllStudents(): Promise<Student[]> {
     },
    async getDesempemhoAluno(id:string):Promise<AlunoDesempenho|null>{
       const alunos=await this.getStudentById(id)
-      const avaliacao=await avaliacaoService.getAvaliacoesByAluno(alunos!.id||'')
-      const frenquencia=await frequenciaService.getFrequenciaAluno(alunos!.id||'')
-      return alunos?{
+      if (!alunos?.id) {
+         throw new Error("Erro aluno inexistente");
+      }
+      const avaliacao=await avaliacaoService.getAvaliacoesByAluno(alunos.id)
+      const frenquencia=await frequenciaService.getFrequenciaAluno(alunos.id)
+      return {
         ...alunos,
-        avaliacao:avaliacao.avaliacoes,
-        media:avaliacao.estatisticas.mediaGeral,
-        presenca:frenquencia.total>0?(frenquencia.presentes*100)/frenquencia.total:0,
-        ultimaAvaliacao:avaliacao.avaliacoes[avaliacao.avaliacoes.length-1]?.nota,
-      }:null
+        avaliacao:avaliacao?.avaliacoes || [],
+        media:avaliacao?.estatisticas?.mediaGeral || 0,
+        presenca:frenquencia?.total>0?((frenquencia?.presentes||0)*100)/frenquencia.total:0,
+        ultimaAvaliacao:avaliacao?.avaliacoes?.[avaliacao.avaliacoes.length-1]?.nota || 0,
+      }
     },
   
   async gerarProximoNumeroEstudante(): Promise<number> {
