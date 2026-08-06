@@ -4,7 +4,7 @@ import db from './db';
 import { Propina, PropinaFormData } from '../../types/propina';
 import { alunosService } from './alunosService';
 import { Student } from '../../types';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 const getActiveInstituicaoId = () => instituicaoIdValue();

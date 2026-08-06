@@ -23,7 +23,7 @@ import db from '../../services/database/db';
 import { Student } from '../../types/aluno';
 import { Avaliacao } from '../../types/avaliacao';
 import { Frequencia } from '../../types/frequencia';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';
 
 interface DashboardIntegradoProps {

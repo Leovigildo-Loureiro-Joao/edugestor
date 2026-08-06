@@ -17,7 +17,7 @@ import {
 import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService';
 import { PlaneamentoDiario as PlaneamentoDiarioType, Horario } from '../../types/planeamento';
 import { useAlert } from '../../components/ui/AlertBadge';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { ModalPlaneamento as ModalPlaneamentoDiario, ModalSelecionarTarefas, ModalSelecionarMetas } from './modals';
 
 interface PlaneamentoDiarioProps {

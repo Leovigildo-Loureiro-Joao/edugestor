@@ -46,19 +46,6 @@ export interface ResumoMensal {
   alunos_pendentes: number;
 }
 
-export interface Instituicao extends BaseEntity{
-  nome_escola?:string,
-  endereco?:string,
-  email?:string,
-  numero_telefone?:string,
-  whatsapp?:string,
-  ano_lectivo?:string,
-  valor_cartao?:number,
-  valor_confirmacao?:number
-  valor_matricula?:number
-  created_at: string;
-  updated_at: string;
-}
 
 export interface Instituicao extends BaseEntity{
   nome_escola?:string,

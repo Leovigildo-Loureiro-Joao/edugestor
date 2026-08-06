@@ -18,7 +18,7 @@ import { useConfirmModal } from '../../components/ui/ComfirmModal';
 import { useAlert } from '../../components/ui/AlertBadge'; // ✅ Use useAlert
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { SyncDataDetail } from '../../components/ui/SyncDataDetail';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { StudentsTable } from '../../components/students/StudentsTable';
 import { ReforcoSectionModal } from '../../components/students/ReforcoSectionModal';
 import { PageLoader } from '../../components/ui/PageLoader';

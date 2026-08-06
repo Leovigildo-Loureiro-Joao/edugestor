@@ -12,14 +12,14 @@ import { AlocacaoRecurso, Transacao } from '../../types/transacao';
 import { Aula } from '../../types/aula';
 import { Propina } from '../../types/propina';
 import { syncManager } from './syncManager';
-import { EventFormData, Meta, Tarefa } from '../../types/eventos';
+import { EventFormData, Meta, Rotina, Tarefa } from '../../types/eventos';
 import { SystemConfig } from '../../types/config';
 import { UserProfile } from '../../types/profile';
 import { Notificacao } from './notificacaoService';
 import { Avaliacao } from '../../types/avaliacao';
 import { PlaneamentoBase } from '../../types/planeamento';
 import { PlanoAula } from "../../types/aula";
-import { instituicaoIdValue, isValidInstituicaoId } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue, isValidInstituicaoId } from '../../utils/getInstituicaoID';
 
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -70,6 +70,8 @@ class EduGestorDatabase extends Dexie {
   turma_horarios!:Table<HorarioAula,string>
   planeamentos!:Table<PlaneamentoBase,string>
   plano_aulas!:Table<PlanoAula,string>
+  rotinas!: Table<Rotina, string>;
+  idMappings!: Table<{ table: string; local_id: string; server_id: string }, [string, string]>;
 
   constructor() {
     super('EduGestorDB_Final');
@@ -221,7 +223,15 @@ class EduGestorDatabase extends Dexie {
         evento: 'id, data_evento, tipo, sync_status, deleted, created_at',
         system_config:'id, key_name, category, instituicao_id, [instituicao_id+category], [instituicao_id+key_name], [instituicao_id+category+key_name], [category+deleted], [category+key_name], [category+key_name+deleted], sync_status, deleted'
       });
-
+    this.version(9)
+      .stores({
+        alunos: 'id, nome_completo, numero_estudante, instituicao_id, turma_id, curso, sync_status, deleted, updated_at, [instituicao_id+deleted], [instituicao_id+sync_status]', 
+        idMappings: '[table+local_id], table, local_id, server_id'
+      });
+    this.version(10)
+      .stores({
+        idMappings: '[table+local_id], table, local_id, server_id'
+      });
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
       const fallbackInstituicaoId = instituicaoIdValue();
       obj.instituicao_id = isValidInstituicaoId(obj.instituicao_id)
@@ -257,13 +267,6 @@ class EduGestorDatabase extends Dexie {
       }
     });
 
-      
-    this.on('populate', () => {
-      });
-    
-    this.on('ready', () => {
-      
-    });
     
     this.on('blocked', (error) => {
       console.error('🎯 Dexie ERRO:', error);

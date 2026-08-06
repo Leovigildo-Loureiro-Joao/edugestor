@@ -1,11 +1,11 @@
 
 import db from "./db";
-import { generateUniqueId } from "../../utils/idGenarator";
+import { generateUniqueId } from "../../utils/idGenerator";
 import { alunosService } from "./alunosService";
 import { turmaService } from "./turmas";
 import { Avaliacao } from "../../types/avaliacao";
 import { Propina } from "../../types/propina";
-import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInstituicaoID";
 import { profileService } from "./profileService";
 import { getPendingCount } from "../../utils/emitPendingSync";
 

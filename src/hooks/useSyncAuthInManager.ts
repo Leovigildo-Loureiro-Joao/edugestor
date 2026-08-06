@@ -1,3 +1,5 @@
+import { hasPermission as checkPermission } from '../constants/roles';
+
 export const useSyncAuthInManager = () => {
   const tryParseJSON = (value: string | null): any | null => {
     if (!value) return null;
@@ -86,7 +88,6 @@ export const useSyncAuthInManager = () => {
 
   const hasPermission = (requiredRole: string): boolean => {
     const { userRole } = getAuthData();
-    const { hasPermission: checkPermission } = require('../../constants/roles');
     return checkPermission(userRole, requiredRole);
   };
 

@@ -1,6 +1,6 @@
 import { conflictResolver } from "../services/database/sync/conflictResolver";
 import { SyncQueueItem } from "../types/base";
-import { instituicaoIdValue, isValidInstituicaoId } from "./getInsitituicaoID";
+import { instituicaoIdValue, isValidInstituicaoId } from "./getInstituicaoID";
 
     const HARD_DELETE_RECONCILE_TABLES = new Set([
        'cursos',

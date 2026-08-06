@@ -1,6 +1,6 @@
 import db, { supabase } from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
-import { instituicaoIdValue } from "./getInsitituicaoID";
+import { instituicaoIdValue } from "./getInstituicaoID";
 
 export function emitPendingSync(tableName: string, count: number) {
   localStorage.setItem(`pending_sync_${tableName}`, count.toString());

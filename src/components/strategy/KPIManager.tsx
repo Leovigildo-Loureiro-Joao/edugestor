@@ -24,7 +24,7 @@ import { FaBusinessTime, FaFileWord, FaRegIdCard } from 'react-icons/fa';
 import { RxCheckCircled, RxGroup, RxText } from 'react-icons/rx';
 import { SelectTyped } from '../students/StudentForm';
 import { FaTimeline } from 'react-icons/fa6';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
 import db from '../../services/database/db';

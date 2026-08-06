@@ -1,8 +1,8 @@
 // services/database/estrategia/planeamentoService
 import { PlaneamentoAnual } from "../../../types/planeamento";
 import { PlaneamentoDiario, PlaneamentoMensal, PlaneamentoSemanalType } from "../../../types/planeamento";
-import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
-import { generateUniqueId } from "../../../utils/idGenarator";
+import { instituicaoIdValue } from "../../../utils/getInstituicaoID";
+import { generateUniqueId } from "../../../utils/idGenerator";
 import db from "../db";
 import { estrategiaService } from "../estrategiaService";
 

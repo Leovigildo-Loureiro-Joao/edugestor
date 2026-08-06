@@ -5,6 +5,7 @@ import { UserProfile } from '../types/profile';
 import { profileService } from '../services/database/profileService';
 import { updateJWTClaims } from '../utils/update_claims_jwt';
 import { auditLogService } from '../services/audit/auditLogService';
+import { VALID_ROLES as VALID_ROLES_CONST, isValidRole as checkIsValidRole, hasPermission as checkPermission } from '../constants/roles';
 
 interface AuthContextType {
   user: User | null;
@@ -68,10 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearError = () => setError('');
 
-  const VALID_ROLES = ['admin', 'manager', 'teacher', 'user'];
+  const VALID_ROLES = VALID_ROLES_CONST;
 
   const isValidRole = (role?: string): boolean => {
-    return !!role && VALID_ROLES.includes(role);
+    return checkIsValidRole(role);
   };
 
   const forceLogout = async (reason: string) => {
@@ -111,15 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasPermission = (requiredRole: string): boolean => {
-    const roleHierarchy: Record<string, number> = {
-      'user': 0,
-      'teacher': 1,
-      'manager': 2,
-      'admin': 3
-    };
-    
-    if (!profile?.role) return false;
-    return roleHierarchy[profile.role] >= (roleHierarchy[requiredRole] || 0);
+    return checkPermission(profile?.role, requiredRole);
   };
 
   const createUserProfile = async (user: User) => {

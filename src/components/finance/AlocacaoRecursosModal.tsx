@@ -11,8 +11,8 @@ import {
 import { Meta } from '../../types/eventos';
 import { AlocacaoRecurso } from '../../types/transacao';
 import { useAlert } from '../ui/AlertBadge';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
+import { generateUniqueId } from '../../utils/idGenerator';
 
 
 interface AlocacaoRecursosModalProps {

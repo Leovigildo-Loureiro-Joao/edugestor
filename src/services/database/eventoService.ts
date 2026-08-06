@@ -1,7 +1,7 @@
 import db from "./db";
-import { generateUniqueId } from "../../utils/idGenarator";
+import { generateUniqueId } from "../../utils/idGenerator";
 import { EventFormData } from "../../types/eventos";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
 import { SyncStatus } from "../../types/base";
 
 

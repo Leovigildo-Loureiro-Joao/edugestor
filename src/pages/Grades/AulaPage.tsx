@@ -39,7 +39,7 @@ import CalendarioMini from '../../components/aulas/CalendarioMin';
 import { useNavigate, useParams } from 'react-router-dom';
 import db from '../../services/database/db';
 import { useLiveQuery } from '../../hooks/useLiveQuery';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { alunosService, turmaService } from '../../services/database/index';
 import { AulasPageHeader } from '../../components/aulas/AulasPageHeader';
 import { AulasStatsGrid } from '../../components/aulas/AulasStatsGrid';

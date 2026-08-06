@@ -33,7 +33,7 @@ import { estrategiaService } from '../../services/database/estrategiaService';
 import db from '../../services/database/db';
 import { SelectTyped } from '../students/StudentForm';
 import { RxActivityLog, RxAllSides, RxCheckCircled, RxCommit, RxHobbyKnife } from 'react-icons/rx';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { ModalSubmeta } from './SubMeta';
 import { FREQUENCIAS, METRICAS_POR_MODULO, ModalKPI, MODULOS_DISPONIVEIS } from './KPIManager';
 import { useAlert } from '../ui/AlertBadge';

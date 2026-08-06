@@ -1,5 +1,5 @@
 import db from '../services/database/db';
-import { instituicaoIdValue } from './getInsitituicaoID';
+import { instituicaoIdValue } from './getInstituicaoID';
 
 const ensureInstituicaoId = () => {
   const instituicaoId = instituicaoIdValue();

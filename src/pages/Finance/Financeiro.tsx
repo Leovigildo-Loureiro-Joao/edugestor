@@ -28,7 +28,7 @@ import db from '../../services/database/db';
 import { AlocacaoRecurso, AlocacaoRecursoFormData } from '../../types/transacao';
 import { motion } from 'framer-motion';
 import { getPendingCount } from '../../utils/emitPendingSync';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { IconType } from 'react-icons';
 import { createThrottledCallback, shouldHandleDbChangedEvent } from '../../utils/dbChangedEvent';

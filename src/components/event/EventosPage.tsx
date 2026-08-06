@@ -30,7 +30,7 @@ import {
 import { EventFormData } from '../../types/eventos';
 import { eventoService } from '../../services/database/eventoService';
 import { estrategiaService } from '../../services/database/estrategiaService';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { useAlert } from '../ui/AlertBadge';
 import { useConfirmModal } from '../ui/ComfirmModal';
 

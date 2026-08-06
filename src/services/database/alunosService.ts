@@ -11,17 +11,67 @@ import { frequenciaService } from "./frequenciaService";
 import { cacheManager } from "./cacheManager";
 import { emitPendingSync } from "../../utils/emitPendingSync";
 import { getLastModifiedTimestamp } from "../../utils/getLastModifiedTimestamp";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
-import { generateUniqueId } from "../../utils/idGenarator";
-import { paymentChecker } from "./paymentcheker";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
+import { generateUniqueId } from "../../utils/idGenerator";
+import { paymentChecker } from "./paymentChecker";
 import { AlunoDesempenho } from "../../types/aluno";
 import { propinaCascadeService } from "./propinaCascade";
 import { resolveStudentAcademicStatus } from "../../utils/studentAcademicStatus";
 
 const LOCAL_ID_MAP_KEY = 'sync_local_id_map';
+const NEXT_NUMBER_KEY_PREFIX = 'edugest_next_student_number_';
 
-const resolveMappedId = (id: string): string => {
+let counterQueue: Promise<unknown> = Promise.resolve();
+
+function nextNumberKey(): string {
+  const id = instituicaoIdValue() || 'default';
+  return NEXT_NUMBER_KEY_PREFIX + id;
+}
+
+async function readLocalCounter(): Promise<number> {
+  try {
+    const raw = localStorage.getItem(nextNumberKey());
+    if (raw) {
+      const n = Number(raw);
+      if (Number.isFinite(n)) return n;
+    }
+  } catch {
+    // ignora e deriva do banco local
+  }
+  const alunos = await db.alunos.toArray();
+  const numeros = alunos
+    .filter(a => !a.deleted)
+    .map(a => Number(a.numero_estudante))
+    .filter(Number.isFinite);
+  return numeros.length > 0 ? Math.max(...numeros) : 0;
+}
+
+async function writeLocalCounter(value: number): Promise<void> {
+  try {
+    localStorage.setItem(nextNumberKey(), String(value));
+  } catch {
+    // storage indisponível
+  }
+}
+
+function enqueueCounter<T>(task: () => Promise<T>): Promise<T> {
+  const result = counterQueue.then(task, task);
+  counterQueue = result.then(() => {}, () => {});
+  return result;
+}
+
+const resolveMappedId = async (id: string): Promise<string> => {
   if (!id || !id.startsWith('local_')) return id;
+
+  try {
+    const exact = await db.idMappings.get(['alunos', id]);
+    if (exact?.server_id) return exact.server_id;
+
+    const legacy = await db.idMappings.where('local_id').equals(id).first();
+    if (legacy?.server_id) return legacy.server_id;
+  } catch {
+    // ignora e cai para o fallback em localStorage
+  }
 
   try {
     const instituicaoId = instituicaoIdValue();
@@ -51,7 +101,7 @@ const resolveStudentIdForUpdate = async (
   const direct = await db.alunos.get(id);
   if (direct) return id;
 
-  const mappedId = resolveMappedId(id);
+  const mappedId = await resolveMappedId(id);
   if (mappedId !== id) {
     const mapped = await db.alunos.get(mappedId);
     if (mapped) return mappedId;
@@ -202,20 +252,14 @@ async saveStudent(studentData: StudentFormData): Promise<string> {
 },
 
 async getAlunosPorTurma(turma_id: string | null) {
-  const alunos = await db.alunos.toArray();
-
-  
   if (turma_id === null) {
-    return alunos.filter(aluno =>
-      !aluno.deleted &&
-      (!aluno.turma_id || aluno.turma_id.trim() === '')
-    );
+    throw new Error("turma_id não pode ser nulo");
   }
 
-  
+  const alunos = await db.alunos.where('turma_id').equals(turma_id).toArray();
+
   return alunos.filter(aluno =>
-    !aluno.deleted &&
-    aluno.turma_id === turma_id
+    !aluno.deleted 
   );
 } ,
 
@@ -622,18 +666,24 @@ async getAllStudents(): Promise<Student[]> {
     },
   
   async gerarProximoNumeroEstudante(): Promise<number> {
+    return enqueueCounter(async () => {
+      if (navigator.onLine) {
+        try {
+          const { data, error } = await supabase.rpc('increment_counter');
+          if (!error && typeof data === 'number' && data > 0) {
+            const localAtual = await readLocalCounter();
+            await writeLocalCounter(Math.max(localAtual, data));
+            return data;
+          }
+        } catch {
+          // offline ou RPC indisponível -> contador local
+        }
+      }
 
-    try {
-      const alunos = await db.alunos.toArray();
-      const numeros = alunos
-        .filter(a => !a.deleted)
-        .map(a => a.numero_estudante);
-      const maior = numeros.length > 0 ? Math.max(...numeros) : 0;
-      return maior + 1;
-    } catch (error) {
-      console.error('Erro ao gerar número:', error);
-      return 1; 
-    }
+      const proximo = (await readLocalCounter()) + 1;
+      await writeLocalCounter(proximo);
+      return proximo;
+    });
   },
 
   
@@ -679,32 +729,3 @@ async getAllStudents(): Promise<Student[]> {
     }
   }
 };
-function resolveEnrollmentStatus(data_matricula: string, estado: string): string {
-  if (!data_matricula) return estado;
-
-  const matriculaDate = new Date(data_matricula);
-  const today = new Date();
-
-  
-  matriculaDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  
-  if (matriculaDate > today) {
-    return 'pendente';
-  }
-
-  
-  if (matriculaDate <= today) {
-    return 'ativo';
-  }
-
-  return estado;
-}
-
-
-function normalizeTurmaId(turma_id: string | null | undefined): string | null {
-  if (!turma_id) return null;
-  if (typeof turma_id === 'string' && turma_id.trim() === '') return null;
-  return turma_id;
-}

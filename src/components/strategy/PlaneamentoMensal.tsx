@@ -17,7 +17,7 @@ import {
 } from 'react-icons/fi';
 import { estrategiaPlaneamentoService } from '../../services/database/estrategia/planeamentoService';
 import { useAlert } from '../ui/AlertBadge';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { ModalPlaneamento } from './modals';
 import { PlaneamentoMensal as PlaneamentoMensalType } from '../../types/planeamento';
 import { ModalSelecionarTarefas } from './modals/ModalSelecionarTarefas';

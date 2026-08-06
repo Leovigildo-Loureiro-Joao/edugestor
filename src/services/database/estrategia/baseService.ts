@@ -1,5 +1,5 @@
 import db from "../db";
-import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../../utils/getInstituicaoID";
 
 type EstrategiaTable = "metas" | "tarefas" | "planeamentos" | "rotinas";
 

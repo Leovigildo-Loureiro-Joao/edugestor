@@ -12,7 +12,7 @@ import { FaChartLine, FaGraduationCap } from 'react-icons/fa';
 import { alunosService } from "../../services/database/alunosService";
 import { useAlert } from "../ui/AlertBadge";
 import { AlunoDesempenho } from "../../types/aluno";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
 import { ConfirmModalProps, useConfirmModal } from "../ui/ComfirmModal";
 import { Avaliacao } from "../../types/avaliacao";
 import { profileService } from "../../services/database/profileService";

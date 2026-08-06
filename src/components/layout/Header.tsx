@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import db from '../../services/database/db';
 import { initializeSyncSystem, syncManager } from '../../services/database/syncManager';
 import { NotificacoesBellInteligente } from './Notificao';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
 
 interface SyncStatus {

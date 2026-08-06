@@ -5,8 +5,8 @@ import { emitDbChanged } from '../../utils/emitPendingSync';
 import { showGlobalAlert } from '../../components/ui/AlertBadge';
 import { turmaService } from './turmas';
 import { cursosService } from '.';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
+import { generateUniqueId } from '../../utils/idGenerator';
 import { Avaliacao, AvaliacaoFormData, AvaliacaoStats, AvaliacaoWithAluno, DisciplinaStats } from '../../types/avaliacao';
 
 
@@ -303,7 +303,7 @@ export const avaliacaoService = {
       let aprovados = 0;
       let reprovados = 0;
       
-      const turma=await turmaService.getTurmaById(aluno.turma_id)
+      const turma=await turmaService.getTurmaById(aluno?.turma_id || "")
       const curso= await cursosService.getCoursesById(turma?.curso_id||"")
 
       avaliacoes.forEach((av:Avaliacao) => {

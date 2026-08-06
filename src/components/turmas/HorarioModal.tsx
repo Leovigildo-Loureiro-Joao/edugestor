@@ -15,7 +15,7 @@ import { HorarioAula, HorarioAulaForm } from '../../types/turma';
 import { cursosService, turmaService } from '../../services/database';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import db from '../../services/database/db';
 import { SelectTyped } from '../students/StudentForm';
 

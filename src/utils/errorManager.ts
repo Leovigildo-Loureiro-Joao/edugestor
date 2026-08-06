@@ -1,6 +1,6 @@
 import db from "../services/database/db";
 import { syncManager } from "../services/database/syncManager";
-import { instituicaoIdValue } from "./getInsitituicaoID";
+import { instituicaoIdValue } from "./getInstituicaoID";
 
 export interface SyncError {
   id: string;

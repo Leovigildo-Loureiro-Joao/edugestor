@@ -1,6 +1,6 @@
 import db from '../database/db';
 import { configService } from '../database/config';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { getStudentBillingStartMonth } from '../../utils/studentBillingStartMonth';
 import type { Student } from '../../types/aluno';
 import type { Turma } from '../../types/turma';

@@ -12,7 +12,7 @@ export const localIdMapper={
         if (!localId || !supabaseId || localId === supabaseId) return;
 
         if (tableName === 'aulas') {
-        await this.updateFrequenciasAulaReferences(localId, supabaseId);
+        await conflictResolver.updateFrequenciasAulaReferences(localId, supabaseId);
         await this.updatePlanoAulasLocalReferences(localId, supabaseId);
         return;
         }
@@ -230,7 +230,7 @@ export const localIdMapper={
     
     
             await this.updateLocalIdRelatedReferences(tableName, localId, supabaseId);
-            this.registerLocalIdMapping(localId, supabaseId);
+            await this.registerLocalIdMapping(tableName, localId, supabaseId);
         } catch (error) {
             console.error(`❌ Falha ao atualizar ID local ${localId}:`, error);
         }
@@ -359,125 +359,156 @@ export const localIdMapper={
     },
            
          
-    loadLocalIdMap (): Record<string, string> {
+    async migrateLegacyLocalIdMap(): Promise<void> {
         try {
-            const raw = localStorage.getItem(this.getLocalIdMapKey());
-            const parsed = raw ? JSON.parse(raw) : {};
-            return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch {
-            return {};
-        }
-    },
-         
-    saveLocalIdMap(map: Record<string, string>) {
-        try {
-            localStorage.setItem(this.getLocalIdMapKey(), JSON.stringify(map));
-        } catch {
-            
-        }
-    },
-         
-    registerLocalIdMapping (localId: string, remoteId: string){
-        if (!this.isLocalId(localId) || !remoteId) return;
-        const map = this.loadLocalIdMap();
-        map[localId] = remoteId;
-        this.saveLocalIdMap(map);
-    },
-    
-         
-    resolveLocalIdMapping (value?: string | null): string | null {
-        if (!this.isLocalId(value)) return null;
+            const keys: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(LOCAL_ID_MAP_KEY)) keys.push(key);
+            }
+            if (keys.length === 0) return;
 
-        const map = this.loadLocalIdMap();
-        return map[value||""] || null;
-    },
-    
-         
-    async cleanupLocalIdMap  (tableName?: string) {
-        const map = this.loadLocalIdMap();
-        const entries = Object.entries(map);
-        if (entries.length === 0) return;
-         
-        const tablesToCheck = tableName ? [tableName] : [
-             'alunos',
-             'turmas',
-             'cursos',
-             'aulas',
-             'frequencias',
-             'avaliacoes',
-             'propina',
-             'transacoes',
-             'turma_horarios',
-             'plano_aulas',
-             'metas',
-             'tarefas',
-             'rotinas',
-             'planeamentos',
-             'alocacao',
-             'notificacao',
-             'evento',
-             'profiles',
-             'instituicao'
-           ];
-         
-        const existingIds = new Set<string>();
-        for (const tName of tablesToCheck) {
-            const tableExists = db.tables.some((t) => t.name === tName);
-            if (!tableExists) continue;
-            try {
-            const ids = await db.table<any>(tName).toCollection().primaryKeys();
-            ids.forEach((id: any) => existingIds.add(String(id)));
-            } catch {
-            
+            const mappings: Array<{ table: string; local_id: string; server_id: string }> = [];
+            for (const key of keys) {
+                try {
+                    const raw = localStorage.getItem(key);
+                    if (!raw) continue;
+                    const map = JSON.parse(raw);
+                    if (!map || typeof map !== 'object') continue;
+                    for (const [localId, serverId] of Object.entries(map)) {
+                        if (!this.isLocalId(localId) || !serverId) continue;
+                        mappings.push({
+                            table: '',
+                            local_id: localId,
+                            server_id: String(serverId)
+                        });
+                    }
+                    localStorage.removeItem(key);
+                } catch {
+                    continue;
+                }
             }
-        }
-        
-        let changed = false;
-        for (const [localId, remoteId] of entries) {
-            if (!existingIds.has(localId) && !existingIds.has(remoteId)) {
-            delete map[localId];
-            changed = true;
+
+            if (mappings.length > 0) {
+                await db.idMappings.bulkPut(mappings);
             }
-        }
-        
-        if (changed) {
-            this.saveLocalIdMap(map);
+        } catch (error) {
+            console.error('❌ Erro ao migrar idMappings de localStorage:', error);
         }
     },
-    
-    applyLocalIdMappings (tableName: string, record: any) {
+
+    async registerLocalIdMapping(tableName: string, localId: string, remoteId: string) {
+        if (!this.isLocalId(localId) || !remoteId) return;
+        try {
+            await db.idMappings.put({ table: tableName, local_id: localId, server_id: remoteId });
+        } catch (error) {
+            console.error(`❌ Erro ao registar mapeamento ${localId}:`, error);
+        }
+    },
+
+    async resolveLocalIdMapping(tableName: string, value?: string | null): Promise<string | null> {
+        if (!this.isLocalId(value)) return null;
+        try {
+            const exact = await db.idMappings.get([tableName, value || '']);
+            if (exact?.server_id) return exact.server_id;
+
+            const legacy = await db.idMappings.where('local_id').equals(value || '').first();
+            return legacy?.server_id || null;
+        } catch {
+            return null;
+        }
+    },
+
+    async cleanupLocalIdMap(tableName?: string) {
+        try {
+            const mappings = tableName
+                ? await db.idMappings.where('table').equals(tableName).toArray()
+                : await db.idMappings.toArray();
+            if (mappings.length === 0) return;
+
+            const tablesToCheck = tableName ? [tableName] : [
+                'alunos',
+                'turmas',
+                'cursos',
+                'aulas',
+                'frequencias',
+                'avaliacoes',
+                'propina',
+                'transacoes',
+                'turma_horarios',
+                'plano_aulas',
+                'metas',
+                'tarefas',
+                'rotinas',
+                'planeamentos',
+                'alocacao',
+                'notificacao',
+                'evento',
+                'profiles',
+                'instituicao'
+            ];
+
+            const existingIds = new Set<string>();
+            for (const tName of tablesToCheck) {
+                const tableExists = db.tables.some((t) => t.name === tName);
+                if (!tableExists) continue;
+                try {
+                    const ids = await db.table<any>(tName).toCollection().primaryKeys();
+                    ids.forEach((id: any) => existingIds.add(String(id)));
+                } catch {
+                    continue;
+                }
+            }
+
+            const stale = mappings.filter(
+                (m) => !existingIds.has(m.local_id) && !existingIds.has(m.server_id)
+            );
+            if (stale.length > 0) {
+                await db.idMappings.bulkDelete(stale.map((m) => [m.table, m.local_id] as [string, string]));
+            }
+        } catch (error) {
+            console.error('❌ Erro ao limpar idMappings:', error);
+        }
+    },
+
+    async applyLocalIdMappings(tableName: string, record: any) {
         const fields = this.getLocalIdFields(tableName);
         if (!record || fields.length === 0) return { record, changed: false };
-        
+
         let changed = false;
         const updated: any = { ...record };
-        
+
         for (const field of fields) {
             if (typeof field === 'string') {
-            const mapped = this.resolveLocalIdMapping(record[field]);
-            if (mapped) {
-                updated[field] = mapped;
-                changed = true;
-            }
+                const mapped = await this.resolveLocalIdMapping(tableName, record[field]);
+                if (mapped) {
+                    updated[field] = mapped;
+                    changed = true;
+                }
             } else if (field.array) {
-            const values = Array.isArray(record[field.name]) ? record[field.name] : [];
-            const nextValues = values.map((val: string) => this.resolveLocalIdMapping(val) || val);
-            if (nextValues.some((val:any, idx:any) => val !== values[idx])) {
-                updated[field.name] = nextValues;
-                changed = true;
-            }
+                const values = Array.isArray(record[field.name]) ? record[field.name] : [];
+                const nextValues: string[] = [];
+                let fieldChanged = false;
+                for (const val of values) {
+                    const mapped = await this.resolveLocalIdMapping(tableName, val);
+                    if (mapped) {
+                        nextValues.push(mapped);
+                        fieldChanged = true;
+                    } else {
+                        nextValues.push(val);
+                    }
+                }
+                if (fieldChanged) {
+                    updated[field.name] = nextValues;
+                    changed = true;
+                }
             }
         }
-        
+
         return { record: updated, changed };
     },
 
     
-    getLocalIdMapKey() {
-        const instituicaoId = getSyncQueueInstitutionId();
-        return instituicaoId ? `${LOCAL_ID_MAP_KEY}_${instituicaoId}` : LOCAL_ID_MAP_KEY;
-    },
-        
     getLocalIdFields (tableName: string): Array<string | { name: string; array: boolean }>{
         switch (tableName) {
             case 'turmas':

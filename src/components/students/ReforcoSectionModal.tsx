@@ -9,7 +9,7 @@ import {
 import { Turma } from '../../types/turma';
 import { SelectTyped } from './StudentForm';
 import db from '../../services/database/db';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
 type SectionForm = {
   modo: 'nova' | 'existente';

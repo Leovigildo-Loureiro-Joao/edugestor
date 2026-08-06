@@ -1,7 +1,7 @@
 import { estrategiaService } from ".";
 import { Meta } from "../../../types/eventos";
-import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
-import { generateUniqueId } from "../../../utils/idGenarator";
+import { instituicaoIdValue } from "../../../utils/getInstituicaoID";
+import { generateUniqueId } from "../../../utils/idGenerator";
 import db from "../db";
 import { syncManager } from "../syncManager";
 

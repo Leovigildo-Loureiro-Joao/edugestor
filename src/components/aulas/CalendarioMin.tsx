@@ -8,7 +8,7 @@ interface CalendarioMiniProps {
     data_aula: string;
     disciplina: string;
     turmas?: {
-      nome_turma: string;
+      nome_turma?: string;
     };
     status: string;
     hora_inicio?: string;

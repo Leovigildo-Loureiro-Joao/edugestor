@@ -1,7 +1,7 @@
 import db from './db';
 import { configService } from './config';
 import { financeRulesService } from '../finance/financeRulesService';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import type { Student } from '../../types/aluno';
 
 const sameMonthList = (a: string[] = [], b: string[] = []) => {

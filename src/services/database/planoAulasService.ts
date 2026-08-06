@@ -3,8 +3,8 @@ import { BaseEntity } from '../../types/base';
 import { aulaService } from './aulaService';
 import db, { supabase } from './db';
 import { syncManager } from './syncManager';
-import { generateUniqueId } from '../../utils/idGenarator';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { generateUniqueId } from '../../utils/idGenerator';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { PlanoAula } from '../../types/aula';
 
 

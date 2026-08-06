@@ -8,8 +8,8 @@ import { frequenciaService, turmaService } from '.';
 import { emitPendingSync } from '../../utils/emitPendingSync';
 import { cacheManager } from './cacheManager';
 import { getLastModifiedTimestamp } from '../../utils/getLastModifiedTimestamp';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
-import { generateUniqueId } from '../../utils/idGenarator';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
+import { generateUniqueId } from '../../utils/idGenerator';
 
 const normalizeAulaField = (value?: string) => (value || '').trim().toLowerCase();
 const normalizeAulaHora = (value?: string) => (value || '').trim().slice(0, 5);

@@ -1,7 +1,7 @@
-import { generateUniqueId } from "../../../utils/idGenarator";
+import { generateUniqueId } from "../../../utils/idGenerator";
 import db from "../db";
 import { syncManager } from "../syncManager";
-import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../../utils/getInstituicaoID";
 
 export const estrategiaRotinaService = {
   async getRotinasDiarias() {

@@ -14,7 +14,7 @@ import { Notificacao } from "../services/database/notificacaoService";
 import { Avaliacao } from "./avaliacao";
 import { PlaneamentoBase } from "./planeamento";
 import { PlanoAula } from "../types/aula";
-import { instituicaoIdValue } from "../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../utils/getInstituicaoID";
 
 export type SyncStatus = 'pending' | 'synced' | 'pending_delete' | 'failed' | 'conflict';
 
@@ -66,6 +66,7 @@ export interface EduGestorDatabase {
   turma_horarios:Dexie.Table<HorarioAula,string>
   planeamentos:Dexie.Table<PlaneamentoBase,string>
   plano_aulas:Dexie.Table<PlanoAula,string>;
+  idMappings:Dexie.Table<{ table: string; local_id: string; server_id: string }, [string, string]>;
 }
 
 // Helper para tipar o banco

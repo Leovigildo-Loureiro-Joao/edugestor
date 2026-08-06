@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FiAlertCircle, FiRefreshCw, FiTrash2, FiXCircle } from 'react-icons/fi';
 import db from '../../services/database/db';
 import { syncManager } from '../../services/database/syncManager';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
 type MonitorStats = {
   pending: number;

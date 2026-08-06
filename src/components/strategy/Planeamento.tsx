@@ -30,7 +30,7 @@ import type {
 } from "../../types/planeamento";
 import { es, se } from "date-fns/locale";
 import { estrategiaPlaneamentoService } from "../../services/database/estrategia/planeamentoService";
-import { generateUniqueId } from "../../utils/idGenarator";
+import { generateUniqueId } from "../../utils/idGenerator";
 import { PlaneamentoDiario } from "./PlaneamentoDiario";
 import { SyncStatusBadge } from "../ui/SyncStatusBadge";
 import { PlaneamentoSemanal } from "./PlaneamentoSemanal";

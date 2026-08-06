@@ -1,5 +1,5 @@
 import type { Student } from '../types/aluno';
-import { instituicaoIdValue } from './getInsitituicaoID';
+import { instituicaoIdValue } from './getInstituicaoID';
 
 const STORAGE_KEY = 'student_billing_start_month_map';
 

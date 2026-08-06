@@ -7,7 +7,7 @@ import { Select } from '../../components/ui/Select';
 import { CourseFormData } from '../../types/curso';
 import { cursosService } from '../../services/database';
 import { SelectTyped } from '../students/StudentForm';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
 

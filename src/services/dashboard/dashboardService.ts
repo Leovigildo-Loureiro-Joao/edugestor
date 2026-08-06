@@ -1,6 +1,6 @@
 // services/dashboard/dashboardService
 import db, { supabase } from '../database/db';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { configService } from '../database/config';
 import { financeRulesService } from '../finance/financeRulesService';
 import {

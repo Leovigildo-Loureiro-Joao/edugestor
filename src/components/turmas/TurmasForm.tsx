@@ -12,7 +12,7 @@ import { instituicaoService } from '../../services/database/insitituicao';
 import { useConfirmModal } from '../ui/ComfirmModal';
 import { useAlert } from '../ui/AlertBadge';
 import db from '../../services/database/db';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
 // Definição de tipo para opções do Select
 interface SelectOption {

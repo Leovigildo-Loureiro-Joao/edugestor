@@ -1,8 +1,8 @@
 import { alunosService } from "..";
 import { METRICAS_POR_MODULO } from "../../../components/strategy/KPIManager";
 import { Fonte, IndicadorDesempenho, Meta } from "../../../types/eventos";
-import { instituicaoIdValue } from "../../../utils/getInsitituicaoID";
-import { generateUniqueId } from "../../../utils/idGenarator";
+import { instituicaoIdValue } from "../../../utils/getInstituicaoID";
+import { generateUniqueId } from "../../../utils/idGenerator";
 import { avaliacaoService } from "../avaliacao";
 import db from "../db";
 import { propinaService } from "../propinas";

@@ -12,7 +12,7 @@ import type { Avaliacao } from '../../types/avaliacao';
 
 import { avaliacaoService } from '../../services/database/avaliacao';
 import { StatCard } from '../../components/students/StatCard';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { AlunoDesempenho } from '../../types/aluno';
 import { NotasTable } from '../../components/notas/NotasTable';
 import { PageLoader } from '../../components/ui/PageLoader';

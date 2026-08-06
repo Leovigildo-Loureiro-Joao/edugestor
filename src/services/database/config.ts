@@ -12,7 +12,7 @@ import {
 } from "../../types/config";
 import { instituicaoService } from "./insitituicao";
 import { profileService } from "./profileService";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
 
 export const configService = {
   normalizeIdentityPart(value: string): string {
@@ -803,7 +803,7 @@ export const configService = {
         {
           category: 'general',
           key_name: 'school_name',
-          value: 'CETE - Centro de Explicacao Tia Esperanca',
+          value: '',
           data_type: 'string',
           description: 'Nome da instituição',
           updated_by: 'system',
@@ -904,17 +904,10 @@ export const configService = {
       for (const config of configsToSync) {
         try {
           
-          if (config.sync_status === 'pending_delete') {
-            } else {
-            }
-
-          
           await db.system_config.update(config.id, {
             sync_status: 'synced',
             updated_at: new Date().toISOString()
           });
-
-          
           await db.syncQueue
             .where('record_id')
             .equals(config.id)

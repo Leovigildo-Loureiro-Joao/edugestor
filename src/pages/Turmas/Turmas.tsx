@@ -5,7 +5,7 @@ import { FiPlus, FiBook, FiClock, FiSearch } from 'react-icons/fi';
 import { FaGraduationCap } from 'react-icons/fa';
 import { turmaService } from '../../services/database';
 import { SelectTyped } from '../../components/students/StudentForm';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import { StatCard } from '../../components/students/StatCard';
 import { SyncStatusBadge } from '../../components/ui/SyncStatusBadge';
 import { getPendingCount } from '../../utils/emitPendingSync';

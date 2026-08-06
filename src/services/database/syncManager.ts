@@ -1,15 +1,7 @@
-import { alunosService, aulaService, frequenciaService, turmaService } from ".";
-import { SyncQueueItem } from "../../types/base";
-import { avaliacaoService } from "./avaliacao";
 import db, { supabase } from "./db";
-import { emitDbChanged } from "../../utils/emitPendingSync";
-import { instituicaoIdValue, isValidInstituicaoId } from "../../utils/getInsitituicaoID";
-import { auditLogService } from "../audit/auditLogService";
 import { SyncManager } from "../../types/sync/syncManager";
 import { syncManagerService } from "./sync";
-import { getSyncQueueInstitutionId, normalizeCourseName } from "../../utils/syncManagerUtils";
-import { useSyncAuthInManager } from "../../hooks/useSyncAuthInManager";
-import { localIdMapper } from "./sync/localIdMapper";
+import { getSyncQueueInstitutionId, groupByTable, processarRegistrosUnicos, cleanRecordForSupabase, processedRecords, removeBatchDuplicates } from "../../utils/syncManagerUtils";
 
 const AUTO_SYNC_INTERVAL_MS = 30000;
 const DASHBOARD_ROUTE_PREFIX = '/dashboard';
@@ -204,6 +196,8 @@ export const initializeSyncSystem = async () => {
       return;
     }
 
+    await syncManagerService.migrateLegacyLocalIdMap();
+
     setupAutoSync();
     autoSyncInitialized = true;
 
@@ -220,267 +214,9 @@ export const initializeSyncSystem = async () => {
 export const syncManager: SyncManager = {
   ...syncManagerService,
 
-  async prepareInsertRecords(tableName: string, items: SyncQueueItem[]) {
-    const records = [];
-    const itemsToProcess = [];
-
-    
-    const orderedItems = [...items].sort((a, b) => {
-      const aTime = new Date(a.created_at || 0).getTime();
-      const bTime = new Date(b.created_at || 0).getTime();
-      if (aTime !== bTime) return aTime - bTime;
-      return (a.id || 0) - (b.id || 0);
-    });
-    const latestItemByRecordId = new Map<string, SyncQueueItem>();
-    orderedItems.forEach((item) => {
-      latestItemByRecordId.set(item.record_id, item);
-    });
-
-    const duplicatedQueueItems = orderedItems.filter((item) => {
-      const latestItem = latestItemByRecordId.get(item.record_id);
-      return latestItem && latestItem.id !== item.id;
-    });
-
-    if (duplicatedQueueItems.length > 0) {
-      const duplicateIds = duplicatedQueueItems
-        .map((item) => item.id)
-        .filter((id): id is number => typeof id === 'number');
-      if (duplicateIds.length > 0) {
-        await db.syncQueue.bulkDelete(duplicateIds);
-        console.warn(`⚠️ Removidos ${duplicateIds.length} itens duplicados da fila em ${tableName}`);
-      }
-    }
-
-    const uniqueItems = Array.from(latestItemByRecordId.values());
-
-    for (const item of uniqueItems) {
-      try {
-        
-        let record = await this.getRecordFromTable(tableName, item.record_id);
-
-        if (!record) {
-          console.warn(`🗑️  Registro não encontrado, removendo: ${item.record_id}`);
-          await db.syncQueue.delete(item.id!);
-          continue;
-        }
-
-        const resolvedInsert = localIdMapper.applyLocalIdMappings(tableName, record);
-        if (resolvedInsert.changed) {
-          try {
-            const now = new Date().toISOString();
-            await db.table(tableName).update(record.id, {
-              ...resolvedInsert.record,
-              updated_at: now,
-              sync_status: 'pending'
-            });
-            record = resolvedInsert.record;
-          } catch {
-            
-          }
-        }
-
-        if (localIdMapper.hasPendingParent(tableName, record)) {
-          continue;
-        }
-
-        if (tableName === 'cursos') {
-          const instituicaoId = record.instituicao_id || getSyncQueueInstitutionId();
-          const nomeKey = normalizeCourseName(record.nome);
-
-          if (nomeKey && instituicaoId) {
-            const localMatch = await db.cursos
-              .filter(
-                (r) =>
-                  !r.deleted &&
-                  normalizeCourseName(r.nome) === nomeKey &&
-                  (r.instituicao_id || '') === instituicaoId
-              )
-              .first();
-
-            if (
-              localMatch &&
-              localMatch.id &&
-              localMatch.id !== record.id &&
-              !String(localMatch.id).startsWith('local_')
-            ) {
-              await this.convertInsertToUpdate(tableName, item, localMatch.id);
-              continue;
-            }
-
-            const remoteMatch = await this.checkExistingUniqueConstraint(tableName, {
-              nome: record.nome,
-              instituicao_id: instituicaoId
-            });
-
-            if (remoteMatch?.id && remoteMatch.id !== record.id) {
-              await this.convertInsertToUpdate(tableName, item, remoteMatch.id);
-              continue;
-            }
-          }
-        }
-
-        
-        if (
-          tableName === 'propina' &&
-          typeof record.transacao_id === 'string' &&
-          record.transacao_id.startsWith('local_')
-        ){
-          continue;
-        }
-
-        
-        if (record.id && !record.id.toString().startsWith('local_')) {
-          await db.syncQueue.delete(item.id!);
-          continue;
-        }
-
-        
-        const cleanRecord = this.cleanRecordForSupabase(record);
-
-        records.push(cleanRecord);
-        itemsToProcess.push(item);
-
-      } catch (error:any) {
-        console.error(`❌ Erro ao preparar item ${item.id}:`, error);
-        await this.markItemAsError(item, error);
-      }
-    }
-
-    return { records, itemsToProcess };
-  }
-
-  , async executeUpsertToSupabase(tableName: string, records: any[]) {
-    
-    let onConflict = 'id';
-     const processedRecords = this.processedRecords(records,tableName);
-
-    
-    const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
-
-    const { data, error } = await supabase
-      .from(tableName)
-      .upsert(uniqueRecords, { onConflict })
-      .select();
-
-    if (error) {
-      console.error(`❌ Erro no upsert ${tableName}:`, error);
-
-      
-      if (error.code === '42501' || error.code === '23505') {
-        const { data: retryData, error: retryError } = await supabase
-          .from(tableName)
-          .upsert(uniqueRecords)
-          .select();
-
-        if (retryError) throw retryError;
-        return { data: retryData, error: null };
-      }
-
-      throw error;
-    }
-
-    return { data, error: null };
-  },
-
-  async executeUpdateToSupabase(tableName: string, records: any[],record_id:string) {
-
-    const processedRecords = this.processedRecords(records,tableName);
-    
-    const uniqueRecords = this.processarRegistrosUnicos(processedRecords, tableName);
-
-    const { data, error } = await supabase
-      .from(tableName)
-      .update(uniqueRecords)
-      .eq('id', record_id)
-      .select();
-
-    if (error) {
-      console.error(`❌ Erro no update ${tableName}:`, error);
-
-      
-      if (error.code === '42501' || error.code === '23505') {
-        const { data: retryData, error: retryError } = await supabase
-          .from(tableName)
-          .upsert(uniqueRecords)
-          .select();
-
-        if (retryError) throw retryError;
-        return { data: retryData, error: null };
-      }
-
-      throw error;
-    }
-
-    return { data, error: null };
-  },
-
-  async executeDeleteToSupabase(tableName: string, recordId: string) {
-    const { data, error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', recordId)
-      .select();
-
-    if (error) {
-      console.error(`❌ Erro no delete ${tableName}:`, error);
-      throw error;
-    }
-
-    return { data: data ?? null, error: null };
-  },
-
-  async processSuccessResult(tableName: string, items: SyncQueueItem[], supabaseData: any[]) {
-    const promises = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const supabaseRecord = supabaseData[i];
-
-      if (!supabaseRecord || !supabaseRecord.id) {
-        console.warn(`⚠️ Sem dados retornados para item ${item.record_id}`);
-        continue;
-      }
-
-      
-      promises.push(
-        this.updateLocalId(tableName, item.record_id, supabaseRecord.id)
-          .catch(err => console.error(`Erro ao atualizar ID:`, err))
-      );
-
-      
-      if (tableName === 'turmas' || tableName === 'cursos') {
-        promises.push(
-          this.updateDependentRecords(tableName, supabaseRecord.id, item.record_id)
-            .catch((err:any) => console.error(`Erro dependências:`, err))
-        );
-      }
-
-      
-      promises.push(
-        db.syncQueue.delete(item.id!)
-          .then(() => {
-            })
-          .catch(async (err) => {
-            console.error(`❌ Erro ao remover ${item.id}:`, err);
-
-            
-            await db.syncQueue.update(item.id!, {
-              status: 'synced',
-              error: ""
-            }).catch(() => {});
-          })
-      );
-    }
-
-    
-    await Promise.allSettled(promises);
-
-  },
 
   async checkExistingNotificacao(record: any): Promise<any> {
     try {
-      
-      
       if (record.titulo && record.data_envio && record.destinatario_tipo) {
         const { data, error } = await supabase
           .from('notificacao')
@@ -511,114 +247,7 @@ export const syncManager: SyncManager = {
     }
   },
 
-  async checkExistingUniqueConstraint(tableName: string, record: any): Promise<any> {
-    try {
-      
-      if (tableName === 'system_config' && record.category && record.key_name && record.instituicao_id) {
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('category', record.category)
-          .eq('key_name', record.key_name)
-          .eq('instituicao_id', record.instituicao_id)
-          .maybeSingle();
 
-        if (!error && data) {
-          return data;
-        }
-      }
-
-      if (tableName === 'cursos' && record.nome && record.instituicao_id) {
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('nome', record.nome)
-          .eq('instituicao_id', record.instituicao_id)
-          .maybeSingle();
-
-        if (!error && data) {
-          return data;
-        }
-      }
-
-      
-      return null;
-    } catch (error) {
-      console.error('Erro ao verificar constraint única:', error);
-      return null;
-    }
-  },
-
-  async convertInsertToUpdate(tableName: string, item: SyncQueueItem, existingId: string) {
-    try {
-      
-      await this.updateLocalId(tableName, item.record_id, existingId);
-
-      
-      await db.syncQueue.update(item.id!, {
-        operation: 'upsert',
-        record_id: existingId 
-      });
-
-      } catch (error) {
-      console.error('Erro ao converter INSERT para UPDATE:', error);
-    }
-  },
-
-  async processSingleUpdate(tableName: string, item: SyncQueueItem) {
-    const { getAuthData } = useSyncAuthInManager();
-    const authData = getAuthData();
-
-    try {
-      let record = await this.getRecordFromTable(tableName, item.record_id);
-      if (!record) {
-        await db.syncQueue.delete(item.id!);
-        return;
-      }
-
-      const resolvedUpdate = localIdMapper.applyLocalIdMappings(tableName, record);
-      if (resolvedUpdate.changed) {
-        try {
-          const now = new Date().toISOString();
-          await db.table(tableName).update(record.id, {
-            ...resolvedUpdate.record,
-            updated_at: now,
-            sync_status: 'pending'
-          });
-          record = resolvedUpdate.record;
-        } catch {
-          
-        }
-      }
-
-      if (localIdMapper.hasPendingParent(tableName, record)) {
-        return;
-      }
-
-      
-      const { id, sync_status, deleted, createdAt, updated_at, ...cleanRecord } = record;
-
-      
-
-      const recordWithRLS = {
-        ...cleanRecord,
-        updated_at: new Date().toISOString(),
-        created_at: createdAt || record.created_at || new Date().toISOString(),
-        };
-      const supabaseResult = await this.executeUpdateToSupabase(tableName, [recordWithRLS], item.record_id);
-
-      if (supabaseResult.error) throw supabaseResult.error;
-
-      
-      await this.markAsSynced(tableName, item.record_id);
-      await db.syncQueue.delete(item.id!);
-
-      } catch (error) {
-      console.error(`❌ Erro atualizando ${tableName} ${item.record_id}:`, error);
-      await this.handleSyncError(item, error);
-    }
-  },
-  
   async getSyncStats() {
     const instituicaoId = getSyncQueueInstitutionId();
     const allItems = instituicaoId
@@ -776,6 +405,18 @@ export const syncManager: SyncManager = {
       } catch (error) {
       console.error('❌ Erro na limpeza forçada:', error);
     }
-  }
+  },
+
+  groupByTable,
+
+  processarRegistrosUnicos,
+
+  cleanRecordForSupabase,
+
+  processedRecords,
+
+  removeBatchDuplicates,
+
+  
 
 };

@@ -1,6 +1,6 @@
+import { SyncQueueItem } from "../../../types/base";
 import { alunosService } from "..";
 import { useSyncAuthInManager } from "../../../hooks/useSyncAuthInManager";
-import { SyncQueueItem } from "../../../types/base";
 import { getSyncQueueInstitutionId, groupByTable, isSeedRecordId } from "../../../utils/syncManagerUtils";
 import { auditLogService } from "../../audit/auditLogService";
 import { aulaService } from "../aulaService";
@@ -8,6 +8,7 @@ import { avaliacaoService } from "../avaliacao";
 import db, { supabase } from "../db";
 import { turmaService } from "../turmas";
 import { localIdMapper } from "./localIdMapper";
+import { uploadService } from "./uploadService";
 
 export const conflictResolver={
 
@@ -638,7 +639,7 @@ export const conflictResolver={
   
         
         for (const item of updates) {
-          await this.processSingleUpdate(tableName, item);
+          await uploadService.processSingleUpdate(tableName, item);
         }
   
         
@@ -665,7 +666,7 @@ export const conflictResolver={
   
       try {
         
-        const { records, itemsToProcess } = await this.prepareInsertRecords(tableName, items);
+        const { records, itemsToProcess } = await uploadService.prepareInsertRecords(tableName, items);
   
         if (records.length === 0) {
           return;
@@ -685,7 +686,7 @@ export const conflictResolver={
             const record = records[index];
   
             try {
-              const supabaseResult = await this.executeUpsertToSupabase(tableName, [record]);
+              const supabaseResult = await uploadService.executeUpsertToSupabase(tableName, [record]);
               const supabaseRecord = supabaseResult.data?.[0];
   
               if (!supabaseRecord?.id) {
@@ -911,6 +912,55 @@ export const conflictResolver={
             console.error(`❌ Erro processando registro individual em ${tableName}:`, error);
             await this.handleSyncError(item, error);
         }
+        }
+    },
+
+    async convertInsertToUpdate(tableName: string, item: SyncQueueItem, existingId: string) {
+        try {
+            await localIdMapper.updateLocalId(tableName, item.record_id, existingId);
+
+            await db.syncQueue.update(item.id!, {
+                operation: 'upsert',
+                record_id: existingId
+            });
+        } catch (error) {
+            console.error('Erro ao converter INSERT para UPDATE:', error);
+        }
+    },
+
+    async checkExistingUniqueConstraint(tableName: string, record: any): Promise<any> {
+        try {
+            if (tableName === 'system_config' && record.category && record.key_name && record.instituicao_id) {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('category', record.category)
+                    .eq('key_name', record.key_name)
+                    .eq('instituicao_id', record.instituicao_id)
+                    .maybeSingle();
+
+                if (!error && data) {
+                    return data;
+                }
+            }
+
+            if (tableName === 'cursos' && record.nome && record.instituicao_id) {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('nome', record.nome)
+                    .eq('instituicao_id', record.instituicao_id)
+                    .maybeSingle();
+
+                if (!error && data) {
+                    return data;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Erro ao verificar constraint única:', error);
+            return null;
         }
     },
 

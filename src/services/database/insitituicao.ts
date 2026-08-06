@@ -1,9 +1,22 @@
 import db from "./db";
 import { Instituicao } from "../../types";
 import { profileService } from "./profileService";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
 
 const DEFAULT_INSTITUICAO_ID = "local_default_instituicao";
+
+const PLACEHOLDER_NOMES = new Set([
+  'CETE',
+  'CETE - Centro de Explicação Tia Esperança',
+  'CETE - Centro de Explicacao Tia Esperanca',
+  'CETE - Centro Tia Esperança',
+  'CETE - Centro Tia Esperanca',
+]);
+
+function normalizarNomeEscola(nome?: string): string {
+  if (!nome) return nome || '';
+  return PLACEHOLDER_NOMES.has(nome.trim()) ? '' : nome;
+}
 
 export const instituicaoService = {
   async resolveActiveInstituicaoId(): Promise<string> {
@@ -48,6 +61,27 @@ export const instituicaoService = {
         
         return await this.createDefaultConfig(activeId);
       }
+
+      const nomeLimpo = normalizarNomeEscola(instituicao.nome_escola);
+      if (nomeLimpo !== instituicao.nome_escola) {
+        const now = new Date().toISOString();
+        await db.instituicao.update(activeId, {
+          nome_escola: nomeLimpo,
+          updated_at: now,
+          sync_status: 'pending'
+        });
+
+        await db.syncQueue.add({
+          table: 'instituicao',
+          instituicao_id: activeId,
+          record_id: activeId,
+          operation: 'upsert',
+          status: 'pending',
+          created_at: now
+        });
+
+        return { ...instituicao, nome_escola: nomeLimpo, updated_at: now, sync_status: 'pending' };
+      }
       
       localStorage.setItem("active_instituicao_id", instituicao.id);
       return instituicao;
@@ -72,7 +106,7 @@ export const instituicaoService = {
       
       const instituicaoAtualizada: Instituicao = {
         
-        nome_escola: existingConfig?.nome_escola || 'CETE',
+        nome_escola: existingConfig?.nome_escola || '',
         endereco: existingConfig?.endereco || '',
         email: existingConfig?.email || '',
         numero_telefone: existingConfig?.numero_telefone || '',
@@ -122,11 +156,11 @@ export const instituicaoService = {
       const existente = await db.instituicao.get(id);
       if (existente && !existente.deleted) {
         localStorage.setItem("active_instituicao_id", existente.id);
-        return existente;
+        return { ...existente, nome_escola: normalizarNomeEscola(existente.nome_escola) };
       }
 
       const defaultConfig: Instituicao = {
-        nome_escola: 'CETE - Centro de Explicação Tia Esperança',
+        nome_escola: '',
         endereco: '',
         email: '',
         numero_telefone: '',
@@ -163,7 +197,7 @@ export const instituicaoService = {
       return {
         id: fallbackId,
         sync_status:"pending",
-        nome_escola: 'CETE',
+        nome_escola: '',
         ano_lectivo: `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -312,9 +346,9 @@ export const instituicaoService = {
     try {
       const id = instituicaoIdValue() || '';
       const instituicao = id ? await db.instituicao.get(id) : undefined;
-      return instituicao?.nome_escola || 'CETE';
+      return normalizarNomeEscola(instituicao?.nome_escola);
     } catch {
-      return 'CETE';
+      return '';
     }
   },
 

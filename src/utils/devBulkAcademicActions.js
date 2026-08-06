@@ -4,7 +4,7 @@ import { propinaService } from '../services/database/propinas';
 import { transacaoService } from '../services/database/transacaoService';
 import { planoAulaService } from '../services/database/planoAulasService';
 import { turmaService } from '../services/database/turmas';
-import { instituicaoIdValue } from './getInsitituicaoID';
+import { instituicaoIdValue } from './getInstituicaoID';
 
 const MESES = ['Set', 'Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago'];
 const TIPOS_AVALIACAO = ['Teste', 'Prova', 'Trabalho', 'Exame'];

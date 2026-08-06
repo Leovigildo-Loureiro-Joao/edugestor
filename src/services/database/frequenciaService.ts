@@ -7,7 +7,7 @@ import { alunosService } from './alunosService';
 import { configService } from './config';
 import { aulaService } from './aulaService';
 import { Aula } from '../../types/aula';
-import { instituicaoIdValue } from '../../utils/getInsitituicaoID';
+import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 import type { SyncQueueItem } from '../../types/base';
 import { emitDbChanged } from '../../utils/emitPendingSync';
 const generateUniqueId = () => `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

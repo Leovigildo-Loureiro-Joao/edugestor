@@ -1,5 +1,5 @@
 import { supabase } from "../database/db";
-import { instituicaoIdValue } from "../../utils/getInsitituicaoID";
+import { instituicaoIdValue } from "../../utils/getInstituicaoID";
 
 type AuditDetails = Record<string, any>;
 
