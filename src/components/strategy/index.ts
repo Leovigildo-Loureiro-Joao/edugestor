@@ -1,7 +1,6 @@
 export { default as DashboardIntegrado } from './HomeDetails';
 export { default as EventosPorMeta } from './EventoPorMeta';
 export { default as MetaComponent } from './Meta';
-export { default as TarefasKanban } from './TarefasKanban';
 export { default as PlaneamentoComponent } from './Planeamento';
 export { PlaneamentoDiario } from './PlaneamentoDiario';
 export { PlaneamentoSemanal } from './PlaneamentoSemanal';

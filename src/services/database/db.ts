@@ -232,6 +232,23 @@ class EduGestorDatabase extends Dexie {
       .stores({
         idMappings: '[table+local_id], table, local_id, server_id'
       });
+    this.version(11)
+      .stores({
+        alunos: 'id, nome_completo, numero_estudante, instituicao_id, turma_id, curso, sync_status, deleted, updated_at, data_inicio_estudos, [instituicao_id+deleted], [instituicao_id+sync_status]',
+        idMappings: '[table+local_id], table, local_id, server_id'
+      })
+      .upgrade(async (tx) => {
+        await tx.table('alunos').toCollection().modify((aluno: any) => {
+          if (!aluno.data_inicio_estudos) {
+            // backfill: usa data_matricula como início dos estudos para preservar comportamento existente
+            aluno.data_inicio_estudos = aluno.data_matricula || null;
+            aluno.updated_at = aluno.updated_at || new Date().toISOString();
+            if (aluno.sync_status === 'synced') {
+              aluno.sync_status = 'pending';
+            }
+          }
+        });
+      });
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
       const fallbackInstituicaoId = instituicaoIdValue();
       obj.instituicao_id = isValidInstituicaoId(obj.instituicao_id)

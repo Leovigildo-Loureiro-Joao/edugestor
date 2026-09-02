@@ -81,6 +81,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     turma_id: student.turma_id || '',
     numero_estudante: student.numero_estudante || 0,
     data_matricula: student.data_matricula || '',
+    data_inicio_estudos: (student as any).data_inicio_estudos || student.data_matricula || '',
     propina: student.propina || 0,
     estado: student.estado || 'ativo',
     sexo: student.sexo || 'M',
@@ -110,6 +111,7 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     turma_id: '',
     propina: 0,
     data_matricula: '',
+    data_inicio_estudos: '',
     estado: 'inativo',
     sexo: 'M',
     classe_escolar: '',
@@ -235,6 +237,13 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
     student?.instituicao_id
   ]);
 
+  // Auto-preenche data_inicio_estudos com data_matricula quando ainda vazio (evita erro bobo de inadimplência para inscritos)
+  useEffect(() => {
+    if (formData.data_matricula && !(formData as any).data_inicio_estudos) {
+      setFormData((prev: any) => ({ ...prev, data_inicio_estudos: prev.data_matricula }));
+    }
+  }, [formData.data_matricula]);
+
   useEffect(() => {
     if (tipoMatricula !== 'regular' || !formData.turma_id) return;
 
@@ -278,7 +287,11 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
   const handleSubmit = (e: React.FormEvent) => {
     if(submit){
       e.preventDefault();
-      onSubmit(formData);
+      const payload: any = { ...formData };
+      if (!payload.data_inicio_estudos) {
+        payload.data_inicio_estudos = payload.data_matricula || new Date().toISOString().split('T')[0];
+      }
+      onSubmit(payload);
     }
     clearDraft();
     setSubmit(true)
@@ -607,6 +620,28 @@ export const StudentForm = ({ student, onSubmit, onCancel, loading = false }: St
                   required
                 />
               </div>
+            </div>
+
+            {/* Data de Início dos Estudos - só a partir desta data cobra propinas */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="data_inicio_estudos" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Data de Início dos Estudos *
+              </label>
+              <div className="relative">
+                <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                <input
+                  className="w-full p-3 pl-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white"
+                  type="date"
+                  name="data_inicio_estudos"
+                  id="data_inicio_estudos"
+                  value={(formData as any).data_inicio_estudos || ''}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Só a partir desta data serão cobradas propinas e contado como inadimplência. Para alunos apenas inscritos e ainda não a estudar, defina uma data futura (ex.: início das aulas). Alunos com data futura não entram no cálculo de inadimplentes.
+              </p>
             </div>
 
             {/* Endereço */}

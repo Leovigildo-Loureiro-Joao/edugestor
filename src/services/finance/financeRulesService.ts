@@ -90,6 +90,17 @@ const parseAcademicYear = (anoLectivo?: string): { startYear: number; endYear: n
   return { startYear, endYear };
 };
 
+const parseValidDate = (value?: string | null): Date | null => {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const getBillingStartDate = (aluno: Student): Date | null => {
+  // Prioriza data_inicio_estudos; fallback para data_matricula para compatibilidade
+  return parseValidDate((aluno as any).data_inicio_estudos) || parseValidDate(aluno.data_matricula) || null;
+};
+
 export const financeRulesService = {
   toMonthAbbr(input: string): string {
     if (!input) return '';
@@ -129,6 +140,14 @@ export const financeRulesService = {
     });
   },
 
+  isBillingNotStarted(aluno: Student, refDate = new Date()): boolean {
+    const startDate = parseValidDate((aluno as any).data_inicio_estudos);
+    if (!startDate) return false;
+    const startBoundary = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const refBoundary = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+    return startBoundary.getTime() > refBoundary.getTime();
+  },
+
   resolveBillingStartMonth(
     aluno: Student,
     mesesBase: string[],
@@ -144,6 +163,22 @@ export const financeRulesService = {
     );
     if (paidStartMonth) {
       return paidStartMonth;
+    }
+
+    // Prioriza data_inicio_estudos (nova lógica): se definida, usa o mês dessa data
+    const inicioEstudosDate = parseValidDate((aluno as any).data_inicio_estudos);
+    if (inicioEstudosDate) {
+      const inicioEstudosMonth = this.toMonthAbbr(
+        inicioEstudosDate.toLocaleDateString('pt-BR', { month: 'long' })
+      );
+      if (inicioEstudosMonth && mesesBase.includes(inicioEstudosMonth)) {
+        return inicioEstudosMonth;
+      }
+      // Se mês não está nos meses base (config custom), fallback para primeiro que seja >=
+      if (inicioEstudosMonth) {
+        // procura próximo mês base cronologicamente
+        return mesesBase[0];
+      }
     }
 
     const matriculaMonth = this.toMonthAbbr(
@@ -230,6 +265,13 @@ export const financeRulesService = {
     const mesesNormalizados = this.normalizeMonthList(mesesBase);
     if (!mesesNormalizados.length) return [];
 
+    // Se aluno ainda não iniciou os estudos, não cobra nada (a não ser no modo pagamento antecipado)
+    const billingStartDate = getBillingStartDate(aluno);
+    const inicioEstudosDate = parseValidDate((aluno as any).data_inicio_estudos);
+    if (inicioEstudosDate && this.isBillingNotStarted(aluno) && !options.includeFutureMonths) {
+      return [];
+    }
+
     const startMonth = this.resolveBillingStartMonth(aluno, mesesNormalizados, options.paidMonths || []);
     const turma = turmasSource.find((t) => t.id === aluno.turma_id);
     const curso = cursosSource.find((c) => c.id === turma?.curso_id);
@@ -244,16 +286,33 @@ export const financeRulesService = {
     const sequence = this.buildBillingSequence(mesesNormalizados, startMonth, totalMonths);
 
     if (options.includeFutureMonths) {
+      // No modo antecipado, ainda filtra meses anteriores ao início dos estudos
+      if (billingStartDate) {
+        const startBoundary = new Date(billingStartDate.getFullYear(), billingStartDate.getMonth(), 1);
+        const timelineFull = this.buildBillingTimeline(
+          sequence,
+          aluno.ano_lectivo,
+          (aluno as any).data_inicio_estudos || aluno.data_matricula
+        );
+        return timelineFull.filter((item) => item.date.getTime() >= startBoundary.getTime()).map((item) => item.month);
+      }
       return sequence;
     }
 
     const timeline = this.buildBillingTimeline(
       sequence,
       aluno.ano_lectivo,
-      aluno.data_matricula
+      (aluno as any).data_inicio_estudos || aluno.data_matricula
     );
 
-    return this.limitBillingSequenceToCurrentMonth(timeline);
+    // Filtra meses anteriores ao início efetivo dos estudos
+    let filteredTimeline = timeline;
+    if (billingStartDate) {
+      const startBoundary = new Date(billingStartDate.getFullYear(), billingStartDate.getMonth(), 1);
+      filteredTimeline = timeline.filter((item) => item.date.getTime() >= startBoundary.getTime());
+    }
+
+    return this.limitBillingSequenceToCurrentMonth(filteredTimeline);
   },
 
   buildPaidMonthsMap(propinas: Propina[]): Record<string, string[]> {

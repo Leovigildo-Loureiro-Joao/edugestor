@@ -1127,6 +1127,17 @@ const StudentPage: React.FC = () => {
                       <span className="text-gray-600 dark:text-gray-400">{aluno.propina}</span>
                     </div>
                     <div>
+                      <strong className="text-gray-700 dark:text-gray-300">Data Matrícula:</strong>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">{aluno.data_matricula ? new Date(aluno.data_matricula).toLocaleDateString('pt-BR') : '—'}</span>
+                    </div>
+                    <div>
+                      <strong className="text-gray-700 dark:text-gray-300">Início dos Estudos:</strong>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">{(aluno as any).data_inicio_estudos ? new Date((aluno as any).data_inicio_estudos).toLocaleDateString('pt-BR') : (aluno.data_matricula ? new Date(aluno.data_matricula).toLocaleDateString('pt-BR') : '—')}</span>
+                      {(aluno as any).data_inicio_estudos && new Date((aluno as any).data_inicio_estudos) > new Date() && (
+                        <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Ainda não iniciou — sem cobrança</span>
+                      )}
+                    </div>
+                    <div>
                       <strong className="text-gray-700 dark:text-gray-300">Professor:</strong>{' '}
                       <span className="text-gray-600 dark:text-gray-400">{aluno.professor || 'Não definido'}</span>
                     </div>

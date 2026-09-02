@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   FiTarget, 
   FiCalendar, 
-  FiList, 
   FiUsers,
   FiTrendingUp,
   FiBarChart2
@@ -14,7 +13,6 @@ import { estrategiaService } from '../../services/database/estrategiaService';
 import { CalendarWithEvents } from '../../components/dashboad/Calendary';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  TarefasKanban,
   MetaComponent,
   EventosPorMeta,
   DashboardIntegrado,
@@ -88,12 +86,11 @@ const EstrategiaPage = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
   };
 
-  // Atualize as tabs para incluir todos os níveis
+  // Tabs sem Kanban (removido a pedido do cliente)
 const tabs = [
   {id:'home', label:'Estatisticas gerais', icon:FiTrendingUp},
   { id: 'planeamento', label: 'Planeamento', icon: FiBarChart2 },
   { id: 'metas', label: 'Metas', icon: FiTarget, count: metas.length },
-  { id: 'tarefas', label: 'Tarefas', icon: FiList, count: tarefas.length },
   { id: 'eventos', label: 'Eventos', icon: FiCalendar }
 ];
   
@@ -163,11 +160,6 @@ const tabs = [
             <MetaComponent loadData={loadData} metas={metas} setMetas={setMetas}/>
           )}
 
-          {/* Tarefas Tab */}
-          {activeTab === 'tarefas' && (
-          <TarefasKanban />
-          )}
-          
           {
             activeTab === 'eventos' && (
              <EventoPage/>
