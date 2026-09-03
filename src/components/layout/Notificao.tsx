@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X, Gift, Cake } from 'lucide-react';
+import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
 import { useNavigate } from 'react-router-dom';
