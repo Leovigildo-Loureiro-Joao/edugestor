@@ -231,7 +231,7 @@ import { instituicaoIdValue, isValidInstituicaoId } from "./getInstituicaoID";
             });
           case 'notificacao':
             return records.map((record) => {
-              const { id, arquivada, arquivada_em, ...rest } = record;
+              const { id, ...rest } = record;
               const destinatario_tipo = normalizarDestinatarioNotificacao(rest.destinatario_tipo);
               return {
                 ...rest,
@@ -285,7 +285,7 @@ import { instituicaoIdValue, isValidInstituicaoId } from "./getInstituicaoID";
 
     const cleanRecordForSupabase=(record: any)=> {
         
-        const { sync_status, deleted, arquivada, arquivada_em, ...cleanRecord } = record;
+        const { sync_status, deleted, ...cleanRecord } = record;
         const sanitizedInstituicaoId = resolveValidInstituicaoId(cleanRecord.instituicao_id, true);
     
         
