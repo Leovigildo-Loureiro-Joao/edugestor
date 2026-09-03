@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X } from 'lucide-react';
+import { Bell, Check, Trash2, AlertCircle, Info, Clock, DollarSign, X, Gift, Cake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificacaoService, TipoNotificacao, PrioridadeNotificacao } from '../../services/database/notificacaoService';
 import { useNavigate } from 'react-router-dom';
@@ -67,13 +67,18 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
 
   const abrirNotificacao = async (notif: any) => {
     try {
-      if (!notif.lida) {
+      // Aniversário: arquiva ao clicar (mesma lógica pedida: auto-arquiva se clicou ou após 1 semana)
+      if (notif.tipo === TipoNotificacao.ALUNO_ANIVERSARIO) {
+        await notificacaoService.arquivarNotificacao(notif.id);
+      } else if (!notif.lida) {
         await notificacaoService.marcarComoLida(notif.id);
       }
       setAberto(false);
 
       if (notif.link && typeof notif.link === 'string') {
         navigate(notif.link);
+        // atualiza contagem em background
+        setTimeout(() => carregarNotificacoes(), 300);
         return;
       }
 
@@ -107,6 +112,8 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
 
   const getIconePorTipo = (tipo: TipoNotificacao) => {
     switch (tipo) {
+      case TipoNotificacao.ALUNO_ANIVERSARIO:
+        return <Gift className="w-3.5 h-3.5" />;
       case TipoNotificacao.ALERTA:
       case TipoNotificacao.ERRO:
         return <AlertCircle className="w-3.5 h-3.5" />;
@@ -132,6 +139,13 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
       default:
         return 'text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700';
     }
+  };
+
+  const getCorExtraPorTipo = (tipo: TipoNotificacao, prioridade: PrioridadeNotificacao) => {
+    if (tipo === TipoNotificacao.ALUNO_ANIVERSARIO) {
+      return 'text-pink-600 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/30 border-pink-100 dark:border-pink-800/50';
+    }
+    return getCorClassesPorPrioridade(prioridade);
   };
 
   const getBadgeClassesPorPrioridade = (prioridade: PrioridadeNotificacao) => {
@@ -275,7 +289,7 @@ export const NotificacoesBellInteligente: React.FC<NotificacoesBellProps> = ({
                       >
                         <div className="flex gap-3">
                           {/* Ícone */}
-                          <div className={`flex-shrink-0 mt-1 p-2 rounded-lg ${getCorClassesPorPrioridade(notif.prioridade)}`}>
+                          <div className={`flex-shrink-0 mt-1 p-2 rounded-lg ${getCorExtraPorTipo(notif.tipo, notif.prioridade)}`}>
                             {getIconePorTipo(notif.tipo)}
                           </div>
                           

@@ -46,6 +46,7 @@ export enum TipoNotificacao {
   ALUNO_AVALIACAO = 'aluno_avaliacao',
   ALUNO_FINANCEIRO = 'aluno_financeiro',
   ALUNO_EVENTO = 'aluno_evento',
+  ALUNO_ANIVERSARIO = 'aluno_aniversario',
   
   
   PROF_AULA = 'prof_aula',
@@ -85,6 +86,8 @@ export interface Notificacao {
   updated_at: string;
   sync_status: 'pending' | 'synced' | 'pending_delete' | 'failed';
   deleted: boolean;
+  arquivada?: boolean;
+  arquivada_em?: string | null;
 }
 
 export type NotificacaoFormData = Omit<Notificacao, 
@@ -110,6 +113,7 @@ const NOTIFICACOES_POR_PERFIL = {
     TipoNotificacao.ADMIN_FINANCEIRO,
     TipoNotificacao.ADMIN_RELATORIO,
     TipoNotificacao.ADMIN_META,
+    TipoNotificacao.ALUNO_ANIVERSARIO,
     TipoNotificacao.ALERTA,
     TipoNotificacao.ERRO,
     TipoNotificacao.SISTEMA
@@ -128,7 +132,7 @@ export const notificacaoService = {
   async contarNotificacoesNaoLidas(){
     const profile= await profileService.getLocalProfile()
     if(profile){
-      const notif=  db.notificacao.filter(not=> not.user_id===profile.id && !not.lida && !not.deleted).count()
+      const notif=  db.notificacao.filter(not=> not.user_id===profile.id && !not.lida && !not.deleted && !not.arquivada).count()
       return notif
     }
     return 0
@@ -157,7 +161,9 @@ export const notificacaoService = {
         created_at: now,
         updated_at: now,
         sync_status: 'pending',
-        deleted: false
+        deleted: false,
+        arquivada: (notificacaoData as any).arquivada ?? false,
+        arquivada_em: (notificacaoData as any).arquivada_em ?? null
       };
 
       
@@ -237,6 +243,10 @@ export const notificacaoService = {
 
       
       await this.verificarPending();
+
+      await this.verificarAniversariosAlunos();
+
+      await this.arquivarAniversariosExpirados();
       
       localStorage.setItem('ultima_verificacao_notif', new Date().toISOString());
       } catch (error) {
@@ -639,6 +649,126 @@ export const notificacaoService = {
     
     localStorage.setItem('ultima_verificacao_frequencia', new Date().toISOString());
   },
+
+  // ===== Aniversários de alunos =====
+  async verificarAniversariosAlunos() {
+    try {
+      const hoje = new Date();
+      const mesHoje = hoje.getMonth() + 1;
+      const diaHoje = hoje.getDate();
+      const hojeKey = hoje.toISOString().split('T')[0];
+      const instituicaoId = instituicaoIdValue();
+
+      const alunos = await db.alunos
+        .filter(al => !al.deleted && !!al.data_nascimento && (!instituicaoId || al.instituicao_id === instituicaoId))
+        .toArray();
+
+      const calcularIdade = (dataNascimento: string): number | null => {
+        try {
+          const partes = dataNascimento.split('T')[0].split('-');
+          if (partes.length < 3) return null;
+          const ano = Number(partes[0]);
+          const mes = Number(partes[1]);
+          const dia = Number(partes[2]);
+          if (!ano || !mes || !dia) return null;
+          let idade = hoje.getFullYear() - ano;
+          if (mesHoje < mes || (mesHoje === mes && diaHoje < dia)) idade--;
+          return idade;
+        } catch { return null; }
+      };
+
+      for (const aluno of alunos) {
+        if (!aluno.data_nascimento) continue;
+        const dataStr = String(aluno.data_nascimento).split('T')[0];
+        const partes = dataStr.split('-');
+        if (partes.length < 3) continue;
+        const mes = Number(partes[1]);
+        const dia = Number(partes[2]);
+        if (mes !== mesHoje || dia !== diaHoje) continue;
+
+        // evita duplicar no mesmo dia para o mesmo aluno
+        const jaExisteHoje = await db.notificacao
+          .where('tipo').equals(TipoNotificacao.ALUNO_ANIVERSARIO)
+          .filter(n => !n.deleted && !n.arquivada && n.referencia_id === aluno.id && n.data_envio.startsWith(hojeKey))
+          .count();
+        if (jaExisteHoje > 0) continue;
+
+        const idade = calcularIdade(String(aluno.data_nascimento));
+        const titulo = '🎂 Aniversário hoje!';
+        const corpo = idade !== null
+          ? `${aluno.nome_completo} faz ${idade} ano(s) hoje!`
+          : `Hoje é aniversário de ${aluno.nome_completo}!`;
+
+        await this.criarNotificacaoAdmin({
+          titulo,
+          corpo,
+          tipo: TipoNotificacao.ALUNO_ANIVERSARIO,
+          prioridade: PrioridadeNotificacao.MEDIA,
+          link: `/alunos/${aluno.id}`,
+          aluno_id: aluno.id,
+          referencia_id: aluno.id,
+          turma_id: aluno.turma_id,
+          meta: {
+            aluno_id: aluno.id,
+            data_nascimento: aluno.data_nascimento,
+            idade,
+            turma_id: aluno.turma_id,
+            aluno_nome: aluno.nome_completo
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar aniversários:', error);
+    }
+  },
+
+  async arquivarNotificacao(id: string): Promise<void> {
+    const now = new Date().toISOString();
+    try {
+      await db.notificacao.update(id, {
+        arquivada: true,
+        arquivada_em: now,
+        lida: true,
+        updated_at: now,
+        sync_status: 'pending'
+      });
+      await db.syncQueue.add({
+        table: 'notificacao',
+        record_id: id,
+        instituicao_id: getSafeInstituicaoId(instituicaoIdValue()) || '',
+        operation: 'upsert',
+        status: 'pending',
+        created_at: now
+      });
+    } catch (e) {
+      console.error('Erro ao arquivar notificação', e);
+    }
+  },
+
+  async arquivarAniversariosExpirados(): Promise<number> {
+    try {
+      const limite = new Date();
+      limite.setDate(limite.getDate() - 7);
+      const expiradas = await db.notificacao
+        .filter(n => !n.deleted && !n.arquivada && n.tipo === TipoNotificacao.ALUNO_ANIVERSARIO && new Date(n.data_envio) < limite)
+        .toArray();
+      for (const n of expiradas) {
+        await this.arquivarNotificacao(n.id);
+      }
+      // também arquiva aniversários já lidos (clicadas) mesmo que ainda dentro dos 7 dias? 
+      // A regra diz: arquiva se já clicou (lida=true). Isso será feito no clique; aqui garantimos que lidas sejam arquivadas.
+      const lidasNaoArquivadas = await db.notificacao
+        .filter(n => !n.deleted && !n.arquivada && n.tipo === TipoNotificacao.ALUNO_ANIVERSARIO && n.lida)
+        .toArray();
+      for (const n of lidasNaoArquivadas) {
+        await this.arquivarNotificacao(n.id);
+      }
+      return expiradas.length + lidasNaoArquivadas.length;
+    } catch (error) {
+      console.error('Erro ao arquivar aniversários expirados:', error);
+      return 0;
+    }
+  },
   
   
   
@@ -682,11 +812,14 @@ export const notificacaoService = {
     tipo?: TipoNotificacao;
     prioridade?: PrioridadeNotificacao;
     meta?: NotificacaoMeta;
-    link?:string
+    link?:string;
+    aluno_id?: string;
+    referencia_id?: string;
+    turma_id?: string;
   }): Promise<Notificacao> {
     const instituicao_id=instituicaoIdValue() || null
     const profile=await profileService.getLocalProfile()
-
+ 
       return this.criarNotificacao({
         ...params,
         instituicao_id,
@@ -694,16 +827,19 @@ export const notificacaoService = {
         tipo: params.tipo || TipoNotificacao.ADMIN_RELATORIO,
         prioridade: params.prioridade || PrioridadeNotificacao.MEDIA,
         destinatario_tipo: 'admin',
-        link:params.link||""
+        link:params.link||"",
+        aluno_id: (params as any).aluno_id,
+        referencia_id: (params as any).referencia_id || (params as any).aluno_id,
+        turma_id: (params as any).turma_id,
       });
     
   },
   
   
   
-  async listarNotificacoesUsuario(userRole: string, userId?: string, alunoId?: string) {
+  async listarNotificacoesUsuario(userRole: string, userId?: string, alunoId?: string, incluirArquivadas: boolean = false) {
     try {
-      let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted);
+      let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted && (incluirArquivadas || !notif.arquivada));
       const roleNormalizada = normalizarRoleParaDestinatario(userRole);
       const destinatariosAceitos = new Set<string>(
         [roleNormalizada, userRole].filter((valor): valor is string => !!valor)
@@ -769,6 +905,7 @@ export const notificacaoService = {
   async iniciarServicoNotificacoes() {
     
     await this.verificarNotificacoesAutomaticas();
+    await this.arquivarAniversariosExpirados();
     
     
     setInterval(async () => {
@@ -779,6 +916,11 @@ export const notificacaoService = {
     setInterval(async () => {
       await this.verificarFrequenciaBaixaAlerta();
     }, 24 * 60 * 60 * 1000); 
+
+    setInterval(async () => {
+      await this.verificarAniversariosAlunos();
+      await this.arquivarAniversariosExpirados();
+    }, 24 * 60 * 60 * 1000);
     
     
     setInterval(async () => {
@@ -791,7 +933,8 @@ export const notificacaoService = {
   async listarNotificacoes(filtros?: any): Promise<Notificacao[]> {
     
     try {
-      let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted);
+      const incluirArquivadas = filtros?.incluirArquivadas === true;
+      let query = (await db.notificacao.toArray()).filter((notif:Notificacao) => !notif.deleted && (incluirArquivadas || !notif.arquivada));
 
       if (filtros) {
         if (filtros.lida !== undefined) {
@@ -868,7 +1011,16 @@ export const notificacaoService = {
   },
 
   async marcarComoLida(id: string): Promise<Notificacao> {
-    return this.atualizarNotificacao(id, { lida: true });
+    const notif = await db.notificacao.get(id);
+    const updated = await this.atualizarNotificacao(id, { lida: true });
+    // auto-arquiva aniversários ao clicar (lida)
+    if (notif?.tipo === TipoNotificacao.ALUNO_ANIVERSARIO) {
+      await this.arquivarNotificacao(id);
+      // retorna a versão arquivada
+      const arquivada = await this.buscarNotificacaoPorId(id);
+      return arquivada || updated;
+    }
+    return updated;
   },
 
   async marcarTodasComoLidas(userRole: string, userId?: string): Promise<number> {
@@ -880,8 +1032,10 @@ export const notificacaoService = {
       
       await Promise.all(
         naoLidas.map(async (notif) => {
+          const isAniversario = notif.tipo === TipoNotificacao.ALUNO_ANIVERSARIO;
           await db.notificacao.update(notif.id, {
             lida: true,
+            ...(isAniversario ? { arquivada: true, arquivada_em: now } : {}),
             updated_at: now,
             sync_status: 'pending'
           });

@@ -249,6 +249,19 @@ class EduGestorDatabase extends Dexie {
           }
         });
       });
+    this.version(12)
+      .stores({
+        notificacao: `id,lida,corpo,tipo,instituicao_id,aluno_id,user_id,data_envio,arquivada,[lida+deleted],[tipo+deleted],[instituicao_id+deleted],[aluno_id+deleted],sync_status,deleted,updated_at`,
+        alunos: 'id, nome_completo, numero_estudante, instituicao_id, turma_id, curso, sync_status, deleted, updated_at, data_inicio_estudos, [instituicao_id+deleted], [instituicao_id+sync_status]'
+      })
+      .upgrade(async (tx) => {
+        await tx.table('notificacao').toCollection().modify((notif: any) => {
+          if (typeof notif.arquivada !== 'boolean') {
+            notif.arquivada = false;
+            notif.arquivada_em = null;
+          }
+        });
+      });
     this.syncQueue.hook('creating', (_, obj: SyncQueueItem) => {
       const fallbackInstituicaoId = instituicaoIdValue();
       obj.instituicao_id = isValidInstituicaoId(obj.instituicao_id)
