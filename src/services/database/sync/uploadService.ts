@@ -11,6 +11,10 @@ import { localIdMapper } from "./localIdMapper";
 export const uploadService = {
     async uploadBatch() {
         try {
+          const { connectivityService } = await import('../connectivityService');
+          if (!connectivityService.shouldAttemptSync()) {
+            return;
+          }
           await localIdMapper.cleanupLocalIdMap();
           await localIdMapper.cleanupLegacyLocalDuplicates(['alunos', 'turmas', 'aulas', 'cursos']);
           const { getAuthData } = useSyncAuthInManager();
@@ -64,6 +68,8 @@ export const uploadService = {
           }
     
           } catch (error) {
+          const { connectivityService } = await import('../connectivityService');
+          connectivityService.reportFailure(error);
           console.error('❌ Erro no upload batch:', error);
           throw error;
         }
@@ -198,6 +204,10 @@ export const uploadService = {
     },
     async uploadTableBatch(tableName: string): Promise<void> {
     try {
+      const { connectivityService } = await import('../connectivityService');
+      if (!connectivityService.shouldAttemptSync()) {
+        return;
+      }
       const instituicaoId = getSyncQueueInstitutionId();
       if (!instituicaoId) {
         console.warn('⚠️ Sem instituicao_id ativa para processar syncQueue.');
@@ -368,30 +378,38 @@ const registosProcessados = processedRecords(records,tableName);
   
       
       const uniqueRecords = processarRegistrosUnicos(registosProcessados, tableName);
-  
-      const { data, error } = await supabase
-        .from(tableName)
-        .upsert(uniqueRecords, { onConflict })
-        .select();
+
+      // Timeout próprio: nunca deixa o sync pendurado se o Supabase cair a meio
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const { data, error } = await supabase
+          .from(tableName)
+          .upsert(uniqueRecords, { onConflict })
+          .select()
+          .abortSignal(controller.signal);
   
       if (error) {
         console.error(`❌ Erro no upsert ${tableName}:`, error);
-  
+
         
         if (error.code === '42501' || error.code === '23505') {
           const { data: retryData, error: retryError } = await supabase
             .from(tableName)
             .upsert(uniqueRecords)
             .select();
-  
+
           if (retryError) throw retryError;
           return { data: retryData, error: null };
         }
-  
+
         throw error;
       }
-  
+
       return { data, error: null };
+      } finally {
+        clearTimeout(timeout);
+      }
     },
 
       async processSingleUpdate(tableName: string, item: SyncQueueItem) {
@@ -453,46 +471,60 @@ const registosProcessados = processedRecords(records,tableName);
       const registosProcessados = processedRecords(records,tableName);
       
       const uniqueRecords = processarRegistrosUnicos(registosProcessados, tableName);
-  
-      const { data, error } = await supabase
-        .from(tableName)
-        .update(uniqueRecords)
-        .eq('id', record_id)
-        .select();
-  
-      if (error) {
-        console.error(`❌ Erro no update ${tableName}:`, error);
-  
-        
-        if (error.code === '42501' || error.code === '23505') {
-          const { data: retryData, error: retryError } = await supabase
-            .from(tableName)
-            .upsert(uniqueRecords)
-            .select();
-  
-          if (retryError) throw retryError;
-          return { data: retryData, error: null };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const { data, error } = await supabase
+          .from(tableName)
+          .update(uniqueRecords)
+          .eq('id', record_id)
+          .select()
+          .abortSignal(controller.signal);
+
+        if (error) {
+          console.error(`❌ Erro no update ${tableName}:`, error);
+
+          
+          if (error.code === '42501' || error.code === '23505') {
+            const { data: retryData, error: retryError } = await supabase
+              .from(tableName)
+              .upsert(uniqueRecords)
+              .select();
+
+            if (retryError) throw retryError;
+            return { data: retryData, error: null };
+          }
+
+          throw error;
         }
-  
-        throw error;
+
+        return { data, error: null };
+      } finally {
+        clearTimeout(timeout);
       }
-  
-      return { data, error: null };
     },
   
     async executeDeleteToSupabase(tableName: string, recordId: string) {
-      const { data, error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('id', recordId)
-        .select();
-  
-      if (error) {
-        console.error(`❌ Erro no delete ${tableName}:`, error);
-        throw error;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const { data, error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', recordId)
+          .select()
+          .abortSignal(controller.signal);
+
+        if (error) {
+          console.error(`❌ Erro no delete ${tableName}:`, error);
+          throw error;
+        }
+
+        return { data: data ?? null, error: null };
+      } finally {
+        clearTimeout(timeout);
       }
-  
-      return { data: data ?? null, error: null };
     },
   
     async processSuccessResult(tableName: string, items: SyncQueueItem[], supabaseData: any[]) {

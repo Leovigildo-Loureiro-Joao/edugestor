@@ -2,6 +2,7 @@ import db, { supabase } from "./db";
 import { SyncManager } from "../../types/sync/syncManager";
 import { syncManagerService } from "./sync";
 import { getSyncQueueInstitutionId, groupByTable, processarRegistrosUnicos, cleanRecordForSupabase, processedRecords, removeBatchDuplicates } from "../../utils/syncManagerUtils";
+import { connectivityService } from "./connectivityService";
 
 const AUTO_SYNC_INTERVAL_MS = 30000;
 const DASHBOARD_ROUTE_PREFIX = '/dashboard';
@@ -44,7 +45,9 @@ const getScopedTablesForRoute = (pathname: string): string[] | null => {
 };
 
 const runScopedSyncForCurrentRoute = async () => {
-  if (autoSyncInFlight || !navigator.onLine) return;
+  if (autoSyncInFlight) return;
+  // Modo offline automático: sem internet OU Supabase em backoff/queda -> não tenta
+  if (!connectivityService.shouldAttemptSync()) return;
 
   autoSyncInFlight = true;
   try {
@@ -54,18 +57,24 @@ const runScopedSyncForCurrentRoute = async () => {
     if (scopedTables === null) {
       await syncManager.uploadBatch();
       await syncManager.downloadBatch();
+      connectivityService.reportSuccess();
       return;
     }
 
     if (scopedTables.length === 0) return;
 
     for (const tableName of scopedTables) {
+      // Revalida antes de cada tabela — se o Supabase caiu a meio, pára sem martelar
+      if (!connectivityService.shouldAttemptSync()) break;
       await syncManager.uploadTableBatch(tableName);
       await syncManager.downloadTableBatch(tableName, getLastSyncDateForTable(tableName));
       await new Promise((resolve) => setTimeout(resolve, 120));
     }
+    connectivityService.reportSuccess();
   } catch (error) {
     console.error('❌ Erro na sincronização por rota:', error);
+    // Só falhas de rede contam para o circuit-breaker (RLS/auth não derrubam)
+    connectivityService.reportFailure(error);
   } finally {
     autoSyncInFlight = false;
   }
@@ -85,7 +94,7 @@ export const setupAutoSync = () => {
   }
 
   ghostCleanupInterval = setInterval(async () => {
-    if (navigator.onLine) {
+    if (connectivityService.shouldAttemptSync()) {
       console.log('🧹 Executando limpeza programada de dados fantasmas...');
       await syncManager.safeGhostDataCleanup({
         tables: ['alunos', 'turmas', 'cursos', 'aulas', 'frequencias', 'avaliacoes']
@@ -198,10 +207,12 @@ export const initializeSyncSystem = async () => {
 
     await syncManagerService.migrateLegacyLocalIdMap();
 
+    // Inicia monitor central (online/offline + healthcheck Supabase + backoff)
+    connectivityService.startMonitoring();
     setupAutoSync();
     autoSyncInitialized = true;
 
-    if (navigator.onLine) {
+    if (connectivityService.shouldAttemptSync()) {
       await runScopedSyncForCurrentRoute();
     }
 

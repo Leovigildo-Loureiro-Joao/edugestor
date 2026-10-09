@@ -121,6 +121,24 @@ export const conflictResolver={
 
 
   async handleSyncError(item: SyncQueueItem, error: any) {
+    const { isNetworkLikeError, connectivityService } = await import('../connectivityService');
+    // Queda de rede/Supabase: NÃO queima retries nem marca failed.
+    // Mantém pending para tentar depois; o circuit-breaker pausa o sync sozinho.
+    if (isNetworkLikeError(error)) {
+      connectivityService.reportFailure(error);
+      try {
+        await db.syncQueue.update(item.id!, {
+          status: 'pending',
+          // guarda o último erro sem contar como tentativa permanente
+          error: `NETWORK:${String(error?.message || error).substring(0, 180)}`,
+          data: new Date().toISOString()
+        });
+      } catch {
+        /* mantém item como está */
+      }
+      return;
+    }
+
     const novasTentativas = (item.retry_count || 0) + 1;
     const errorCode = error?.code || error?.status || 'unknown';
 
@@ -520,6 +538,15 @@ export const conflictResolver={
   
     if (!navigator.onLine) {
       return { online: false, message: 'Offline: não é possível verificar saúde dos dados' };
+    }
+
+    try {
+      const { connectivityService } = await import('../connectivityService');
+      if (!connectivityService.shouldAttemptSync()) {
+        return { online: false, message: 'Offline (Supabase inalcançável): a usar dados locais' };
+      }
+    } catch {
+      /* segue com verificação */
     }
   
     const health: Record<string, { local: number; remote: number; mismatches: any[] }> = {};

@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import db from '../../services/database/db';
 import { initializeSyncSystem, syncManager } from '../../services/database/syncManager';
+import { connectivityService, type ConnectivityState } from '../../services/database/connectivityService';
 import { NotificacoesBellInteligente } from './Notificao';
 import { instituicaoIdValue } from '../../utils/getInstituicaoID';
 
@@ -58,7 +59,10 @@ interface SearchResultItem {
 const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobileMenu }) => {
   const { logout, user } = useAuth() as AuthContextType;
   const navigate = useNavigate();
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [connectivity, setConnectivity] = useState<ConnectivityState>(() => connectivityService.getState());
+  // Derivado central: false se sem internet OU Supabase em queda (modo offline auto)
+  const isOnline = connectivity.effectiveOnline;
+  const supabaseDown = connectivity.browserOnline && connectivity.supabaseReachable === false;
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -127,11 +131,14 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
         errors: syncErrors
       });
 
-      
-      if (isOnline && syncQueue > 0) {
+      const onlineNow = connectivityService.isEffectiveOnline();
+      if (onlineNow && syncQueue > 0) {
         setSaveStatus('saving');
-      } else if (isOnline && syncQueue === 0) {
+      } else if (onlineNow && syncQueue === 0) {
         setSaveStatus(syncErrors > 0 ? 'error' : 'saved');
+      } else if (!onlineNow) {
+        // Modo offline (sem internet ou Supabase em queda): não mostra "erro"
+        setSaveStatus('saved');
       }
     } catch (error) {
       console.error('Erro ao verificar status de sincronização:', error);
@@ -155,27 +162,24 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
 
   
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      
-      setTimeout(verificarStatusSincronizacao, 2000);
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      setSaveStatus('saved'); 
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    connectivityService.startMonitoring();
+    const unsub = connectivityService.subscribe((s) => {
+      setConnectivity(s);
+    });
+    return unsub;
   }, []);
 
+  useEffect(() => {
+    // Revalida contadores quando a conectividade muda (ex: voltou do modo offline auto)
+    if (isOnline) {
+      const t = setTimeout(verificarStatusSincronizacao, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [isOnline]);
+
   const getStatusText = useCallback((): string => {
+    if (!connectivity.browserOnline) return 'Modo Offline';
+    if (supabaseDown) return 'Modo Offline (servidor indisponível)';
     if (!isOnline) return 'Modo Offline';
     
     if (syncStatus.pending > 0) {
@@ -196,7 +200,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
       default:
         return 'Online';
     }
-  }, [isOnline, saveStatus, syncStatus]);
+  }, [isOnline, connectivity.browserOnline, supabaseDown, saveStatus, syncStatus]);
 
   
   useEffect(() => {
@@ -342,9 +346,16 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
 
 
   const handleSyncClick = async (): Promise<void> => {
-    if (!isOnline) return;
+    if (!connectivityService.shouldAttemptSync()) return;
     setSaveStatus('saving');
     try {
+      // Sonda rápida antes do full sync: se o Supabase caiu, entra em offline sem limpar cursores
+      const reachable = await connectivityService.checkHealth(6000);
+      if (!reachable) {
+        setSaveStatus('saved');
+        await verificarStatusSincronizacao();
+        return;
+      }
       
       await syncManager.uploadBatch();
       await syncManager.uploadFailedItems()
@@ -360,6 +371,7 @@ const Header: React.FC<HeaderProps> = ({ setIsDarkMode, isDarkMode, onOpenMobile
       setSaveStatus('saved');
       await verificarStatusSincronizacao();
       } catch (error) {
+      connectivityService.reportFailure(error);
       setSaveStatus('error');
       console.error('Erro na sincronização:', error);
     }
@@ -441,8 +453,10 @@ return (
             className={`relative flex items-center justify-center sm:justify-start gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg transition-all ${
               isOnline ? 'cursor-pointer hover:opacity-90' : 'cursor-default'
             } ${getStatusColor()}`}
-            title={!isOnline 
-              ? 'Modo Offline' 
+            title={!connectivity.browserOnline
+              ? 'Modo Offline (sem internet) — dados guardados localmente'
+              : supabaseDown
+                ? 'Modo Offline automático (servidor indisponível) — dados guardados localmente, retoma sozinho'
               : syncStatus.pending > 0
                 ? 'Clique para forçar full sync'
                 : syncStatus.errors > 0 

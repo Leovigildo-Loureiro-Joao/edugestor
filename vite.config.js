@@ -22,24 +22,40 @@ export default defineConfig({
           {
             src: 'logos.jpg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/jpeg'
           },
           {
             src: 'logos.jpg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/jpeg'
           },
           {
             src: 'logos.jpg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'maskable'
           }
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Inclui jpg/jpeg/webp — antes o logos.jpg (ícone/logo) ficava de fora
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff2}'],
         runtimeCaching: [
+          // Imagens locais / avatares / logos — CacheFirst para funcionar offline
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'app-images-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 7 * 24 * 60 * 60
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
@@ -61,8 +77,11 @@ export default defineConfig({
             options: {
               cacheName: 'supabase-storage-cache',
               expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 24 * 60 * 60
+                maxEntries: 100,
+                maxAgeSeconds: 7 * 24 * 60 * 60
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
           }

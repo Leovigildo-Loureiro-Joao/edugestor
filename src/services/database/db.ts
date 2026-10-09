@@ -336,33 +336,60 @@ export default db;
 
 export const syncDatabase = {
   async syncAll() {
-    if (!navigator.onLine) {
-      return { success: false, message: 'Offline' };
+    const { connectivityService } = await import('./connectivityService');
+    if (!connectivityService.shouldAttemptSync()) {
+      const s = connectivityService.getState();
+      const reason = !s.browserOnline
+        ? 'Offline (sem internet)'
+        : 'Offline (Supabase inalcançável — modo offline automático)';
+      return { success: false, message: reason };
     }
-    
+
     try {
       
       await syncManager.uploadBatch();
       
       
       await syncManager.downloadBatch();
+      connectivityService.reportSuccess();
       
       return { success: true, message: 'Sincronizado com sucesso' };
       
     } catch (error: any) {
       console.error('❌ Erro na sincronização:', error);
+      connectivityService.reportFailure(error);
       return { success: false, message: error.message };
     }
   },
   
   
   async syncUpload() {
-    return syncManager.uploadBatch();
+    const { connectivityService } = await import('./connectivityService');
+    if (!connectivityService.shouldAttemptSync()) {
+      return;
+    }
+    try {
+      await syncManager.uploadBatch();
+      connectivityService.reportSuccess();
+    } catch (error) {
+      connectivityService.reportFailure(error);
+      throw error;
+    }
   },
   
   
   async syncDownload() {
-    return syncManager.downloadBatch();
+    const { connectivityService } = await import('./connectivityService');
+    if (!connectivityService.shouldAttemptSync()) {
+      return;
+    }
+    try {
+      await syncManager.downloadBatch();
+      connectivityService.reportSuccess();
+    } catch (error) {
+      connectivityService.reportFailure(error);
+      throw error;
+    }
   },
   
   
@@ -377,9 +404,19 @@ export const syncDatabase = {
       : 0;
     
     const lastSync = localStorage.getItem('last_sync_global');
+
+    // Estado efetivo (internet + saúde do Supabase). Lazy para evitar ciclo.
+    let effectiveOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    try {
+      const { connectivityService } = await import('./connectivityService');
+      effectiveOnline = connectivityService.isEffectiveOnline();
+    } catch {
+      effectiveOnline = navigator.onLine;
+    }
     
     return {
-      online: navigator.onLine,
+      online: effectiveOnline,
+      browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
       pendingItems: pendingCount,
       lastSync: lastSync ? new Date(lastSync).toLocaleString() : 'Nunca',
       databaseSize: await this.getDatabaseSize()

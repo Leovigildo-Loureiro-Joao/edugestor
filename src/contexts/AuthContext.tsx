@@ -13,7 +13,13 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   error: string;
+  /** true quando entrámos com sessão/verificador local (Supabase inalcançável). */
+  isOfflineMode: boolean;
   login: (email: string, password: string) => Promise<any>;
+  /** Entra offline com a conta que já usou este dispositivo (valida senha local). */
+  loginOffline: (email: string, password: string) => Promise<any>;
+  /** Há conta cacheada para login offline? */
+  hasOfflineAccount: (email?: string) => boolean;
   register: (email: string, password: string, displayName: string, institutionName: string) => Promise<any>;
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<any>;
@@ -38,30 +44,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [session, setSession] = useState<Session | null>(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      if (!navigator.onLine) {
+      const { connectivityService } = await import('../services/database/connectivityService');
+      if (!connectivityService.shouldAttemptSync()) {
         return await profileService.getLocalProfile();
       }
 
-      const { data, error } = await supabase
+      const query = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      // Timeout por corrida: evita pendurar o login quando o Supabase cai a meio.
+      // (abortSignal após .single() não existe neste tipo do supabase-js.)
+      const timeoutMs = 10000;
+      let data: any = null;
+      let error: any = null;
+      try {
+        const res: any = await Promise.race([
+          query,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout: perfil demorou demasiado (Supabase indisponível)')), timeoutMs)
+          ),
+        ]);
+        data = res?.data ?? null;
+        error = res?.error ?? null;
+      } catch (e: any) {
+        throw e;
+      }
 
       if (error) {
+        connectivityService.reportFailure(error);
         console.warn('Perfil não encontrado online, buscando local...');
         return await profileService.getLocalProfile();
       }
 
+      connectivityService.reportSuccess();
       if (data) {
         await profileService.saveProfile(data);
       }
       
       return data as UserProfile;
     } catch (error) {
+      try {
+        const { connectivityService } = await import('../services/database/connectivityService');
+        connectivityService.reportFailure(error);
+      } catch {
+        /* noop */
+      }
       console.error('❌ Erro ao buscar perfil:', error);
       return await profileService.getLocalProfile();
     }
@@ -78,14 +111,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const forceLogout = async (reason: string) => {
     console.warn(`⚠️ Logout forçado: ${reason}`);
     await auditLogService.log('AUTH_FORCE_LOGOUT', { reason });
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* offline — sessão local já basta */
+    }
     clearLocalAuthState();
+    try {
+      sessionStorage.removeItem('edugestor_offline_mode');
+    } catch {
+      /* noop */
+    }
     setUser(null);
     setProfile(null);
     setSession(null);
+    setIsOfflineMode(false);
   };
 
   const clearLocalAuthState = () => {
+    // Limpa a sessão viva, mas PRESERVA o cache offline
+    // (edugestor_offline_credentials_v1 + edugestor_offline_last_profile_v1 +
+    //  tabela Dexie `profiles`) para permitir login offline no mesmo dispositivo.
     localStorage.removeItem('supabase.auth.session');
     localStorage.removeItem('active_instituicao_id');
     localStorage.removeItem('user_profile');
@@ -100,6 +146,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profileData.role) localStorage.setItem('user_role', profileData.role);
     if (profileData.instituicao_id) {
       localStorage.setItem('active_instituicao_id', profileData.instituicao_id);
+    }
+  };
+
+  /**
+   * Restaura sessão 100% local (Supabase inalcançável).
+   * Lê o perfil do Dexie `profiles` / snapshot e fabrica um `user` mínimo.
+   * Não valida senha aqui — quem chama já validou (verificador) ou reaproveita
+   * sessão anterior do dispositivo.
+   */
+  const enterOfflineSession = async (userId: string, email: string): Promise<UserProfile> => {
+    let localProfile: UserProfile | null = null;
+    try {
+      localProfile = await profileService.getLocalProfile();
+    } catch {
+      localProfile = null;
+    }
+    if (!localProfile || localProfile.id !== userId) {
+      try {
+        const own = await db.table('profiles')?.get(userId);
+        if (own) localProfile = own as UserProfile;
+      } catch {
+        /* mantém fallback */
+      }
+    }
+    if (!localProfile) {
+      const { offlineCredentialsService } = await import(
+        '../services/auth/offlineCredentialsService'
+      );
+      const snap = offlineCredentialsService.getLastProfileSnapshot();
+      if (snap && (snap.id === userId || snap.email?.toLowerCase() === email.toLowerCase())) {
+        localProfile = snap as UserProfile;
+      }
+    }
+    if (!localProfile) {
+      throw new Error(
+        'Sem dados locais para esta conta neste dispositivo. Entre online uma vez para ativar o modo offline.'
+      );
+    }
+    if (!isValidRole(localProfile.role)) {
+      throw new Error(`Role inválido offline: ${localProfile.role || 'nenhum'}`);
+    }
+
+    const offlineUser = { id: localProfile.id, email: localProfile.email || email } as User;
+    setUser(offlineUser);
+    setProfile(localProfile);
+    setSession(null);
+    setIsOfflineMode(true);
+    try {
+      sessionStorage.setItem('edugestor_offline_mode', '1');
+    } catch {
+      /* noop */
+    }
+    persistAuthBootstrap(localProfile);
+    try {
+      localStorage.setItem('user_profile', JSON.stringify(localProfile));
+    } catch {
+      /* quota — não crítico */
+    }
+    return localProfile;
+  };
+
+  const hasOfflineAccount = (email?: string): boolean => {
+    try {
+      const raw = localStorage.getItem('edugestor_offline_credentials_v1');
+      if (!raw) return false;
+      if (!email) return Object.keys(JSON.parse(raw)).length > 0;
+      return Boolean(JSON.parse(raw)?.[email.trim().toLowerCase()]);
+    } catch {
+      return false;
+    }
+  };
+
+  /**
+   * Login offline explícito (botão "Continuar offline").
+   * Só funciona para contas que já entraram online neste dispositivo.
+   */
+  const loginOffline = async (email: string, password: string) => {
+    setError('');
+    setLoading(true);
+    try {
+      const { offlineCredentialsService } = await import(
+        '../services/auth/offlineCredentialsService'
+      );
+      const cleanEmail = email.trim();
+      const check = await offlineCredentialsService.verify(cleanEmail, password);
+      if (!check.ok || !check.userId) {
+        if (!offlineCredentialsService.hasCachedAccount(cleanEmail)) {
+          throw new Error(
+            'Esta conta nunca entrou online neste dispositivo. Ligue à internet uma vez para ativar o acesso offline.'
+          );
+        }
+        throw new Error('Senha incorreta (modo offline).');
+      }
+      const prof = await enterOfflineSession(check.userId, cleanEmail);
+      void auditLogService
+        .log('AUTH_LOGIN_OFFLINE', {
+          action_label: 'Entrou offline',
+          source: 'auth',
+          table_name: 'profiles',
+          record_id: prof.id,
+          new_values: { email: prof.email },
+        })
+        .catch(() => {});
+      return { user: { id: prof.id, email: prof.email }, offline: true };
+    } catch (e: any) {
+      const msg = e?.message || 'Não foi possível entrar offline.';
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -243,6 +399,14 @@ const handleSuccessfulLogin = async (user: User) => {
     }
 
     persistAuthBootstrap(userProfile);
+    try {
+      const { offlineCredentialsService } = await import(
+        '../services/auth/offlineCredentialsService'
+      );
+      offlineCredentialsService.saveLastProfileSnapshot(userProfile);
+    } catch {
+      /* não crítico */
+    }
     
     await updateUserMetadata(user);
     
@@ -341,7 +505,68 @@ const handleSuccessfulLogin = async (user: User) => {
     const initializeAuth = async () => {
       try {
         setLoading(true);
-        
+
+        const { connectivityService } = await import(
+          '../services/database/connectivityService'
+        ).catch(() => ({ connectivityService: null as any }));
+        const canReachBackend = connectivityService
+          ? connectivityService.shouldAttemptSync()
+          : navigator.onLine;
+
+        // Sem internet OU Supabase em queda: restaura sessão local de imediato,
+        // sem pendurar em getSession()/fetch de rede.
+        if (!canReachBackend) {
+          const markOffline = () => {
+            setIsOfflineMode(true);
+            try {
+              sessionStorage.setItem('edugestor_offline_mode', '1');
+            } catch {
+              /* noop */
+            }
+          };
+          try {
+            const storedSession = localStorage.getItem('supabase.auth.session');
+            if (storedSession) {
+              const session = JSON.parse(storedSession);
+              if (session?.user) {
+                localStorage.setItem('user_id', session.user.id);
+                const localProfile = await profileService.getLocalProfile().catch(() => null);
+                if (localProfile && isValidRole(localProfile.role)) {
+                  setSession(session);
+                  setUser(session.user);
+                  setProfile(localProfile);
+                  markOffline();
+                  persistAuthBootstrap(localProfile);
+                  setLoading(false);
+                  return;
+                }
+              }
+            }
+          } catch {
+            /* cai para o fallback por snapshot */
+          }
+          // Fallback: último perfil cacheado (mesmo sem sessão viva — ex. após reboot)
+          try {
+            const { offlineCredentialsService } = await import(
+              '../services/auth/offlineCredentialsService'
+            );
+            const snap = offlineCredentialsService.getLastProfileSnapshot();
+            const cached = snap ?? (await profileService.getLocalProfile().catch(() => null));
+            if (cached && isValidRole(cached.role)) {
+              const offlineUser = { id: cached.id, email: cached.email } as User;
+              setUser(offlineUser);
+              setProfile(cached);
+              setSession(null);
+              markOffline();
+              persistAuthBootstrap(cached);
+            }
+          } catch {
+            /* sem cache — fica no login */
+          }
+          setLoading(false);
+          return;
+        }
+
         const storedSession = localStorage.getItem('supabase.auth.session');
         if (storedSession && !navigator.onLine) {
           const session = JSON.parse(storedSession);
@@ -407,15 +632,34 @@ const handleSuccessfulLogin = async (user: User) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      setLoading(false);
-
+      // Se estamos em modo offline (sessão local), eventos "sem sessão" do Supabase
+      // (ex. INITIAL_SESSION null após reboot offline) NÃO podem limpar o user local.
       if (!newSession?.user) {
+        try {
+          const cur = localStorage.getItem('user_id');
+          const offFlag = sessionStorage.getItem('edugestor_offline_mode') === '1';
+          if (offFlag && cur) return;
+        } catch {
+          /* segue */
+        }
         setProfile(null);
         clearLocalAuthState();
+        setSession(null);
+        // mantém user se for sessão offline? não — sem sessão e sem flag, limpa
+        setUser(null);
+        setLoading(false);
         return;
       }
+
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setIsOfflineMode(false);
+      try {
+        sessionStorage.removeItem('edugestor_offline_mode');
+      } catch {
+        /* noop */
+      }
+      setLoading(false);
 
       localStorage.setItem('user_id', newSession.user.id);
 
@@ -450,27 +694,86 @@ const handleSuccessfulLogin = async (user: User) => {
     try {
       setError('');
       setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      setIsOfflineMode(false);
 
-      if (error) throw error;
-      
-      void handleSuccessfulLogin(data.user!);
-      void auditLogService.log('AUTH_LOGIN', {
-        action_label: 'Fez Login',
-        source: 'auth',
-        table_name: 'profiles',
-        record_id: data.user?.id || null,
-        new_values: {
-          email: data.user?.email || email,
-          provider: 'password'
+      // Timeout: se o Supabase caiu a meio do login, não pendura 8s+ no spinner
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      let data: any = null;
+      let error: any = null;
+      try {
+        const res = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        // supabase-js v2 não aceita signal aqui; o timeout abaixo trata o "pendurado"
+        data = res.data;
+        error = res.error;
+      } catch (e: any) {
+        error = e;
+      } finally {
+        clearTimeout(timeout);
+      }
+      void controller;
+
+      if (!error && data?.user) {
+        // Guarda verificador offline para o MESMO dispositivo (nunca a senha)
+        try {
+          const { offlineCredentialsService } = await import(
+            '../services/auth/offlineCredentialsService'
+          );
+          await offlineCredentialsService.saveVerifier(email, password, data.user.id);
+        } catch {
+          /* não bloqueia login */
         }
-      });
+        setIsOfflineMode(false);
+        try {
+          sessionStorage.removeItem('edugestor_offline_mode');
+        } catch {
+          /* noop */
+        }
+        void handleSuccessfulLogin(data.user!);
+        void auditLogService.log('AUTH_LOGIN', {
+          action_label: 'Fez Login',
+          source: 'auth',
+          table_name: 'profiles',
+          record_id: data.user?.id || null,
+          new_values: {
+            email: data.user?.email || email,
+            provider: 'password'
+          }
+        });
 
-      return data;
+        return data;
+      }
+
+      // Falha: distingue "queda" (vale tentar offline) de "credencial errada"
+      const { isNetworkLikeError } = await import(
+        '../services/database/connectivityService'
+      );
+      if (error && isNetworkLikeError(error)) {
+        try {
+          const { connectivityService } = await import(
+            '../services/database/connectivityService'
+          );
+          connectivityService.reportFailure(error);
+        } catch {
+          /* noop */
+        }
+        console.warn('📴 Supabase inalcançável no login — a tentar modo offline…');
+        try {
+          const offline = await loginOffline(email, password);
+          return { user: (offline as any)?.user ?? null, offline: true };
+        } catch (offlineErr: any) {
+          const msg =
+            offlineErr?.message ||
+            'Servidor indisponível e sem acesso offline para esta conta.';
+          setError(msg);
+          throw new Error(msg);
+        }
+      }
+
+      throw error || new Error('Falha no login');
     } catch (error: any) {
       console.error('❌ Erro no login:', error);
       await auditLogService.log('AUTH_LOGIN_FAILED', {
@@ -478,8 +781,9 @@ const handleSuccessfulLogin = async (user: User) => {
         reason: error?.message || 'unknown'
       });
       const errorMessage = getSupabaseErrorMessage(error);
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      // Se já definimos erro offline específico, não o sobrescreve com genérico
+      setError((prev) => prev || errorMessage);
+      throw error instanceof Error ? error : new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -654,9 +958,15 @@ const handleSuccessfulLogin = async (user: User) => {
       const previousProfilePromise = profileService.getLocalProfile().catch(() => null);
 
       clearLocalAuthState();
+      try {
+        sessionStorage.removeItem('edugestor_offline_mode');
+      } catch {
+        /* noop */
+      }
       setUser(null);
       setProfile(null);
       setSession(null);
+      setIsOfflineMode(false);
 
       void (async () => {
         try {
@@ -689,6 +999,7 @@ const handleSuccessfulLogin = async (user: User) => {
       setUser(null);
       setProfile(null);
       setSession(null);
+      setIsOfflineMode(false);
     }
   };
 
@@ -840,7 +1151,10 @@ const handleSuccessfulLogin = async (user: User) => {
     session,
     loading,
     error,
+    isOfflineMode,
     login,
+    loginOffline,
+    hasOfflineAccount,
     register,
     logout,
     loginWithGoogle,
@@ -874,6 +1188,22 @@ export const useAuth = () => {
 };
 
 const getSupabaseErrorMessage = (error: any): string => {
+  const raw = String(error?.message || error || '');
+  const low = raw.toLowerCase();
+  // Queda de rede/Supabase: mensagem acionável (o login tenta offline sozinho)
+  if (
+    low.includes('failed to fetch') ||
+    low.includes('network request failed') ||
+    low.includes('networkerror') ||
+    low.includes('fetch failed') ||
+    low.includes('timeout') ||
+    low.includes('abort') ||
+    low.includes('503') ||
+    low.includes('502') ||
+    low.includes('504')
+  ) {
+    return 'Servidor indisponível. A tentar entrar em modo offline…';
+  }
   const errorMessages: Record<string, string> = {
     'Invalid login credentials': 'Email ou senha incorretos',
     'Email not confirmed': 'Email não confirmado',

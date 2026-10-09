@@ -7,6 +7,10 @@ import { conflictResolver } from "./conflictResolver";
 export const downloadService={
     async downloadBatch() {
     try {
+      const { connectivityService } = await import('../connectivityService');
+      if (!connectivityService.shouldAttemptSync()) {
+        return;
+      }
       const { getAuthData } = useSyncAuthInManager();
       const authData = getAuthData();
 
@@ -27,6 +31,7 @@ export const downloadService={
         'evento', 'profiles', 'instituicao', 'notificacao','avaliacoes','turma_horarios',"planeamentos","plano_aulas"
       ];
 
+      let anyTableOk = false;
       for (const tableName of tables) {
         
         if (tableName === 'profiles' || tableName === 'instituicao') {
@@ -35,52 +40,77 @@ export const downloadService={
           }
         }
 
+        // Se o Supabase caiu a meio do lote, pára sem martelar as restantes
+        if (!connectivityService.shouldAttemptSync()) break;
+
         const tableLastSync = localStorage.getItem(`last_sync_${tableName}`);
         const tableLastSyncDate = tableLastSync ? new Date(tableLastSync) : lastSyncDate;
-        await this.downloadTableBatch(tableName, tableLastSyncDate);
+        const ok = await this.downloadTableBatch(tableName, tableLastSyncDate);
+        if (ok) anyTableOk = true;
         await new Promise(resolve => setTimeout(resolve, 300)); 
       }
 
-      
-      localStorage.setItem('last_sync_global', new Date().toISOString());
+      // Só avança o cursor global se pelo menos uma tabela teve sucesso.
+      // Antes atualizava sempre e podia saltar dados após outage.
+      if (anyTableOk) {
+        localStorage.setItem('last_sync_global', new Date().toISOString());
+        connectivityService.reportSuccess();
+      }
 
       } catch (error) {
+      const { connectivityService } = await import('../connectivityService');
+      connectivityService.reportFailure(error);
       console.error('❌ Erro no download batch:', error);
     }
     },
 
   
-    async downloadTableBatch(tableName: string, since: Date) {
+    async downloadTableBatch(tableName: string, since: Date): Promise<boolean> {
         try {
+        const { connectivityService } = await import('../connectivityService');
+        if (!connectivityService.shouldAttemptSync()) return false;
         const localCount = await db.table(tableName).count();
         const shouldForceFullSync = localCount === 0;
 
-        
-        let query = supabase
-            .from(tableName)
-            .select('*')
-            .order('updated_at', { ascending: true })
-            .limit(500);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        let remoteData: any[] | null = null;
+        let queryError: any = null;
+        try {
+          let query = supabase
+              .from(tableName)
+              .select('*')
+              .order('updated_at', { ascending: true })
+              .limit(500)
+              .abortSignal(controller.signal);
 
-        if (!shouldForceFullSync && since && Number.isFinite(since.getTime()) && since.getTime() > 0) {
-            query = query.gt('updated_at', since.toISOString());
-        } else if (shouldForceFullSync) {
-            }
+          if (!shouldForceFullSync && since && Number.isFinite(since.getTime()) && since.getTime() > 0) {
+              query = query.gt('updated_at', since.toISOString());
+          } else if (shouldForceFullSync) {
+              }
 
-        
-        
-        if (tableName !== 'profiles' && tableName !== 'instituicao') {
-            const instituicaoId = getSyncQueueInstitutionId();
-            if (instituicaoId) {
-            query = query.eq('instituicao_id', instituicaoId);
-            }
+          
+          
+          if (tableName !== 'profiles' && tableName !== 'instituicao') {
+              const instituicaoId = getSyncQueueInstitutionId();
+              if (instituicaoId) {
+              query = query.eq('instituicao_id', instituicaoId);
+              }
+          }
+
+          const res = await query;
+          remoteData = res.data;
+          queryError = res.error;
+        } finally {
+          clearTimeout(timeout);
         }
 
-        const { data: remoteData, error } = await query;
-
-        if (error) {
-            console.error(`❌ Erro buscando ${tableName}:`, error);
-            return;
+        if (queryError) {
+            console.error(`❌ Erro buscando ${tableName}:`, queryError);
+            connectivityService.reportFailure(queryError);
+            // NÃO reconcilia nem avança cursor em caso de erro:
+            // remoteData vazio por falha ≠ registos apagados no servidor.
+            return false;
         }
 
         if (!remoteData || remoteData.length === 0) {
@@ -89,7 +119,9 @@ export const downloadService={
             emitDbChanged(tableName, 'download');
             }
             localStorage.setItem(`last_sync_${tableName}`, new Date().toISOString());
-            return;
+            const { connectivityService: csOk } = await import('../connectivityService');
+            csOk.reportSuccess();
+            return true;
         }
 
         
@@ -115,9 +147,15 @@ export const downloadService={
         );
 
         emitDbChanged(tableName, 'download');
+        const { connectivityService: csOk2 } = await import('../connectivityService');
+        csOk2.reportSuccess();
+        return true;
 
         } catch (error) {
+        const { connectivityService } = await import('../connectivityService');
+        connectivityService.reportFailure(error);
         console.error(`❌ Erro baixando ${tableName}:`, error);
+        return false;
         }
     },
 

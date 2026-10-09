@@ -20,7 +20,7 @@ export interface SyncManager extends UploadSync {
   deleteLocalRecord(tableName: string, recordId: string): Promise<void>;
   processarRegistrosUnicos(records: any[], tabela: string): any[];
   handleSyncError(item: SyncQueueItem, error: any): Promise<void>;
-  downloadTableBatch(tableName: string, since: Date): Promise<void>;
+  downloadTableBatch(tableName: string, since: Date): Promise<boolean | void>;
   reconcileHardDeletes(tableName: string): Promise<void>;
   uploadTableBatch(tableName: string): Promise<void>;
   rentryErrorsTable(tableName: string): Promise<void>;

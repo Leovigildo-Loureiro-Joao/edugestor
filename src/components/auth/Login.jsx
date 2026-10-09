@@ -39,10 +39,29 @@ const Login = () => {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [openingAccount, setOpeningAccount] = useState(false);
   
-  const { user, login, register, loginWithGoogle, loading, error, clearError, completePendingRegistration } = useAuth();
+  const { user, login, loginOffline, hasOfflineAccount, register, loginWithGoogle, loading, error, clearError, completePendingRegistration, isOfflineMode } = useAuth();
   const navigate = useNavigate();
   const { showAlert } = useAlert(); 
   const location = useLocation();
+  const [connectivity, setConnectivity] = useState({ browserOnline: navigator.onLine, supabaseReachable: null, effectiveOnline: navigator.onLine });
+
+  useEffect(() => {
+    let unsub = null;
+    import('../../services/database/connectivityService').then(({ connectivityService }) => {
+      connectivityService.startMonitoring();
+      unsub = connectivityService.subscribe(setConnectivity);
+    }).catch(() => {});
+    return () => { if (unsub) unsub(); };
+  }, []);
+
+  const isServerDown = connectivity.browserOnline && connectivity.supabaseReachable === false;
+  const showOfflineBanner = !connectivity.browserOnline || isServerDown;
+  const [offlineEmailHint, setOfflineEmailHint] = useState('');
+  useEffect(() => {
+    import('../../services/auth/offlineCredentialsService').then(({ offlineCredentialsService }) => {
+      setOfflineEmailHint(offlineCredentialsService.getLastEmail() || '');
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1024px)');
@@ -146,21 +165,60 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        const res = await login(formData.email, formData.password);
+        if (res?.offline) {
+          showAlert({
+            title: 'Modo offline',
+            type: 'success',
+            duration: 5000,
+            message: 'Sem ligação ao servidor. A trabalhar com dados locais — será sincronizado depois.'
+          });
+        }
       } else {
         await register(formData.email, formData.password, formData.displayName, formData.institutionName);
         localStorage.removeItem('pending_registration');
         setRegistrationComplete(true);
       }
     } catch (error) {
-       showAlert({
-            title:"Erro de autenticação",
-            type:"error",
-            duration:5000,
-            message:"Contacte ao administrador para verificar suas permissões"
-          })
+       const msg = error?.message || '';
+       // Erro de credencial (servidor respondeu) — mantém mensagem original
+       if (!/indisponível|offline|Sessão|dispositivo/i.test(msg)) {
+         showAlert({
+              title:"Erro de autenticação",
+              type:"error",
+              duration:5000,
+              message:"Contacte ao administrador para verificar suas permissões"
+            })
+       }
       console.error('Erro de autenticação:', error);
-      
+      if (/indisponível|offline|dispositivo/i.test(msg)) {
+        setFormError(msg);
+      }
+    }
+  };
+
+  const handleContinueOffline = async () => {
+    clearError();
+    setFormError('');
+    const email = formData.email?.trim() || offlineEmailHint;
+    if (!email) {
+      setFormError('Indique o email da conta que já usou neste dispositivo.');
+      return;
+    }
+    if (!formData.password) {
+      setFormError('Indique a senha para validar o acesso offline.');
+      return;
+    }
+    try {
+      await loginOffline(email, formData.password);
+      showAlert({
+        title: 'Modo offline',
+        type: 'success',
+        duration: 5000,
+        message: 'A trabalhar com dados locais — será sincronizado depois.'
+      });
+    } catch (error) {
+      setFormError(error?.message || 'Não foi possível entrar offline.');
     }
   };
 
@@ -311,6 +369,24 @@ const Login = () => {
               </p>
             </div>
           </div>
+
+          {/* Banner modo offline (sem internet OU Supabase em queda) */}
+          {showOfflineBanner && isLogin && !registrationComplete && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 rounded-lg mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200"
+            >
+              <p className="font-medium">
+                {!connectivity.browserOnline ? '📴 Sem internet — modo offline' : '📴 Servidor indisponível — modo offline automático'}
+              </p>
+              <p className="mt-1">
+                {offlineEmailHint
+                  ? `Pode continuar como ${offlineEmailHint} com a mesma senha do último acesso neste dispositivo. Alterações serão sincronizadas depois.`
+                  : 'Se já entrou neste dispositivo, use o mesmo email e senha para continuar offline. Alterações serão sincronizadas depois.'}
+              </p>
+            </motion.div>
+          )}
 
           {/* Exibir erros */}
           {(error || formError) && (
@@ -517,6 +593,17 @@ const Login = () => {
                 >
                   {loading ? 'Processando...' : (isLogin ? 'Entrar com Email' : 'Criar Conta')}
                 </button>
+
+                {isLogin && showOfflineBanner && (
+                  <button
+                    type="button"
+                    onClick={handleContinueOffline}
+                    disabled={loading}
+                    className="w-full mt-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 py-3 px-4 rounded-lg font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+                  >
+                    {loading ? 'A verificar…' : 'Continuar offline neste dispositivo'}
+                  </button>
+                )}
               </form>
 
               <div className="mt-6 text-center">
