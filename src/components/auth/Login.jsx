@@ -378,7 +378,7 @@ const Login = () => {
               className="p-4 rounded-lg mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200"
             >
               <p className="font-medium">
-                {!connectivity.browserOnline ? '📴 Sem internet — modo offline' : '📴 Servidor indisponível — modo offline automático'}
+                {!connectivity.browserOnline ? ' Sem internet — modo offline' : ' Servidor indisponível — modo offline automático'}
               </p>
               <p className="mt-1">
                 {offlineEmailHint
